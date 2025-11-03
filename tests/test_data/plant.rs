@@ -1,0 +1,23 @@
+use std::fmt::{self, Display};
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Plant {
+    pub species: String,
+    pub height: u32,
+}
+
+impl Plant {
+    pub fn new(species: String, height: u32) -> Self {
+        Self { species, height }
+    }
+}
+
+impl Display for Plant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Plant[species={}, height={}cm]",
+            self.species, self.height
+        )
+    }
+}

@@ -1,0 +1,86 @@
+use crate::select_all::test_data::{animal::Animal, person::Person, plant::Plant};
+use futures::{Stream, StreamExt};
+use std::fmt::{self, Display};
+use tokio::sync::mpsc::{self, UnboundedSender};
+
+#[derive(Debug, Clone)]
+pub enum Order {
+    Animal,
+    Person,
+    Plant,
+}
+
+pub fn send(order: Order, senders: Vec<UnboundedSender<StreamValue>>) {
+    match order {
+        Order::Person => send_person(senders[0].clone()),
+        Order::Animal => send_animal(senders[1].clone()),
+        Order::Plant => send_plant(senders[2].clone()),
+    }
+}
+
+pub async fn assert(order: Order, results: impl futures::Stream<Item = StreamValue> + Send) {
+    match order {
+        Order::Animal => assert_animal_received(results).await,
+        Order::Person => assert_person_received(results).await,
+        Order::Plant => assert_plant_received(results).await,
+    }
+}
+
+pub fn send_person(sender: UnboundedSender<StreamValue>) {
+    sender
+        .send(StreamValue::Person(Person::new("Alice".to_string(), 25)))        
+        .unwrap()
+}
+
+pub fn send_animal(sender: UnboundedSender<StreamValue>) {
+    sender
+        .send(StreamValue::Animal(Animal::new("Dog".to_string(), 4)))        
+        .unwrap()
+}
+
+pub fn send_plant(sender: UnboundedSender<StreamValue>) {
+    sender
+        .send(StreamValue::Plant(Plant::new("Rose".to_string(), 15)))
+        .unwrap()
+}
+
+pub async fn assert_person_received(results: impl Stream<Item = StreamValue> + Send) {
+    let state = Box::pin(results).next().await.unwrap();
+    assert_eq!(
+        state,
+        StreamValue::Person(Person::new("Alice".to_string(), 25))
+    );
+}
+
+pub async fn assert_animal_received(results: impl Stream<Item = StreamValue> + Send) {
+    let state = Box::pin(results).next().await.unwrap();
+    assert_eq!(
+        state,
+        StreamValue::Animal(Animal::new("Dog".to_string(), 4))
+    );
+}
+
+pub async fn assert_plant_received(results: impl Stream<Item = StreamValue> + Send) {
+    let state = Box::pin(results).next().await.unwrap();
+    assert_eq!(
+        state,
+        StreamValue::Plant(Plant::new("Rose".to_string(), 15))
+    );
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum StreamValue {
+    Person(Person),
+    Animal(Animal),
+    Plant(Plant),
+}
+
+impl Display for StreamValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            StreamValue::Person(p) => write!(f, "{}", p),
+            StreamValue::Animal(a) => write!(f, "{}", a),
+            StreamValue::Plant(p) => write!(f, "{}", p),
+        }
+    }
+}
