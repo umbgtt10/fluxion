@@ -1,17 +1,17 @@
 use crate::select_all::common::{Order, assert, send};
+use fluxion::sequenced_channel::unbounded_channel;
 use futures::stream::select_all;
-use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 async fn test(order1: Order, order2: Order, order3: Order) {
     // Arrange
-    let (person_sender, person_receiver) = mpsc::unbounded_channel();
-    let (animal_sender, animal_receiver) = mpsc::unbounded_channel();
-    let (plant_sender, plant_receiver) = mpsc::unbounded_channel();
+    let (person_sender, person_receiver) = unbounded_channel();
+    let (animal_sender, animal_receiver) = unbounded_channel();
+    let (plant_sender, plant_receiver) = unbounded_channel();
 
-    let person_stream = UnboundedReceiverStream::new(person_receiver);
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver);
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver);
+    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
+    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
 
     let senders = vec![person_sender, animal_sender, plant_sender];
     let streams = vec![person_stream, animal_stream, plant_stream];

@@ -1,8 +1,8 @@
 use crate::select_all::test_data::{animal::Animal, person::Person, plant::Plant};
 use fluxion::sequenced::Sequenced;
+use fluxion::sequenced_channel::UnboundedSender;
 use futures::{Stream, StreamExt};
 use std::fmt::{self, Display};
-use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Debug, Clone)]
 pub enum Order {
@@ -22,7 +22,7 @@ pub enum SimpleValue {
 // The type used in streams - automatically sequenced
 pub type StreamValue = Sequenced<SimpleValue>;
 
-pub fn send(order: Order, senders: Vec<UnboundedSender<StreamValue>>) {
+pub fn send(order: Order, senders: Vec<UnboundedSender<SimpleValue>>) {
     match order {
         Order::Person => send_person(senders[0].clone()),
         Order::Animal => send_animal(senders[1].clone()),
@@ -38,30 +38,21 @@ pub async fn assert(order: Order, results: impl futures::Stream<Item = StreamVal
     }
 }
 
-pub fn send_person(sender: UnboundedSender<StreamValue>) {
+pub fn send_person(sender: UnboundedSender<SimpleValue>) {
     sender
-        .send(Sequenced::new(SimpleValue::Person(Person::new(
-            "Alice".to_string(),
-            25,
-        ))))
+        .send(SimpleValue::Person(Person::new("Alice".to_string(), 25)))
         .unwrap()
 }
 
-pub fn send_animal(sender: UnboundedSender<StreamValue>) {
+pub fn send_animal(sender: UnboundedSender<SimpleValue>) {
     sender
-        .send(Sequenced::new(SimpleValue::Animal(Animal::new(
-            "Dog".to_string(),
-            4,
-        ))))
+        .send(SimpleValue::Animal(Animal::new("Dog".to_string(), 4)))
         .unwrap()
 }
 
-pub fn send_plant(sender: UnboundedSender<StreamValue>) {
+pub fn send_plant(sender: UnboundedSender<SimpleValue>) {
     sender
-        .send(Sequenced::new(SimpleValue::Plant(Plant::new(
-            "Rose".to_string(),
-            15,
-        ))))
+        .send(SimpleValue::Plant(Plant::new("Rose".to_string(), 15)))
         .unwrap()
 }
 

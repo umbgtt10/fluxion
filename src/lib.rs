@@ -5,6 +5,7 @@ pub mod merge_ordered;
 pub mod merge_with;
 pub mod select_all;
 pub mod sequenced;
+pub mod sequenced_channel;
 pub mod subscribe_async;
 pub mod subscribe_latest_async;
 pub mod subscribe_latest_async_without_task;
