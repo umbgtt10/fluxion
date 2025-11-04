@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use stream_processing::combine_with_previous::CombineWithPreviousExt;
+use fluxion::combine_with_previous::CombineWithPreviousExt;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 

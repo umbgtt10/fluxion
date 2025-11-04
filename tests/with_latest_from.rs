@@ -1,5 +1,5 @@
-use stream_processing::combine_latest::CombinedState;
-use stream_processing::with_latest_from::WithLatestFromExt;
+use fluxion::combine_latest::CombinedState;
+use fluxion::with_latest_from::WithLatestFromExt;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 

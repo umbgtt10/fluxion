@@ -1,6 +1,6 @@
 use futures::StreamExt;
 use std::fmt::{self, Display};
-use stream_processing::combine_latest::{CombineLatestExt, CombinedState};
+use fluxion::combine_latest::{CombineLatestExt, CombinedState};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 

@@ -1,6 +1,6 @@
 use futures::StreamExt;
 use futures::stream;
-use stream_processing::merge_with::MergedStream;
+use fluxion::merge_with::MergedStream;
 use tokio::sync::mpsc;
 use tokio::time;
 use tokio_stream::wrappers::ReceiverStream;

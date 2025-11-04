@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use stream_processing::subscribe_latest_async::SubscribeLatestAsyncExt;
+use fluxion::subscribe_latest_async::SubscribeLatestAsyncExt;
 use tokio::sync::{Mutex, mpsc};
 use tokio::time::{Duration, sleep};
 use tokio_stream::wrappers::ReceiverStream;
