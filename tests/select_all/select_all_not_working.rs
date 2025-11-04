@@ -32,10 +32,12 @@ async fn test(order1: Order, order2: Order, order3: Order) {
 
     let mut results = select_all(streams);
 
+    // Act
     send(order1.clone(), &senders);
     send(order2.clone(), &senders);
     send(order3.clone(), &senders);
 
+    // Assert
     assert(order1, &mut results).await;
     assert(order2, &mut results).await;
     assert(order3, &mut results).await;
@@ -69,6 +71,13 @@ async fn assert(order: Order, results: impl futures::Stream<Item = StreamValue> 
 
 #[tokio::test]
 async fn test_all_combinations() {
+    /*
+      The select_all combinator does not guarantee ordering of emitted items:
+        - It will poll streams in an unspecified order
+        - Whichever stream is ready will emit its value
+        - You cannot rely on any particular ordering when multiple streams have items ready
+    */
+
     test(Order::Integer, Order::Float, Order::Text).await;
 
     // These tests fail!

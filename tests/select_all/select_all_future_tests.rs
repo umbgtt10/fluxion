@@ -3,8 +3,6 @@ use futures::stream::select_all;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-const BUFFER_SIZE: usize = 10;
-
 async fn test(order1: Order, order2: Order, order3: Order) {
     // Arrange
     let (person_sender, person_receiver) = mpsc::unbounded_channel();

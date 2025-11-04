@@ -1,9 +1,9 @@
 use crate::select_all::common::{Order, assert, send};
 use fluxion::select_all::select_all_ordered::SelectAllExt;
+use fluxion::sequenced::Sequenced;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
-
-const BUFFER_SIZE: usize = 10;
+use tokio_stream::StreamExt;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 async fn test(order1: Order, order2: Order, order3: Order) {
     // Arrange
@@ -18,11 +18,14 @@ async fn test(order1: Order, order2: Order, order3: Order) {
     let senders = vec![person_sender, animal_sender, plant_sender];
     let streams = vec![person_stream, animal_stream, plant_stream];
 
+    let results = streams.select_all_ordered();
+
+    // Act
     send(order1.clone(), senders.clone());
     send(order2.clone(), senders.clone());
     send(order3.clone(), senders.clone());
 
-    let results = streams.select_all_ordered();
+    // Assert
     let mut results = Box::pin(results);
 
     assert(order1, &mut results).await;
@@ -33,11 +36,106 @@ async fn test(order1: Order, order2: Order, order3: Order) {
 #[tokio::test]
 async fn test_all_combinations() {
     test(Order::Person, Order::Animal, Order::Plant).await;
+    test(Order::Person, Order::Plant, Order::Animal).await;
+    test(Order::Plant, Order::Animal, Order::Person).await;
+    test(Order::Plant, Order::Person, Order::Animal).await;
+    test(Order::Animal, Order::Person, Order::Plant).await;
+    test(Order::Animal, Order::Plant, Order::Person).await;
+}
 
-    // These tests fail!
-    //test(Order::Person, Order::Plant, Order::Animal).await;
-    //test(Order::Plant, Order::Animal, Order::Person).await;
-    //test(Order::Plant, Order::Person, Order::Animal).await;
-    //test(Order::Animal, Order::Person, Order::Plant).await;
-    //test(Order::Animal, Order::Plant, Order::Person).await;
+#[tokio::test]
+async fn test_simple_string_events() {
+    // Create channels for different types of events
+    let (tx1, rx1) = mpsc::unbounded_channel();
+    let (tx2, rx2) = mpsc::unbounded_channel();
+    let (tx3, rx3) = mpsc::unbounded_channel();
+
+    // Wrap in streams
+    let stream1 = UnboundedReceiverStream::new(rx1);
+    let stream2 = UnboundedReceiverStream::new(rx2);
+    let stream3 = UnboundedReceiverStream::new(rx3);
+
+    // Send events - wrap each value with Sequenced::new()
+    // Note: Sending to different streams in a specific order
+    tx2.send(Sequenced::new("Second")).unwrap(); // Even though sent to stream2 first
+    tx1.send(Sequenced::new("First")).unwrap(); // This was sent second
+    tx3.send(Sequenced::new("Third")).unwrap(); // This was sent third
+
+    // Merge streams with temporal ordering
+    let mut merged = vec![stream1, stream2, stream3].select_all_ordered();
+
+    // Events come out in send order, not stream order!
+    assert_eq!(merged.next().await.unwrap().value, "Second"); // Sent first
+    assert_eq!(merged.next().await.unwrap().value, "First"); // Sent second
+    assert_eq!(merged.next().await.unwrap().value, "Third"); // Sent third
+}
+
+#[tokio::test]
+async fn test_custom_struct_events() {
+    #[derive(Debug, PartialEq, Eq)]
+    struct MyEvent {
+        user_id: u64,
+        action: String,
+    }
+
+    let (tx1, rx1) = mpsc::unbounded_channel();
+    let (tx2, rx2) = mpsc::unbounded_channel();
+
+    let stream1 = UnboundedReceiverStream::new(rx1);
+    let stream2 = UnboundedReceiverStream::new(rx2);
+
+    // Send events to different streams in interleaved order
+    tx1.send(Sequenced::new(MyEvent {
+        user_id: 1,
+        action: "login".to_string(),
+    }))
+    .unwrap();
+
+    tx2.send(Sequenced::new(MyEvent {
+        user_id: 2,
+        action: "view_page".to_string(),
+    }))
+    .unwrap();
+
+    tx1.send(Sequenced::new(MyEvent {
+        user_id: 1,
+        action: "logout".to_string(),
+    }))
+    .unwrap();
+
+    // Merge and verify temporal order
+    let mut merged = vec![stream1, stream2].select_all_ordered();
+
+    let event1 = merged.next().await.unwrap();
+    assert_eq!(event1.value.user_id, 1);
+    assert_eq!(event1.value.action, "login");
+
+    let event2 = merged.next().await.unwrap();
+    assert_eq!(event2.value.user_id, 2);
+    assert_eq!(event2.value.action, "view_page");
+
+    let event3 = merged.next().await.unwrap();
+    assert_eq!(event3.value.user_id, 1);
+    assert_eq!(event3.value.action, "logout");
+}
+
+#[tokio::test]
+async fn test_deref_access() {
+    let (tx, rx) = mpsc::unbounded_channel();
+    let stream = UnboundedReceiverStream::new(rx);
+
+    tx.send(Sequenced::new("Hello World")).unwrap();
+
+    let mut merged = vec![stream].select_all_ordered();
+    let seq_value = merged.next().await.unwrap();
+
+    // Test Deref access
+    assert_eq!(seq_value.len(), 11); // Derefs to &str
+    assert_eq!(*seq_value, "Hello World");
+
+    // Test direct field access
+    assert_eq!(seq_value.value, "Hello World");
+
+    // Test sequence number access
+    assert_eq!(seq_value.sequence(), 0); // First item has sequence 0
 }

@@ -1,7 +1,8 @@
 use crate::select_all::test_data::{animal::Animal, person::Person, plant::Plant};
+use fluxion::sequenced::Sequenced;
 use futures::{Stream, StreamExt};
 use std::fmt::{self, Display};
-use tokio::sync::mpsc::{UnboundedSender};
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Debug, Clone)]
 pub enum Order {
@@ -9,6 +10,17 @@ pub enum Order {
     Person,
     Plant,
 }
+
+// Simple enum without sequence numbers - just the data
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SimpleValue {
+    Person(Person),
+    Animal(Animal),
+    Plant(Plant),
+}
+
+// The type used in streams - automatically sequenced
+pub type StreamValue = Sequenced<SimpleValue>;
 
 pub fn send(order: Order, senders: Vec<UnboundedSender<StreamValue>>) {
     match order {
@@ -28,59 +40,67 @@ pub async fn assert(order: Order, results: impl futures::Stream<Item = StreamVal
 
 pub fn send_person(sender: UnboundedSender<StreamValue>) {
     sender
-        .send(StreamValue::Person(Person::new("Alice".to_string(), 25)))
+        .send(Sequenced::new(SimpleValue::Person(Person::new(
+            "Alice".to_string(),
+            25,
+        ))))
         .unwrap()
 }
 
 pub fn send_animal(sender: UnboundedSender<StreamValue>) {
     sender
-        .send(StreamValue::Animal(Animal::new("Dog".to_string(), 4)))
+        .send(Sequenced::new(SimpleValue::Animal(Animal::new(
+            "Dog".to_string(),
+            4,
+        ))))
         .unwrap()
 }
 
 pub fn send_plant(sender: UnboundedSender<StreamValue>) {
     sender
-        .send(StreamValue::Plant(Plant::new("Rose".to_string(), 15)))
+        .send(Sequenced::new(SimpleValue::Plant(Plant::new(
+            "Rose".to_string(),
+            15,
+        ))))
         .unwrap()
 }
 
 pub async fn assert_person_received(results: impl Stream<Item = StreamValue> + Send) {
     let state = Box::pin(results).next().await.unwrap();
-    assert_eq!(
-        state,
-        StreamValue::Person(Person::new("Alice".to_string(), 25))
-    );
+    match state.value {
+        SimpleValue::Person(p) => {
+            assert_eq!(p, Person::new("Alice".to_string(), 25));
+        }
+        _ => panic!("Expected Person, got {:?}", state),
+    }
 }
 
 pub async fn assert_animal_received(results: impl Stream<Item = StreamValue> + Send) {
     let state = Box::pin(results).next().await.unwrap();
-    assert_eq!(
-        state,
-        StreamValue::Animal(Animal::new("Dog".to_string(), 4))
-    );
+    match state.value {
+        SimpleValue::Animal(a) => {
+            assert_eq!(a, Animal::new("Dog".to_string(), 4));
+        }
+        _ => panic!("Expected Animal, got {:?}", state),
+    }
 }
 
 pub async fn assert_plant_received(results: impl Stream<Item = StreamValue> + Send) {
     let state = Box::pin(results).next().await.unwrap();
-    assert_eq!(
-        state,
-        StreamValue::Plant(Plant::new("Rose".to_string(), 15))
-    );
+    match state.value {
+        SimpleValue::Plant(p) => {
+            assert_eq!(p, Plant::new("Rose".to_string(), 15));
+        }
+        _ => panic!("Expected Plant, got {:?}", state),
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum StreamValue {
-    Person(Person),
-    Animal(Animal),
-    Plant(Plant),
-}
-
-impl Display for StreamValue {
+impl Display for SimpleValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StreamValue::Person(p) => write!(f, "{}", p),
-            StreamValue::Animal(a) => write!(f, "{}", a),
-            StreamValue::Plant(p) => write!(f, "{}", p),
+            SimpleValue::Person(p) => write!(f, "{}", p),
+            SimpleValue::Animal(a) => write!(f, "{}", a),
+            SimpleValue::Plant(p) => write!(f, "{}", p),
         }
     }
 }
