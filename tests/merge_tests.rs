@@ -1,6 +1,6 @@
 use futures::Stream;
 use std::f64::consts::PI;
-use stream_processing::merge_ordered::VecStreamMergeExt;
+use fluxion::merge_ordered::VecStreamMergeExt;
 use tokio::sync::mpsc;
 use tokio::task::yield_now;
 use tokio_stream::{StreamExt, wrappers::UnboundedReceiverStream};

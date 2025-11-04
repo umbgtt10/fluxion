@@ -1,5 +1,5 @@
 use crate::select_all::common::{Order, assert, send};
-use stream_processing::select_all::select_all_ordered::SelectAllExt;
+use fluxion::select_all::select_all_ordered::SelectAllExt;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
 

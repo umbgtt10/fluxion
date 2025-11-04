@@ -1,7 +1,7 @@
 use crate::select_all::test_data::{animal::Animal, person::Person, plant::Plant};
 use futures::{Stream, StreamExt};
 use std::fmt::{self, Display};
-use tokio::sync::mpsc::{self, UnboundedSender};
+use tokio::sync::mpsc::{UnboundedSender};
 
 #[derive(Debug, Clone)]
 pub enum Order {
@@ -28,13 +28,13 @@ pub async fn assert(order: Order, results: impl futures::Stream<Item = StreamVal
 
 pub fn send_person(sender: UnboundedSender<StreamValue>) {
     sender
-        .send(StreamValue::Person(Person::new("Alice".to_string(), 25)))        
+        .send(StreamValue::Person(Person::new("Alice".to_string(), 25)))
         .unwrap()
 }
 
 pub fn send_animal(sender: UnboundedSender<StreamValue>) {
     sender
-        .send(StreamValue::Animal(Animal::new("Dog".to_string(), 4)))        
+        .send(StreamValue::Animal(Animal::new("Dog".to_string(), 4)))
         .unwrap()
 }
 

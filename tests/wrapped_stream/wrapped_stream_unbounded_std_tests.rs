@@ -1,4 +1,4 @@
-use stream_processing::wrapped_stream::wrapped_stream_unbounded_std::WrappedStreamUnboundedStd;
+use fluxion::wrapped_stream::wrapped_stream_unbounded_std::WrappedStreamUnboundedStd;
 use tokio_stream::StreamExt;
 
 use crate::infra::infrastructure::assert_no_element_emitted;
