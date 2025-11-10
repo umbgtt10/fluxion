@@ -52,6 +52,18 @@ pub fn sunflower() -> SimpleEnum {
     SimpleEnum::Plant(Plant::new("Sunflower".to_string(), 180))
 }
 
+pub fn dave() -> SimpleEnum {
+    SimpleEnum::Person(Person::new("Dave".to_string(), 28))
+}
+
+pub fn ant() -> SimpleEnum {
+    SimpleEnum::Animal(Animal::new("Ant".to_string(), 6))
+}
+
+pub fn cat() -> SimpleEnum {
+    SimpleEnum::Animal(Animal::new("Cat".to_string(), 4))
+}
+
 pub fn send(order: &Order, senders: &[UnboundedSender<SimpleEnum>]) {
     match order {
         Order::Person => send_alice(&senders[0]),
@@ -134,6 +146,12 @@ pub fn send_dog(sender: &UnboundedSender<SimpleEnum>) {
 pub fn send_spider(sender: &UnboundedSender<SimpleEnum>) {
     sender
         .send(SimpleEnum::Animal(Animal::new("Spider".to_string(), 8)))
+        .unwrap()
+}
+
+pub fn send_ant(sender: &UnboundedSender<SimpleEnum>) {
+    sender
+        .send(SimpleEnum::Animal(Animal::new("Ant".to_string(), 6)))
         .unwrap()
 }
 

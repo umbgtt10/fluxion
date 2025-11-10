@@ -3,30 +3,19 @@ use fluxion::{
     take_latest_when::TakeLatestWhenExt,
 };
 use futures::StreamExt;
-use std::fmt::{self, Display};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 mod infra;
 mod test_data;
 use crate::{
     infra::infrastructure::assert_no_element_emitted,
-    test_data::{animal::Animal, person::Person},
+    test_data::simple_enum::{
+        SimpleEnum, alice, bob, cat, charlie, dave, send_alice, send_ant, send_bob, send_charlie,
+        send_dog,
+    },
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum StreamValue {
-    Person(Person),
-    Animal(Animal),
-}
-
-impl Display for StreamValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            StreamValue::Person(p) => write!(f, "{}", p),
-            StreamValue::Animal(a) => write!(f, "{}", a),
-        }
-    }
-}
+type StreamValue = SimpleEnum;
 
 #[tokio::test]
 async fn test_take_latest_when_empty_streams() {
@@ -71,13 +60,8 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
     let mut output_stream = Box::pin(output_stream);
 
     // Act
-    source_sender
-        .send(StreamValue::Person(Person::new("Alice".to_string(), 30)))
-        .unwrap();
-
-    filter_sender
-        .send(StreamValue::Animal(Animal::new("Dog".to_string(), 4)))
-        .unwrap();
+    send_alice(&source_sender);
+    send_dog(&filter_sender);
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -109,20 +93,15 @@ async fn test_take_latest_when_filter_satisfied_emits() {
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
 
     // Act
-    source_sender
-        .send(StreamValue::Person(Person::new("Alice".to_string(), 30)))
-        .unwrap();
-
-    filter_sender
-        .send(StreamValue::Animal(Animal::new("Dog".to_string(), 6)))
-        .unwrap();
+    send_alice(&source_sender);
+    send_ant(&filter_sender);
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
     let emitted_item = output_stream.next().await.unwrap();
     assert_eq!(
         emitted_item,
-        StreamValue::Person(Person::new("Alice".to_string(), 30)),
+        alice(),
         "Expected the source item to be emitted when the filter is satisfied"
     );
 }
@@ -153,13 +132,8 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
 
     // Act
-    source_sender
-        .send(StreamValue::Person(Person::new("Alice".to_string(), 30)))
-        .unwrap();
-
-    filter_sender
-        .send(StreamValue::Animal(Animal::new("Dog".to_string(), 6)))
-        .unwrap();
+    send_alice(&source_sender);
+    send_ant(&filter_sender);
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
@@ -167,20 +141,18 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     let first_item = output_stream.next().await.unwrap();
     assert_eq!(
         first_item,
-        StreamValue::Person(Person::new("Alice".to_string(), 30)),
+        alice(),
         "First emitted item did not match expected"
     );
 
     // Act
-    source_sender
-        .send(StreamValue::Person(Person::new("Bob".to_string(), 40)))
-        .unwrap();
+    send_bob(&source_sender);
 
     // Assert
     let second_item = output_stream.next().await.unwrap();
     assert_eq!(
         second_item,
-        StreamValue::Person(Person::new("Bob".to_string(), 40)),
+        bob(),
         "Second emitted item did not match expected"
     );
 }
@@ -211,13 +183,8 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
 
     // Act
-    filter_sender
-        .send(StreamValue::Animal(Animal::new("Ant".to_string(), 6)))
-        .unwrap();
-
-    source_sender
-        .send(StreamValue::Person(Person::new("Charlie".to_string(), 25)))
-        .unwrap();
+    send_ant(&filter_sender);
+    send_charlie(&source_sender);
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
@@ -225,18 +192,14 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     let first_item = output_stream.next().await.unwrap();
     assert_eq!(
         first_item,
-        StreamValue::Person(Person::new("Charlie".to_string(), 25)),
+        charlie(),
         "First emitted item did not match expected"
     );
 
     // Act
-    filter_sender
-        .send(StreamValue::Animal(Animal::new("Cat".to_string(), 4)))
-        .unwrap();
+    filter_sender.send(cat()).unwrap();
 
-    source_sender
-        .send(StreamValue::Person(Person::new("Dave".to_string(), 28)))
-        .unwrap();
+    source_sender.send(dave()).unwrap();
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;

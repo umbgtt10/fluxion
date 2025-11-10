@@ -1,6 +1,6 @@
 mod test_data;
 
-use crate::test_data::simple_struct::{Order, assert, send};
+use crate::test_data::simple_enum::{Order, assert, send};
 use fluxion::select_all_ordered::SelectAllExt;
 use fluxion::sequenced_channel::unbounded_channel;
 use tokio_stream::wrappers::UnboundedReceiverStream;
