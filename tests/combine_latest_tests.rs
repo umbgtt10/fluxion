@@ -1,6 +1,6 @@
+use fluxion::combine_latest::{CombineLatestExt, CombinedState};
 use futures::StreamExt;
 use std::fmt::{self, Display};
-use fluxion::combine_latest::{CombineLatestExt, CombinedState};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
@@ -207,7 +207,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
 #[tokio::test]
 async fn test_combine_latest_with_identical_streams_emits_updates() {
     // Arrange
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     enum StreamValue {
         Person1(Person),
         Person2(Person),
@@ -277,7 +277,7 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
     );
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum StreamValue {
     Person(Person),
     Animal(Animal),

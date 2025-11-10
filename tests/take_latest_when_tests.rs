@@ -1,10 +1,10 @@
+use fluxion::{combine_latest::CombinedState, take_latest_when::TakeLatestWhenExt};
 use futures::StreamExt;
 use std::{
     fmt::{self, Display},
     thread::sleep,
     time::Duration,
 };
-use fluxion::{combine_latest::CombinedState, take_latest_when::TakeLatestWhenExt};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
@@ -17,7 +17,7 @@ use crate::{
 
 const BUFFER_SIZE: usize = 10;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum StreamValue {
     Person(Person),
     Animal(Animal),

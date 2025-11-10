@@ -1,12 +1,14 @@
 use futures::future::ready;
-use futures::{Stream, StreamExt, stream::select_all};
+use futures::{Stream, StreamExt};
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
+use crate::select_all_ordered::SelectAllExt;
+
 pub trait CombineLatestExt<V, S>: Stream<Item = V> + Sized
 where
-    V: Clone + Debug + Send + Sync + 'static,
+    V: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = V> + Send + 'static,
 {
     fn combine_latest(
@@ -20,7 +22,7 @@ type PinnedStreams<V> = Vec<Pin<Box<dyn Stream<Item = (usize, V)> + Send>>>;
 
 impl<V, S> CombineLatestExt<V, S> for S
 where
-    V: Clone + Debug + Send + Sync + 'static,
+    V: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = V> + Send + 'static,
 {
     fn combine_latest(
@@ -38,7 +40,8 @@ where
         let num_streams = streams.len();
         let state = Arc::new(Mutex::new(IntermediateState::new(num_streams)));
 
-        select_all(streams)
+        streams
+            .select_all_ordered()
             .filter_map({
                 let state = Arc::clone(&state);
 

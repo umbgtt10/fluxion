@@ -104,7 +104,7 @@ impl<T> UnboundedReceiver<T> {
 /// ```
 /// use fluxion::sequenced_channel::unbounded_channel;
 /// use tokio_stream::{StreamExt, wrappers::UnboundedReceiverStream};
-/// use fluxion::select_all::select_all_ordered::SelectAllExt;
+/// use fluxion::select_all_ordered::SelectAllExt;
 ///
 /// #[tokio::main]
 /// async fn main() {

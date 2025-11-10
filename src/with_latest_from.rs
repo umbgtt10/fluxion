@@ -6,7 +6,7 @@ use crate::combine_latest::{CombineLatestExt, CombinedState};
 pub trait WithLatestFromExt<V, S>: Stream<Item = V> + Sized
 where
     Self: Stream<Item = V> + Send + 'static,
-    V: Clone + Debug + Send + Sync + 'static,
+    V: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = V> + Send + 'static,
 {
     fn with_latest_from(
@@ -19,7 +19,7 @@ where
 impl<V, S, P> WithLatestFromExt<V, S> for P
 where
     Self: Stream<Item = V> + Send + 'static,
-    V: Clone + Debug + Send + Sync + 'static,
+    V: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = V> + Send + 'static,
     P: Stream<Item = V> + CombineLatestExt<V, S> + Sized + Unpin + Send + 'static,
 {

@@ -5,7 +5,7 @@ use crate::combine_latest::{CombineLatestExt, CombinedState};
 
 pub trait TakeLatestWhenExt<T, S>: Stream<Item = T> + Sized
 where
-    T: Clone + Send + Sync + 'static,
+    T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = T> + Send + Sync + 'static,
 {
     fn take_latest_when(
@@ -18,7 +18,7 @@ where
 impl<T, S> TakeLatestWhenExt<T, S> for S
 where
     S: Stream<Item = T> + CombineLatestExt<T, S> + Send + Sync + 'static,
-    T: Clone + Debug + Send + Sync + 'static,
+    T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     fn take_latest_when(
         self,

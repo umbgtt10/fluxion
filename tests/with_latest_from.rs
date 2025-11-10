@@ -9,7 +9,7 @@ use crate::infra::infrastructure::assert_no_element_emitted;
 use crate::test_data::animal::Animal;
 use crate::test_data::person::Person;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum StreamValue {
     Animal(Animal),
     Person(Person),
