@@ -1,7 +1,5 @@
 pub mod combine_latest;
 pub mod combine_with_previous;
-pub mod merge;
-pub mod merge_ordered;
 pub mod merge_with;
 pub mod select_all_ordered;
 pub mod sequenced;
