@@ -21,9 +21,9 @@ pub enum SimpleStruct {
 
 pub fn send(order: &Order, senders: &[UnboundedSender<SimpleStruct>]) {
     match order {
-        Order::Person => send_person(&senders[0]),
-        Order::Animal => send_animal(&senders[1]),
-        Order::Plant => send_plant(&senders[2]),
+        Order::Person => send_alice(&senders[0]),
+        Order::Animal => send_dog(&senders[1]),
+        Order::Plant => send_rose(&senders[2]),
     }
 }
 
@@ -36,24 +36,6 @@ pub async fn assert(
         Order::Person => assert_person_received(results).await,
         Order::Plant => assert_plant_received(results).await,
     }
-}
-
-pub fn send_person(sender: &UnboundedSender<SimpleStruct>) {
-    sender
-        .send(SimpleStruct::Person(Person::new("Alice".to_string(), 25)))
-        .unwrap()
-}
-
-pub fn send_animal(sender: &UnboundedSender<SimpleStruct>) {
-    sender
-        .send(SimpleStruct::Animal(Animal::new("Dog".to_string(), 4)))
-        .unwrap()
-}
-
-pub fn send_plant(sender: &UnboundedSender<SimpleStruct>) {
-    sender
-        .send(SimpleStruct::Plant(Plant::new("Rose".to_string(), 15)))
-        .unwrap()
 }
 
 pub async fn assert_person_received(results: impl Stream<Item = Sequenced<SimpleStruct>> + Send) {
@@ -84,6 +66,57 @@ pub async fn assert_plant_received(results: impl Stream<Item = Sequenced<SimpleS
         }
         _ => panic!("Expected Plant, got {:?}", state),
     }
+}
+
+pub fn send_alice(sender: &UnboundedSender<SimpleStruct>) {
+    sender
+        .send(SimpleStruct::Person(Person::new("Alice".to_string(), 25)))
+        .unwrap()
+}
+
+pub fn send_bob(sender: &UnboundedSender<SimpleStruct>) {
+    sender
+        .send(SimpleStruct::Person(Person::new("Bob".to_string(), 30)))
+        .unwrap()
+}
+
+pub fn send_charlie(sender: &UnboundedSender<SimpleStruct>) {
+    sender
+        .send(SimpleStruct::Person(Person::new("Charlie".to_string(), 35)))
+        .unwrap()
+}
+
+pub fn send_diane(sender: &UnboundedSender<SimpleStruct>) {
+    sender
+        .send(SimpleStruct::Person(Person::new("Diane".to_string(), 40)))
+        .unwrap()
+}
+
+pub fn send_dog(sender: &UnboundedSender<SimpleStruct>) {
+    sender
+        .send(SimpleStruct::Animal(Animal::new("Dog".to_string(), 4)))
+        .unwrap()
+}
+
+pub fn send_spider(sender: &UnboundedSender<SimpleStruct>) {
+    sender
+        .send(SimpleStruct::Animal(Animal::new("Spider".to_string(), 8)))
+        .unwrap()
+}
+
+pub fn send_sunflower(sender: &UnboundedSender<SimpleStruct>) {
+    sender
+        .send(SimpleStruct::Plant(Plant::new(
+            "Sunflower".to_string(),
+            180,
+        )))
+        .unwrap()
+}
+
+pub fn send_rose(sender: &UnboundedSender<SimpleStruct>) {
+    sender
+        .send(SimpleStruct::Plant(Plant::new("Rose".to_string(), 15)))
+        .unwrap()
 }
 
 impl Display for SimpleStruct {

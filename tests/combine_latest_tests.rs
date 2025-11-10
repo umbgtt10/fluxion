@@ -4,14 +4,22 @@ mod test_data;
 use fluxion::{
     combine_latest::{CombineLatestExt, CombinedState},
     sequenced::Sequenced,
-    sequenced_channel::{UnboundedSender, unbounded_channel},
+    sequenced_channel::unbounded_channel,
 };
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::{
     infra::infrastructure::assert_no_element_emitted,
-    test_data::{animal::Animal, person::Person, plant::Plant, simple_struct::SimpleStruct},
+    test_data::{
+        animal::Animal,
+        person::Person,
+        plant::Plant,
+        simple_struct::{
+            Order, SimpleStruct, send, send_alice, send_bob, send_charlie, send_diane, send_dog,
+            send_rose, send_spider, send_sunflower,
+        },
+    },
 };
 
 static FILTER2: fn(&CombinedState<Sequenced<SimpleStruct>>) -> bool =
@@ -56,17 +64,13 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    person_sender
-        .send(SimpleStruct::Person(Person::new("Alice".to_string(), 25)))
-        .unwrap();
+    send_alice(&person_sender);
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act
-    animal_sender
-        .send(SimpleStruct::Animal(Animal::new("Dog".to_string(), 4)))
-        .unwrap();
+    send_dog(&animal_sender);
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
@@ -140,15 +144,9 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER2);
 
     // Act
-    person_sender
-        .send(SimpleStruct::Person(Person::new("Alice".to_string(), 25)))
-        .unwrap();
-    animal_sender
-        .send(SimpleStruct::Animal(Animal::new("Dog".to_string(), 4)))
-        .unwrap();
-    plant_sender
-        .send(SimpleStruct::Plant(Plant::new("Rose".to_string(), 15)))
-        .unwrap();
+    send_alice(&person_sender);
+    send_dog(&animal_sender);
+    send_rose(&plant_sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
@@ -163,9 +161,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     assert_eq!(actual, expected);
 
     // Act
-    person_sender
-        .send(SimpleStruct::Person(Person::new("Bob".to_string(), 30)))
-        .unwrap();
+    send_bob(&person_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
@@ -178,9 +174,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     assert_eq!(actual, expected);
 
     // Act
-    animal_sender
-        .send(SimpleStruct::Animal(Animal::new("Spider".to_string(), 8)))
-        .unwrap();
+    send_spider(&animal_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
@@ -193,12 +187,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     assert_eq!(actual, expected);
 
     // Act
-    plant_sender
-        .send(SimpleStruct::Plant(Plant::new(
-            "Sunflower".to_string(),
-            180,
-        )))
-        .unwrap();
+    send_sunflower(&plant_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
@@ -224,12 +213,8 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    stream1_sender
-        .send(SimpleStruct::Person(Person::new("Alice".to_string(), 25)))
-        .unwrap();
-    stream2_sender
-        .send(SimpleStruct::Person(Person::new("Bob".to_string(), 30)))
-        .unwrap();
+    send_alice(&stream1_sender);
+    send_bob(&stream2_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
@@ -241,9 +226,7 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
     assert_eq!(actual, expected);
 
     // Act
-    stream1_sender
-        .send(SimpleStruct::Person(Person::new("Charlie".to_string(), 35)))
-        .unwrap();
+    send_charlie(&stream1_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
@@ -255,9 +238,7 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
     assert_eq!(actual, expected);
 
     // Act
-    stream2_sender
-        .send(SimpleStruct::Person(Person::new("Diane".to_string(), 40)))
-        .unwrap();
+    send_diane(&stream2_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
@@ -267,37 +248,4 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
         SimpleStruct::Person(Person::new("Diane".to_string(), 40)),
     ];
     assert_eq!(actual, expected);
-}
-
-#[derive(Debug, Clone)]
-pub enum Order {
-    Person,
-    Animal,
-    Plant,
-}
-
-fn send(order: &Order, senders: &[UnboundedSender<SimpleStruct>]) {
-    match order {
-        Order::Person => send_person(&senders[0]),
-        Order::Animal => send_animal(&senders[1]),
-        Order::Plant => send_plant(&senders[2]),
-    }
-}
-
-fn send_person(sender: &UnboundedSender<SimpleStruct>) {
-    sender
-        .send(SimpleStruct::Person(Person::new("Alice".to_string(), 25)))
-        .unwrap()
-}
-
-fn send_animal(sender: &UnboundedSender<SimpleStruct>) {
-    sender
-        .send(SimpleStruct::Animal(Animal::new("Dog".to_string(), 4)))
-        .unwrap()
-}
-
-fn send_plant(sender: &UnboundedSender<SimpleStruct>) {
-    sender
-        .send(SimpleStruct::Plant(Plant::new("Rose".to_string(), 15)))
-        .unwrap()
 }
