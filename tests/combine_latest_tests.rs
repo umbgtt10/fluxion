@@ -1,3 +1,6 @@
+mod infra;
+mod test_data;
+
 use fluxion::{
     combine_latest::{CombineLatestExt, CombinedState},
     sequenced::Sequenced,
@@ -6,8 +9,6 @@ use fluxion::{
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-mod infra;
-mod test_data;
 use crate::{
     infra::infrastructure::assert_no_element_emitted,
     test_data::{animal::Animal, person::Person, plant::Plant, simple_struct::SimpleStruct},

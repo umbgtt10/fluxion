@@ -1,10 +1,9 @@
+mod test_data;
+
 use crate::test_data::simple_struct::{Order, assert, send};
 use fluxion::select_all_ordered::SelectAllExt;
 use fluxion::sequenced_channel::unbounded_channel;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-
-#[path = "./test_data/mod.rs"]
-pub mod test_data;
 
 #[tokio::test]
 async fn test_select_all_ordered_all_permutations() {
