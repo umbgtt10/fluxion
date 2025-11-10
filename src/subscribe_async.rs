@@ -26,7 +26,7 @@ where
     T: Send + 'static,
 {
     async fn subscribe_async<F, Fut, E, OnError>(
-        self,
+        mut self,
         on_next_func: F,
         cancellation_token: Option<CancellationToken>,
         on_error_callback: Option<OnError>,
@@ -39,16 +39,16 @@ where
     {
         let cancellation_token = cancellation_token.unwrap_or_default();
 
-        self.for_each(move |item| {
+        while let Some(item) = self.next().await {
+            if cancellation_token.is_cancelled() {
+                break;
+            }
+
             let on_next_func = on_next_func.clone();
             let cancellation_token = cancellation_token.clone();
             let on_error_callback = on_error_callback.clone();
 
-            async move {
-                if cancellation_token.is_cancelled() {
-                    return;
-                }
-
+            tokio::spawn(async move {
                 let result = on_next_func(item.clone(), cancellation_token).await;
 
                 if let Err(error) = result {
@@ -61,8 +61,7 @@ where
                         );
                     }
                 }
-            }
-        })
-        .await;
+            });
+        }
     }
 }
