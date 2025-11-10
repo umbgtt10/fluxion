@@ -16,11 +16,12 @@ async fn test(order1: Order, order2: Order, order3: Order) {
     let senders = vec![person_sender, animal_sender, plant_sender];
     let streams = vec![person_stream, animal_stream, plant_stream];
 
+    let results = select_all(streams);
+
     send(order1.clone(), senders.clone());
     send(order2.clone(), senders.clone());
     send(order3.clone(), senders.clone());
 
-    let results = select_all(streams);
     let mut results = Box::pin(results);
 
     assert(order1, &mut results).await;

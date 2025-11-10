@@ -43,7 +43,7 @@ async fn test_all_combinations() {
 }
 
 #[tokio::test]
-async fn test_simple_string_events() {
+async fn test_select_all_ordered_simple_string_events_received_in_the_correct_order() {
     // Create sequenced channels for different types of events
     let (tx1, rx1) = unbounded_channel();
     let (tx2, rx2) = unbounded_channel();
