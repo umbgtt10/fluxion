@@ -60,16 +60,7 @@ where
                     }
                 }
             })
-            .map(|state| {
-                let state = state.clone();
-                CombinedState::new(
-                    state
-                        .get_state()
-                        .iter()
-                        .map(|entry| entry.clone().unwrap())
-                        .collect(),
-                )
-            })
+            .map(|state| CombinedState::new(state.get_ordered_values().clone()))
             .filter(move |combined_state| ready(filter(combined_state)))
     }
 }
@@ -79,7 +70,7 @@ pub struct CombinedState<V>
 where
     V: Clone + Send + Sync,
 {
-    state: Vec<V>,
+    state: Vec<V>, // Temporal order (sorted by Ord for Sequenced<T>)
 }
 
 impl<V> CombinedState<V>
@@ -98,23 +89,25 @@ where
 #[derive(Clone, Debug)]
 struct IntermediateState<V>
 where
-    V: Clone + Send + Sync,
+    V: Clone + Send + Sync + Ord,
 {
     state: Vec<Option<V>>,
+    ordered_values: Vec<V>,
 }
 
 impl<V> IntermediateState<V>
 where
-    V: Clone + Send + Sync,
+    V: Clone + Send + Sync + Ord,
 {
     pub fn new(num_streams: usize) -> Self {
         Self {
             state: vec![None; num_streams],
+            ordered_values: Vec::new(),
         }
     }
 
-    pub fn get_state(&self) -> &Vec<Option<V>> {
-        &self.state
+    pub fn get_ordered_values(&self) -> &Vec<V> {
+        &self.ordered_values
     }
 
     pub fn is_complete(&self) -> bool {
@@ -122,6 +115,10 @@ where
     }
 
     pub fn insert(&mut self, index: usize, value: V) {
-        self.state[index] = Some(value);
+        self.state[index] = Some(value.clone());
+
+        // Rebuild ordered_values from current state, maintaining sort order
+        self.ordered_values = self.state.iter().filter_map(|opt| opt.clone()).collect();
+        self.ordered_values.sort();
     }
 }

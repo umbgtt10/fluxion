@@ -1,7 +1,10 @@
-use futures::{Stream, StreamExt, future::ready};
+use futures::{Stream, StreamExt};
 use std::fmt::Debug;
+use std::pin::Pin;
+use std::sync::{Arc, Mutex};
 
-use crate::combine_latest::{CombineLatestExt, CombinedState};
+use crate::combine_latest::CombinedState;
+use crate::select_all_ordered::SelectAllExt;
 use crate::sequenced::Sequenced;
 
 pub trait TakeLatestWhenExt<T, S>: Stream<Item = Sequenced<T>> + Sized
@@ -16,6 +19,40 @@ where
     ) -> impl Stream<Item = T>;
 }
 
+#[derive(Clone, Debug)]
+struct TakeLatestState<T>
+where
+    T: Clone,
+{
+    source_value: Option<T>,
+    filter_value: Option<T>,
+}
+
+impl<T> TakeLatestState<T>
+where
+    T: Clone,
+{
+    fn new() -> Self {
+        Self {
+            source_value: None,
+            filter_value: None,
+        }
+    }
+
+    fn is_complete(&self) -> bool {
+        self.source_value.is_some() && self.filter_value.is_some()
+    }
+
+    fn get_values(&self) -> Vec<T> {
+        vec![
+            self.source_value.clone().unwrap(),
+            self.filter_value.clone().unwrap(),
+        ]
+    }
+}
+
+type IndexedStream<T> = Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send>>;
+
 impl<T, S> TakeLatestWhenExt<T, S> for S
 where
     S: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
@@ -26,19 +63,41 @@ where
         filter_stream: S,
         filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
     ) -> impl futures::Stream<Item = T> {
-        self.combine_latest(vec![filter_stream], |_| true)
-            .filter_map(move |combined_state| {
-                let values: Vec<T> = combined_state
-                    .get_state()
-                    .iter()
-                    .map(|s| s.value.clone())
-                    .collect();
-                let value_state = CombinedState::new(values);
-                ready(if filter(&value_state) {
-                    Some(combined_state.get_state()[0].value.clone())
-                } else {
-                    None
-                })
+        let source_stream = Box::pin(self.map(|value| (value, 0)));
+        let filter_stream = Box::pin(filter_stream.map(|value| (value, 1)));
+
+        let streams: Vec<IndexedStream<T>> = vec![source_stream, filter_stream];
+
+        let state = Arc::new(Mutex::new(TakeLatestState::new()));
+        let filter = Arc::new(filter);
+
+        streams
+            .select_all_ordered()
+            .filter_map(move |(sequenced_value, index)| {
+                let state = Arc::clone(&state);
+                let filter = Arc::clone(&filter);
+                async move {
+                    let mut state = state.lock().unwrap();
+
+                    match index {
+                        0 => state.source_value = Some(sequenced_value.value.clone()),
+                        1 => state.filter_value = Some(sequenced_value.value.clone()),
+                        _ => unreachable!(),
+                    }
+
+                    if state.is_complete() {
+                        let values = state.get_values();
+                        let combined_state = CombinedState::new(values);
+
+                        if filter(&combined_state) {
+                            Some(state.source_value.clone().unwrap())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
             })
     }
 }
