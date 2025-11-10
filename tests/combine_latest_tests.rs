@@ -11,30 +11,26 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::{
     infra::infrastructure::assert_no_element_emitted,
-    test_data::{
-        animal::Animal,
-        person::Person,
-        plant::Plant,
-        simple_struct::{
-            Order, SimpleStruct, send, send_alice, send_bob, send_charlie, send_diane, send_dog,
-            send_rose, send_spider, send_sunflower,
-        },
+    test_data::simple_enum::{
+        Order, SimpleEnum, alice, bob, charlie, diane, dog, rose, send, send_alice, send_bob,
+        send_charlie, send_diane, send_dog, send_rose, send_spider, send_sunflower, spider,
+        sunflower,
     },
 };
 
-static FILTER2: fn(&CombinedState<Sequenced<SimpleStruct>>) -> bool =
-    |_: &CombinedState<Sequenced<SimpleStruct>>| true;
+static FILTER2: fn(&CombinedState<Sequenced<SimpleEnum>>) -> bool =
+    |_: &CombinedState<Sequenced<SimpleEnum>>| true;
 
 #[tokio::test]
 async fn test_combine_latest_empty_streams() {
     // Arrange
-    let (_, person_receiver) = unbounded_channel::<SimpleStruct>();
+    let (_, person_receiver) = unbounded_channel::<SimpleEnum>();
     let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
 
-    let (_, animal_receiver) = unbounded_channel::<SimpleStruct>();
+    let (_, animal_receiver) = unbounded_channel::<SimpleEnum>();
     let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
 
-    let (_, plant_receiver) = unbounded_channel::<SimpleStruct>();
+    let (_, plant_receiver) = unbounded_channel::<SimpleEnum>();
     let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
 
     let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER2);
@@ -113,12 +109,12 @@ async fn combine_latest_template_test(order1: Order, order2: Order, order3: Orde
     let mut combined_stream = Box::pin(combined_stream);
 
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleStruct> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
 
     let order_to_value = |order: &Order| match order {
-        Order::Person => SimpleStruct::Person(Person::new("Alice".to_string(), 25)),
-        Order::Animal => SimpleStruct::Animal(Animal::new("Dog".to_string(), 4)),
-        Order::Plant => SimpleStruct::Plant(Plant::new("Rose".to_string(), 15)),
+        Order::Person => alice(),
+        Order::Animal => dog(),
+        Order::Plant => rose(),
     };
 
     let expected = vec![
@@ -132,13 +128,13 @@ async fn combine_latest_template_test(order1: Order, order2: Order, order3: Orde
 #[tokio::test]
 async fn test_combine_latest_all_streams_have_published_emits_updates() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel::<SimpleStruct>();
+    let (person_sender, person_receiver) = unbounded_channel::<SimpleEnum>();
     let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
 
-    let (animal_sender, animal_receiver) = unbounded_channel::<SimpleStruct>();
+    let (animal_sender, animal_receiver) = unbounded_channel::<SimpleEnum>();
     let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
 
-    let (plant_sender, plant_receiver) = unbounded_channel::<SimpleStruct>();
+    let (plant_sender, plant_receiver) = unbounded_channel::<SimpleEnum>();
     let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
 
     let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER2);
@@ -152,12 +148,8 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     let mut combined_stream = Box::pin(combined_stream);
 
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleStruct> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![
-        SimpleStruct::Person(Person::new("Alice".to_string(), 25)),
-        SimpleStruct::Animal(Animal::new("Dog".to_string(), 4)),
-        SimpleStruct::Plant(Plant::new("Rose".to_string(), 15)),
-    ];
+    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let expected = vec![alice(), dog(), rose()];
     assert_eq!(actual, expected);
 
     // Act
@@ -165,12 +157,8 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleStruct> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![
-        SimpleStruct::Animal(Animal::new("Dog".to_string(), 4)),
-        SimpleStruct::Plant(Plant::new("Rose".to_string(), 15)),
-        SimpleStruct::Person(Person::new("Bob".to_string(), 30)),
-    ];
+    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let expected = vec![dog(), rose(), bob()];
     assert_eq!(actual, expected);
 
     // Act
@@ -178,12 +166,8 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleStruct> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![
-        SimpleStruct::Plant(Plant::new("Rose".to_string(), 15)),
-        SimpleStruct::Person(Person::new("Bob".to_string(), 30)),
-        SimpleStruct::Animal(Animal::new("Spider".to_string(), 8)),
-    ];
+    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let expected = vec![rose(), bob(), spider()];
     assert_eq!(actual, expected);
 
     // Act
@@ -191,12 +175,8 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleStruct> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![
-        SimpleStruct::Person(Person::new("Bob".to_string(), 30)),
-        SimpleStruct::Animal(Animal::new("Spider".to_string(), 8)),
-        SimpleStruct::Plant(Plant::new("Sunflower".to_string(), 180)),
-    ];
+    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let expected = vec![bob(), spider(), sunflower()];
     assert_eq!(actual, expected);
 }
 
@@ -218,11 +198,8 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleStruct> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![
-        SimpleStruct::Person(Person::new("Alice".to_string(), 25)),
-        SimpleStruct::Person(Person::new("Bob".to_string(), 30)),
-    ];
+    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let expected = vec![alice(), bob()];
     assert_eq!(actual, expected);
 
     // Act
@@ -230,11 +207,8 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleStruct> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![
-        SimpleStruct::Person(Person::new("Bob".to_string(), 30)),
-        SimpleStruct::Person(Person::new("Charlie".to_string(), 35)),
-    ];
+    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let expected = vec![bob(), charlie()];
     assert_eq!(actual, expected);
 
     // Act
@@ -242,10 +216,7 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleStruct> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![
-        SimpleStruct::Person(Person::new("Charlie".to_string(), 35)),
-        SimpleStruct::Person(Person::new("Diane".to_string(), 40)),
-    ];
+    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let expected = vec![charlie(), diane()];
     assert_eq!(actual, expected);
 }
