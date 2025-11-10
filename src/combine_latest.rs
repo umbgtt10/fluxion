@@ -5,10 +5,23 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 use crate::select_all_ordered::SelectAllExt;
+use crate::sequenced::Sequenced;
+
+/// Trait for comparing values by their inner content rather than wrapper metadata.
+/// This is automatically implemented for Sequenced<T> to allow sorting by inner value.
+pub trait CompareByInner {
+    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering;
+}
+
+impl<T: Ord> CompareByInner for Sequenced<T> {
+    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
+        self.value.cmp(&other.value)
+    }
+}
 
 pub trait CombineLatestExt<V, S>: Stream<Item = V> + Sized
 where
-    V: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    V: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     S: Stream<Item = V> + Send + 'static,
 {
     fn combine_latest(
@@ -22,7 +35,7 @@ type PinnedStreams<V> = Vec<Pin<Box<dyn Stream<Item = (V, usize)> + Send>>>;
 
 impl<V, S> CombineLatestExt<V, S> for S
 where
-    V: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    V: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     S: Stream<Item = V> + Send + 'static,
 {
     fn combine_latest(
@@ -89,20 +102,24 @@ where
 #[derive(Clone, Debug)]
 struct IntermediateState<V>
 where
-    V: Clone + Send + Sync + Ord,
+    V: Clone + Send + Sync + Ord + CompareByInner,
 {
     state: Vec<Option<V>>,
     ordered_values: Vec<V>,
+    stream_index_to_position: Vec<usize>, // Maps stream index to position in ordered_values
+    is_initialized: bool,
 }
 
 impl<V> IntermediateState<V>
 where
-    V: Clone + Send + Sync + Ord,
+    V: Clone + Send + Sync + Ord + CompareByInner,
 {
     pub fn new(num_streams: usize) -> Self {
         Self {
             state: vec![None; num_streams],
             ordered_values: Vec::new(),
+            stream_index_to_position: vec![0; num_streams],
+            is_initialized: false,
         }
     }
 
@@ -117,8 +134,34 @@ where
     pub fn insert(&mut self, index: usize, value: V) {
         self.state[index] = Some(value.clone());
 
-        // Rebuild ordered_values from current state, maintaining sort order
-        self.ordered_values = self.state.iter().filter_map(|opt| opt.clone()).collect();
-        self.ordered_values.sort();
+        if !self.is_initialized && self.is_complete() {
+            // First complete state: establish the ordering
+            // Collect all values with their stream indices
+            let mut indexed_values: Vec<(usize, V)> = self
+                .state
+                .iter()
+                .enumerate()
+                .filter_map(|(i, opt)| opt.as_ref().map(|v| (i, v.clone())))
+                .collect();
+
+            // Sort by inner value to establish order by enum variant type
+            indexed_values.sort_by(|a, b| a.1.cmp_inner(&b.1));
+
+            // Build the ordered_values and the mapping
+            self.ordered_values = indexed_values.iter().map(|(_, v)| v.clone()).collect();
+
+            // Build stream_index_to_position: for each stream index, record its position
+            for (position, (stream_idx, _)) in indexed_values.iter().enumerate() {
+                self.stream_index_to_position[*stream_idx] = position;
+            }
+
+            self.is_initialized = true;
+        } else if self.is_initialized {
+            // After initialization: update the value at its established position
+            let position = self.stream_index_to_position[index];
+            if position < self.ordered_values.len() {
+                self.ordered_values[position] = value;
+            }
+        }
     }
 }

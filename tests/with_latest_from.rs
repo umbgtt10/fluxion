@@ -1,4 +1,4 @@
-use fluxion::combine_latest::CombinedState;
+use fluxion::combine_latest::{CombinedState, CompareByInner};
 use fluxion::with_latest_from::WithLatestFromExt;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
@@ -13,6 +13,12 @@ use crate::test_data::person::Person;
 enum StreamValue {
     Animal(Animal),
     Person(Person),
+}
+
+impl CompareByInner for StreamValue {
+    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
+        self.cmp(other)
+    }
 }
 
 static FILTER: fn(&CombinedState<StreamValue>) -> bool = |_: &CombinedState<StreamValue>| true;

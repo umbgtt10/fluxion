@@ -1,12 +1,12 @@
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
 
-use crate::combine_latest::{CombineLatestExt, CombinedState};
+use crate::combine_latest::{CombineLatestExt, CombinedState, CompareByInner};
 
 pub trait WithLatestFromExt<V, S>: Stream<Item = V> + Sized
 where
     Self: Stream<Item = V> + Send + 'static,
-    V: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    V: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     S: Stream<Item = V> + Send + 'static,
 {
     fn with_latest_from(
@@ -19,7 +19,7 @@ where
 impl<V, S, P> WithLatestFromExt<V, S> for P
 where
     Self: Stream<Item = V> + Send + 'static,
-    V: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    V: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     S: Stream<Item = V> + Send + 'static,
     P: Stream<Item = V> + CombineLatestExt<V, S> + Sized + Unpin + Send + 'static,
 {
