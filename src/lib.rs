@@ -8,7 +8,6 @@ pub mod sequenced;
 pub mod sequenced_channel;
 pub mod subscribe_async;
 pub mod subscribe_latest_async;
-pub mod subscribe_latest_async_without_task;
 pub mod take_latest_when;
 pub mod take_while;
 pub mod with_latest_from;
