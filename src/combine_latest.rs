@@ -51,7 +51,6 @@ where
                         let mut state = state.lock().unwrap();
                         state.insert(index, value);
 
-                        println!("State: {:?}", state.get_state());
                         if state.is_complete() {
                             Some(state.clone())
                         } else {
@@ -62,21 +61,16 @@ where
             })
             .map(|state| {
                 let state = state.clone();
-                let combined = CombinedState::new(
+                CombinedState::new(
                     state
                         .get_state()
                         .iter()
                         .map(|entry| entry.clone().unwrap())
                         .collect(),
-                );
-                println!("CombinedState emitted: {:?}", combined.get_state());
-                combined
+                )
             })
             .filter(move |combined_state| {
-                println!("Combined state before filtering: {:?}", combined_state);
-                let filtered = filter(combined_state);
-                println!("Filtering successful: {}", filtered);
-                ready(filtered)
+                ready(filter(combined_state))
             })
     }
 }
