@@ -4,7 +4,7 @@ use fluxion::sequenced_channel::unbounded_channel;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-async fn test(order1: Order, order2: Order, order3: Order) {
+async fn select_all_ordered_template_test(order1: Order, order2: Order, order3: Order) {
     // Arrange
     let (person_sender, person_receiver) = unbounded_channel();
     let (animal_sender, animal_receiver) = unbounded_channel();
@@ -33,13 +33,13 @@ async fn test(order1: Order, order2: Order, order3: Order) {
 }
 
 #[tokio::test]
-async fn test_all_combinations() {
-    test(Order::Person, Order::Animal, Order::Plant).await;
-    test(Order::Person, Order::Plant, Order::Animal).await;
-    test(Order::Plant, Order::Animal, Order::Person).await;
-    test(Order::Plant, Order::Person, Order::Animal).await;
-    test(Order::Animal, Order::Person, Order::Plant).await;
-    test(Order::Animal, Order::Plant, Order::Person).await;
+async fn test_select_all_ordered_all_combinations() {
+    select_all_ordered_template_test(Order::Person, Order::Animal, Order::Plant).await;
+    select_all_ordered_template_test(Order::Person, Order::Plant, Order::Animal).await;
+    select_all_ordered_template_test(Order::Plant, Order::Animal, Order::Person).await;
+    select_all_ordered_template_test(Order::Plant, Order::Person, Order::Animal).await;
+    select_all_ordered_template_test(Order::Animal, Order::Person, Order::Plant).await;
+    select_all_ordered_template_test(Order::Animal, Order::Plant, Order::Person).await;
 }
 
 #[tokio::test]
