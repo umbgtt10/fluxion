@@ -18,7 +18,7 @@ where
     ) -> impl Stream<Item = CombinedState<V>> + Send;
 }
 
-type PinnedStreams<V> = Vec<Pin<Box<dyn Stream<Item = (usize, V)> + Send>>>;
+type PinnedStreams<V> = Vec<Pin<Box<dyn Stream<Item = (V, usize)> + Send>>>;
 
 impl<V, S> CombineLatestExt<V, S> for S
 where
@@ -32,9 +32,10 @@ where
     ) -> impl Stream<Item = CombinedState<V>> + Send {
         let mut streams: PinnedStreams<V> = vec![];
 
-        streams.push(Box::pin(self.map(move |value| (0, value))));
+        streams.push(Box::pin(self.map(move |value| (value, 0))));
         for (index, stream) in others.into_iter().enumerate() {
-            streams.push(Box::pin(stream.map(move |value| (index + 1, value))));
+            let idx = index + 1;
+            streams.push(Box::pin(stream.map(move |value| (value, idx))));
         }
 
         let num_streams = streams.len();
@@ -45,7 +46,7 @@ where
             .filter_map({
                 let state = Arc::clone(&state);
 
-                move |(index, value)| {
+                move |(value, index)| {
                     let state = Arc::clone(&state);
                     async move {
                         let mut state = state.lock().unwrap();
@@ -69,9 +70,7 @@ where
                         .collect(),
                 )
             })
-            .filter(move |combined_state| {
-                ready(filter(combined_state))
-            })
+            .filter(move |combined_state| ready(filter(combined_state)))
     }
 }
 

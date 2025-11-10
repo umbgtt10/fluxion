@@ -1,12 +1,10 @@
-use fluxion::{combine_latest::CombinedState, take_latest_when::TakeLatestWhenExt};
-use futures::StreamExt;
-use std::{
-    fmt::{self, Display},
-    thread::sleep,
-    time::Duration,
+use fluxion::{
+    combine_latest::CombinedState, sequenced_channel::unbounded_channel,
+    take_latest_when::TakeLatestWhenExt,
 };
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use futures::StreamExt;
+use std::fmt::{self, Display};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 mod infra;
 mod test_data;
@@ -14,8 +12,6 @@ use crate::{
     infra::infrastructure::assert_no_element_emitted,
     test_data::{animal::Animal, person::Person},
 };
-
-const BUFFER_SIZE: usize = 10;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum StreamValue {
@@ -37,11 +33,11 @@ async fn test_take_latest_when_empty_streams() {
     static FILTER: fn(&CombinedState<StreamValue>) -> bool = |_: &CombinedState<StreamValue>| true;
 
     // Arrange
-    let (_, source_receiver) = mpsc::channel::<StreamValue>(BUFFER_SIZE);
-    let source_stream = ReceiverStream::new(source_receiver);
+    let (_, source_receiver) = unbounded_channel();
+    let source_stream = UnboundedReceiverStream::new(source_receiver.into_inner());
 
-    let (_, filter_receiver) = mpsc::channel::<StreamValue>(BUFFER_SIZE);
-    let filter_stream = ReceiverStream::new(filter_receiver);
+    let (_, filter_receiver) = unbounded_channel();
+    let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
     let mut output_stream = Box::pin(output_stream);
@@ -57,11 +53,11 @@ async fn test_take_latest_when_empty_streams() {
 #[tokio::test]
 async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
     // Arrange
-    let (source_sender, source_receiver) = mpsc::channel(BUFFER_SIZE);
-    let source_stream = ReceiverStream::new(source_receiver);
+    let (source_sender, source_receiver) = unbounded_channel();
+    let source_stream = UnboundedReceiverStream::new(source_receiver.into_inner());
 
-    let (filter_sender, filter_receiver) = mpsc::channel(BUFFER_SIZE);
-    let filter_stream = ReceiverStream::new(filter_receiver);
+    let (filter_sender, filter_receiver) = unbounded_channel();
+    let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
     static FILTER: fn(&CombinedState<StreamValue>) -> bool = |state| {
         let state = state.get_state().first().unwrap().clone();
@@ -77,12 +73,10 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
     // Act
     source_sender
         .send(StreamValue::Person(Person::new("Alice".to_string(), 30)))
-        .await
         .unwrap();
 
     filter_sender
         .send(StreamValue::Animal(Animal::new("Dog".to_string(), 4)))
-        .await
         .unwrap();
 
     // Assert
@@ -92,11 +86,11 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
 #[tokio::test]
 async fn test_take_latest_when_filter_satisfied_emits() {
     // Arrange
-    let (source_sender, source_receiver) = mpsc::channel(BUFFER_SIZE);
-    let source_stream = ReceiverStream::new(source_receiver);
+    let (source_sender, source_receiver) = unbounded_channel();
+    let source_stream = UnboundedReceiverStream::new(source_receiver.into_inner());
 
-    let (filter_sender, filter_receiver) = mpsc::channel(BUFFER_SIZE);
-    let filter_stream = ReceiverStream::new(filter_receiver);
+    let (filter_sender, filter_receiver) = unbounded_channel();
+    let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
     static FILTER: fn(&CombinedState<StreamValue>) -> bool = |state| {
         let filter_value = state.get_state()[1].clone();
@@ -113,20 +107,18 @@ async fn test_take_latest_when_filter_satisfied_emits() {
     };
 
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
-    let mut output_stream = Box::pin(output_stream);
 
     // Act
     source_sender
         .send(StreamValue::Person(Person::new("Alice".to_string(), 30)))
-        .await
         .unwrap();
 
     filter_sender
         .send(StreamValue::Animal(Animal::new("Dog".to_string(), 6)))
-        .await
         .unwrap();
 
     // Assert
+    let mut output_stream = Box::pin(output_stream);
     let emitted_item = output_stream.next().await.unwrap();
     assert_eq!(
         emitted_item,
@@ -138,11 +130,11 @@ async fn test_take_latest_when_filter_satisfied_emits() {
 #[tokio::test]
 async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     // Arrange
-    let (source_sender, source_receiver) = mpsc::channel(BUFFER_SIZE);
-    let source_stream = ReceiverStream::new(source_receiver);
+    let (source_sender, source_receiver) = unbounded_channel();
+    let source_stream = UnboundedReceiverStream::new(source_receiver.into_inner());
 
-    let (filter_sender, filter_receiver) = mpsc::channel(BUFFER_SIZE);
-    let filter_stream = ReceiverStream::new(filter_receiver);
+    let (filter_sender, filter_receiver) = unbounded_channel();
+    let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
     static FILTER: fn(&CombinedState<StreamValue>) -> bool = |state| {
         let filter_value = state.get_state()[1].clone();
@@ -159,20 +151,19 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     };
 
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
-    let mut output_stream = Box::pin(output_stream);
 
     // Act
     source_sender
         .send(StreamValue::Person(Person::new("Alice".to_string(), 30)))
-        .await
         .unwrap();
 
     filter_sender
         .send(StreamValue::Animal(Animal::new("Dog".to_string(), 6)))
-        .await
         .unwrap();
 
     // Assert
+    let mut output_stream = Box::pin(output_stream);
+
     let first_item = output_stream.next().await.unwrap();
     assert_eq!(
         first_item,
@@ -183,7 +174,6 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     // Act
     source_sender
         .send(StreamValue::Person(Person::new("Bob".to_string(), 40)))
-        .await
         .unwrap();
 
     // Assert
@@ -196,14 +186,13 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     // Arrange
-    let (source_sender, source_receiver) = mpsc::channel(BUFFER_SIZE);
-    let source_stream = ReceiverStream::new(source_receiver);
+    let (source_sender, source_receiver) = unbounded_channel();
+    let source_stream = UnboundedReceiverStream::new(source_receiver.into_inner());
 
-    let (filter_sender, filter_receiver) = mpsc::channel(BUFFER_SIZE);
-    let filter_stream = ReceiverStream::new(filter_receiver);
+    let (filter_sender, filter_receiver) = unbounded_channel();
+    let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
     static FILTER: fn(&CombinedState<StreamValue>) -> bool = |state| {
         let filter_value = state.get_state()[1].clone();
@@ -220,20 +209,19 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     };
 
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
-    let mut output_stream = Box::pin(output_stream);
 
     // Act
     filter_sender
         .send(StreamValue::Animal(Animal::new("Ant".to_string(), 6)))
-        .await
         .unwrap();
 
     source_sender
         .send(StreamValue::Person(Person::new("Charlie".to_string(), 25)))
-        .await
         .unwrap();
 
     // Assert
+    let mut output_stream = Box::pin(output_stream);
+
     let first_item = output_stream.next().await.unwrap();
     assert_eq!(
         first_item,
@@ -244,12 +232,10 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     // Act
     filter_sender
         .send(StreamValue::Animal(Animal::new("Cat".to_string(), 4)))
-        .await
         .unwrap();
 
     source_sender
         .send(StreamValue::Person(Person::new("Dave".to_string(), 28)))
-        .await
         .unwrap();
 
     // Assert
