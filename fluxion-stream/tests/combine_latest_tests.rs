@@ -29,9 +29,9 @@ async fn test_combine_latest_empty_streams() {
     let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
 
     let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
-    let mut combined_stream = Box::pin(combined_stream);
 
     // Assert
+    let mut combined_stream = Box::pin(combined_stream);
     let next_item = combined_stream.next().await;
     assert!(
         next_item.is_none(),
@@ -52,12 +52,12 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
     let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
 
     let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
-    let mut combined_stream = Box::pin(combined_stream);
 
     // Act
     push(person_alice(), &person_sender);
 
     // Assert
+    let mut combined_stream = Box::pin(combined_stream);
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act

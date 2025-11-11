@@ -46,6 +46,10 @@ pub fn animal_spider() -> TestData {
     TestData::Animal(Animal::new("Spider".to_string(), 8))
 }
 
+pub fn animal_bird() -> TestData {
+    TestData::Animal(Animal::new("Bird".to_string(), 2))
+}
+
 pub fn plant_rose() -> TestData {
     TestData::Plant(Plant::new("Rose".to_string(), 15))
 }
@@ -76,6 +80,14 @@ pub fn person(name: String, age: u32) -> TestData {
 
 pub fn plant(name: String, height: u32) -> TestData {
     TestData::Plant(Plant::new(name, height))
+}
+
+pub fn plant_fern() -> TestData {
+    TestData::Plant(Plant::new("Fern".to_string(), 150))
+}
+
+pub fn plant_oak() -> TestData {
+    TestData::Plant(Plant::new("Oak".to_string(), 1000))
 }
 
 pub fn send_variant(variant: &DataVariant, senders: &[UnboundedSender<TestData>]) {
