@@ -1,12 +1,10 @@
 use fluxion_stream::select_all_ordered::SelectAllExt;
-use fluxion_stream::timestamped_channel::unbounded_channel;
-use fluxion_test_utils::helpers::expect_next_timestamped;
 use fluxion_test_utils::test_data::{
     DataVariant, TestData, animal_dog, animal_spider, expect_variant, person_alice, person_bob,
     person_charlie, plant_rose, plant_sunflower, push, send_variant,
 };
+use fluxion_test_utils::{TestChannel, TestChannels, helpers::expect_next_timestamped};
 use futures::StreamExt;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_select_all_ordered_all_permutations() {
@@ -35,16 +33,10 @@ async fn select_all_ordered_template_test(
     variant3: DataVariant,
 ) {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let (plant_sender, plant_receiver) = unbounded_channel();
+    let (person, animal, plant) = TestChannels::three();
 
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
-
-    let senders = vec![person_sender, animal_sender, plant_sender];
-    let streams = vec![person_stream, animal_stream, plant_stream];
+    let senders = vec![person.sender, animal.sender, plant.sender];
+    let streams = vec![person.stream, animal.stream, plant.stream];
 
     let results = streams.select_all_ordered();
 
@@ -64,17 +56,15 @@ async fn select_all_ordered_template_test(
 #[tokio::test]
 async fn test_select_all_ordered_empty_streams() {
     // Arrange
-    let (_, person_receiver) = unbounded_channel::<TestData>();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+    let (person, animal, plant) = TestChannels::three::<TestData>();
 
-    let (_, animal_receiver) = unbounded_channel::<TestData>();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-
-    let (_, plant_receiver) = unbounded_channel::<TestData>();
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
-
-    let streams = vec![person_stream, animal_stream, plant_stream];
+    let streams = vec![person.stream, animal.stream, plant.stream];
     let results = streams.select_all_ordered();
+
+    // Drop senders to close streams
+    drop(person.sender);
+    drop(animal.sender);
+    drop(plant.sender);
 
     // Assert
     let mut results = Box::pin(results);
@@ -85,16 +75,15 @@ async fn test_select_all_ordered_empty_streams() {
 #[tokio::test]
 async fn test_select_all_ordered_single_stream() {
     // Arrange
-    let (sender, receiver) = unbounded_channel();
-    let stream = UnboundedReceiverStream::new(receiver.into_inner());
+    let channel = TestChannel::new();
 
-    let streams = vec![stream];
+    let streams = vec![channel.stream];
     let results = streams.select_all_ordered();
 
     // Act
-    push(person_alice(), &sender);
-    push(person_bob(), &sender);
-    push(person_charlie(), &sender);
+    push(person_alice(), &channel.sender);
+    push(person_bob(), &channel.sender);
+    push(person_charlie(), &channel.sender);
 
     // Assert
     let mut results = Box::pin(results);
@@ -111,22 +100,20 @@ async fn test_select_all_ordered_single_stream() {
 #[tokio::test]
 async fn test_select_all_ordered_one_empty_stream() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+    let person = TestChannel::new();
+    let animal = TestChannel::new();
+    let plant = TestChannel::new();
 
-    let (_, animal_receiver) = unbounded_channel::<TestData>();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-
-    let (plant_sender, plant_receiver) = unbounded_channel();
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
-
-    let streams = vec![person_stream, animal_stream, plant_stream];
+    let streams = vec![person.stream, animal.stream, plant.stream];
     let results = streams.select_all_ordered();
 
+    // Close animal stream
+    drop(animal.sender);
+
     // Act
-    push(person_alice(), &person_sender);
-    push(plant_rose(), &plant_sender);
-    push(person_bob(), &person_sender);
+    push(person_alice(), &person.sender);
+    push(plant_rose(), &plant.sender);
+    push(person_bob(), &person.sender);
 
     // Assert
     let mut results = Box::pin(results);
@@ -142,55 +129,44 @@ async fn test_select_all_ordered_one_empty_stream() {
 #[tokio::test]
 async fn test_select_all_ordered_interleaved_emissions() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+    let (person, animal, plant) = TestChannels::three();
 
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-
-    let (plant_sender, plant_receiver) = unbounded_channel();
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
-
-    let streams = vec![person_stream, animal_stream, plant_stream];
+    let streams = vec![person.stream, animal.stream, plant.stream];
     let mut results = Box::pin(streams.select_all_ordered());
 
     // Act & Assert - Send and verify one at a time to avoid race conditions
-    push(person_alice(), &person_sender);
+    push(person_alice(), &person.sender);
     expect_next_timestamped(&mut results, person_alice()).await;
 
-    push(animal_dog(), &animal_sender);
+    push(animal_dog(), &animal.sender);
     expect_next_timestamped(&mut results, animal_dog()).await;
 
-    push(person_bob(), &person_sender);
+    push(person_bob(), &person.sender);
     expect_next_timestamped(&mut results, person_bob()).await;
 
-    push(plant_rose(), &plant_sender);
+    push(plant_rose(), &plant.sender);
     expect_next_timestamped(&mut results, plant_rose()).await;
 
-    push(animal_spider(), &animal_sender);
+    push(animal_spider(), &animal.sender);
     expect_next_timestamped(&mut results, animal_spider()).await;
 
-    push(plant_sunflower(), &plant_sender);
+    push(plant_sunflower(), &plant.sender);
     expect_next_timestamped(&mut results, plant_sunflower()).await;
 }
 
 #[tokio::test]
 async fn test_select_all_ordered_stream_completes_early() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+    let (person, animal) = TestChannels::two();
 
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-
-    let streams = vec![person_stream, animal_stream];
+    let streams = vec![person.stream, animal.stream];
     let results = streams.select_all_ordered();
 
     // Act
-    push(person_alice(), &person_sender);
-    push(animal_dog(), &animal_sender);
-    drop(person_sender); // Close person stream
-    push(animal_spider(), &animal_sender);
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
+    drop(person.sender); // Close person stream
+    push(animal_spider(), &animal.sender);
 
     // Assert
     let mut results = Box::pin(results);
@@ -202,7 +178,7 @@ async fn test_select_all_ordered_stream_completes_early() {
     expect_next_timestamped(&mut results, animal_spider()).await;
 
     // Close remaining stream
-    drop(animal_sender);
+    drop(animal.sender);
 
     // Assert stream ends
     let next_item = results.next().await;
@@ -212,27 +188,20 @@ async fn test_select_all_ordered_stream_completes_early() {
 #[tokio::test]
 async fn test_select_all_ordered_all_streams_close_simultaneously() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+    let (person, animal, plant) = TestChannels::three();
 
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-
-    let (plant_sender, plant_receiver) = unbounded_channel();
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
-
-    let streams = vec![person_stream, animal_stream, plant_stream];
+    let streams = vec![person.stream, animal.stream, plant.stream];
     let results = streams.select_all_ordered();
 
     // Act
-    push(person_alice(), &person_sender);
-    push(animal_dog(), &animal_sender);
-    push(plant_rose(), &plant_sender);
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
+    push(plant_rose(), &plant.sender);
 
     // Close all senders
-    drop(person_sender);
-    drop(animal_sender);
-    drop(plant_sender);
+    drop(person.sender);
+    drop(animal.sender);
+    drop(plant.sender);
 
     // Assert
     let mut results = Box::pin(results);
@@ -251,43 +220,36 @@ async fn test_select_all_ordered_all_streams_close_simultaneously() {
 #[tokio::test]
 async fn test_select_all_ordered_one_stream_closes_midway_three_streams() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+    let (person, animal, plant) = TestChannels::three();
 
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-
-    let (plant_sender, plant_receiver) = unbounded_channel();
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
-
-    let streams = vec![person_stream, animal_stream, plant_stream];
+    let streams = vec![person.stream, animal.stream, plant.stream];
     let mut results = Box::pin(streams.select_all_ordered());
 
     // Act & Assert stepwise to avoid race conditions
-    push(person_alice(), &person_sender);
+    push(person_alice(), &person.sender);
     expect_next_timestamped(&mut results, person_alice()).await;
 
-    push(animal_dog(), &animal_sender);
+    push(animal_dog(), &animal.sender);
     expect_next_timestamped(&mut results, animal_dog()).await;
 
-    push(plant_rose(), &plant_sender);
+    push(plant_rose(), &plant.sender);
     expect_next_timestamped(&mut results, plant_rose()).await;
 
     // Close plant stream mid-flight
-    drop(plant_sender);
+    drop(plant.sender);
 
     // Remaining streams continue to emit
-    push(person_bob(), &person_sender);
+    push(person_bob(), &person.sender);
     let item = results.next().await.unwrap();
     assert_eq!(item.value, person_bob());
 
-    push(animal_spider(), &animal_sender);
+    push(animal_spider(), &animal.sender);
     let item = results.next().await.unwrap();
     assert_eq!(item.value, animal_spider());
 
     // Close remaining streams and ensure end
-    drop(person_sender);
-    drop(animal_sender);
+    drop(person.sender);
+    drop(animal.sender);
     let next = results.next().await;
     assert!(next.is_none(), "Expected stream to end after all closed");
 }
@@ -295,19 +257,15 @@ async fn test_select_all_ordered_one_stream_closes_midway_three_streams() {
 #[tokio::test]
 async fn test_select_all_ordered_large_volume() {
     // Arrange
-    let (sender1, receiver1) = unbounded_channel();
-    let stream1 = UnboundedReceiverStream::new(receiver1.into_inner());
+    let (stream1, stream2) = TestChannels::two();
 
-    let (sender2, receiver2) = unbounded_channel();
-    let stream2 = UnboundedReceiverStream::new(receiver2.into_inner());
-
-    let streams = vec![stream1, stream2];
+    let streams = vec![stream1.stream, stream2.stream];
     let results = streams.select_all_ordered();
 
     // Act - Send 1000 items interleaved
     for _ in 0..500 {
-        push(person_alice(), &sender1);
-        push(animal_dog(), &sender2);
+        push(person_alice(), &stream1.sender);
+        push(animal_dog(), &stream2.sender);
     }
 
     // Assert - Should receive all 1000 items in order

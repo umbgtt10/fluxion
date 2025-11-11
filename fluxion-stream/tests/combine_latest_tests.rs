@@ -1,9 +1,9 @@
 use fluxion_stream::{
     combine_latest::{CombineLatestExt, CombinedState},
     timestamped::Timestamped,
-    timestamped_channel::unbounded_channel,
 };
 use fluxion_test_utils::{
+    TestChannel, TestChannels,
     helpers::{assert_no_element_emitted, expect_next_combined_equals},
     test_data::{
         DataVariant, TestData, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
@@ -13,7 +13,6 @@ use fluxion_test_utils::{
 use futures::StreamExt;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 static FILTER: fn(&CombinedState<Timestamped<TestData>>) -> bool =
     |_: &CombinedState<Timestamped<TestData>>| true;
@@ -21,16 +20,16 @@ static FILTER: fn(&CombinedState<Timestamped<TestData>>) -> bool =
 #[tokio::test]
 async fn test_combine_latest_empty_streams() {
     // Arrange
-    let (_, person_receiver) = unbounded_channel::<TestData>();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+    let (person, animal, plant) = TestChannels::three::<TestData>();
 
-    let (_, animal_receiver) = unbounded_channel::<TestData>();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
+    let combined_stream = person
+        .stream
+        .combine_latest(vec![animal.stream, plant.stream], FILTER);
 
-    let (_, plant_receiver) = unbounded_channel::<TestData>();
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
-
-    let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    // Drop senders to close the streams
+    drop(person.sender);
+    drop(animal.sender);
+    drop(plant.sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
@@ -44,26 +43,23 @@ async fn test_combine_latest_empty_streams() {
 #[tokio::test]
 async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+    let person = TestChannel::new();
+    let animal = TestChannel::new();
+    let plant = TestChannel::new();
 
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-
-    let (_, plant_receiver) = unbounded_channel();
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
-
-    let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    let combined_stream = person
+        .stream
+        .combine_latest(vec![animal.stream, plant.stream], FILTER);
 
     // Act
-    push(person_alice(), &person_sender);
+    push(person_alice(), &person.sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act
-    push(animal_dog(), &animal_sender);
+    push(animal_dog(), &animal.sender);
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
@@ -72,31 +68,28 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
 #[tokio::test]
 async fn test_combine_latest_stream_closes_before_publish_no_output() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+    let person = TestChannel::new();
+    let animal = TestChannel::new();
+    let plant = TestChannel::new();
 
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-
-    let (plant_sender, plant_receiver) = unbounded_channel();
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
-
-    let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    let combined_stream = person
+        .stream
+        .combine_latest(vec![animal.stream, plant.stream], FILTER);
 
     // Act: Close one stream before it ever publishes
-    drop(plant_sender);
+    drop(plant.sender);
 
     // Publish on the other streams
-    push(person_alice(), &person_sender);
-    push(animal_dog(), &animal_sender);
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
 
     // Assert: No emission should occur because not all streams have published
     let mut combined_stream = Box::pin(combined_stream);
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Close remaining senders; the stream should end cleanly
-    drop(person_sender);
-    drop(animal_sender);
+    drop(person.sender);
+    drop(animal.sender);
 
     let next = combined_stream.next().await;
     assert!(next.is_none(), "Expected stream to end without emissions");
@@ -105,36 +98,33 @@ async fn test_combine_latest_stream_closes_before_publish_no_output() {
 #[tokio::test]
 async fn test_combine_latest_secondary_closes_after_initial_emission_continues() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+    let person = TestChannel::new();
+    let animal = TestChannel::new();
+    let plant = TestChannel::new();
 
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-
-    let (plant_sender, plant_receiver) = unbounded_channel();
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
-
-    let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    let combined_stream = person
+        .stream
+        .combine_latest(vec![animal.stream, plant.stream], FILTER);
     let mut combined_stream = Box::pin(combined_stream);
 
     // Initial full emission
-    push(person_alice(), &person_sender);
-    push(animal_dog(), &animal_sender);
-    push(plant_rose(), &plant_sender);
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
+    push(plant_rose(), &plant.sender);
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     assert_eq!(actual, vec![person_alice(), animal_dog(), plant_rose()]);
 
     // Close one secondary (plant) after initial emission
-    drop(plant_sender);
+    drop(plant.sender);
 
     // Subsequent updates on remaining streams should still emit using the last plant value
-    push(person_bob(), &person_sender);
+    push(person_bob(), &person.sender);
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
 
-    push(animal_spider(), &animal_sender);
+    push(animal_spider(), &animal.sender);
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     assert_eq!(actual, vec![person_bob(), animal_spider(), plant_rose()]);
@@ -167,17 +157,13 @@ async fn combine_latest_template_test(
     order3: DataVariant,
 ) {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let (plant_sender, plant_receiver) = unbounded_channel();
+    let (person, animal, plant) = TestChannels::three();
 
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
+    let senders = vec![person.sender, animal.sender, plant.sender];
 
-    let senders = vec![person_sender, animal_sender, plant_sender];
-
-    let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    let combined_stream = person
+        .stream
+        .combine_latest(vec![animal.stream, plant.stream], FILTER);
 
     // Act
     send_variant(&order1, &senders);
@@ -197,21 +183,16 @@ async fn combine_latest_template_test(
 #[tokio::test]
 async fn test_combine_latest_all_streams_have_published_emits_updates() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel::<TestData>();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+    let (person, animal, plant) = TestChannels::three::<TestData>();
 
-    let (animal_sender, animal_receiver) = unbounded_channel::<TestData>();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-
-    let (plant_sender, plant_receiver) = unbounded_channel::<TestData>();
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
-
-    let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    let combined_stream = person
+        .stream
+        .combine_latest(vec![animal.stream, plant.stream], FILTER);
 
     // Act
-    push(person_alice(), &person_sender);
-    push(animal_dog(), &animal_sender);
-    push(plant_rose(), &plant_sender);
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
+    push(plant_rose(), &plant.sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
@@ -223,7 +204,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     .await;
 
     // Act
-    push(person_bob(), &person_sender);
+    push(person_bob(), &person.sender);
 
     // Assert
     expect_next_combined_equals(
@@ -233,7 +214,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     .await;
 
     // Act
-    push(animal_spider(), &animal_sender);
+    push(animal_spider(), &animal.sender);
 
     // Assert
     expect_next_combined_equals(
@@ -243,7 +224,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     .await;
 
     // Act
-    push(plant_sunflower(), &plant_sender);
+    push(plant_sunflower(), &plant.sender);
 
     // Assert
     expect_next_combined_equals(
@@ -280,18 +261,14 @@ async fn combine_latest_stream_order_test(
     stream3: DataVariant,
 ) {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let (plant_sender, plant_receiver) = unbounded_channel();
-
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
+    let person = TestChannel::new();
+    let animal = TestChannel::new();
+    let plant = TestChannel::new();
 
     let mut streams = vec![
-        (DataVariant::Person, person_stream),
-        (DataVariant::Animal, animal_stream),
-        (DataVariant::Plant, plant_stream),
+        (DataVariant::Person, person.stream),
+        (DataVariant::Animal, animal.stream),
+        (DataVariant::Plant, plant.stream),
     ];
 
     let ordered_streams: Vec<_> = vec![&stream1, &stream2, &stream3]
@@ -319,9 +296,9 @@ async fn combine_latest_stream_order_test(
     let combined_stream = first_stream.combine_latest(remaining_streams, FILTER);
 
     // Act
-    push(person_alice(), &person_sender);
-    push(animal_dog(), &animal_sender);
-    push(plant_rose(), &plant_sender);
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
+    push(plant_rose(), &plant.sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
@@ -335,30 +312,26 @@ async fn combine_latest_stream_order_test(
 #[tokio::test]
 async fn test_combine_latest_with_identical_streams_emits_updates() {
     // Arrange
-    let (stream1_sender, stream1_receiver) = unbounded_channel();
-    let stream1 = UnboundedReceiverStream::new(stream1_receiver.into_inner());
+    let (stream1, stream2) = TestChannels::two();
 
-    let (stream2_sender, stream2_receiver) = unbounded_channel();
-    let stream2 = UnboundedReceiverStream::new(stream2_receiver.into_inner());
-
-    let combined_stream = stream1.combine_latest(vec![stream2], FILTER);
+    let combined_stream = stream1.stream.combine_latest(vec![stream2.stream], FILTER);
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    push(person_alice(), &stream1_sender);
-    push(person_bob(), &stream2_sender);
+    push(person_alice(), &stream1.sender);
+    push(person_bob(), &stream2.sender);
 
     // Assert
     expect_next_combined_equals(&mut combined_stream, &[person_alice(), person_bob()]).await;
 
     // Act
-    push(person_charlie(), &stream1_sender);
+    push(person_charlie(), &stream1.sender);
 
     // Assert
     expect_next_combined_equals(&mut combined_stream, &[person_charlie(), person_bob()]).await;
 
     // Act
-    push(person_diane(), &stream2_sender);
+    push(person_diane(), &stream2.sender);
 
     // Assert
     expect_next_combined_equals(&mut combined_stream, &[person_charlie(), person_diane()]).await;
@@ -367,11 +340,7 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
 #[tokio::test]
 async fn test_combine_latest_filter_rejects_initial_state() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
-
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
+    let (person, animal) = TestChannels::two();
 
     // Filter that rejects the initial state (when both Alice and Dog are present)
     let filter = |state: &CombinedState<Timestamped<TestData>>| {
@@ -384,18 +353,18 @@ async fn test_combine_latest_filter_rejects_initial_state() {
         }
     };
 
-    let combined_stream = person_stream.combine_latest(vec![animal_stream], filter);
+    let combined_stream = person.stream.combine_latest(vec![animal.stream], filter);
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act: Publish Alice and Dog (should be rejected)
-    push(person_alice(), &person_sender);
-    push(animal_dog(), &animal_sender);
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
 
     // Assert: No emission due to filter rejection
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act: Update to Bob (should pass filter)
-    push(person_bob(), &person_sender);
+    push(person_bob(), &person.sender);
 
     // Assert: Now we get an emission
     expect_next_combined_equals(&mut combined_stream, &[person_bob(), animal_dog()]).await;
@@ -404,11 +373,7 @@ async fn test_combine_latest_filter_rejects_initial_state() {
 #[tokio::test]
 async fn test_combine_latest_filter_alternates_between_true_false() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
-
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
+    let (person, animal) = TestChannels::two();
 
     // Filter that only allows emissions when person is Alice or Charlie (rejects Bob and Diane)
     let filter = |state: &CombinedState<Timestamped<TestData>>| {
@@ -420,42 +385,42 @@ async fn test_combine_latest_filter_alternates_between_true_false() {
         }
     };
 
-    let combined_stream = person_stream.combine_latest(vec![animal_stream], filter);
+    let combined_stream = person.stream.combine_latest(vec![animal.stream], filter);
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act: Alice + Dog (passes filter)
-    push(person_alice(), &person_sender);
-    push(animal_dog(), &animal_sender);
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
 
     // Assert: Emission occurs
     expect_next_combined_equals(&mut combined_stream, &[person_alice(), animal_dog()]).await;
 
     // Act: Bob + Dog (rejected by filter)
-    push(person_bob(), &person_sender);
+    push(person_bob(), &person.sender);
 
     // Assert: No emission
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act: Charlie + Dog (passes filter)
-    push(person_charlie(), &person_sender);
+    push(person_charlie(), &person.sender);
 
     // Assert: Emission occurs
     expect_next_combined_equals(&mut combined_stream, &[person_charlie(), animal_dog()]).await;
 
     // Act: Diane + Dog (rejected by filter)
-    push(person_diane(), &person_sender);
+    push(person_diane(), &person.sender);
 
     // Assert: No emission
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act: Update animal to Spider while Diane is still latest (still rejected)
-    push(animal_spider(), &animal_sender);
+    push(animal_spider(), &animal.sender);
 
     // Assert: Still no emission
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act: Alice + Spider (passes filter)
-    push(person_alice(), &person_sender);
+    push(person_alice(), &person.sender);
 
     // Assert: Emission occurs
     expect_next_combined_equals(&mut combined_stream, &[person_alice(), animal_spider()]).await;
@@ -465,11 +430,7 @@ async fn test_combine_latest_filter_alternates_between_true_false() {
 #[should_panic(expected = "Filter function panicked on purpose")]
 async fn test_combine_latest_filter_function_panics() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel();
-    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
-
-    let (animal_sender, animal_receiver) = unbounded_channel();
-    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
+    let (person, animal) = TestChannels::two();
 
     // Filter that panics on the second evaluation
     let call_count = Arc::new(AtomicUsize::new(0));
@@ -481,15 +442,15 @@ async fn test_combine_latest_filter_function_panics() {
         true
     };
 
-    let combined_stream = person_stream.combine_latest(vec![animal_stream], filter);
+    let combined_stream = person.stream.combine_latest(vec![animal.stream], filter);
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act: First emission should succeed
-    push(person_alice(), &person_sender);
-    push(animal_dog(), &animal_sender);
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
     let _first = combined_stream.next().await.unwrap();
 
     // Act: Second emission triggers panic in filter
-    push(person_bob(), &person_sender);
+    push(person_bob(), &person.sender);
     let _second = combined_stream.next().await; // This will panic
 }

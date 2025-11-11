@@ -1,5 +1,6 @@
-use fluxion_stream::{merge_with::MergedStream, timestamped_channel::unbounded_channel};
+use fluxion_stream::merge_with::MergedStream;
 use fluxion_test_utils::{
+    TestChannels,
     animal::Animal,
     person::Person,
     plant::Plant,
@@ -10,7 +11,6 @@ use fluxion_test_utils::{
     },
 };
 use futures::{StreamExt, stream};
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_merge_with_empty_streams() {
@@ -37,12 +37,11 @@ async fn test_merge_with_empty_streams() {
 #[tokio::test]
 async fn test_merge_with_mixed_empty_and_non_empty_streams() {
     // Arrange
-    let (non_empty_sender, non_empty_receiver) = unbounded_channel::<TestData>();
-    let (_, empty_receiver) = unbounded_channel::<TestData>();
+    let (non_empty, empty) = TestChannels::two::<TestData>();
+    drop(empty.sender);
 
-    let non_empty_stream =
-        UnboundedReceiverStream::new(non_empty_receiver.into_inner()).map(|ts| ts.value);
-    let empty_stream = UnboundedReceiverStream::new(empty_receiver.into_inner()).map(|ts| ts.value);
+    let non_empty_stream = non_empty.stream.map(|ts| ts.value);
+    let empty_stream = empty.stream.map(|ts| ts.value);
 
     // Use a simple counter state to verify emissions from the non-empty stream
     let merged_stream = MergedStream::seed(0usize)
@@ -58,21 +57,21 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
     let mut merged_stream = Box::pin(merged_stream);
 
     // Act
-    push(person_alice(), &non_empty_sender);
+    push(person_alice(), &non_empty.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(state, 1, "First emission should increment counter to 1");
 
     // Act
-    push(person_bob(), &non_empty_sender);
+    push(person_bob(), &non_empty.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(state, 2, "Second emission should increment counter to 2");
 
     // Act
-    push(person_charlie(), &non_empty_sender);
+    push(person_charlie(), &non_empty.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -82,10 +81,9 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
 #[tokio::test]
 async fn test_merge_with_similar_streams_emits() {
     // Arrange
-    let (sender1, receiver1) = unbounded_channel::<TestData>();
-    let (sender2, receiver2) = unbounded_channel::<TestData>();
-    let stream1 = UnboundedReceiverStream::new(receiver1.into_inner()).map(|ts| ts.value);
-    let stream2 = UnboundedReceiverStream::new(receiver2.into_inner()).map(|ts| ts.value);
+    let (channel1, channel2) = TestChannels::two::<TestData>();
+    let stream1 = channel1.stream.map(|ts| ts.value);
+    let stream2 = channel2.stream.map(|ts| ts.value);
 
     let merged_stream = MergedStream::seed(Repository::new())
         .merge_with(
@@ -108,7 +106,7 @@ async fn test_merge_with_similar_streams_emits() {
     let mut merged_stream = Box::pin(merged_stream);
 
     // Act
-    push(person_alice(), &sender1);
+    push(person_alice(), &channel1.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -119,7 +117,7 @@ async fn test_merge_with_similar_streams_emits() {
     );
 
     // Act
-    push(person_bob(), &sender2);
+    push(person_bob(), &channel2.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -130,7 +128,7 @@ async fn test_merge_with_similar_streams_emits() {
     );
 
     // Act
-    push(person_charlie(), &sender1);
+    push(person_charlie(), &channel1.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -141,7 +139,7 @@ async fn test_merge_with_similar_streams_emits() {
     );
 
     // Act
-    push(person_dave(), &sender2);
+    push(person_dave(), &channel2.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -155,11 +153,10 @@ async fn test_merge_with_similar_streams_emits() {
 #[tokio::test]
 async fn test_merge_with_parallel_processing() {
     // Arrange
-    let (sender1, receiver1) = unbounded_channel::<TestData>();
-    let (sender2, receiver2) = unbounded_channel::<TestData>();
+    let (channel1, channel2) = TestChannels::two::<TestData>();
 
-    let stream1 = UnboundedReceiverStream::new(receiver1.into_inner()).map(|ts| ts.value);
-    let stream2 = UnboundedReceiverStream::new(receiver2.into_inner()).map(|ts| ts.value);
+    let stream1 = channel1.stream.map(|ts| ts.value);
+    let stream2 = channel2.stream.map(|ts| ts.value);
 
     let result_stream = MergedStream::seed(Repository::new())
         .merge_with(
@@ -180,12 +177,14 @@ async fn test_merge_with_parallel_processing() {
         );
 
     // Act
+    let sender1 = channel1.sender;
     tokio::spawn(async move {
         push(person_alice(), &sender1);
         push(person_bob(), &sender1);
         push(person_charlie(), &sender1);
     });
 
+    let sender2 = channel2.sender;
     tokio::spawn(async move {
         push(animal_dog(), &sender2);
         push(animal_spider(), &sender2);
@@ -240,15 +239,11 @@ async fn test_merge_with_large_streams_emits() {
 #[tokio::test]
 async fn test_merge_with_hybrid_using_repository_emits() {
     // Arrange
-    let (animal_sender, animal_receiver) = unbounded_channel::<TestData>();
-    let (person_sender, person_receiver) = unbounded_channel::<TestData>();
-    let (plant_sender, plant_receiver) = unbounded_channel::<TestData>();
+    let (animal, person, plant) = TestChannels::three::<TestData>();
 
-    let animal_stream =
-        UnboundedReceiverStream::new(animal_receiver.into_inner()).map(|ts| ts.value);
-    let person_stream =
-        UnboundedReceiverStream::new(person_receiver.into_inner()).map(|ts| ts.value);
-    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner()).map(|ts| ts.value);
+    let animal_stream = animal.stream.map(|ts| ts.value);
+    let person_stream = person.stream.map(|ts| ts.value);
+    let plant_stream = plant.stream.map(|ts| ts.value);
 
     let merged_stream = MergedStream::seed(Repository::new())
         .merge_with(animal_stream, |item: TestData, state| match item {
@@ -270,7 +265,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     let mut merged_stream = Box::pin(merged_stream);
 
     // Act
-    push(animal_dog(), &animal_sender);
+    push(animal_dog(), &animal.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -290,7 +285,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     );
 
     // Act
-    push(animal_bird(), &animal_sender);
+    push(animal_bird(), &animal.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -310,7 +305,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     );
 
     // Act
-    push(person_alice(), &person_sender);
+    push(person_alice(), &person.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -330,7 +325,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     );
 
     // Act
-    push(person_bob(), &person_sender);
+    push(person_bob(), &person.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -350,7 +345,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     );
 
     // Act
-    push(plant_fern(), &plant_sender);
+    push(plant_fern(), &plant.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -370,7 +365,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     );
 
     // Act
-    push(plant_oak(), &plant_sender);
+    push(plant_oak(), &plant.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -487,8 +482,8 @@ impl Repository {
 #[should_panic(expected = "User closure panicked on purpose")]
 async fn test_merge_with_user_closure_panics() {
     // Arrange
-    let (sender, receiver) = unbounded_channel::<TestData>();
-    let stream = UnboundedReceiverStream::new(receiver.into_inner()).map(|ts| ts.value);
+    let channel = fluxion_test_utils::TestChannel::<TestData>::new();
+    let stream = channel.stream.map(|ts| ts.value);
 
     // Create a merge_with stream where the closure panics on the second emission
     let merged_stream =
@@ -503,11 +498,11 @@ async fn test_merge_with_user_closure_panics() {
     let mut merged_stream = Box::pin(merged_stream);
 
     // Act: First emission should succeed
-    push(person_alice(), &sender);
+    push(person_alice(), &channel.sender);
     let first = merged_stream.next().await.unwrap();
     assert_eq!(first, 1, "First emission should increment state to 1");
 
     // Act: Second emission triggers panic
-    push(person_bob(), &sender);
+    push(person_bob(), &channel.sender);
     let _second = merged_stream.next().await; // This will panic
 }
