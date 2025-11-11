@@ -1,5 +1,6 @@
 use fluxion_stream::select_all_ordered::SelectAllExt;
 use fluxion_stream::timestamped_channel::unbounded_channel;
+use fluxion_test_utils::helpers::expect_next_timestamped;
 use fluxion_test_utils::test_data::{
     DataVariant, TestData, animal_dog, animal_spider, expect_variant, person_alice, person_bob,
     person_charlie, plant_rose, plant_sunflower, push, send_variant,
@@ -98,8 +99,7 @@ async fn test_select_all_ordered_single_stream() {
     // Assert
     let mut results = Box::pin(results);
 
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, person_alice());
+    expect_next_timestamped(&mut results, person_alice()).await;
 
     let item = results.next().await.unwrap();
     assert_eq!(item.value, person_bob());
@@ -134,11 +134,9 @@ async fn test_select_all_ordered_one_empty_stream() {
     let item = results.next().await.unwrap();
     assert_eq!(item.value, person_alice());
 
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, plant_rose());
+    expect_next_timestamped(&mut results, plant_rose()).await;
 
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, person_bob());
+    expect_next_timestamped(&mut results, person_bob()).await;
 }
 
 #[tokio::test]
@@ -158,28 +156,22 @@ async fn test_select_all_ordered_interleaved_emissions() {
 
     // Act & Assert - Send and verify one at a time to avoid race conditions
     push(person_alice(), &person_sender);
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, person_alice());
+    expect_next_timestamped(&mut results, person_alice()).await;
 
     push(animal_dog(), &animal_sender);
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, animal_dog());
+    expect_next_timestamped(&mut results, animal_dog()).await;
 
     push(person_bob(), &person_sender);
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, person_bob());
+    expect_next_timestamped(&mut results, person_bob()).await;
 
     push(plant_rose(), &plant_sender);
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, plant_rose());
+    expect_next_timestamped(&mut results, plant_rose()).await;
 
     push(animal_spider(), &animal_sender);
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, animal_spider());
+    expect_next_timestamped(&mut results, animal_spider()).await;
 
     push(plant_sunflower(), &plant_sender);
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, plant_sunflower());
+    expect_next_timestamped(&mut results, plant_sunflower()).await;
 }
 
 #[tokio::test]
@@ -203,14 +195,11 @@ async fn test_select_all_ordered_stream_completes_early() {
     // Assert
     let mut results = Box::pin(results);
 
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, person_alice());
+    expect_next_timestamped(&mut results, person_alice()).await;
 
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, animal_dog());
+    expect_next_timestamped(&mut results, animal_dog()).await;
 
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, animal_spider());
+    expect_next_timestamped(&mut results, animal_spider()).await;
 
     // Close remaining stream
     drop(animal_sender);
@@ -248,14 +237,11 @@ async fn test_select_all_ordered_all_streams_close_simultaneously() {
     // Assert
     let mut results = Box::pin(results);
 
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, person_alice());
+    expect_next_timestamped(&mut results, person_alice()).await;
 
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, animal_dog());
+    expect_next_timestamped(&mut results, animal_dog()).await;
 
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, plant_rose());
+    expect_next_timestamped(&mut results, plant_rose()).await;
 
     // Assert stream ends after all items consumed
     let next_item = results.next().await;
@@ -279,16 +265,13 @@ async fn test_select_all_ordered_one_stream_closes_midway_three_streams() {
 
     // Act & Assert stepwise to avoid race conditions
     push(person_alice(), &person_sender);
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, person_alice());
+    expect_next_timestamped(&mut results, person_alice()).await;
 
     push(animal_dog(), &animal_sender);
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, animal_dog());
+    expect_next_timestamped(&mut results, animal_dog()).await;
 
     push(plant_rose(), &plant_sender);
-    let item = results.next().await.unwrap();
-    assert_eq!(item.value, plant_rose());
+    expect_next_timestamped(&mut results, plant_rose()).await;
 
     // Close plant stream mid-flight
     drop(plant_sender);

@@ -3,6 +3,7 @@ use fluxion_stream::timestamped::Timestamped;
 use fluxion_stream::timestamped_channel::unbounded_channel;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
+use fluxion_test_utils::helpers::expect_next_pair;
 use fluxion_test_utils::push;
 use fluxion_test_utils::test_data::{
     TestData, animal, animal_cat, animal_dog, person_alice, person_bob,
@@ -30,22 +31,19 @@ async fn test_with_latest_from_complete() {
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
 
-    let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (person_alice(), animal_cat()));
+    expect_next_pair(&mut combined_stream, person_alice(), animal_cat()).await;
 
     // Act
     push(animal_dog(), &animal_sender);
 
     // Assert
-    let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (person_alice(), animal_dog()));
+    expect_next_pair(&mut combined_stream, person_alice(), animal_dog()).await;
 
     // Act
     push(person_bob(), &person_sender);
 
     // Assert
-    let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (person_bob(), animal_dog()));
+    expect_next_pair(&mut combined_stream, person_bob(), animal_dog()).await;
 }
 
 #[tokio::test]
@@ -89,8 +87,7 @@ async fn test_with_latest_from_primary_waits_for_secondary() {
     push(person_alice(), &secondary_sender);
 
     // Assert: Now emission occurs pairing latest secondary with primary
-    let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (person_alice(), animal_cat()));
+    expect_next_pair(&mut combined_stream, person_alice(), animal_cat()).await;
 }
 
 #[tokio::test]
@@ -117,15 +114,13 @@ async fn test_with_latest_from_secondary_completes_early() {
     push(animal_cat(), &animal_sender);
 
     // Assert
-    let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (person_alice(), animal_cat()));
+    expect_next_pair(&mut combined_stream, person_alice(), animal_cat()).await;
 
     // Act
     push(animal_dog(), &animal_sender);
 
     // Assert
-    let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (person_alice(), animal_dog()));
+    expect_next_pair(&mut combined_stream, person_alice(), animal_dog()).await;
 }
 
 #[tokio::test]
@@ -146,16 +141,14 @@ async fn test_with_latest_from_primary_completes_early() {
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
 
-    let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (person_alice(), animal_cat()));
+    expect_next_pair(&mut combined_stream, person_alice(), animal_cat()).await;
 
     // Act
     drop(animal_sender);
     push(person_bob(), &person_sender);
 
     // Assert
-    let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (person_bob(), animal_cat()));
+    expect_next_pair(&mut combined_stream, person_bob(), animal_cat()).await;
 }
 
 #[tokio::test]

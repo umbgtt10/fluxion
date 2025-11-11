@@ -4,7 +4,7 @@ use fluxion_stream::{
     timestamped_channel::unbounded_channel,
 };
 use fluxion_test_utils::{
-    helpers::assert_no_element_emitted,
+    helpers::{assert_no_element_emitted, expect_next_combined_equals},
     test_data::{
         DataVariant, TestData, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
         person_diane, plant_rose, plant_sunflower, push, send_variant,
@@ -214,37 +214,41 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
 
-    let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![person_alice(), animal_dog(), plant_rose()];
-    assert_eq!(actual, expected);
+    expect_next_combined_equals(
+        &mut combined_stream,
+        &[person_alice(), animal_dog(), plant_rose()],
+    )
+    .await;
 
     // Act
     push(person_bob(), &person_sender);
 
     // Assert
-    let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![person_bob(), animal_dog(), plant_rose()];
-    assert_eq!(actual, expected);
+    expect_next_combined_equals(
+        &mut combined_stream,
+        &[person_bob(), animal_dog(), plant_rose()],
+    )
+    .await;
 
     // Act
     push(animal_spider(), &animal_sender);
 
     // Assert
-    let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![person_bob(), animal_spider(), plant_rose()];
-    assert_eq!(actual, expected);
+    expect_next_combined_equals(
+        &mut combined_stream,
+        &[person_bob(), animal_spider(), plant_rose()],
+    )
+    .await;
 
     // Act
     push(plant_sunflower(), &plant_sender);
 
     // Assert
-    let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![person_bob(), animal_spider(), plant_sunflower()];
-    assert_eq!(actual, expected);
+    expect_next_combined_equals(
+        &mut combined_stream,
+        &[person_bob(), animal_spider(), plant_sunflower()],
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -343,26 +347,17 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
     push(person_bob(), &stream2_sender);
 
     // Assert
-    let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![person_alice(), person_bob()];
-    assert_eq!(actual, expected);
+    expect_next_combined_equals(&mut combined_stream, &[person_alice(), person_bob()]).await;
 
     // Act
     push(person_charlie(), &stream1_sender);
 
     // Assert
-    let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![person_charlie(), person_bob()];
-    assert_eq!(actual, expected);
+    expect_next_combined_equals(&mut combined_stream, &[person_charlie(), person_bob()]).await;
 
     // Act
     push(person_diane(), &stream2_sender);
 
     // Assert
-    let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![person_charlie(), person_diane()];
-    assert_eq!(actual, expected);
+    expect_next_combined_equals(&mut combined_stream, &[person_charlie(), person_diane()]).await;
 }
