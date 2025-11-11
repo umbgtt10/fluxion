@@ -9,11 +9,7 @@ use std::{
     sync::Mutex as StdMutex,
     time::{Duration, Instant},
 };
-use tokio::{
-    sync::Mutex as TokioMutex,
-    sync::mpsc,
-    time::sleep,
-};
+use tokio::{sync::Mutex as TokioMutex, sync::mpsc, time::sleep};
 use tokio_stream::{StreamExt as _, wrappers::UnboundedReceiverStream};
 use tokio_util::sync::CancellationToken;
 
@@ -147,16 +143,16 @@ async fn test_subscribe_async_with_errors() {
     // Act & Assert - wait for processing completion
     push(person_alice(), &sender);
     notify_rx.recv().await.unwrap();
-    
+
     push(animal_dog(), &sender); // Error
     notify_rx.recv().await.unwrap();
-    
+
     push(person_bob(), &sender);
     notify_rx.recv().await.unwrap();
-    
+
     push(animal_cat(), &sender); // Error
     notify_rx.recv().await.unwrap();
-    
+
     push(person_charlie(), &sender);
     notify_rx.recv().await.unwrap();
 
@@ -231,7 +227,7 @@ async fn test_subscribe_async_triggered_cancellation_token() {
     cancellation_token_clone.cancel();
     push(person_charlie(), &sender);
     push(person_diane(), &sender);
-    
+
     // Give a moment for potential (incorrect) processing
     sleep(Duration::from_millis(50)).await;
 
@@ -336,7 +332,7 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
     cancellation_token_clone.cancel();
     push(person_diane(), &sender);
     push(animal_dog(), &sender);
-    
+
     // Give a moment for potential (incorrect) processing
     sleep(Duration::from_millis(50)).await;
 
@@ -443,7 +439,7 @@ async fn test_subscribe_async_parallel_processing() {
     push(person_alice(), &sender);
     push(person_bob(), &sender);
     push(person_charlie(), &sender);
-    
+
     // Wait for all 3 to complete
     notify_rx.recv().await.unwrap();
     notify_rx.recv().await.unwrap();
@@ -453,7 +449,7 @@ async fn test_subscribe_async_parallel_processing() {
     // Assert
     let processed = results.lock().await;
     assert_eq!(processed.len(), 3, "All 3 items should be processed");
-    
+
     // If processed sequentially, would take ~300ms (3 * 100ms)
     // If processed in parallel, should take ~100ms
     // Allow margin for overhead
