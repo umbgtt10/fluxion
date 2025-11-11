@@ -6,8 +6,8 @@ use fluxion_test_utils::{
     plant::Plant,
     push,
     test_data::{
-        TestData, animal_bird, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
-        person_dave, plant_fern, plant_oak,
+        TestData, animal_bird, animal_dog, animal_spider, person, person_alice, person_bob,
+        person_charlie, person_dave, plant_fern, plant_oak,
     },
 };
 use futures::StreamExt;
@@ -15,27 +15,31 @@ use futures::StreamExt;
 #[tokio::test]
 async fn test_merge_with_empty_streams() {
     // Arrange
-    let empty_channel1 = FluxionChannel::<i32>::empty();
-    let empty_channel2 = FluxionChannel::<i32>::empty();
+    let empty_channel1 = FluxionChannel::<TestData>::empty();
+    let empty_channel2 = FluxionChannel::<TestData>::empty();
     let empty_stream1 = empty_channel1.stream;
     let empty_stream2 = empty_channel2.stream;
 
     // Act
     let result_stream = MergedStream::seed(0)
-        .merge_with(empty_stream1, |ts_num: Timestamped<i32>, state| {
-            let seq = ts_num.sequence();
-            let num = ts_num.into_inner();
-            *state += num;
-            let out = *state;
-            Timestamped::with_sequence(out, seq)
-        })
-        .merge_with(empty_stream2, |ts_num: Timestamped<i32>, state| {
-            let seq = ts_num.sequence();
-            let num = ts_num.into_inner();
-            *state += num;
-            let out = *state;
-            Timestamped::with_sequence(out, seq)
-        });
+        .merge_with(
+            empty_stream1,
+            |ts_new_item: Timestamped<TestData>, state: &mut i32| {
+                let seq = ts_new_item.sequence();
+                let _ = ts_new_item.into_inner();
+                let out = *state;
+                Timestamped::with_sequence(out, seq)
+            },
+        )
+        .merge_with(
+            empty_stream2,
+            |ts_new_item: Timestamped<TestData>, state: &mut i32| {
+                let seq = ts_new_item.sequence();
+                let _ = ts_new_item.into_inner();
+                let out = *state;
+                Timestamped::with_sequence(out, seq)
+            },
+        );
 
     // Assert
     let result: Vec<Timestamped<i32>> = result_stream.collect().await;
@@ -56,9 +60,9 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
     let merged_stream = MergedStream::seed(0usize)
         .merge_with(
             non_empty_stream,
-            |ts: Timestamped<TestData>, state: &mut usize| {
-                let seq = ts.sequence();
-                let _inner = ts.into_inner();
+            |ts_new_item: Timestamped<TestData>, state: &mut usize| {
+                let seq = ts_new_item.sequence();
+                let _inner = ts_new_item.into_inner();
                 *state += 1;
                 let out = *state;
                 Timestamped::with_sequence(out, seq)
@@ -66,9 +70,9 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
         )
         .merge_with(
             empty_stream,
-            |ts: Timestamped<TestData>, state: &mut usize| {
-                let seq = ts.sequence();
-                let _inner = ts.into_inner();
+            |ts_new_item: Timestamped<TestData>, state: &mut usize| {
+                let seq = ts_new_item.sequence();
+                let _inner = ts_new_item.into_inner();
                 *state += 1; // will never run in this test
                 let out = *state;
                 Timestamped::with_sequence(out, seq)
@@ -120,28 +124,14 @@ async fn test_merge_with_similar_streams_emits() {
     let merged_stream = MergedStream::seed(Repository::new())
         .merge_with(
             stream1,
-            |ts_item: Timestamped<TestData>, state: &mut Repository| {
-                let seq = ts_item.sequence();
-                let item = ts_item.into_inner();
-                let out = match item {
-                    TestData::Person(p) => state.from_person(p),
-                    TestData::Animal(a) => state.from_animal(a),
-                    TestData::Plant(pl) => state.from_plant(pl),
-                };
-                Timestamped::with_sequence(out, seq)
+            |ts_new_item: Timestamped<TestData>, state: &mut Repository| {
+                state.from_testdata_timestamped(ts_new_item)
             },
         )
         .merge_with(
             stream2,
-            |ts_item: Timestamped<TestData>, state: &mut Repository| {
-                let seq = ts_item.sequence();
-                let item = ts_item.into_inner();
-                let out = match item {
-                    TestData::Person(p) => state.from_person(p),
-                    TestData::Animal(a) => state.from_animal(a),
-                    TestData::Plant(pl) => state.from_plant(pl),
-                };
-                Timestamped::with_sequence(out, seq)
+            |ts_new_item: Timestamped<TestData>, state: &mut Repository| {
+                state.from_testdata_timestamped(ts_new_item)
             },
         );
 
@@ -202,28 +192,14 @@ async fn test_merge_with_parallel_processing() {
     let result_stream = MergedStream::seed(Repository::new())
         .merge_with(
             stream1,
-            |ts_item: Timestamped<TestData>, state: &mut Repository| {
-                let seq = ts_item.sequence();
-                let item = ts_item.into_inner();
-                let out = match item {
-                    TestData::Person(p) => state.from_person(p),
-                    TestData::Animal(a) => state.from_animal(a),
-                    TestData::Plant(pl) => state.from_plant(pl),
-                };
-                Timestamped::with_sequence(out, seq)
+            |ts_new_item: Timestamped<TestData>, state: &mut Repository| {
+                state.from_testdata_timestamped(ts_new_item)
             },
         )
         .merge_with(
             stream2,
-            |ts_item: Timestamped<TestData>, state: &mut Repository| {
-                let seq = ts_item.sequence();
-                let item = ts_item.into_inner();
-                let out = match item {
-                    TestData::Person(p) => state.from_person(p),
-                    TestData::Animal(a) => state.from_animal(a),
-                    TestData::Plant(pl) => state.from_plant(pl),
-                };
-                Timestamped::with_sequence(out, seq)
+            |ts_new_item: Timestamped<TestData>, state: &mut Repository| {
+                state.from_testdata_timestamped(ts_new_item)
             },
         );
 
@@ -259,33 +235,47 @@ async fn test_merge_with_parallel_processing() {
 #[tokio::test]
 async fn test_merge_with_large_streams_emits() {
     // Arrange
-    let channel1 = FluxionChannel::<i32>::new();
-    let channel2 = FluxionChannel::<i32>::new();
+    let channel1 = FluxionChannel::<TestData>::new();
+    let channel2 = FluxionChannel::<TestData>::new();
     let large_stream1 = channel1.stream;
     let large_stream2 = channel2.stream;
 
     let merged_stream = MergedStream::seed(0)
-        .merge_with(large_stream1, |ts_num: Timestamped<i32>, state| {
-            let seq = ts_num.sequence();
-            let num = ts_num.into_inner();
-            *state += num;
-            let out = *state;
-            Timestamped::with_sequence(out, seq)
-        })
-        .merge_with(large_stream2, |ts_num: Timestamped<i32>, state| {
-            let seq = ts_num.sequence();
-            let num = ts_num.into_inner();
-            *state += num;
-            let out = *state;
-            Timestamped::with_sequence(out, seq)
-        });
+        .merge_with(
+            large_stream1,
+            |ts_new_item: Timestamped<TestData>, state: &mut i32| {
+                let seq = ts_new_item.sequence();
+                let item = ts_new_item.into_inner();
+                let num: i32 = match item {
+                    TestData::Person(p) => p.age as i32,
+                    TestData::Animal(a) => a.legs as i32,
+                    TestData::Plant(pl) => pl.height as i32,
+                };
+                *state += num;
+                Timestamped::with_sequence(*state, seq)
+            },
+        )
+        .merge_with(
+            large_stream2,
+            |ts_new_item: Timestamped<TestData>, state: &mut i32| {
+                let seq = ts_new_item.sequence();
+                let item = ts_new_item.into_inner();
+                let num: i32 = match item {
+                    TestData::Person(p) => p.age as i32,
+                    TestData::Animal(a) => a.legs as i32,
+                    TestData::Plant(pl) => pl.height as i32,
+                };
+                *state += num;
+                Timestamped::with_sequence(*state, seq)
+            },
+        );
 
     // Act
     for i in 0..10000 {
-        push(i, &channel1.sender);
+        push(person(i.to_string(), i as u32), &channel1.sender);
     }
     for i in 10000..20000 {
-        push(i, &channel2.sender);
+        push(person(i.to_string(), i as u32), &channel2.sender);
     }
 
     // Assert
@@ -315,35 +305,20 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     let plant_stream = plant.stream;
 
     let merged_stream = MergedStream::seed(Repository::new())
-        .merge_with(animal_stream, |ts_item: Timestamped<TestData>, state| {
-            let seq = ts_item.sequence();
-            let item = ts_item.into_inner();
-            let out = match item {
-                TestData::Animal(a) => state.from_animal(a),
-                TestData::Person(p) => state.from_person(p),
-                TestData::Plant(pl) => state.from_plant(pl),
-            };
-            Timestamped::with_sequence(out, seq)
-        })
-        .merge_with(person_stream, |ts_item: Timestamped<TestData>, state| {
-            let seq = ts_item.sequence();
-            let item = ts_item.into_inner();
-            let out = match item {
-                TestData::Animal(a) => state.from_animal(a),
-                TestData::Person(p) => state.from_person(p),
-                TestData::Plant(pl) => state.from_plant(pl),
-            };
-            Timestamped::with_sequence(out, seq)
-        })
-        .merge_with(plant_stream, |ts_item: Timestamped<TestData>, state| {
-            let seq = ts_item.sequence();
-            let item = ts_item.into_inner();
-            let out = match item {
-                TestData::Animal(a) => state.from_animal(a),
-                TestData::Person(p) => state.from_person(p),
-                TestData::Plant(pl) => state.from_plant(pl),
-            };
-            Timestamped::with_sequence(out, seq)
+        .merge_with(
+            animal_stream,
+            |ts_new_item: Timestamped<TestData>, state| {
+                state.from_testdata_timestamped(ts_new_item)
+            },
+        )
+        .merge_with(
+            person_stream,
+            |ts_new_item: Timestamped<TestData>, state| {
+                state.from_testdata_timestamped(ts_new_item)
+            },
+        )
+        .merge_with(plant_stream, |ts_new_item: Timestamped<TestData>, state| {
+            state.from_testdata_timestamped(ts_new_item)
         });
 
     // Act
@@ -559,6 +534,19 @@ impl Repository {
             plant_height: self.plant_height,
         }
     }
+
+    /// Accept a timestamped TestData and return a timestamped Repository where
+    /// the output preserves the incoming sequence. This centralizes timestamp
+    /// handling inside the repository helper instead of in every caller.
+    pub fn from_testdata_timestamped(&mut self, ts: Timestamped<TestData>) -> Timestamped<Self> {
+        let seq = ts.sequence();
+        let out = match ts.into_inner() {
+            TestData::Person(p) => self.from_person(p),
+            TestData::Animal(a) => self.from_animal(a),
+            TestData::Plant(pl) => self.from_plant(pl),
+        };
+        Timestamped::with_sequence(out, seq)
+    }
 }
 
 #[tokio::test]
@@ -571,9 +559,9 @@ async fn test_merge_with_user_closure_panics() {
     // Create a merge_with stream where the closure panics on the second emission
     let merged_stream = MergedStream::seed(0usize).merge_with(
         stream,
-        |ts: Timestamped<TestData>, state: &mut usize| {
-            let seq = ts.sequence();
-            let _inner = ts.into_inner();
+        |ts_new_item: Timestamped<TestData>, state: &mut usize| {
+            let seq = ts_new_item.sequence();
+            let _inner = ts_new_item.into_inner();
             *state += 1;
             if *state == 2 {
                 panic!("User closure panicked on purpose");
