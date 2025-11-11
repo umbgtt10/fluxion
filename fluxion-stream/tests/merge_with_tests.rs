@@ -459,13 +459,14 @@ async fn test_merge_with_user_closure_panics() {
     let stream = UnboundedReceiverStream::new(receiver.into_inner()).map(|ts| ts.value);
 
     // Create a merge_with stream where the closure panics on the second emission
-    let merged_stream = MergedStream::seed(0usize).merge_with(stream, |_data, state: &mut usize| {
-        *state += 1;
-        if *state == 2 {
-            panic!("User closure panicked on purpose");
-        }
-        *state
-    });
+    let merged_stream =
+        MergedStream::seed(0usize).merge_with(stream, |_data, state: &mut usize| {
+            *state += 1;
+            if *state == 2 {
+                panic!("User closure panicked on purpose");
+            }
+            *state
+        });
 
     let mut merged_stream = Box::pin(merged_stream);
 
