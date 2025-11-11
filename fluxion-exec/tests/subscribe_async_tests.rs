@@ -9,7 +9,11 @@ use std::{
     sync::Mutex as StdMutex,
     time::{Duration, Instant},
 };
-use tokio::{sync::Mutex as TokioMutex, time::sleep};
+use tokio::{
+    sync::Mutex as TokioMutex,
+    sync::mpsc,
+    time::sleep,
+};
 use tokio_stream::{StreamExt as _, wrappers::UnboundedReceiverStream};
 use tokio_util::sync::CancellationToken;
 
@@ -20,13 +24,17 @@ async fn test_subscribe_async_sequential_processing() {
     let stream =
         UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let func = {
         let results = results.clone();
+        let notify_tx = notify_tx.clone();
         move |item, _ctx: CancellationToken| {
             let results = results.clone();
+            let notify_tx = notify_tx.clone();
             async move {
                 results.lock().await.push(item);
+                let _ = notify_tx.send(()); // Signal completion
                 Ok::<(), ()>(())
             }
         }
@@ -46,27 +54,24 @@ async fn test_subscribe_async_sequential_processing() {
         }
     });
 
-    // Act
+    // Act & Assert - wait for actual processing completion
     push(person_alice(), &sender);
-    sleep(Duration::from_millis(50)).await;
-
-    // Assert
+    notify_rx.recv().await.unwrap();
     assert_eq!(*results.lock().await, vec![person_alice()]);
 
-    // Repeat for other items.
     push(person_bob(), &sender);
-    sleep(Duration::from_millis(50)).await;
+    notify_rx.recv().await.unwrap();
     assert_eq!(*results.lock().await, vec![person_alice(), person_bob()]);
 
     push(person_charlie(), &sender);
-    sleep(Duration::from_millis(50)).await;
+    notify_rx.recv().await.unwrap();
     assert_eq!(
         *results.lock().await,
         vec![person_alice(), person_bob(), person_charlie()]
     );
 
     push(person_diane(), &sender);
-    sleep(Duration::from_millis(50)).await;
+    notify_rx.recv().await.unwrap();
     assert_eq!(
         *results.lock().await,
         vec![
@@ -78,7 +83,7 @@ async fn test_subscribe_async_sequential_processing() {
     );
 
     push(person_dave(), &sender);
-    sleep(Duration::from_millis(50)).await;
+    notify_rx.recv().await.unwrap();
     assert_eq!(
         *results.lock().await,
         vec![
@@ -103,17 +108,22 @@ async fn test_subscribe_async_with_errors() {
         UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let errors = Arc::new(StdMutex::new(Vec::new()));
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let func = {
         let results = results.clone();
+        let notify_tx = notify_tx.clone();
         move |item: TestData, _ctx: CancellationToken| {
             let results = results.clone();
+            let notify_tx = notify_tx.clone();
             async move {
                 // Error on every animal
                 if matches!(&item, TestData::Animal(_)) {
+                    let _ = notify_tx.send(()); // Signal completion (error case)
                     return Err(format!("Error processing animal: {:?}", item));
                 }
                 results.lock().await.push(item);
+                let _ = notify_tx.send(()); // Signal completion
                 Ok::<(), String>(())
             }
         }
@@ -134,15 +144,23 @@ async fn test_subscribe_async_with_errors() {
         }
     });
 
-    // Act
+    // Act & Assert - wait for processing completion
     push(person_alice(), &sender);
+    notify_rx.recv().await.unwrap();
+    
     push(animal_dog(), &sender); // Error
+    notify_rx.recv().await.unwrap();
+    
     push(person_bob(), &sender);
+    notify_rx.recv().await.unwrap();
+    
     push(animal_cat(), &sender); // Error
+    notify_rx.recv().await.unwrap();
+    
     push(person_charlie(), &sender);
-    sleep(Duration::from_millis(300)).await;
+    notify_rx.recv().await.unwrap();
 
-    // Assert
+    // Assert final state
     assert_eq!(
         *results.lock().await,
         vec![person_alice(), person_bob(), person_charlie()]
@@ -163,19 +181,24 @@ async fn test_subscribe_async_triggered_cancellation_token() {
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let cancellation_token = CancellationToken::new();
     let cancellation_token_clone = cancellation_token.clone();
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let func = {
         let results = results.clone();
+        let notify_tx = notify_tx.clone();
         move |item: TestData, ctx: CancellationToken| {
             let results = results.clone();
+            let notify_tx = notify_tx.clone();
             async move {
                 sleep(Duration::from_millis(20)).await;
 
                 if ctx.is_cancelled() {
+                    let _ = notify_tx.send(()); // Signal completion (cancelled)
                     return Ok(());
                 }
 
                 results.lock().await.push(item);
+                let _ = notify_tx.send(()); // Signal completion
 
                 Ok::<(), ()>(())
             }
@@ -196,21 +219,22 @@ async fn test_subscribe_async_triggered_cancellation_token() {
         }
     });
 
-    // Act
+    // Act & Assert
     push(person_alice(), &sender);
+    notify_rx.recv().await.unwrap();
     push(person_bob(), &sender);
-    sleep(Duration::from_millis(50)).await;
+    notify_rx.recv().await.unwrap();
 
-    // Assert
     assert_eq!(*results.lock().await, vec![person_alice(), person_bob()]);
 
-    // Act
+    // Cancel and verify no more processing
     cancellation_token_clone.cancel();
     push(person_charlie(), &sender);
     push(person_diane(), &sender);
-    sleep(Duration::from_millis(100)).await;
+    
+    // Give a moment for potential (incorrect) processing
+    sleep(Duration::from_millis(50)).await;
 
-    // Assert
     assert_eq!(*results.lock().await, vec![person_alice(), person_bob()]);
 
     drop(sender);
@@ -227,6 +251,7 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
     let errors = Arc::new(StdMutex::new(Vec::new()));
     let cancellation_token = CancellationToken::new();
     let cancellation_token_clone = cancellation_token.clone();
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     #[derive(Debug, PartialEq, Eq)]
     enum ProcessingError {
@@ -236,12 +261,15 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
 
     let func = {
         let results = results.clone();
+        let notify_tx = notify_tx.clone();
         move |item: TestData, ctx: CancellationToken| {
             let results = results.clone();
+            let notify_tx = notify_tx.clone();
             async move {
                 sleep(Duration::from_millis(20)).await;
 
                 if ctx.is_cancelled() {
+                    let _ = notify_tx.send(());
                     return Err(ProcessingError::Cancelled(format!(
                         "Cancelled during processing of item: {:?}",
                         item
@@ -249,6 +277,7 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
                 }
 
                 results.lock().await.push(item.clone());
+                let _ = notify_tx.send(());
 
                 // Error on Charlie
                 if matches!(&item, TestData::Person(p) if p.name == "Charlie") {
@@ -279,20 +308,19 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
         }
     });
 
-    // Act
+    // Act & Assert
     push(person_alice(), &sender);
+    notify_rx.recv().await.unwrap();
     push(person_bob(), &sender);
-    sleep(Duration::from_millis(100)).await;
+    notify_rx.recv().await.unwrap();
 
-    // Assert
     assert_eq!(*results.lock().await, vec![person_alice(), person_bob()]);
     assert!(errors.lock().unwrap().is_empty());
 
-    // Act - send Charlie (which causes error)
+    // Send Charlie (which causes error)
     push(person_charlie(), &sender);
-    sleep(Duration::from_millis(50)).await;
+    notify_rx.recv().await.unwrap();
 
-    // Assert
     assert_eq!(
         *results.lock().await,
         vec![person_alice(), person_bob(), person_charlie()]
@@ -304,13 +332,15 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
         )]
     );
 
-    // Act - cancel and send more
+    // Cancel and send more
     cancellation_token_clone.cancel();
     push(person_diane(), &sender);
     push(animal_dog(), &sender);
-    sleep(Duration::from_millis(100)).await;
+    
+    // Give a moment for potential (incorrect) processing
+    sleep(Duration::from_millis(50)).await;
 
-    // Assert - no new items processed after cancellation
+    // No new items processed after cancellation
     assert_eq!(
         *results.lock().await,
         vec![person_alice(), person_bob(), person_charlie()]
@@ -376,15 +406,19 @@ async fn test_subscribe_async_parallel_processing() {
     let stream =
         UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let func = {
         let results = results.clone();
+        let notify_tx = notify_tx.clone();
         move |item, _ctx: CancellationToken| {
             let results = results.clone();
+            let notify_tx = notify_tx.clone();
             async move {
                 // Each task sleeps for 100ms
                 sleep(Duration::from_millis(100)).await;
                 results.lock().await.push(item);
+                let _ = notify_tx.send(());
                 Ok::<(), ()>(())
             }
         }
@@ -404,23 +438,25 @@ async fn test_subscribe_async_parallel_processing() {
         }
     });
 
-    // Act - Send 3 items rapidly
+    // Act - Send 3 items rapidly, measure completion time
     let start = Instant::now();
     push(person_alice(), &sender);
     push(person_bob(), &sender);
     push(person_charlie(), &sender);
-
-    // Wait for all processing to complete
-    sleep(Duration::from_millis(200)).await;
+    
+    // Wait for all 3 to complete
+    notify_rx.recv().await.unwrap();
+    notify_rx.recv().await.unwrap();
+    notify_rx.recv().await.unwrap();
     let duration = start.elapsed();
 
     // Assert
     let processed = results.lock().await;
     assert_eq!(processed.len(), 3, "All 3 items should be processed");
-
+    
     // If processed sequentially, would take ~300ms (3 * 100ms)
     // If processed in parallel, should take ~100ms
-    // Allow some margin for overhead
+    // Allow margin for overhead
     assert!(
         duration < Duration::from_millis(250),
         "Processing should be parallel (< 250ms), but took {:?}",
@@ -439,13 +475,17 @@ async fn test_subscribe_async_high_volume() {
     let stream =
         UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let func = {
         let results = results.clone();
+        let notify_tx = notify_tx.clone();
         move |item, _ctx: CancellationToken| {
             let results = results.clone();
+            let notify_tx = notify_tx.clone();
             async move {
                 results.lock().await.push(item);
+                let _ = notify_tx.send(());
                 Ok::<(), ()>(())
             }
         }
@@ -470,8 +510,10 @@ async fn test_subscribe_async_high_volume() {
         push(person_alice(), &sender);
     }
 
-    // Wait for processing
-    sleep(Duration::from_millis(200)).await;
+    // Wait for all 100 to complete
+    for _ in 0..100 {
+        notify_rx.recv().await.unwrap();
+    }
 
     // Assert
     let processed = results.lock().await;

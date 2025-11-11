@@ -5,8 +5,11 @@ use fluxion_test_utils::test_data::{
     person_charlie, person_dave, person_diane, plant_rose, push,
 };
 use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::time::{Duration, sleep};
+use tokio::{
+    sync::Mutex,
+    sync::mpsc,
+    time::{Duration, sleep},
+};
 use tokio_stream::{StreamExt as _, wrappers::UnboundedReceiverStream};
 use tokio_util::sync::CancellationToken;
 
@@ -337,19 +340,25 @@ async fn test_subscribe_latest_async_skips_intermediate_values() {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let (sender, receiver) = unbounded_channel();
     let stream =
         UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
 
-    let func = move |item, _| {
+    let func = {
         let collected_items = collected_items_clone.clone();
-        async move {
-            // Slow processing (100ms) to ensure items queue up
-            sleep(Duration::from_millis(100)).await;
-            let mut items = collected_items.lock().await;
-            items.push(item);
-            Ok::<(), ()>(())
+        let notify_tx = notify_tx.clone();
+        move |item, _| {
+            let collected_items = collected_items.clone();
+            let notify_tx = notify_tx.clone();
+            async move {
+                // Slow processing (100ms) to ensure items queue up
+                sleep(Duration::from_millis(100)).await;
+                collected_items.lock().await.push(item);
+                let _ = notify_tx.send(()); // Signal completion
+                Ok::<(), ()>(())
+            }
         }
     };
 
@@ -366,37 +375,46 @@ async fn test_subscribe_latest_async_skips_intermediate_values() {
     });
 
     // Act - Send 5 items rapidly (much faster than processing time)
-    push(person_alice(), &sender); // Item 1 - should be processed (starts immediately)
+    push(person_alice(), &sender);   // Item 1 - should be processed (starts immediately)
     sleep(Duration::from_millis(5)).await;
-    push(person_bob(), &sender); // Item 2 - should be skipped
+    push(person_bob(), &sender);     // Item 2 - should be skipped
     sleep(Duration::from_millis(5)).await;
     push(person_charlie(), &sender); // Item 3 - should be skipped
     sleep(Duration::from_millis(5)).await;
-    push(person_diane(), &sender); // Item 4 - should be skipped
+    push(person_diane(), &sender);   // Item 4 - should be skipped
     sleep(Duration::from_millis(5)).await;
-    push(person_dave(), &sender); // Item 5 - should be processed (latest when #1 completes)
+    push(person_dave(), &sender);    // Item 5 - should be processed (latest when #1 completes)
+    
+    // Wait for first item to complete
+    notify_rx.recv().await.unwrap();
+    
+    // Wait for second item to complete (with timeout in case only 1 processes)
+    tokio::select! {
+        _ = notify_rx.recv() => {},
+        _ = sleep(Duration::from_millis(150)) => {},
+    }
+    
+    // Give a moment for any final processing
+    sleep(Duration::from_millis(50)).await;
 
-    // Wait for processing to complete (100ms per item * 2 items + margin)
-    sleep(Duration::from_millis(300)).await;
-
-    // Assert
+    // Assert - deterministic check
     let processed = collected_items.lock().await;
-
-    // Due to timing variations, we verify the core "latest" behavior:
+    
+    // Core "latest" behavior verification:
     // 1. First item should always be processed
     assert!(
         processed.contains(&person_alice()),
         "First item (Alice) should be processed"
     );
-
+    
     // 2. Not all items should be processed (some must be skipped)
     assert!(
         processed.len() < 5,
         "Should skip some items due to 'latest' behavior, but processed all 5: {:?}",
         processed
     );
-
-    // 3. If we processed 2 items, the second should be the last emitted
+    
+    // 3. The second processed item should be the last emitted (or close to it)
     if processed.len() == 2 {
         assert_eq!(
             processed[1],
@@ -405,14 +423,8 @@ async fn test_subscribe_latest_async_skips_intermediate_values() {
         );
         // Verify intermediate items were NOT processed
         assert!(!processed.contains(&person_bob()), "Bob should be skipped");
-        assert!(
-            !processed.contains(&person_charlie()),
-            "Charlie should be skipped"
-        );
-        assert!(
-            !processed.contains(&person_diane()),
-            "Diane should be skipped"
-        );
+        assert!(!processed.contains(&person_charlie()), "Charlie should be skipped");
+        assert!(!processed.contains(&person_diane()), "Diane should be skipped");
     }
 
     // Cleanup
@@ -615,6 +627,7 @@ async fn test_subscribe_latest_async_error_unblocks_state() {
 async fn test_subscribe_latest_async_high_volume() {
     // Arrange
     let processed_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let (sender, receiver) = unbounded_channel();
     let stream =
@@ -622,11 +635,14 @@ async fn test_subscribe_latest_async_high_volume() {
 
     let func = {
         let processed_count = processed_count.clone();
+        let notify_tx = notify_tx.clone();
         move |_item, _| {
             let processed_count = processed_count.clone();
+            let notify_tx = notify_tx.clone();
             async move {
                 sleep(Duration::from_millis(10)).await;
                 processed_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                let _ = notify_tx.send(());
                 Ok::<(), ()>(())
             }
         }
@@ -648,9 +664,12 @@ async fn test_subscribe_latest_async_high_volume() {
     for _ in 0..100 {
         push(person_alice(), &sender);
     }
-
-    // Wait for processing
-    sleep(Duration::from_millis(300)).await;
+    
+    // Wait for first item to complete
+    notify_rx.recv().await.unwrap();
+    
+    // Give some time for more processing (but not enough for all 100)
+    sleep(Duration::from_millis(100)).await;
 
     // Assert
     let count = processed_count.load(std::sync::atomic::Ordering::SeqCst);
