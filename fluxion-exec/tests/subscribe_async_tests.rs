@@ -1,8 +1,8 @@
 use fluxion_exec::subscribe_async::SubscribeAsyncExt;
 use fluxion_stream::sequenced_channel::unbounded_channel;
 use fluxion_test_utils::test_value::{
-    animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
-    push, TestValue,
+    TestValue, animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave,
+    person_diane, push,
 };
 use std::{sync::Arc, sync::Mutex as StdMutex, time::Duration};
 use tokio::{sync::Mutex as TokioMutex, time::sleep};
@@ -65,7 +65,12 @@ async fn test_subscribe_async_sequential_processing() {
     sleep(Duration::from_millis(50)).await;
     assert_eq!(
         *results.lock().await,
-        vec![person_alice(), person_bob(), person_charlie(), person_diane()]
+        vec![
+            person_alice(),
+            person_bob(),
+            person_charlie(),
+            person_diane()
+        ]
     );
 
     push(person_dave(), &sender);
@@ -243,7 +248,9 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
 
                 // Error on Charlie
                 if matches!(&item, TestValue::Person(p) if p.name == "Charlie") {
-                    Err(ProcessingError::Other("Failed to process Charlie".to_string()))
+                    Err(ProcessingError::Other(
+                        "Failed to process Charlie".to_string(),
+                    ))
                 } else {
                     Ok::<(), ProcessingError>(())
                 }
@@ -288,7 +295,9 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
     );
     assert_eq!(
         *errors.lock().unwrap(),
-        vec![ProcessingError::Other("Failed to process Charlie".to_string())]
+        vec![ProcessingError::Other(
+            "Failed to process Charlie".to_string()
+        )]
     );
 
     // Act - cancel and send more
@@ -304,7 +313,9 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
     );
     assert_eq!(
         *errors.lock().unwrap(),
-        vec![ProcessingError::Other("Failed to process Charlie".to_string())]
+        vec![ProcessingError::Other(
+            "Failed to process Charlie".to_string()
+        )]
     );
 
     drop(sender);

@@ -1,8 +1,8 @@
 use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
 use fluxion_stream::sequenced_channel::unbounded_channel;
 use fluxion_test_utils::test_value::{
-    animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
-    person_dave, person_diane, plant_rose, push, TestValue,
+    TestValue, animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
+    person_charlie, person_dave, person_diane, plant_rose, push,
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
