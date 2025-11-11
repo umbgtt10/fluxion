@@ -31,7 +31,7 @@ async fn test_merge_with_empty_streams() {
 
     // Assert
     let result: Vec<i32> = result_stream.collect().await;
-    assert_eq!(result, vec![]);
+    assert_eq!(result, vec![], "Empty streams should produce empty result");
 }
 
 #[tokio::test]
@@ -62,21 +62,21 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state, 1);
+    assert_eq!(state, 1, "First emission should increment counter to 1");
 
     // Act
     push(person_bob(), &non_empty_sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state, 2);
+    assert_eq!(state, 2, "Second emission should increment counter to 2");
 
     // Act
     push(person_charlie(), &non_empty_sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state, 3);
+    assert_eq!(state, 3, "Third emission should increment counter to 3");
 }
 
 #[tokio::test]
@@ -112,28 +112,28 @@ async fn test_merge_with_similar_streams_emits() {
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state.person_name, Some("Alice".to_string()));
+    assert_eq!(state.person_name, Some("Alice".to_string()), "Repository should contain Alice after first emission");
 
     // Act
     push(person_bob(), &sender2);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state.person_name, Some("Bob".to_string()));
+    assert_eq!(state.person_name, Some("Bob".to_string()), "Repository should contain Bob after second emission");
 
     // Act
     push(person_charlie(), &sender1);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state.person_name, Some("Charlie".to_string()));
+    assert_eq!(state.person_name, Some("Charlie".to_string()), "Repository should contain Charlie after third emission");
 
     // Act
     push(person_dave(), &sender2);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state.person_name, Some("Dave".to_string()));
+    assert_eq!(state.person_name, Some("Dave".to_string()), "Repository should contain Dave after fourth emission");
 }
 
 #[tokio::test]
@@ -178,8 +178,8 @@ async fn test_merge_with_parallel_processing() {
     // Assert
     let result: Vec<Repository> = result_stream.collect().await;
     let last = result.last().expect("at least one state");
-    assert_eq!(last.person_name, Some("Charlie".to_string()));
-    assert_eq!(last.animal_species, Some("Spider".to_string()));
+    assert_eq!(last.person_name, Some("Charlie".to_string()), "Final repository should have Charlie as last person");
+    assert_eq!(last.animal_species, Some("Spider".to_string()), "Final repository should have Spider as last animal");
 }
 
 #[tokio::test]
@@ -201,8 +201,8 @@ async fn test_merge_with_large_streams_emits() {
 
     // Assert
     let result: Vec<i32> = result_stream.collect().await;
-    assert_eq!(result.len(), 20000);
-    assert_eq!(result.last(), Some(&199990000));
+    assert_eq!(result.len(), 20000, "Should have processed all 20000 emissions");
+    assert_eq!(result.last(), Some(&199990000), "Final accumulated sum should be correct");
 }
 
 #[tokio::test]
@@ -473,7 +473,7 @@ async fn test_merge_with_user_closure_panics() {
     // Act: First emission should succeed
     push(person_alice(), &sender);
     let first = merged_stream.next().await.unwrap();
-    assert_eq!(first, 1);
+    assert_eq!(first, 1, "First emission should increment state to 1");
 
     // Act: Second emission triggers panic
     push(person_bob(), &sender);

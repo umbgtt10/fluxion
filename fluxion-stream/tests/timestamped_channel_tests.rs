@@ -22,13 +22,13 @@ async fn test_timestamped_channel_send_and_receive() {
 
     // Assert
     let msg1 = receiver.recv().await.unwrap();
-    assert_eq!(msg1.value, person_alice());
+    assert_eq!(msg1.value, person_alice(), "First message should be Alice");
 
     let msg2 = receiver.recv().await.unwrap();
-    assert_eq!(msg2.value, person_bob());
+    assert_eq!(msg2.value, person_bob(), "Second message should be Bob");
 
     // Verify relative ordering - msg2 should have higher sequence than msg1
-    assert!(msg2.sequence() > msg1.sequence());
+    assert!(msg2.sequence() > msg1.sequence(), "Second message should have higher sequence number");
 }
 
 #[tokio::test]
@@ -47,12 +47,12 @@ async fn test_timestamped_channel_ordering_across_channels() {
     let msg2 = receiver2.recv().await.unwrap();
     let msg3 = receiver1.recv().await.unwrap();
 
-    assert_eq!(msg1.value, person_alice());
-    assert_eq!(msg2.value, person_bob());
-    assert_eq!(msg3.value, person_charlie());
+    assert_eq!(msg1.value, person_alice(), "First message from channel 1 should be Alice");
+    assert_eq!(msg2.value, person_bob(), "Message from channel 2 should be Bob");
+    assert_eq!(msg3.value, person_charlie(), "Second message from channel 1 should be Charlie");
 
-    assert!(msg1.sequence() < msg2.sequence());
-    assert!(msg2.sequence() < msg3.sequence());
+    assert!(msg1.sequence() < msg2.sequence(), "Channel 2 message should have higher sequence than first channel 1 message");
+    assert!(msg2.sequence() < msg3.sequence(), "Second channel 1 message should have highest sequence");
 }
 
 #[tokio::test]
@@ -65,8 +65,8 @@ async fn test_timestamped_channel_send_after_receiver_dropped() {
 
     // Assert
     let result = sender.send(person_alice());
-    assert!(result.is_err());
-    assert_eq!(result.unwrap_err().0, person_alice());
+    assert!(result.is_err(), "Send should fail when receiver is dropped");
+    assert_eq!(result.unwrap_err().0, person_alice(), "Error should contain the unsent value");
 }
 
 #[tokio::test]
@@ -81,10 +81,10 @@ async fn test_timestamped_channel_receiver_closes_channel() {
     receiver.close();
 
     // Assert
-    assert_eq!(receiver.recv().await.unwrap().value, person_alice());
-    assert_eq!(receiver.recv().await.unwrap().value, person_bob());
-    assert!(receiver.recv().await.is_none());
-    assert!(sender.is_closed());
+    assert_eq!(receiver.recv().await.unwrap().value, person_alice(), "Should receive Alice from closed channel");
+    assert_eq!(receiver.recv().await.unwrap().value, person_bob(), "Should receive Bob from closed channel");
+    assert!(receiver.recv().await.is_none(), "Should receive None after draining closed channel");
+    assert!(sender.is_closed(), "Sender should be marked as closed");
 }
 
 #[tokio::test]
@@ -107,8 +107,8 @@ async fn test_timestamped_channel_try_recv_success() {
 
     // Assert
     let result = receiver.try_recv();
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().value, person_alice());
+    assert!(result.is_ok(), "try_recv should succeed when message is available");
+    assert_eq!(result.unwrap().value, person_alice(), "Should receive Alice");
 }
 
 #[tokio::test]
@@ -121,12 +121,12 @@ async fn test_timestamped_channel_try_recv_after_sender_dropped() {
     drop(sender);
 
     // Assert
-    assert_eq!(receiver.try_recv().unwrap().value, animal_cat());
+    assert_eq!(receiver.try_recv().unwrap().value, animal_cat(), "Should receive buffered Cat");
     let result = receiver.try_recv();
     assert!(matches!(
         result,
         Err(mpsc::error::TryRecvError::Disconnected)
-    ));
+    ), "Should return Disconnected error after sender is dropped");
 }
 
 #[tokio::test]
