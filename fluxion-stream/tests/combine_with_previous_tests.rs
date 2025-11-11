@@ -1,19 +1,17 @@
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
-use fluxion_stream::timestamped_channel::unbounded_channel;
+use fluxion_test_utils::TestChannel;
 use fluxion_test_utils::push;
 use fluxion_test_utils::test_data::{person, person_alice, person_bob, person_charlie};
 use futures::StreamExt;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_combine_with_previous_no_previous_value_emits() {
     // Arrange
-    let (sender, receiver) = unbounded_channel();
-    let stream = UnboundedReceiverStream::new(receiver.into_inner());
-    let mut stream = stream.combine_with_previous();
+    let channel = TestChannel::new();
+    let mut stream = channel.stream.combine_with_previous();
 
     // Act
-    push(person_alice(), &sender);
+    push(person_alice(), &channel.sender);
 
     // Assert
     let result = stream.next().await.unwrap();
@@ -26,12 +24,11 @@ async fn test_combine_with_previous_no_previous_value_emits() {
 #[tokio::test]
 async fn test_combine_with_previous_single_previous_value() {
     // Arrange
-    let (sender, receiver) = unbounded_channel();
-    let stream = UnboundedReceiverStream::new(receiver.into_inner());
-    let mut stream = stream.combine_with_previous();
+    let channel = TestChannel::new();
+    let mut stream = channel.stream.combine_with_previous();
 
     // Act
-    push(person_alice(), &sender);
+    push(person_alice(), &channel.sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
@@ -41,7 +38,7 @@ async fn test_combine_with_previous_single_previous_value() {
     );
 
     // Act
-    push(person_bob(), &sender);
+    push(person_bob(), &channel.sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
@@ -54,12 +51,11 @@ async fn test_combine_with_previous_single_previous_value() {
 #[tokio::test]
 async fn test_combine_with_previous_multiple_values() {
     // Arrange
-    let (sender, receiver) = unbounded_channel();
-    let stream = UnboundedReceiverStream::new(receiver.into_inner());
-    let mut stream = stream.combine_with_previous();
+    let channel = TestChannel::new();
+    let mut stream = channel.stream.combine_with_previous();
 
     // Act
-    push(person_alice(), &sender);
+    push(person_alice(), &channel.sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
@@ -69,7 +65,7 @@ async fn test_combine_with_previous_multiple_values() {
     );
 
     // Act
-    push(person_bob(), &sender);
+    push(person_bob(), &channel.sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
@@ -79,7 +75,7 @@ async fn test_combine_with_previous_multiple_values() {
     );
 
     // Act
-    push(person_charlie(), &sender);
+    push(person_charlie(), &channel.sender);
 
     // Assert
     let third_result = stream.next().await.unwrap();
@@ -92,12 +88,11 @@ async fn test_combine_with_previous_multiple_values() {
 #[tokio::test]
 async fn test_combine_with_previous_stream_ends() {
     // Arrange
-    let (sender, receiver) = unbounded_channel();
-    let stream = UnboundedReceiverStream::new(receiver.into_inner());
-    let mut stream = stream.combine_with_previous();
+    let channel = TestChannel::new();
+    let mut stream = channel.stream.combine_with_previous();
 
     // Act
-    push(person_alice(), &sender);
+    push(person_alice(), &channel.sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
@@ -107,7 +102,7 @@ async fn test_combine_with_previous_stream_ends() {
     );
 
     // Act
-    push(person_bob(), &sender);
+    push(person_bob(), &channel.sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
@@ -117,7 +112,7 @@ async fn test_combine_with_previous_stream_ends() {
     );
 
     // Act
-    drop(sender);
+    drop(channel.sender);
 
     // Assert
     let third_result = stream.next().await;
@@ -127,12 +122,11 @@ async fn test_combine_with_previous_stream_ends() {
 #[tokio::test]
 async fn test_combine_with_previous_for_types() {
     // Arrange
-    let (sender, receiver) = unbounded_channel();
-    let stream = UnboundedReceiverStream::new(receiver.into_inner());
-    let mut stream = stream.combine_with_previous();
+    let channel = TestChannel::new();
+    let mut stream = channel.stream.combine_with_previous();
 
     // Act
-    push(person_alice(), &sender);
+    push(person_alice(), &channel.sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
@@ -142,7 +136,7 @@ async fn test_combine_with_previous_for_types() {
     );
 
     // Act
-    push(person_bob(), &sender);
+    push(person_bob(), &channel.sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
@@ -155,20 +149,19 @@ async fn test_combine_with_previous_for_types() {
 #[tokio::test]
 async fn test_combine_with_previous_high_volume_sequential() {
     // Arrange
-    let (sender, receiver) = unbounded_channel();
-    let stream = UnboundedReceiverStream::new(receiver.into_inner());
-    let mut stream = stream.combine_with_previous();
+    let channel = TestChannel::new();
+    let mut stream = channel.stream.combine_with_previous();
 
     // Act: send a sequence of 200 items (mix of known fixtures cycling Alice,Bob,Charlie)
     for i in 0..200 {
         match i % 3 {
-            0 => push(person_alice(), &sender),
-            1 => push(person_bob(), &sender),
-            _ => push(person_charlie(), &sender),
+            0 => push(person_alice(), &channel.sender),
+            1 => push(person_bob(), &channel.sender),
+            _ => push(person_charlie(), &channel.sender),
         }
     }
     // Close input so the stream can finish
-    drop(sender);
+    drop(channel.sender);
 
     // Assert: first has no previous
     let first = stream.next().await.unwrap();
@@ -202,12 +195,11 @@ async fn test_combine_with_previous_high_volume_sequential() {
 #[tokio::test]
 async fn test_combine_with_previous_boundary_empty_string_zero_values() {
     // Arrange: Test with boundary values (empty strings, zero numeric values)
-    let (sender, receiver) = unbounded_channel();
-    let stream = UnboundedReceiverStream::new(receiver.into_inner());
-    let mut stream = stream.combine_with_previous();
+    let channel = TestChannel::new();
+    let mut stream = channel.stream.combine_with_previous();
 
     // Act: Send empty string with zero value
-    push(person("".to_string(), 0), &sender);
+    push(person("".to_string(), 0), &channel.sender);
 
     // Assert: First emission has no previous
     let result = stream.next().await.unwrap();
@@ -217,7 +209,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() {
     );
 
     // Act: Send another boundary value
-    push(person("".to_string(), 0), &sender);
+    push(person("".to_string(), 0), &channel.sender);
 
     // Assert: Second emission has previous with boundary value
     let result2 = stream.next().await.unwrap();
@@ -227,7 +219,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() {
     );
 
     // Act: Transition to normal value
-    push(person_alice(), &sender);
+    push(person_alice(), &channel.sender);
 
     // Assert: Should track boundary as previous
     let result3 = stream.next().await.unwrap();
@@ -245,12 +237,11 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
 
     for i in 0..num_concurrent {
         let handle = tokio::spawn(async move {
-            let (sender, receiver) = unbounded_channel();
-            let stream = UnboundedReceiverStream::new(receiver.into_inner());
-            let mut stream = stream.combine_with_previous();
+            let channel = TestChannel::new();
+            let mut stream = channel.stream.combine_with_previous();
 
             // Act: Send first value
-            push(person(format!("Person{}", i), i), &sender);
+            push(person(format!("Person{}", i), i), &channel.sender);
 
             // Assert: No previous
             let result = stream.next().await.unwrap();
@@ -260,7 +251,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
             );
 
             // Act: Send second value
-            push(person_alice(), &sender);
+            push(person_alice(), &channel.sender);
 
             // Assert: Has previous
             let result2 = stream.next().await.unwrap();
@@ -270,7 +261,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
             );
 
             // Act: Send third value
-            push(person_bob(), &sender);
+            push(person_bob(), &channel.sender);
 
             // Assert: Previous is Alice
             let result3 = stream.next().await.unwrap();
@@ -294,13 +285,12 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
 #[tokio::test]
 async fn test_combine_with_previous_single_value_stream() {
     // Arrange: Stream that emits only one value
-    let (sender, receiver) = unbounded_channel();
-    let stream = UnboundedReceiverStream::new(receiver.into_inner());
-    let mut stream = stream.combine_with_previous();
+    let channel = TestChannel::new();
+    let mut stream = channel.stream.combine_with_previous();
 
     // Act: Send single value and close
-    push(person_alice(), &sender);
-    drop(sender);
+    push(person_alice(), &channel.sender);
+    drop(channel.sender);
 
     // Assert: Should emit with no previous
     let result = stream.next().await.unwrap();

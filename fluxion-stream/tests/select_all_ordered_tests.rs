@@ -284,3 +284,60 @@ async fn test_select_all_ordered_large_volume() {
 
     assert_eq!(count, 1000, "Expected 1000 items");
 }
+
+#[tokio::test]
+async fn test_select_all_ordered_maximum_concurrent_streams() {
+    // Arrange: Test concurrent handling with many parallel select_all_ordered operations
+    let num_concurrent = 50;
+    let mut handles = Vec::new();
+
+    for _i in 0..num_concurrent {
+        let handle = tokio::spawn(async move {
+            let (stream1, stream2, stream3) = TestChannels::three();
+
+            // Act: Send values to all three streams
+            push(person_alice(), &stream1.sender);
+            push(animal_dog(), &stream2.sender);
+            push(plant_rose(), &stream3.sender);
+
+            // Create select_all_ordered
+            let streams = vec![stream1.stream, stream2.stream, stream3.stream];
+            let results = streams.select_all_ordered();
+            let mut results = Box::pin(results);
+
+            // Assert: Should receive all three items in timestamp order
+            let first = results.next().await.unwrap();
+            assert_eq!(first.value, person_alice());
+
+            let second = results.next().await.unwrap();
+            assert_eq!(second.value, animal_dog());
+
+            let third = results.next().await.unwrap();
+            assert_eq!(third.value, plant_rose());
+
+            // Act: Send more values
+            let (stream4, stream5) = TestChannels::two();
+            push(person_bob(), &stream4.sender);
+            push(person_charlie(), &stream5.sender);
+
+            let streams2 = vec![stream4.stream, stream5.stream];
+            let mut results2 = Box::pin(streams2.select_all_ordered());
+
+            // Assert: Should continue to work
+            let fourth = results2.next().await.unwrap();
+            assert_eq!(fourth.value, person_bob());
+
+            let fifth = results2.next().await.unwrap();
+            assert_eq!(fifth.value, person_charlie());
+        });
+
+        handles.push(handle);
+    }
+
+    // Wait for all concurrent streams to complete
+    for handle in handles {
+        handle
+            .await
+            .expect("Concurrent stream task should complete successfully");
+    }
+}
