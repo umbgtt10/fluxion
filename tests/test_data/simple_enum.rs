@@ -64,7 +64,6 @@ pub fn cat() -> SimpleEnum {
     SimpleEnum::Animal(Animal::new("Cat".to_string(), 4))
 }
 
-// Helper functions for creating dynamic instances
 pub fn animal(name: String, legs: u32) -> SimpleEnum {
     SimpleEnum::Animal(Animal::new(name, legs))
 }

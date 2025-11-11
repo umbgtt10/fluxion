@@ -1,99 +1,118 @@
-use futures::StreamExt;
 use fluxion::combine_with_previous::CombineWithPreviousExt;
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use fluxion::sequenced_channel::unbounded_channel;
+use futures::StreamExt;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 mod test_data;
-use crate::test_data::person::Person;
-
-const BUFFER_SIZE: usize = 10;
+use crate::test_data::simple_enum::{alice, bob, charlie, send_alice, send_bob, send_charlie};
 
 #[tokio::test]
 async fn test_combine_with_previous_no_previous_value_emits() {
     // Arrange
-    let (sender, receiver) = mpsc::channel(BUFFER_SIZE);
-    let stream = ReceiverStream::new(receiver);
+    let (sender, receiver) = unbounded_channel();
+    let stream = UnboundedReceiverStream::new(receiver.into_inner());
     let mut stream = stream.combine_with_previous();
 
     // Act
-    sender.send(1).await.unwrap();
+    send_alice(&sender);
 
     // Assert
     let result = stream.next().await.unwrap();
-    assert_eq!(result, (None, 1));
+    assert_eq!((result.0.map(|s| s.value), result.1.value), (None, alice()));
 }
 
 #[tokio::test]
 async fn test_combine_with_previous_single_previous_value() {
     // Arrange
-    let (sender, receiver) = mpsc::channel(BUFFER_SIZE);
-    let stream = ReceiverStream::new(receiver);
+    let (sender, receiver) = unbounded_channel();
+    let stream = UnboundedReceiverStream::new(receiver.into_inner());
     let mut stream = stream.combine_with_previous();
 
     // Act
-    sender.send(1).await.unwrap();
+    send_alice(&sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
-    assert_eq!(first_result, (None, 1));
+    assert_eq!(
+        (first_result.0.map(|s| s.value), first_result.1.value),
+        (None, alice())
+    );
 
     // Act
-    sender.send(2).await.unwrap();
+    send_bob(&sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
-    assert_eq!(second_result, (Some(1), 2));
+    assert_eq!(
+        (second_result.0.map(|s| s.value), second_result.1.value),
+        (Some(alice()), bob())
+    );
 }
 
 #[tokio::test]
 async fn test_combine_with_previous_multiple_values() {
     // Arrange
-    let (sender, receiver) = mpsc::channel(BUFFER_SIZE);
-    let stream = ReceiverStream::new(receiver);
+    let (sender, receiver) = unbounded_channel();
+    let stream = UnboundedReceiverStream::new(receiver.into_inner());
     let mut stream = stream.combine_with_previous();
 
     // Act
-    sender.send(1).await.unwrap();
+    send_alice(&sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
-    assert_eq!(first_result, (None, 1));
+    assert_eq!(
+        (first_result.0.map(|s| s.value), first_result.1.value),
+        (None, alice())
+    );
 
     // Act
-    sender.send(2).await.unwrap();
+    send_bob(&sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
-    assert_eq!(second_result, (Some(1), 2));
+    assert_eq!(
+        (second_result.0.map(|s| s.value), second_result.1.value),
+        (Some(alice()), bob())
+    );
 
     // Act
-    sender.send(3).await.unwrap();
+    send_charlie(&sender);
 
     // Assert
     let third_result = stream.next().await.unwrap();
-    assert_eq!(third_result, (Some(2), 3));
+    assert_eq!(
+        (third_result.0.map(|s| s.value), third_result.1.value),
+        (Some(bob()), charlie())
+    );
 }
 
 #[tokio::test]
 async fn test_combine_with_previous_stream_ends() {
     // Arrange
-    let (sender, receiver) = mpsc::channel(BUFFER_SIZE);
-    let stream = ReceiverStream::new(receiver);
+    let (sender, receiver) = unbounded_channel();
+    let stream = UnboundedReceiverStream::new(receiver.into_inner());
     let mut stream = stream.combine_with_previous();
 
     // Act
-    sender.send(1).await.unwrap();
+    send_alice(&sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
-    assert_eq!(first_result, (None, 1));
+    assert_eq!(
+        (first_result.0.map(|s| s.value), first_result.1.value),
+        (None, alice())
+    );
 
     // Act
-    sender.send(2).await.unwrap();
+    send_bob(&sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
-    assert_eq!(second_result, (Some(1), 2));
+    assert_eq!(
+        (second_result.0.map(|s| s.value), second_result.1.value),
+        (Some(alice()), bob())
+    );
 
     // Act
     drop(sender);
@@ -106,54 +125,27 @@ async fn test_combine_with_previous_stream_ends() {
 #[tokio::test]
 async fn test_combine_with_previous_for_types() {
     // Arrange
-    let (sender, receiver) = mpsc::channel(BUFFER_SIZE);
-    let stream = ReceiverStream::new(receiver);
+    let (sender, receiver) = unbounded_channel();
+    let stream = UnboundedReceiverStream::new(receiver.into_inner());
     let mut stream = stream.combine_with_previous();
 
     // Act
-    sender
-        .send(Person {
-            name: "Alice".to_string(),
-            age: 30,
-        })
-        .await
-        .unwrap();
+    send_alice(&sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
-        first_result,
-        (
-            None,
-            Person {
-                name: "Alice".to_string(),
-                age: 30
-            }
-        )
+        (first_result.0.map(|s| s.value), first_result.1.value),
+        (None, alice())
     );
 
     // Act
-    sender
-        .send(Person {
-            name: "Bob".to_string(),
-            age: 35,
-        })
-        .await
-        .unwrap();
+    send_bob(&sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
-        second_result,
-        (
-            Some(Person {
-                name: "Alice".to_string(),
-                age: 30
-            }),
-            Person {
-                name: "Bob".to_string(),
-                age: 35
-            }
-        )
+        (second_result.0.map(|s| s.value), second_result.1.value),
+        (Some(alice()), bob())
     );
 }

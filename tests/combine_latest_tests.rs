@@ -111,9 +111,8 @@ async fn combine_latest_template_test(order1: Order, order2: Order, order3: Orde
 
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
-
-    // Result is always in enum variant order (Person, Animal, Plant), regardless of send order
     let expected = vec![alice(), dog(), rose()];
+
     assert_eq!(actual, expected);
 }
 
@@ -147,7 +146,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     // Act
     send_bob(&person_sender);
 
-    // Assert - Position stays the same (Person is still in position 0)
+    // Assert
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![bob(), dog(), rose()];
@@ -156,7 +155,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     // Act
     send_spider(&animal_sender);
 
-    // Assert - Position stays the same (Animal is still in position 1)
+    // Assert
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![bob(), spider(), rose()];
@@ -165,7 +164,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     // Act
     send_sunflower(&plant_sender);
 
-    // Assert - Position stays the same (Plant is still in position 2)
+    // Assert
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![bob(), spider(), sunflower()];
@@ -197,14 +196,12 @@ async fn combine_latest_stream_order_test(stream1: Order, stream2: Order, stream
     let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
     let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
 
-    // Create streams in the specified order
     let mut streams = vec![
         (Order::Person, person_stream),
         (Order::Animal, animal_stream),
         (Order::Plant, plant_stream),
     ];
 
-    // Sort streams according to the specified order
     let ordered_streams: Vec<_> = vec![&stream1, &stream2, &stream3]
         .into_iter()
         .map(|order| {
@@ -236,11 +233,10 @@ async fn combine_latest_stream_order_test(stream1: Order, stream2: Order, stream
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
-
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
-
     let expected = vec![alice(), dog(), rose()];
+
     assert_eq!(actual, expected);
 }
 
@@ -269,7 +265,7 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
     // Act
     send_charlie(&stream1_sender);
 
-    // Assert - Position stays the same (stream1 is still in position 0)
+    // Assert
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![charlie(), bob()];
@@ -278,7 +274,7 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
     // Act
     send_diane(&stream2_sender);
 
-    // Assert - Position stays the same (stream2 is still in position 1)
+    // Assert
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![charlie(), diane()];
