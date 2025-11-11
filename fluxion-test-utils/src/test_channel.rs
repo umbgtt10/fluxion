@@ -18,6 +18,19 @@ impl<T> TestChannel<T> {
         Self { sender, stream }
     }
 
+    /// Creates a new empty test channel (sender is immediately closed).
+    pub fn empty() -> Self {
+        let (sender, receiver) = timestamped_channel::unbounded_channel();
+        let stream = UnboundedReceiverStream::new(receiver.into_inner());
+        drop(sender); // Close sender immediately to make stream empty
+        // We still need a sender in the struct, so create a dummy one
+        let (dummy_sender, _) = timestamped_channel::unbounded_channel();
+        Self {
+            sender: dummy_sender,
+            stream,
+        }
+    }
+
     /// Send a value through the channel.
     ///
     /// # Errors

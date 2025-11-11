@@ -15,8 +15,10 @@ use futures::{StreamExt, stream};
 #[tokio::test]
 async fn test_merge_with_empty_streams() {
     // Arrange
-    let empty_stream1 = stream::empty::<Timestamped<i32>>();
-    let empty_stream2 = stream::empty::<Timestamped<i32>>();
+    let empty_channel1 = fluxion_test_utils::TestChannel::<i32>::empty();
+    let empty_channel2 = fluxion_test_utils::TestChannel::<i32>::empty();
+    let empty_stream1 = empty_channel1.stream;
+    let empty_stream2 = empty_channel2.stream;
 
     // Act
     let result_stream = MergedStream::seed(0)
