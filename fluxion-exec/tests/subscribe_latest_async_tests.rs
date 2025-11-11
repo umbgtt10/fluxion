@@ -14,7 +14,7 @@ use tokio_stream::{StreamExt as _, wrappers::UnboundedReceiverStream};
 use tokio_util::sync::CancellationToken;
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_error_no_cancellation_token() {
+async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token() {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -31,11 +31,7 @@ async fn test_subscribe_latest_async_no_error_no_cancellation_token() {
             let collected_items = collected_items.clone();
             let notify_tx = notify_tx.clone();
             async move {
-                {
-                    let mut items = collected_items.lock().await;
-                    items.push(item);
-                    sleep(Duration::from_millis(50)).await;
-                }
+                collected_items.lock().await.push(item);
                 let _ = notify_tx.send(());
                 Ok(())
             }
@@ -46,7 +42,7 @@ async fn test_subscribe_latest_async_no_error_no_cancellation_token() {
         eprintln!("Error occurred: {:?}", err);
     };
 
-    let task_handle = tokio::spawn({
+    tokio::spawn({
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
@@ -54,48 +50,161 @@ async fn test_subscribe_latest_async_no_error_no_cancellation_token() {
         }
     });
 
-    // Act - emit items with small delays to ensure proper "latest" behavior
+    // Act - emit items one at a time, waiting for each to be processed
     push(person_alice(), &sender);
-    sleep(Duration::from_millis(5)).await; // Small delay to let Alice start processing
+    notify_rx.recv().await.expect("Alice processed");
+
     push(person_bob(), &sender);
+    notify_rx.recv().await.expect("Bob processed");
+
     push(person_charlie(), &sender);
+    notify_rx.recv().await.expect("Charlie processed");
+
     push(person_diane(), &sender);
+    notify_rx.recv().await.expect("Diane processed");
+
     push(person_dave(), &sender);
+    notify_rx.recv().await.expect("Dave processed");
+
     push(animal_dog(), &sender);
+    notify_rx.recv().await.expect("Dog processed");
+
     push(animal_cat(), &sender);
+    notify_rx.recv().await.expect("Cat processed");
+
     push(animal_ant(), &sender);
+    notify_rx.recv().await.expect("Ant processed");
+
     push(animal_spider(), &sender);
+    notify_rx.recv().await.expect("Spider processed");
+
     push(plant_rose(), &sender);
-
-    // Wait for first item to complete
-    notify_rx.recv().await.unwrap();
-
-    // Wait for additional processing with timeout (latest behavior may skip items)
-    tokio::select! {
-        _ = notify_rx.recv() => {},
-        _ = sleep(Duration::from_millis(150)) => {},
-    }
+    notify_rx.recv().await.expect("Rose processed");
 
     // Assert
     let processed = collected_items.lock().await;
-    assert!(
-        !processed.is_empty(),
-        "Expected some items to be processed, but found none"
+    assert_eq!(
+        processed.len(),
+        10,
+        "All 10 items should be processed when each waits for previous to complete"
     );
-    // Due to "latest" behavior with rapid emissions, we expect:
-    // - First item (alice) should be processed (starts immediately)
-    // - Some intermediate items will be skipped
-    // - Last item (rose) should be processed
-    assert!(
-        processed.contains(&person_alice()),
-        "First item should be processed"
-    );
-    // Note: Due to timing, the last item might still be processing or skipped
-    // so we just verify at least the first item was processed
+    assert_eq!(processed[0], person_alice());
+    assert_eq!(processed[1], person_bob());
+    assert_eq!(processed[2], person_charlie());
+    assert_eq!(processed[3], person_diane());
+    assert_eq!(processed[4], person_dave());
+    assert_eq!(processed[5], animal_dog());
+    assert_eq!(processed[6], animal_cat());
+    assert_eq!(processed[7], animal_ant());
+    assert_eq!(processed[8], animal_spider());
+    assert_eq!(processed[9], plant_rose());
+}
 
-    // Cleanup
-    drop(sender);
-    task_handle.await.unwrap();
+#[tokio::test]
+async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation_token() {
+    // Arrange
+    let collected_items = Arc::new(Mutex::new(Vec::new()));
+    let collected_items_clone = collected_items.clone();
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+
+    // Barrier channel: only the FIRST processed item will wait on this
+    let (gate_tx, gate_rx) = mpsc::unbounded_channel::<()>();
+    let gate_rx_shared = Arc::new(Mutex::new(Some(gate_rx)));
+
+    // Start channel: first processing signals when it starts (to avoid races)
+    let (start_tx, mut start_rx) = mpsc::unbounded_channel::<()>();
+    let start_tx_shared = Arc::new(Mutex::new(Some(start_tx)));
+
+    let (sender, receiver) = unbounded_channel();
+    let stream =
+        UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
+
+    let func = {
+        let collected_items = collected_items_clone.clone();
+        let notify_tx = notify_tx.clone();
+        let gate_rx_shared = gate_rx_shared.clone();
+        let start_tx_shared = start_tx_shared.clone();
+        move |item, _| {
+            let collected_items = collected_items.clone();
+            let notify_tx = notify_tx.clone();
+            let gate_rx_shared = gate_rx_shared.clone();
+            let start_tx_shared = start_tx_shared.clone();
+            async move {
+                // Signal that the first processing has started (only once)
+                if let Some(tx) = start_tx_shared.lock().await.take() {
+                    let _ = tx.send(());
+                }
+                // Only the first processing waits for the gate signal
+                if let Some(mut rx) = gate_rx_shared.lock().await.take() {
+                    // Wait for external signal to unblock the first item
+                    let _ = rx.recv().await;
+                }
+
+                collected_items.lock().await.push(item);
+                let _ = notify_tx.send(());
+                Ok(())
+            }
+        }
+    };
+
+    let error_callback = |err: ()| {
+        eprintln!("Error occurred: {:?}", err);
+    };
+
+    tokio::spawn({
+        async move {
+            stream
+                .subscribe_latest_async(func, Some(error_callback), None)
+                .await;
+        }
+    });
+
+    // Act - push first item, wait until processing starts and is blocked on gate
+    push(person_alice(), &sender); // will block on gate
+    start_rx.recv().await.expect("first processing started");
+
+    // While the first item is blocked, send 4 more items rapidly
+    push(person_bob(), &sender);
+    push(person_charlie(), &sender);
+    push(person_diane(), &sender);
+    push(person_dave(), &sender); // latest
+
+    // Unblock the first processing, allowing it to complete
+    let _ = gate_tx.send(());
+
+    // Wait for exactly two processed notifications (Alice, then latest Dave)
+    notify_rx
+        .recv()
+        .await
+        .expect("Alice should be processed first");
+    notify_rx
+        .recv()
+        .await
+        .expect("Latest (Dave) should be processed next");
+
+    // Assert - exactly 2 processed, 3 skipped (Bob, Charlie, Diane)
+    let processed = collected_items.lock().await;
+    assert_eq!(
+        processed.len(),
+        2,
+        "Expected exactly 2 processed items with 3 skipped"
+    );
+    assert_eq!(
+        processed[0],
+        person_alice(),
+        "First processed should be Alice"
+    );
+    assert_eq!(
+        processed[1],
+        person_dave(),
+        "Second processed should be latest (Dave)"
+    );
+    assert!(
+        !processed.contains(&person_bob())
+            && !processed.contains(&person_charlie())
+            && !processed.contains(&person_diane()),
+        "Bob, Charlie, and Diane should be skipped"
+    );
 }
 
 #[tokio::test]
