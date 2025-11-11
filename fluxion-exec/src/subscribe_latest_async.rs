@@ -64,7 +64,7 @@ where
                         loop {
                             // Get the latest item
                             let item = state.get_item().await;
-                            
+
                             // Process it
                             if let Err(error) = on_next_func(item.clone(), cancellation_token.clone()).await {
                                 if let Some(on_error_callback) = on_error_callback.clone() {
@@ -84,7 +84,7 @@ where
                             }
                             // Loop to process the next item
                         }
-                        
+
                         // Notify that this processing task has completed
                         state.notify_task_complete();
                     });
@@ -92,7 +92,7 @@ where
             }
         })
         .await;
-        
+
         // Wait for any remaining processing tasks to complete
         state_for_wait.wait_for_processing_complete().await;
     }
@@ -115,7 +115,7 @@ impl<T> Context<T> {
     pub async fn enqueue_and_try_start_processing(&self, value: T) -> bool {
         let mut state = self.state.lock().await;
         state.item = Some(value);
-        
+
         if !state.is_processing {
             state.is_processing = true;
             true
@@ -136,7 +136,7 @@ impl<T> Context<T> {
     /// Called when processing finishes. Returns true if there's another item to process.
     pub async fn finish_processing_and_check_for_next(&self) -> bool {
         let mut state = self.state.lock().await;
-        
+
         if state.item.is_some() {
             // New item arrived during processing, continue
             true
@@ -146,12 +146,12 @@ impl<T> Context<T> {
             false
         }
     }
-    
+
     /// Notify that a processing task has completed
     pub fn notify_task_complete(&self) {
         self.processing_complete.notify_waiters();
     }
-    
+
     /// Wait for all processing to complete
     pub async fn wait_for_processing_complete(&self) {
         loop {
