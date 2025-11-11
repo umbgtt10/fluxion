@@ -1,5 +1,5 @@
 use fluxion_stream::timestamped_channel::unbounded_channel;
-use fluxion_test_utils::test_data::{person_alice, person_bob, TestData};
+use fluxion_test_utils::test_data::{TestData, person_alice, person_bob};
 use tokio::sync::mpsc;
 
 #[tokio::test]

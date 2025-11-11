@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static GLOBAL_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 /// A wrapper that adds automatic timestamping to any value for temporal ordering.
-/// 
+///
 /// Uses a monotonically increasing sequence counter (logical timestamp) to establish
 /// a total ordering of events. The timestamp is assigned when the value is created.
 #[derive(Debug, Clone)]

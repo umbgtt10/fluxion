@@ -1,6 +1,6 @@
 use fluxion_stream::{
-    combine_latest::CombinedState, timestamped_channel::unbounded_channel,
-    take_latest_when::TakeLatestWhenExt,
+    combine_latest::CombinedState, take_latest_when::TakeLatestWhenExt,
+    timestamped_channel::unbounded_channel,
 };
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
