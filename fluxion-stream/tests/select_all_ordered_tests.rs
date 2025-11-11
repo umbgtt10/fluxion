@@ -78,10 +78,7 @@ async fn test_select_all_ordered_empty_streams() {
     // Assert
     let mut results = Box::pin(results);
     let next_item = results.next().await;
-    assert!(
-        next_item.is_none(),
-        "Expected no items from empty streams"
-    );
+    assert!(next_item.is_none(), "Expected no items from empty streams");
 }
 
 #[tokio::test]

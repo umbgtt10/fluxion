@@ -30,7 +30,7 @@ Shared test infrastructure and utilities.
 
 ## Status
 
-✅ All 47 tests passing
+✅ All 60 tests passing
 ✅ Workspace restructured for modularity
 🚧 POC still ongoing - not yet published to crates.io
 
