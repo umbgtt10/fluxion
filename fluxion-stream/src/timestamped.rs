@@ -49,6 +49,16 @@ impl<T> Timestamped<T> {
     pub fn sequence(&self) -> u64 {
         self.sequence
     }
+
+    /// Creates a new Timestamped value with an explicitly provided sequence number.
+    /// This is useful for preserving temporal ordering when transforming values.
+    ///
+    /// # Safety
+    /// This bypasses the normal sequence generation and should only be used
+    /// when you need to preserve ordering from an existing Timestamped value.
+    pub(crate) fn with_sequence(value: T, sequence: u64) -> Self {
+        Self { value, sequence }
+    }
 }
 
 impl<T: PartialEq> PartialOrd for Timestamped<T> {
@@ -80,5 +90,13 @@ impl<T> std::ops::DerefMut for Timestamped<T> {
 impl<T: std::fmt::Display> std::fmt::Display for Timestamped<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.value)
+    }
+}
+
+// Special conversion for Empty streams - this will never actually be called
+// since Empty streams never yield items, but it's needed for type checking
+impl<T> From<()> for Timestamped<T> {
+    fn from(_: ()) -> Self {
+        unreachable!("Empty streams never yield items, so this conversion should never be called")
     }
 }

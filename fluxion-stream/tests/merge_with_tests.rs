@@ -1,4 +1,7 @@
-use fluxion_stream::merge_with::MergedStream;
+use fluxion_stream::{
+    merge_with::MergedStream,
+    timestamped::Timestamped,
+};
 use fluxion_test_utils::{
     TestChannels,
     animal::Animal,
@@ -15,8 +18,8 @@ use futures::{StreamExt, stream};
 #[tokio::test]
 async fn test_merge_with_empty_streams() {
     // Arrange
-    let empty_stream1 = stream::empty::<i32>();
-    let empty_stream2 = stream::empty::<i32>();
+    let empty_stream1 = stream::empty::<Timestamped<i32>>();
+    let empty_stream2 = stream::empty::<Timestamped<i32>>();
 
     // Act
     let result_stream = MergedStream::seed(0)
@@ -30,7 +33,7 @@ async fn test_merge_with_empty_streams() {
         });
 
     // Assert
-    let result: Vec<i32> = result_stream.collect().await;
+    let result: Vec<Timestamped<i32>> = result_stream.collect().await;
     assert_eq!(result, vec![], "Empty streams should produce empty result");
 }
 
@@ -40,8 +43,9 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
     let (non_empty, empty) = TestChannels::two::<TestData>();
     drop(empty.sender);
 
-    let non_empty_stream = non_empty.stream.map(|ts| ts.value);
-    let empty_stream = empty.stream.map(|ts| ts.value);
+    // Keep the Timestamped wrapper for deterministic ordering
+    let non_empty_stream = non_empty.stream;
+    let empty_stream = empty.stream;
 
     // Use a simple counter state to verify emissions from the non-empty stream
     let merged_stream = MergedStream::seed(0usize)
@@ -61,29 +65,41 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state, 1, "First emission should increment counter to 1");
+    assert_eq!(
+        state.into_inner(),
+        1,
+        "First emission should increment counter to 1"
+    );
 
     // Act
     push(person_bob(), &non_empty.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state, 2, "Second emission should increment counter to 2");
+    assert_eq!(
+        state.into_inner(),
+        2,
+        "Second emission should increment counter to 2"
+    );
 
     // Act
     push(person_charlie(), &non_empty.sender);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state, 3, "Third emission should increment counter to 3");
+    assert_eq!(
+        state.into_inner(),
+        3,
+        "Third emission should increment counter to 3"
+    );
 }
 
 #[tokio::test]
 async fn test_merge_with_similar_streams_emits() {
     // Arrange
     let (channel1, channel2) = TestChannels::two::<TestData>();
-    let stream1 = channel1.stream.map(|ts| ts.value);
-    let stream2 = channel2.stream.map(|ts| ts.value);
+    let stream1 = channel1.stream;
+    let stream2 = channel2.stream;
 
     let merged_stream = MergedStream::seed(Repository::new())
         .merge_with(
@@ -155,8 +171,8 @@ async fn test_merge_with_parallel_processing() {
     // Arrange
     let (channel1, channel2) = TestChannels::two::<TestData>();
 
-    let stream1 = channel1.stream.map(|ts| ts.value);
-    let stream2 = channel2.stream.map(|ts| ts.value);
+    let stream1 = channel1.stream;
+    let stream2 = channel2.stream;
 
     let result_stream = MergedStream::seed(Repository::new())
         .merge_with(
@@ -191,8 +207,9 @@ async fn test_merge_with_parallel_processing() {
     });
 
     // Assert
-    let result: Vec<Repository> = result_stream.collect().await;
-    let last = result.last().expect("at least one state");
+    let result: Vec<Timestamped<Repository>> =
+        result_stream.collect().await;
+    let last = result.last().expect("at least one state").get();
     assert_eq!(
         last.person_name,
         Some("Charlie".to_string()),
@@ -208,8 +225,8 @@ async fn test_merge_with_parallel_processing() {
 #[tokio::test]
 async fn test_merge_with_large_streams_emits() {
     // Arrange
-    let large_stream1 = stream::iter(0..10000);
-    let large_stream2 = stream::iter(10000..20000);
+    let large_stream1 = stream::iter((0..10000).map(Timestamped::new));
+    let large_stream2 = stream::iter((10000..20000).map(Timestamped::new));
 
     // Act
     let result_stream = MergedStream::seed(0)
@@ -223,14 +240,14 @@ async fn test_merge_with_large_streams_emits() {
         });
 
     // Assert
-    let result: Vec<i32> = result_stream.collect().await;
+    let result: Vec<Timestamped<i32>> = result_stream.collect().await;
     assert_eq!(
         result.len(),
         20000,
         "Should have processed all 20000 emissions"
     );
     assert_eq!(
-        result.last(),
+        result.last().map(|ts| ts.get()),
         Some(&199990000),
         "Final accumulated sum should be correct"
     );
@@ -241,9 +258,9 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     // Arrange
     let (animal, person, plant) = TestChannels::three::<TestData>();
 
-    let animal_stream = animal.stream.map(|ts| ts.value);
-    let person_stream = person.stream.map(|ts| ts.value);
-    let plant_stream = plant.stream.map(|ts| ts.value);
+    let animal_stream = animal.stream;
+    let person_stream = person.stream;
+    let plant_stream = plant.stream;
 
     let merged_stream = MergedStream::seed(Repository::new())
         .merge_with(animal_stream, |item: TestData, state| match item {
@@ -270,7 +287,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        state,
+        *state.get(),
         Repository {
             last_animal: Some(Animal::new("Dog".to_string(), 4)),
             last_person: None,
@@ -290,7 +307,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        state,
+        *state.get(),
         Repository {
             last_animal: Some(Animal::new("Bird".to_string(), 2)),
             last_person: None,
@@ -310,7 +327,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        state,
+        *state.get(),
         Repository {
             last_animal: Some(Animal::new("Bird".to_string(), 2)),
             last_person: Some(Person::new("Alice".to_string(), 25)),
@@ -330,7 +347,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        state,
+        *state.get(),
         Repository {
             last_animal: Some(Animal::new("Bird".to_string(), 2)),
             last_person: Some(Person::new("Bob".to_string(), 30)),
@@ -350,7 +367,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        state,
+        *state.get(),
         Repository {
             last_animal: Some(Animal::new("Bird".to_string(), 2)),
             last_person: Some(Person::new("Bob".to_string(), 30)),
@@ -370,7 +387,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        state,
+        *state.get(),
         Repository {
             last_animal: Some(Animal::new("Bird".to_string(), 2)),
             last_person: Some(Person::new("Bob".to_string(), 30)),
@@ -385,7 +402,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     );
 }
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct Repository {
     pub last_animal: Option<Animal>,
     pub last_person: Option<Person>,
@@ -483,7 +500,7 @@ impl Repository {
 async fn test_merge_with_user_closure_panics() {
     // Arrange
     let channel = fluxion_test_utils::TestChannel::<TestData>::new();
-    let stream = channel.stream.map(|ts| ts.value);
+    let stream = channel.stream;
 
     // Create a merge_with stream where the closure panics on the second emission
     let merged_stream =
@@ -500,7 +517,11 @@ async fn test_merge_with_user_closure_panics() {
     // Act: First emission should succeed
     push(person_alice(), &channel.sender);
     let first = merged_stream.next().await.unwrap();
-    assert_eq!(first, 1, "First emission should increment state to 1");
+    assert_eq!(
+        first.into_inner(),
+        1,
+        "First emission should increment state to 1"
+    );
 
     // Act: Second emission triggers panic
     push(person_bob(), &channel.sender);
