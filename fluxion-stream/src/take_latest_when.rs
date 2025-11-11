@@ -5,12 +5,12 @@ use std::sync::{Arc, Mutex};
 
 use crate::combine_latest::CombinedState;
 use crate::select_all_ordered::SelectAllExt;
-use crate::sequenced::Sequenced;
+use crate::timestamped::Timestamped;
 
-pub trait TakeLatestWhenExt<T, S>: Stream<Item = Sequenced<T>> + Sized
+pub trait TakeLatestWhenExt<T, S>: Stream<Item = Timestamped<T>> + Sized
 where
     T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    S: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
+    S: Stream<Item = Timestamped<T>> + Send + Sync + 'static,
 {
     fn take_latest_when(
         self,
@@ -51,11 +51,11 @@ where
     }
 }
 
-type IndexedStream<T> = Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send>>;
+type IndexedStream<T> = Pin<Box<dyn Stream<Item = (Timestamped<T>, usize)> + Send>>;
 
 impl<T, S> TakeLatestWhenExt<T, S> for S
 where
-    S: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
+    S: Stream<Item = Timestamped<T>> + Send + Sync + 'static,
     T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     fn take_latest_when(
@@ -73,15 +73,15 @@ where
 
         streams
             .select_all_ordered()
-            .filter_map(move |(sequenced_value, index)| {
+            .filter_map(move |(timestamped_value, index)| {
                 let state = Arc::clone(&state);
                 let filter = Arc::clone(&filter);
                 async move {
                     let mut state = state.lock().unwrap();
 
                     match index {
-                        0 => state.source_value = Some(sequenced_value.value.clone()),
-                        1 => state.filter_value = Some(sequenced_value.value.clone()),
+                        0 => state.source_value = Some(timestamped_value.value.clone()),
+                        1 => state.filter_value = Some(timestamped_value.value.clone()),
                         _ => unreachable!(),
                     }
 

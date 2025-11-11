@@ -1,6 +1,6 @@
 use fluxion_stream::combine_latest::CombinedState;
-use fluxion_stream::sequenced::Sequenced;
-use fluxion_stream::sequenced_channel::unbounded_channel;
+use fluxion_stream::timestamped::Timestamped;
+use fluxion_stream::timestamped_channel::unbounded_channel;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::push;
@@ -10,8 +10,8 @@ use fluxion_test_utils::test_data::{
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-static FILTER: fn(&CombinedState<Sequenced<TestData>>) -> bool =
-    |_: &CombinedState<Sequenced<TestData>>| true;
+static FILTER: fn(&CombinedState<Timestamped<TestData>>) -> bool =
+    |_: &CombinedState<Timestamped<TestData>>| true;
 
 #[tokio::test]
 async fn test_with_latest_from_complete() {

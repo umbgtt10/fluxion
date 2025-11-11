@@ -1,20 +1,20 @@
-//! Sequenced channels that automatically wrap values with temporal ordering.
+//! Timestamped channels that automatically wrap values with temporal ordering.
 //!
 //! This module provides channel implementations that transparently add sequence numbers
-//! to messages as they're sent, enabling temporal ordering when merging streams.
+//! (logical timestamps) to messages as they're sent, enabling temporal ordering when merging streams.
 
-use crate::sequenced::Sequenced;
+use crate::timestamped::Timestamped;
 use tokio::sync::mpsc::{
     self, UnboundedReceiver as TokioUnboundedReceiver, UnboundedSender as TokioUnboundedSender,
 };
 
-/// An unbounded sender that automatically wraps values with sequence numbers.
+/// An unbounded sender that automatically wraps values with timestamps.
 ///
 /// Users send regular values of type `T`, but they're automatically wrapped
-/// in `Sequenced<T>` with a sequence number assigned at send time.
+/// in `Timestamped<T>` with a sequence number assigned at send time.
 #[derive(Debug)]
 pub struct UnboundedSender<T> {
-    inner: TokioUnboundedSender<Sequenced<T>>,
+    inner: TokioUnboundedSender<Timestamped<T>>,
 }
 
 impl<T> Clone for UnboundedSender<T> {
@@ -26,14 +26,14 @@ impl<T> Clone for UnboundedSender<T> {
 }
 
 impl<T> UnboundedSender<T> {
-    /// Sends a value, automatically wrapping it with a sequence number.
+    /// Sends a value, automatically wrapping it with a timestamp.
     ///
     /// # Errors
     ///
     /// Returns an error if the receiver has been dropped.
     pub fn send(&self, value: T) -> Result<(), mpsc::error::SendError<T>> {
         self.inner
-            .send(Sequenced::new(value))
+            .send(Timestamped::new(value))
             .map_err(|e| mpsc::error::SendError(e.0.value))
     }
 
@@ -53,23 +53,23 @@ impl<T> UnboundedSender<T> {
     }
 }
 
-/// An unbounded receiver that receives sequenced values.
+/// An unbounded receiver that receives timestamped values.
 ///
-/// Receives values wrapped in `Sequenced<T>` that were automatically
-/// sequenced by the sender.
+/// Receives values wrapped in `Timestamped<T>` that were automatically
+/// timestamped by the sender.
 #[derive(Debug)]
 pub struct UnboundedReceiver<T> {
-    inner: TokioUnboundedReceiver<Sequenced<T>>,
+    inner: TokioUnboundedReceiver<Timestamped<T>>,
 }
 
 impl<T> UnboundedReceiver<T> {
-    /// Receives the next sequenced value.
-    pub async fn recv(&mut self) -> Option<Sequenced<T>> {
+    /// Receives the next timestamped value.
+    pub async fn recv(&mut self) -> Option<Timestamped<T>> {
         self.inner.recv().await
     }
 
     /// Attempts to receive without blocking.
-    pub fn try_recv(&mut self) -> Result<Sequenced<T>, mpsc::error::TryRecvError> {
+    pub fn try_recv(&mut self) -> Result<Timestamped<T>, mpsc::error::TryRecvError> {
         self.inner.try_recv()
     }
 
@@ -77,7 +77,7 @@ impl<T> UnboundedReceiver<T> {
     pub fn poll_recv(
         &mut self,
         cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Sequenced<T>>> {
+    ) -> std::task::Poll<Option<Timestamped<T>>> {
         self.inner.poll_recv(cx)
     }
 
@@ -89,20 +89,20 @@ impl<T> UnboundedReceiver<T> {
     /// Converts this receiver into the underlying tokio receiver.
     ///
     /// This is useful for creating streams with `tokio_stream::wrappers::UnboundedReceiverStream`.
-    pub fn into_inner(self) -> TokioUnboundedReceiver<Sequenced<T>> {
+    pub fn into_inner(self) -> TokioUnboundedReceiver<Timestamped<T>> {
         self.inner
     }
 }
 
-/// Creates an unbounded sequenced channel.
+/// Creates an unbounded timestamped channel.
 ///
-/// The sender automatically wraps values with sequence numbers,
-/// and the receiver receives `Sequenced<T>` values.
+/// The sender automatically wraps values with timestamps (sequence numbers),
+/// and the receiver receives `Timestamped<T>` values.
 ///
 /// # Examples
 ///
 /// ```
-/// use fluxion_stream::sequenced_channel::unbounded_channel;
+/// use fluxion_stream::timestamped_channel::unbounded_channel;
 /// use tokio_stream::{StreamExt, wrappers::UnboundedReceiverStream};
 /// use fluxion_stream::select_all_ordered::SelectAllExt;
 ///
@@ -116,7 +116,7 @@ impl<T> UnboundedReceiver<T> {
 ///     let stream2 = UnboundedReceiverStream::new(rx2.into_inner());
 ///     let mut merged = vec![stream1, stream2].select_all_ordered();
 ///
-///     // Users just send regular values - sequencing is automatic!
+///     // Users just send regular values - timestamping is automatic!
 ///     tx1.send("from stream 1").unwrap();
 ///     tx2.send("from stream 2").unwrap();
 ///     tx1.send("from stream 1 again").unwrap();

@@ -1,5 +1,5 @@
 use crate::{animal::Animal, person::Person, plant::Plant};
-use fluxion_stream::{sequenced::Sequenced, sequenced_channel::UnboundedSender};
+use fluxion_stream::{timestamped::Timestamped, timestamped_channel::UnboundedSender};
 use futures::Stream;
 use futures::StreamExt;
 use std::fmt::{self, Display};
@@ -88,7 +88,7 @@ pub fn send_variant(variant: &DataVariant, senders: &[UnboundedSender<TestData>]
 
 pub async fn expect_variant(
     variant: &DataVariant,
-    results: impl futures::Stream<Item = Sequenced<TestData>> + Send,
+    results: impl futures::Stream<Item = Timestamped<TestData>> + Send,
 ) {
     match variant {
         DataVariant::Animal => expect_animal(results).await,
@@ -97,17 +97,17 @@ pub async fn expect_variant(
     }
 }
 
-pub async fn expect_person(results: impl Stream<Item = Sequenced<TestData>> + Send) {
+pub async fn expect_person(results: impl Stream<Item = Timestamped<TestData>> + Send) {
     let state = Box::pin(results).next().await.unwrap();
     assert_eq!(state.value, person_alice());
 }
 
-pub async fn expect_animal(results: impl Stream<Item = Sequenced<TestData>> + Send) {
+pub async fn expect_animal(results: impl Stream<Item = Timestamped<TestData>> + Send) {
     let state = Box::pin(results).next().await.unwrap();
     assert_eq!(state.value, animal_dog());
 }
 
-pub async fn expect_plant(results: impl Stream<Item = Sequenced<TestData>> + Send) {
+pub async fn expect_plant(results: impl Stream<Item = Timestamped<TestData>> + Send) {
     let state = Box::pin(results).next().await.unwrap();
     assert_eq!(state.value, plant_rose());
 }

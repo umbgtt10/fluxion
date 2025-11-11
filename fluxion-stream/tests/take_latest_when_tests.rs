@@ -1,5 +1,5 @@
 use fluxion_stream::{
-    combine_latest::CombinedState, sequenced_channel::unbounded_channel,
+    combine_latest::CombinedState, timestamped_channel::unbounded_channel,
     take_latest_when::TakeLatestWhenExt,
 };
 use fluxion_test_utils::{

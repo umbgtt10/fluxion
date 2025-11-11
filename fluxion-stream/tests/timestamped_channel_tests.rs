@@ -1,9 +1,9 @@
-use fluxion_stream::sequenced_channel::unbounded_channel;
+use fluxion_stream::timestamped_channel::unbounded_channel;
 use fluxion_test_utils::test_data::{person_alice, person_bob, TestData};
 use tokio::sync::mpsc;
 
 #[tokio::test]
-async fn test_sequenced_channel_send_and_receive() {
+async fn test_timestamped_channel_send_and_receive() {
     // Arrange
     let (sender, mut receiver) = unbounded_channel();
 
@@ -23,7 +23,7 @@ async fn test_sequenced_channel_send_and_receive() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_ordering_across_channels() {
+async fn test_timestamped_channel_ordering_across_channels() {
     // Arrange
     let (sender1, mut receiver1) = unbounded_channel();
     let (sender2, mut receiver2) = unbounded_channel();
@@ -43,7 +43,7 @@ async fn test_sequenced_channel_ordering_across_channels() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_send_after_receiver_dropped() {
+async fn test_timestamped_channel_send_after_receiver_dropped() {
     // Arrange
     let (sender, receiver) = unbounded_channel();
 
@@ -57,7 +57,7 @@ async fn test_sequenced_channel_send_after_receiver_dropped() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_receiver_closes_channel() {
+async fn test_timestamped_channel_receiver_closes_channel() {
     // Arrange
     let (sender, mut receiver) = unbounded_channel();
 
@@ -80,7 +80,7 @@ async fn test_sequenced_channel_receiver_closes_channel() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_try_recv_empty() {
+async fn test_timestamped_channel_try_recv_empty() {
     // Arrange
     let (_sender, mut receiver) = unbounded_channel::<TestData>();
 
@@ -90,7 +90,7 @@ async fn test_sequenced_channel_try_recv_empty() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_try_recv_success() {
+async fn test_timestamped_channel_try_recv_success() {
     // Arrange
     let (sender, mut receiver) = unbounded_channel();
 
@@ -104,7 +104,7 @@ async fn test_sequenced_channel_try_recv_success() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_try_recv_after_sender_dropped() {
+async fn test_timestamped_channel_try_recv_after_sender_dropped() {
     // Arrange
     let (sender, mut receiver) = unbounded_channel();
 
@@ -124,7 +124,7 @@ async fn test_sequenced_channel_try_recv_after_sender_dropped() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_sender_clone() {
+async fn test_timestamped_channel_sender_clone() {
     // Arrange
     let (sender1, mut receiver) = unbounded_channel();
     let sender2 = sender1.clone();
@@ -145,7 +145,7 @@ async fn test_sequenced_channel_sender_clone() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_same_channel() {
+async fn test_timestamped_channel_same_channel() {
     // Arrange
     let (sender1, _receiver1) = unbounded_channel::<TestData>();
     let sender2 = sender1.clone();
@@ -159,7 +159,7 @@ async fn test_sequenced_channel_same_channel() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_sender_closed_notification() {
+async fn test_timestamped_channel_sender_closed_notification() {
     // Arrange
     let (sender, receiver) = unbounded_channel::<TestData>();
 
@@ -176,7 +176,7 @@ async fn test_sequenced_channel_sender_closed_notification() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_is_closed_initially_false() {
+async fn test_timestamped_channel_is_closed_initially_false() {
     // Arrange
     let (sender, _receiver) = unbounded_channel::<TestData>();
 
@@ -185,7 +185,7 @@ async fn test_sequenced_channel_is_closed_initially_false() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_is_closed_after_receiver_dropped() {
+async fn test_timestamped_channel_is_closed_after_receiver_dropped() {
     // Arrange
     let (sender, receiver) = unbounded_channel::<TestData>();
 
@@ -200,7 +200,7 @@ async fn test_sequenced_channel_is_closed_after_receiver_dropped() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_multiple_senders_one_receiver() {
+async fn test_timestamped_channel_multiple_senders_one_receiver() {
     // Arrange
     let (sender1, mut receiver) = unbounded_channel();
     let sender2 = sender1.clone();
@@ -231,7 +231,7 @@ async fn test_sequenced_channel_multiple_senders_one_receiver() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_receiver_none_after_all_senders_dropped() {
+async fn test_timestamped_channel_receiver_none_after_all_senders_dropped() {
     // Arrange
     let (sender1, mut receiver) = unbounded_channel();
     let sender2 = sender1.clone();
@@ -252,7 +252,7 @@ async fn test_sequenced_channel_receiver_none_after_all_senders_dropped() {
 }
 
 #[tokio::test]
-async fn test_sequenced_channel_high_volume_ordering() {
+async fn test_timestamped_channel_high_volume_ordering() {
     // Arrange
     let (sender, mut receiver) = unbounded_channel();
 

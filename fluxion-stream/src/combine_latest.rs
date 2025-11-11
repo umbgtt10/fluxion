@@ -5,15 +5,15 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 use crate::select_all_ordered::SelectAllExt;
-use crate::sequenced::Sequenced;
+use crate::timestamped::Timestamped;
 
 /// Trait for comparing values by their inner content rather than wrapper metadata.
-/// This is automatically implemented for Sequenced<T> to allow sorting by inner value.
+/// This is automatically implemented for Timestamped<T> to allow sorting by inner value.
 pub trait CompareByInner {
     fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering;
 }
 
-impl<T: Ord> CompareByInner for Sequenced<T> {
+impl<T: Ord> CompareByInner for Timestamped<T> {
     fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
         self.value.cmp(&other.value)
     }

@@ -14,8 +14,8 @@ Stream combinators with ordering guarantees for async Rust.
 - `merge_with` - Merge streams with custom state management
 - `take_latest_when` - Take latest value when condition is met
 - `select_all_ordered` - Select from multiple streams with ordering
-- `sequenced` - Core sequencing types for temporal ordering
-- `sequenced_channel` - Channels that auto-sequence messages
+- `timestamped` - Core timestamping types for temporal ordering
+- `timestamped_channel` - Channels that auto-timestamp messages
 
 ### **fluxion-exec**
 Async stream subscribers and execution utilities.

@@ -1,5 +1,5 @@
 use fluxion_stream::select_all_ordered::SelectAllExt;
-use fluxion_stream::sequenced_channel::unbounded_channel;
+use fluxion_stream::timestamped_channel::unbounded_channel;
 use fluxion_test_utils::test_data::{
     DataVariant, TestData, animal_dog, animal_spider, expect_variant, person_alice, person_bob,
     person_charlie, plant_rose, plant_sunflower, push, send_variant,

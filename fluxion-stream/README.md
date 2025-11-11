@@ -20,14 +20,14 @@ Stream combinators with ordering guarantees for async Rust.
 
 ## Core Types
 
-- `Sequenced<T>` - Wrapper that adds sequence numbers for temporal ordering
-- `sequenced_channel` - Channels that automatically sequence messages
+- `Timestamped<T>` - Wrapper that adds logical timestamps for temporal ordering
+- `timestamped_channel` - Channels that automatically timestamp messages
 - `CompareByInner` - Trait for dual-ordering strategies (structural vs temporal)
 
 ## Example
 
 ```rust
-use fluxion_stream::{sequenced_channel::unbounded_channel, combine_latest::CombineLatestExt};
+use fluxion_stream::{timestamped_channel::unbounded_channel, combine_latest::CombineLatestExt};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 let (tx1, rx1) = unbounded_channel();
