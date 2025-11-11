@@ -1,7 +1,4 @@
-use fluxion_stream::{
-    merge_with::MergedStream,
-    timestamped::Timestamped,
-};
+use fluxion_stream::{merge_with::MergedStream, timestamped::Timestamped};
 use fluxion_test_utils::{
     TestChannels,
     animal::Animal,
@@ -207,8 +204,7 @@ async fn test_merge_with_parallel_processing() {
     });
 
     // Assert
-    let result: Vec<Timestamped<Repository>> =
-        result_stream.collect().await;
+    let result: Vec<Timestamped<Repository>> = result_stream.collect().await;
     let last = result.last().expect("at least one state").get();
     assert_eq!(
         last.person_name,
