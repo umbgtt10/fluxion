@@ -361,3 +361,100 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
     // Assert
     expect_next_combined_equals(&mut combined_stream, &[person_charlie(), person_diane()]).await;
 }
+
+#[tokio::test]
+async fn test_combine_latest_filter_rejects_initial_state() {
+    // Arrange
+    let (person_sender, person_receiver) = unbounded_channel();
+    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+
+    let (animal_sender, animal_receiver) = unbounded_channel();
+    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
+
+    // Filter that rejects the initial state (when both Alice and Dog are present)
+    let filter = |state: &CombinedState<Timestamped<TestData>>| {
+        let values = state.get_state();
+        if values.len() == 2 {
+            // Reject if we have Alice and Dog
+            !(values[0].value == person_alice() && values[1].value == animal_dog())
+        } else {
+            true
+        }
+    };
+
+    let combined_stream = person_stream.combine_latest(vec![animal_stream], filter);
+    let mut combined_stream = Box::pin(combined_stream);
+
+    // Act: Publish Alice and Dog (should be rejected)
+    push(person_alice(), &person_sender);
+    push(animal_dog(), &animal_sender);
+
+    // Assert: No emission due to filter rejection
+    assert_no_element_emitted(&mut combined_stream, 100).await;
+
+    // Act: Update to Bob (should pass filter)
+    push(person_bob(), &person_sender);
+
+    // Assert: Now we get an emission
+    expect_next_combined_equals(&mut combined_stream, &[person_bob(), animal_dog()]).await;
+}
+
+#[tokio::test]
+async fn test_combine_latest_filter_alternates_between_true_false() {
+    // Arrange
+    let (person_sender, person_receiver) = unbounded_channel();
+    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+
+    let (animal_sender, animal_receiver) = unbounded_channel();
+    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
+
+    // Filter that only allows emissions when person is Alice or Charlie (rejects Bob and Diane)
+    let filter = |state: &CombinedState<Timestamped<TestData>>| {
+        let values = state.get_state();
+        if !values.is_empty() {
+            values[0].value == person_alice() || values[0].value == person_charlie()
+        } else {
+            false
+        }
+    };
+
+    let combined_stream = person_stream.combine_latest(vec![animal_stream], filter);
+    let mut combined_stream = Box::pin(combined_stream);
+
+    // Act: Alice + Dog (passes filter)
+    push(person_alice(), &person_sender);
+    push(animal_dog(), &animal_sender);
+
+    // Assert: Emission occurs
+    expect_next_combined_equals(&mut combined_stream, &[person_alice(), animal_dog()]).await;
+
+    // Act: Bob + Dog (rejected by filter)
+    push(person_bob(), &person_sender);
+
+    // Assert: No emission
+    assert_no_element_emitted(&mut combined_stream, 100).await;
+
+    // Act: Charlie + Dog (passes filter)
+    push(person_charlie(), &person_sender);
+
+    // Assert: Emission occurs
+    expect_next_combined_equals(&mut combined_stream, &[person_charlie(), animal_dog()]).await;
+
+    // Act: Diane + Dog (rejected by filter)
+    push(person_diane(), &person_sender);
+
+    // Assert: No emission
+    assert_no_element_emitted(&mut combined_stream, 100).await;
+
+    // Act: Update animal to Spider while Diane is still latest (still rejected)
+    push(animal_spider(), &animal_sender);
+
+    // Assert: Still no emission
+    assert_no_element_emitted(&mut combined_stream, 100).await;
+
+    // Act: Alice + Spider (passes filter)
+    push(person_alice(), &person_sender);
+
+    // Assert: Emission occurs
+    expect_next_combined_equals(&mut combined_stream, &[person_alice(), animal_spider()]).await;
+}
