@@ -11,6 +11,8 @@ use fluxion_test_utils::{
     },
 };
 use futures::StreamExt;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 static FILTER: fn(&CombinedState<Timestamped<TestData>>) -> bool =
@@ -457,4 +459,37 @@ async fn test_combine_latest_filter_alternates_between_true_false() {
 
     // Assert: Emission occurs
     expect_next_combined_equals(&mut combined_stream, &[person_alice(), animal_spider()]).await;
+}
+
+#[tokio::test]
+#[should_panic(expected = "Filter function panicked on purpose")]
+async fn test_combine_latest_filter_function_panics() {
+    // Arrange
+    let (person_sender, person_receiver) = unbounded_channel();
+    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+
+    let (animal_sender, animal_receiver) = unbounded_channel();
+    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
+
+    // Filter that panics on the second evaluation
+    let call_count = Arc::new(AtomicUsize::new(0));
+    let filter = move |_state: &CombinedState<Timestamped<TestData>>| {
+        let count = call_count.fetch_add(1, Ordering::SeqCst);
+        if count == 1 {
+            panic!("Filter function panicked on purpose");
+        }
+        true
+    };
+
+    let combined_stream = person_stream.combine_latest(vec![animal_stream], filter);
+    let mut combined_stream = Box::pin(combined_stream);
+
+    // Act: First emission should succeed
+    push(person_alice(), &person_sender);
+    push(animal_dog(), &animal_sender);
+    let _first = combined_stream.next().await.unwrap();
+
+    // Act: Second emission triggers panic in filter
+    push(person_bob(), &person_sender);
+    let _second = combined_stream.next().await; // This will panic
 }

@@ -450,3 +450,31 @@ impl Repository {
         }
     }
 }
+
+#[tokio::test]
+#[should_panic(expected = "User closure panicked on purpose")]
+async fn test_merge_with_user_closure_panics() {
+    // Arrange
+    let (sender, receiver) = unbounded_channel::<TestData>();
+    let stream = UnboundedReceiverStream::new(receiver.into_inner()).map(|ts| ts.value);
+
+    // Create a merge_with stream where the closure panics on the second emission
+    let merged_stream = MergedStream::seed(0usize).merge_with(stream, |_data, state: &mut usize| {
+        *state += 1;
+        if *state == 2 {
+            panic!("User closure panicked on purpose");
+        }
+        *state
+    });
+
+    let mut merged_stream = Box::pin(merged_stream);
+
+    // Act: First emission should succeed
+    push(person_alice(), &sender);
+    let first = merged_stream.next().await.unwrap();
+    assert_eq!(first, 1);
+
+    // Act: Second emission triggers panic
+    push(person_bob(), &sender);
+    let _second = merged_stream.next().await; // This will panic
+}

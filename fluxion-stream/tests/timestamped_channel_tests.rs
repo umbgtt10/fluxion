@@ -1,3 +1,5 @@
+use fluxion_stream::combine_latest::{CombineLatestExt, CombinedState};
+use fluxion_stream::timestamped::Timestamped;
 use fluxion_stream::timestamped_channel::unbounded_channel;
 use fluxion_test_utils::{
     person::Person,
@@ -5,7 +7,9 @@ use fluxion_test_utils::{
         TestData, animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave,
     },
 };
+use futures::StreamExt;
 use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_timestamped_channel_send_and_receive() {
@@ -269,5 +273,58 @@ async fn test_timestamped_channel_high_volume_ordering() {
             assert!(msg.sequence() > prev, "Sequence should always increase");
         }
         prev_seq = Some(msg.sequence());
+    }
+}
+
+#[tokio::test]
+async fn test_timestamped_channel_sender_error_during_stream_processing() {
+    // Arrange: Create two streams that will be combined
+    let (sender1, receiver1) = unbounded_channel();
+    let stream1 = UnboundedReceiverStream::new(receiver1.into_inner());
+
+    let (sender2, receiver2) = unbounded_channel();
+    let stream2 = UnboundedReceiverStream::new(receiver2.into_inner());
+
+    static FILTER: fn(&CombinedState<Timestamped<TestData>>) -> bool = |_| true;
+
+    let combined_stream = stream1.combine_latest(vec![stream2], FILTER);
+    let mut combined_stream = Box::pin(combined_stream);
+
+    // Act: Publish to both streams to get initial emission
+    sender1.send(person_alice()).unwrap();
+    sender2.send(animal_dog()).unwrap();
+
+    // Assert: First emission succeeds
+    let first = combined_stream.next().await;
+    assert!(first.is_some(), "First emission should succeed");
+
+    // Act: Drop sender2 to simulate sender error/closure
+    drop(sender2);
+
+    // Send more on sender1 - this should still work but stream may behave differently
+    sender1.send(person_bob()).unwrap();
+
+    // The stream should handle the closed sender gracefully
+    // Since sender2 is dropped, stream2 will close, which should cause combine_latest to complete
+    let _second = combined_stream.next().await;
+
+    // Act: Try to send to dropped sender (demonstrates error handling)
+    let (sender3, _receiver3) = unbounded_channel::<TestData>();
+    drop(_receiver3);
+
+    // Assert: Sending to a channel whose receiver is dropped results in an error
+    let send_result = sender3.send(person_charlie());
+    assert!(
+        send_result.is_err(),
+        "Sending should fail when receiver is dropped"
+    );
+
+    // Verify we can detect the error
+    match send_result {
+        Err(e) => {
+            // The error contains the value that failed to send
+            assert_eq!(e.0, person_charlie());
+        }
+        Ok(_) => panic!("Send should have failed"),
     }
 }
