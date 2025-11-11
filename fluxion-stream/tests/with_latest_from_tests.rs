@@ -3,7 +3,7 @@ use fluxion_stream::timestamped::Timestamped;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_test_utils::push;
 use fluxion_test_utils::test_data::{
-    TestData, animal, animal_cat, animal_dog, person_alice, person_bob,
+    TestData, animal, animal_cat, animal_dog, person, person_alice, person_bob,
 };
 use fluxion_test_utils::{
     TestChannel, TestChannels,
@@ -227,4 +227,119 @@ async fn test_with_latest_from_both_streams_close_before_any_emission() {
         next_item.is_none(),
         "Expected stream to close with no emissions when both streams close before secondary publishes"
     );
+}
+
+#[tokio::test]
+async fn test_with_latest_from_boundary_empty_string_zero_values() {
+    // Arrange: Test with boundary values - empty strings and zero values
+    // This test verifies the system handles edge cases like:
+    // - Empty string names
+    // - Zero numeric values (age=0, legs=0)
+    // - Transitions from boundary to normal values
+    let (primary, secondary) = TestChannels::two();
+
+    let combined_stream = primary.stream.with_latest_from(secondary.stream, FILTER);
+    let mut combined_stream = Box::pin(combined_stream);
+
+    // Act: Send empty string person to secondary (boundary: empty string, zero age)
+    push(person("".to_string(), 0), &secondary.sender);
+
+    // Act: Send zero-leg animal to primary (boundary: empty string, zero legs)
+    // This triggers first emission with both boundary values
+    push(animal("".to_string(), 0), &primary.sender);
+
+    // Assert: System handles empty/zero values correctly
+    let (sec, prim) = combined_stream.next().await.unwrap();
+    assert_eq!(
+        sec.value,
+        person("".to_string(), 0),
+        "Secondary should have empty name and zero age"
+    );
+    assert_eq!(
+        prim.value,
+        animal("".to_string(), 0),
+        "Primary should have empty name and zero legs"
+    );
+
+    // Act: Send normal non-boundary values
+    push(person("Valid".to_string(), 1), &secondary.sender);
+
+    // Assert: Updating secondary causes emission (with_latest_from uses combine_latest)
+    let (sec2, prim2) = combined_stream.next().await.unwrap();
+    assert_eq!(
+        sec2.value,
+        person("Valid".to_string(), 1),
+        "Secondary should update to valid person"
+    );
+    assert_eq!(
+        prim2.value,
+        animal("".to_string(), 0),
+        "Primary should still be boundary animal"
+    );
+
+    // Act: Now update primary to normal value
+    push(animal("ValidAnimal".to_string(), 1), &primary.sender);
+
+    // Assert: Both are now non-boundary values
+    let (sec3, prim3) = combined_stream.next().await.unwrap();
+    assert_eq!(
+        sec3.value,
+        person("Valid".to_string(), 1),
+        "Secondary should remain valid person"
+    );
+    assert_eq!(
+        prim3.value,
+        animal("ValidAnimal".to_string(), 1),
+        "Primary should update to valid animal"
+    );
+}
+
+#[tokio::test]
+async fn test_with_latest_from_boundary_maximum_concurrent_streams() {
+    // Arrange: Test boundary of maximum concurrent stream operations
+    // Create many parallel with_latest_from streams to test concurrent handling
+    let num_stream_pairs = 50;
+    let mut handles = Vec::new();
+
+    for _ in 0..num_stream_pairs {
+        let handle = tokio::spawn(async {
+            let (primary, secondary) = TestChannels::two();
+            let combined = primary.stream.with_latest_from(secondary.stream, FILTER);
+            let mut stream = Box::pin(combined);
+
+            // Act: Send initial values
+            push(person_alice(), &secondary.sender);
+            push(animal_dog(), &primary.sender);
+
+            // Assert: Verify first emission
+            let (sec, prim) = stream.next().await.unwrap();
+            assert_eq!(sec.value, person_alice());
+            assert_eq!(prim.value, animal_dog());
+
+            // Act: Update both values
+            push(person_bob(), &secondary.sender);
+
+            // Assert: Secondary update causes emission
+            let (sec2, prim2) = stream.next().await.unwrap();
+            assert_eq!(sec2.value, person_bob());
+            assert_eq!(prim2.value, animal_dog()); // Primary unchanged
+
+            // Act: Update primary
+            push(animal_cat(), &primary.sender);
+
+            // Assert: Primary update causes emission
+            let (sec3, prim3) = stream.next().await.unwrap();
+            assert_eq!(sec3.value, person_bob());
+            assert_eq!(prim3.value, animal_cat());
+        });
+
+        handles.push(handle);
+    }
+
+    // Wait for all concurrent streams to complete successfully
+    for handle in handles {
+        handle
+            .await
+            .expect("Stream task should complete successfully");
+    }
 }
