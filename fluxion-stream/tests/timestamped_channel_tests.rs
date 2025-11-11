@@ -1,5 +1,10 @@
 use fluxion_stream::timestamped_channel::unbounded_channel;
-use fluxion_test_utils::test_data::{TestData, person_alice, person_bob};
+use fluxion_test_utils::{
+    person::Person,
+    test_data::{
+        TestData, animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave,
+    },
+};
 use tokio::sync::mpsc;
 
 #[tokio::test]
@@ -29,14 +34,18 @@ async fn test_timestamped_channel_ordering_across_channels() {
     let (sender2, mut receiver2) = unbounded_channel();
 
     // Act - Send in specific order
-    sender1.send(1).unwrap();
-    sender2.send(2).unwrap();
-    sender1.send(3).unwrap();
+    sender1.send(person_alice()).unwrap();
+    sender2.send(person_bob()).unwrap();
+    sender1.send(person_charlie()).unwrap();
 
     // Assert
     let msg1 = receiver1.recv().await.unwrap();
     let msg2 = receiver2.recv().await.unwrap();
     let msg3 = receiver1.recv().await.unwrap();
+
+    assert_eq!(msg1.value, person_alice());
+    assert_eq!(msg2.value, person_bob());
+    assert_eq!(msg3.value, person_charlie());
 
     assert!(msg1.sequence() < msg2.sequence());
     assert!(msg2.sequence() < msg3.sequence());
@@ -62,15 +71,15 @@ async fn test_timestamped_channel_receiver_closes_channel() {
     let (sender, mut receiver) = unbounded_channel();
 
     // Act - Send some messages
-    sender.send(1).unwrap();
-    sender.send(2).unwrap();
+    sender.send(person_alice()).unwrap();
+    sender.send(person_bob()).unwrap();
 
     // Act - Close receiver
     receiver.close();
 
     // Assert - Can still receive buffered messages
-    assert_eq!(receiver.recv().await.unwrap().value, 1);
-    assert_eq!(receiver.recv().await.unwrap().value, 2);
+    assert_eq!(receiver.recv().await.unwrap().value, person_alice());
+    assert_eq!(receiver.recv().await.unwrap().value, person_bob());
 
     // Assert - Next recv should return None
     assert!(receiver.recv().await.is_none());
@@ -109,11 +118,11 @@ async fn test_timestamped_channel_try_recv_after_sender_dropped() {
     let (sender, mut receiver) = unbounded_channel();
 
     // Act
-    sender.send(42).unwrap();
+    sender.send(animal_cat()).unwrap();
     drop(sender);
 
     // Assert - Can still try_recv buffered message
-    assert_eq!(receiver.try_recv().unwrap().value, 42);
+    assert_eq!(receiver.try_recv().unwrap().value, animal_cat());
 
     // Assert - Next try_recv should return Disconnected
     let result = receiver.try_recv();
@@ -207,10 +216,10 @@ async fn test_timestamped_channel_multiple_senders_one_receiver() {
     let sender3 = sender1.clone();
 
     // Act - Send from multiple senders
-    sender1.send(1).unwrap();
-    sender2.send(2).unwrap();
-    sender3.send(3).unwrap();
-    sender1.send(4).unwrap();
+    sender1.send(person_alice()).unwrap();
+    sender2.send(person_bob()).unwrap();
+    sender3.send(person_charlie()).unwrap();
+    sender1.send(person_dave()).unwrap();
 
     // Assert
     let mut messages = vec![];
@@ -219,10 +228,10 @@ async fn test_timestamped_channel_multiple_senders_one_receiver() {
     }
 
     // Verify all messages received
-    assert_eq!(messages[0].value, 1);
-    assert_eq!(messages[1].value, 2);
-    assert_eq!(messages[2].value, 3);
-    assert_eq!(messages[3].value, 4);
+    assert_eq!(messages[0].value, person_alice());
+    assert_eq!(messages[1].value, person_bob());
+    assert_eq!(messages[2].value, person_charlie());
+    assert_eq!(messages[3].value, person_dave());
 
     // Verify sequence ordering
     for i in 1..4 {
@@ -237,15 +246,15 @@ async fn test_timestamped_channel_receiver_none_after_all_senders_dropped() {
     let sender2 = sender1.clone();
 
     // Act
-    sender1.send(1).unwrap();
-    sender2.send(2).unwrap();
+    sender1.send(animal_cat()).unwrap();
+    sender2.send(animal_dog()).unwrap();
 
     drop(sender1);
     drop(sender2);
 
     // Assert - Can still receive buffered messages
-    assert_eq!(receiver.recv().await.unwrap().value, 1);
-    assert_eq!(receiver.recv().await.unwrap().value, 2);
+    assert_eq!(receiver.recv().await.unwrap().value, animal_cat());
+    assert_eq!(receiver.recv().await.unwrap().value, animal_dog());
 
     // Assert - After buffer exhausted, should return None
     assert!(receiver.recv().await.is_none());
@@ -255,17 +264,20 @@ async fn test_timestamped_channel_receiver_none_after_all_senders_dropped() {
 async fn test_timestamped_channel_high_volume_ordering() {
     // Arrange
     let (sender, mut receiver) = unbounded_channel();
+    let test_items: Vec<TestData> = (0..1000)
+        .map(|i| TestData::Person(Person::new(format!("Person{}", i), i as u32)))
+        .collect();
 
     // Act - Send 1000 messages
-    for i in 0..1000 {
-        sender.send(i).unwrap();
+    for item in &test_items {
+        sender.send(item.clone()).unwrap();
     }
 
     // Assert - Verify all received in sequence order
     let mut prev_seq = None;
-    for i in 0..1000 {
+    for (i, expected) in test_items.iter().enumerate() {
         let msg = receiver.recv().await.unwrap();
-        assert_eq!(msg.value, i);
+        assert_eq!(msg.value, *expected, "Message {} should match", i);
 
         if let Some(prev) = prev_seq {
             assert!(msg.sequence() > prev, "Sequence should always increase");
