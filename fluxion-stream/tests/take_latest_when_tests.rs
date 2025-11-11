@@ -245,3 +245,42 @@ async fn test_take_latest_when_filter_toggle_emissions() {
     let fourth = output_stream.next().await.unwrap();
     assert_eq!(fourth, person_charlie());
 }
+
+#[tokio::test]
+async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
+    // Arrange
+    let (source_sender, source_receiver) = unbounded_channel();
+    let source_stream = UnboundedReceiverStream::new(source_receiver.into_inner());
+
+    let (filter_sender, filter_receiver) = unbounded_channel();
+    let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
+
+    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
+        let filter_value = state.get_state()[1].clone();
+        match filter_value {
+            TestData::Animal(animal) => animal.legs > 5,
+            _ => false,
+        }
+    };
+
+    let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
+    let mut output_stream = Box::pin(output_stream);
+
+    // Prime both streams so a first emission can happen
+    push(animal_ant(), &filter_sender); // true
+    push(person_alice(), &source_sender);
+    let first = output_stream.next().await.unwrap();
+    assert_eq!(first, person_alice());
+
+    // Close the filter stream
+    drop(filter_sender);
+
+    // With the last filter value still true, further source events should continue to emit
+    push(person_bob(), &source_sender);
+    let second = output_stream.next().await.unwrap();
+    assert_eq!(second, person_bob());
+
+    push(person_charlie(), &source_sender);
+    let third = output_stream.next().await.unwrap();
+    assert_eq!(third, person_charlie());
+}

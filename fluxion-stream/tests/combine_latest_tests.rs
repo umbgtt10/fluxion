@@ -101,6 +101,44 @@ async fn test_combine_latest_stream_closes_before_publish_no_output() {
 }
 
 #[tokio::test]
+async fn test_combine_latest_secondary_closes_after_initial_emission_continues() {
+    // Arrange
+    let (person_sender, person_receiver) = unbounded_channel();
+    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+
+    let (animal_sender, animal_receiver) = unbounded_channel();
+    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
+
+    let (plant_sender, plant_receiver) = unbounded_channel();
+    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
+
+    let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    let mut combined_stream = Box::pin(combined_stream);
+
+    // Initial full emission
+    push(person_alice(), &person_sender);
+    push(animal_dog(), &animal_sender);
+    push(plant_rose(), &plant_sender);
+    let state = combined_stream.next().await.unwrap();
+    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    assert_eq!(actual, vec![person_alice(), animal_dog(), plant_rose()]);
+
+    // Close one secondary (plant) after initial emission
+    drop(plant_sender);
+
+    // Subsequent updates on remaining streams should still emit using the last plant value
+    push(person_bob(), &person_sender);
+    let state = combined_stream.next().await.unwrap();
+    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
+
+    push(animal_spider(), &animal_sender);
+    let state = combined_stream.next().await.unwrap();
+    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    assert_eq!(actual, vec![person_bob(), animal_spider(), plant_rose()]);
+}
+
+#[tokio::test]
 async fn test_combine_latest_all_streams_have_published_different_order_emits_updates() {
     combine_latest_template_test(DataVariant::Plant, DataVariant::Animal, DataVariant::Person)
         .await;

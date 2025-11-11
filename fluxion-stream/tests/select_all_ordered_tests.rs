@@ -263,6 +263,53 @@ async fn test_select_all_ordered_all_streams_close_simultaneously() {
 }
 
 #[tokio::test]
+async fn test_select_all_ordered_one_stream_closes_midway_three_streams() {
+    // Arrange
+    let (person_sender, person_receiver) = unbounded_channel();
+    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+
+    let (animal_sender, animal_receiver) = unbounded_channel();
+    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
+
+    let (plant_sender, plant_receiver) = unbounded_channel();
+    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
+
+    let streams = vec![person_stream, animal_stream, plant_stream];
+    let mut results = Box::pin(streams.select_all_ordered());
+
+    // Act & Assert stepwise to avoid race conditions
+    push(person_alice(), &person_sender);
+    let item = results.next().await.unwrap();
+    assert_eq!(item.value, person_alice());
+
+    push(animal_dog(), &animal_sender);
+    let item = results.next().await.unwrap();
+    assert_eq!(item.value, animal_dog());
+
+    push(plant_rose(), &plant_sender);
+    let item = results.next().await.unwrap();
+    assert_eq!(item.value, plant_rose());
+
+    // Close plant stream mid-flight
+    drop(plant_sender);
+
+    // Remaining streams continue to emit
+    push(person_bob(), &person_sender);
+    let item = results.next().await.unwrap();
+    assert_eq!(item.value, person_bob());
+
+    push(animal_spider(), &animal_sender);
+    let item = results.next().await.unwrap();
+    assert_eq!(item.value, animal_spider());
+
+    // Close remaining streams and ensure end
+    drop(person_sender);
+    drop(animal_sender);
+    let next = results.next().await;
+    assert!(next.is_none(), "Expected stream to end after all closed");
+}
+
+#[tokio::test]
 async fn test_select_all_ordered_large_volume() {
     // Arrange
     let (sender1, receiver1) = unbounded_channel();
