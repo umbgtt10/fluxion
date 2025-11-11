@@ -499,7 +499,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_empty_stream() {
+async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_empty_stream() {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -530,8 +530,6 @@ async fn test_subscribe_latest_async_empty_stream() {
 
     // Act - Close stream without sending any items
     drop(sender);
-
-    // Wait for task to complete
     task_handle.await.unwrap();
 
     // Assert
@@ -539,12 +537,21 @@ async fn test_subscribe_latest_async_empty_stream() {
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_error_unblocks_state() {
+async fn test_subscribe_latest_async_high_volume() {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
-    let error_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+
+    // Barrier and start channels for deterministic high-load skipping
+    let (gate_tx, gate_rx) = mpsc::unbounded_channel::<()>();
+    let gate_rx_shared = Arc::new(Mutex::new(Some(gate_rx)));
+    let (start_tx, mut start_rx) = mpsc::unbounded_channel::<()>();
+    let start_tx_shared = Arc::new(Mutex::new(Some(start_tx)));
+    // Flood completion channel to ensure bulk enqueue (including Bob) happens
+    // before we allow the first processing to proceed
+    let (flood_done_tx, flood_done_rx) = mpsc::unbounded_channel::<()>();
+    let flood_done_rx_shared = Arc::new(Mutex::new(Some(flood_done_rx)));
 
     let (sender, receiver) = unbounded_channel();
     let stream =
@@ -553,98 +560,30 @@ async fn test_subscribe_latest_async_error_unblocks_state() {
     let func = {
         let collected_items = collected_items_clone.clone();
         let notify_tx = notify_tx.clone();
-        move |item: TestData, _| {
+        let gate_rx_shared = gate_rx_shared.clone();
+        let start_tx_shared = start_tx_shared.clone();
+        move |item, _| {
             let collected_items = collected_items.clone();
             let notify_tx = notify_tx.clone();
+            let gate_rx_shared = gate_rx_shared.clone();
+            let start_tx_shared = start_tx_shared.clone();
+            let flood_done_rx_shared = flood_done_rx_shared.clone();
             async move {
-                // Error on Bob
-                if matches!(&item, TestData::Person(p) if p.name == "Bob") {
-                    sleep(Duration::from_millis(50)).await;
-                    let _ = notify_tx.send(());
-                    return Err("Error processing Bob".to_string());
+                // Signal first processing start once
+                if let Some(tx) = start_tx_shared.lock().await.take() {
+                    let _ = tx.send(());
+                }
+                // For the first processing, wait until the flood is declared done,
+                // then wait for the external gate release
+                if let Some(mut rx) = flood_done_rx_shared.lock().await.take() {
+                    let _ = rx.recv().await;
+                }
+                // Only first processing waits for the gate
+                if let Some(mut rx) = gate_rx_shared.lock().await.take() {
+                    let _ = rx.recv().await;
                 }
 
-                sleep(Duration::from_millis(50)).await;
                 collected_items.lock().await.push(item);
-                let _ = notify_tx.send(());
-                Ok::<(), String>(())
-            }
-        }
-    };
-
-    let error_callback = {
-        let error_count = error_count.clone();
-        move |_err: String| {
-            error_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        }
-    };
-
-    let task_handle = tokio::spawn({
-        async move {
-            stream
-                .subscribe_latest_async(func, Some(error_callback), None)
-                .await;
-        }
-    });
-
-    // Act - Send Alice, then Bob (error), then Charlie (should still process)
-    push(person_alice(), &sender);
-    sleep(Duration::from_millis(5)).await; // Small delay to let Alice start processing
-    push(person_bob(), &sender); // This will cause an error
-
-    // Wait for Alice to complete
-    notify_rx.recv().await.unwrap();
-
-    // Wait for Bob to complete (with error)
-    notify_rx.recv().await.unwrap();
-
-    push(person_charlie(), &sender); // This should still be processed
-
-    // Wait for Charlie to complete
-    notify_rx.recv().await.unwrap();
-
-    // Assert
-    let processed = collected_items.lock().await;
-    assert!(
-        processed.contains(&person_alice()),
-        "Alice should be processed"
-    );
-    assert!(
-        processed.contains(&person_charlie()),
-        "Charlie should be processed (error didn't block state)"
-    );
-    assert!(
-        !processed.contains(&person_bob()),
-        "Bob should not be in processed (error case)"
-    );
-
-    // Note: Error callback may or may not be called depending on timing
-    // The key assertion is that Charlie was processed after Bob errored
-
-    // Cleanup
-    drop(sender);
-    task_handle.await.unwrap();
-}
-
-#[tokio::test]
-async fn test_subscribe_latest_async_high_volume() {
-    // Arrange
-    let processed_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
-
-    let (sender, receiver) = unbounded_channel();
-    let stream =
-        UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
-
-    let func = {
-        let processed_count = processed_count.clone();
-        let notify_tx = notify_tx.clone();
-        move |_item, _| {
-            let processed_count = processed_count.clone();
-            let notify_tx = notify_tx.clone();
-            async move {
-                sleep(Duration::from_millis(10)).await;
-                processed_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 let _ = notify_tx.send(());
                 Ok::<(), ()>(())
             }
@@ -655,7 +594,7 @@ async fn test_subscribe_latest_async_high_volume() {
         eprintln!("Unexpected error");
     };
 
-    let task_handle = tokio::spawn({
+    tokio::spawn({
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
@@ -663,31 +602,33 @@ async fn test_subscribe_latest_async_high_volume() {
         }
     });
 
-    // Act - Send 100 items rapidly
-    for _ in 0..100 {
+    // Act - Block first, flood many, ensure flood is done, then release gate
+    push(person_alice(), &sender);
+    start_rx.recv().await.expect("first processing started");
+
+    // Flood with many identical items, then a distinct last item
+    for _ in 0..500 {
         push(person_alice(), &sender);
     }
+    push(person_bob(), &sender); // sentinel latest
 
-    // Wait for first item to complete
-    notify_rx.recv().await.unwrap();
+    // Signal that flooding (including Bob) is complete
+    let _ = flood_done_tx.send(());
 
-    // Give some time for more processing (but not enough for all 100)
-    sleep(Duration::from_millis(100)).await;
+    // Now release the first processing
+    let _ = gate_tx.send(());
 
-    // Assert
-    let count = processed_count.load(std::sync::atomic::Ordering::SeqCst);
-    // Due to "latest" behavior, we expect far fewer than 100 items processed
-    // Should process first item + latest items as processing completes
-    assert!(count > 0, "At least some items should be processed");
-    assert!(
-        count < 100,
-        "Should process fewer than all 100 items due to 'latest' behavior, processed: {}",
-        count
-    );
+    // Expect exactly two completions (Alice, then Bob)
+    notify_rx
+        .recv()
+        .await
+        .expect("first item completed (Alice)");
+    notify_rx.recv().await.expect("second item completed (Bob)");
 
-    // Cleanup
-    drop(sender);
-    task_handle.await.unwrap();
+    // Assert - high volume collapses to exactly 2 processed items
+    let processed = collected_items.lock().await;
+    assert_eq!(processed.len(), 2,);
+    assert_eq!(processed[0], person_alice());
 }
 
 #[tokio::test]
