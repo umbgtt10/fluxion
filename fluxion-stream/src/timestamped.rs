@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 // Single global sequence counter for the entire crate
@@ -58,6 +59,20 @@ impl<T> Timestamped<T> {
     /// when you need to preserve ordering from an existing Timestamped value.
     pub(crate) fn with_sequence(value: T, sequence: u64) -> Self {
         Self { value, sequence }
+    }
+
+    /// Async map that preserves the original sequence number.
+    ///
+    /// Allows awaiting during the transformation while keeping the original
+    /// timestamp/sequence for ordering semantics.
+    pub(crate) async fn map_async<U, F, Fut>(self, f: F) -> Timestamped<U>
+    where
+        F: FnOnce(T) -> Fut,
+        Fut: Future<Output = U>,
+    {
+        let seq = self.sequence;
+        let val = f(self.value).await;
+        Timestamped::with_sequence(val, seq)
     }
 }
 

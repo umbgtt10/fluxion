@@ -43,7 +43,7 @@ where
     ) -> MergedStream<impl Stream<Item = Timestamped<T>>, State, Timestamped<T>>
     where
         NewStream: Stream<Item = Timestamped<NewItem>> + Send + 'static,
-        F: FnMut(NewItem, &mut State) -> T + Send + Clone + 'static,
+        F: FnMut(NewItem, &mut State) -> T + Send + Sync + Clone + 'static,
         NewItem: Send + 'static,
         T: Send + Ord + Unpin + 'static,
         Item: Into<Timestamped<T>>,
@@ -54,15 +54,20 @@ where
         // The Timestamped wrapper is preserved through the transformation
         let new_stream_mapped = new_stream.then(move |timestamped_item| {
             let shared_state = Arc::clone(&shared_state);
-            let mut process_fn = process_fn.clone();
-            let sequence = timestamped_item.sequence();
+            let process_fn = process_fn.clone();
             async move {
-                let item = timestamped_item.into_inner();
-                let mut state = shared_state.lock().await;
-                let result = process_fn(item, &mut *state);
-                // Create a new Timestamped preserving the original sequence
-                // This ensures ordering is maintained across the merge
-                Timestamped::with_sequence(result, sequence)
+                // Use the async-preserving map helper to transform the inner value
+                // while preserving the original sequence number.
+                timestamped_item
+                    .map_async(|item| {
+                        let shared_state = Arc::clone(&shared_state);
+                        let mut process_fn = process_fn.clone();
+                        async move {
+                            let mut state = shared_state.lock().await;
+                            process_fn(item, &mut *state)
+                        }
+                    })
+                    .await
             }
         });
 

@@ -1,10 +1,7 @@
 use crate::timestamped::Timestamped;
 use crate::timestamped_channel;
-use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-/// A channel utility (moved from test-utils) combining sender and timestamped stream.
-/// Intended for ergonomic stream construction in tests and simple scenarios.
 pub struct FluxionChannel<T> {
     pub sender: timestamped_channel::UnboundedSender<T>,
     pub stream: UnboundedReceiverStream<Timestamped<T>>,
@@ -30,11 +27,6 @@ impl<T> FluxionChannel<T> {
             sender: dummy_sender,
             stream,
         }
-    }
-
-    /// Send a value, returning an error if the receiver is gone.
-    pub fn send(&self, value: T) -> Result<(), mpsc::error::SendError<T>> {
-        self.sender.send(value)
     }
 
     /// Convenience push (panics on failure) for terse test code.

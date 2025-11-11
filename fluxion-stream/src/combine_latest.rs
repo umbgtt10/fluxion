@@ -19,31 +19,31 @@ impl<T: Ord> CompareByInner for Timestamped<T> {
     }
 }
 
-pub trait CombineLatestExt<V, S>: Stream<Item = V> + Sized
+pub trait CombineLatestExt<T, S>: Stream<Item = Timestamped<T>> + Sized
 where
-    V: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
-    S: Stream<Item = V> + Send + 'static,
+    Timestamped<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    S: Stream<Item = Timestamped<T>> + Send + 'static,
 {
     fn combine_latest(
         self,
         others: Vec<S>,
-        filter: impl Fn(&CombinedState<V>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = CombinedState<V>> + Send;
+        filter: impl Fn(&CombinedState<Timestamped<T>>) -> bool + Send + Sync + 'static,
+    ) -> impl Stream<Item = CombinedState<Timestamped<T>>> + Send;
 }
 
-type PinnedStreams<V> = Vec<Pin<Box<dyn Stream<Item = (V, usize)> + Send>>>;
+type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (Timestamped<T>, usize)> + Send>>>;
 
-impl<V, S> CombineLatestExt<V, S> for S
+impl<T, S> CombineLatestExt<T, S> for S
 where
-    V: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
-    S: Stream<Item = V> + Send + 'static,
+    Timestamped<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    S: Stream<Item = Timestamped<T>> + Send + 'static,
 {
     fn combine_latest(
         self,
         others: Vec<S>,
-        filter: impl Fn(&CombinedState<V>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = CombinedState<V>> + Send {
-        let mut streams: PinnedStreams<V> = vec![];
+        filter: impl Fn(&CombinedState<Timestamped<T>>) -> bool + Send + Sync + 'static,
+    ) -> impl Stream<Item = CombinedState<Timestamped<T>>> + Send {
+        let mut streams: PinnedStreams<T> = vec![];
 
         streams.push(Box::pin(self.map(move |value| (value, 0))));
         for (index, stream) in others.into_iter().enumerate() {
