@@ -3,7 +3,6 @@ pub mod combine_with_previous;
 pub mod merge_with;
 pub mod select_all_ordered;
 pub mod take_latest_when;
-pub mod take_while;
 pub mod timestamped;
 pub mod timestamped_channel;
 pub mod with_latest_from;
