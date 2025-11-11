@@ -112,28 +112,44 @@ async fn test_merge_with_similar_streams_emits() {
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state.person_name, Some("Alice".to_string()), "Repository should contain Alice after first emission");
+    assert_eq!(
+        state.person_name,
+        Some("Alice".to_string()),
+        "Repository should contain Alice after first emission"
+    );
 
     // Act
     push(person_bob(), &sender2);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state.person_name, Some("Bob".to_string()), "Repository should contain Bob after second emission");
+    assert_eq!(
+        state.person_name,
+        Some("Bob".to_string()),
+        "Repository should contain Bob after second emission"
+    );
 
     // Act
     push(person_charlie(), &sender1);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state.person_name, Some("Charlie".to_string()), "Repository should contain Charlie after third emission");
+    assert_eq!(
+        state.person_name,
+        Some("Charlie".to_string()),
+        "Repository should contain Charlie after third emission"
+    );
 
     // Act
     push(person_dave(), &sender2);
 
     // Assert
     let state = merged_stream.next().await.unwrap();
-    assert_eq!(state.person_name, Some("Dave".to_string()), "Repository should contain Dave after fourth emission");
+    assert_eq!(
+        state.person_name,
+        Some("Dave".to_string()),
+        "Repository should contain Dave after fourth emission"
+    );
 }
 
 #[tokio::test]
@@ -178,8 +194,16 @@ async fn test_merge_with_parallel_processing() {
     // Assert
     let result: Vec<Repository> = result_stream.collect().await;
     let last = result.last().expect("at least one state");
-    assert_eq!(last.person_name, Some("Charlie".to_string()), "Final repository should have Charlie as last person");
-    assert_eq!(last.animal_species, Some("Spider".to_string()), "Final repository should have Spider as last animal");
+    assert_eq!(
+        last.person_name,
+        Some("Charlie".to_string()),
+        "Final repository should have Charlie as last person"
+    );
+    assert_eq!(
+        last.animal_species,
+        Some("Spider".to_string()),
+        "Final repository should have Spider as last animal"
+    );
 }
 
 #[tokio::test]
@@ -201,8 +225,16 @@ async fn test_merge_with_large_streams_emits() {
 
     // Assert
     let result: Vec<i32> = result_stream.collect().await;
-    assert_eq!(result.len(), 20000, "Should have processed all 20000 emissions");
-    assert_eq!(result.last(), Some(&199990000), "Final accumulated sum should be correct");
+    assert_eq!(
+        result.len(),
+        20000,
+        "Should have processed all 20000 emissions"
+    );
+    assert_eq!(
+        result.last(),
+        Some(&199990000),
+        "Final accumulated sum should be correct"
+    );
 }
 
 #[tokio::test]

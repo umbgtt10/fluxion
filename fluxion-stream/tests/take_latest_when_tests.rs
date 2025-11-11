@@ -228,7 +228,11 @@ async fn test_take_latest_when_filter_toggle_emissions() {
     push(animal_ant(), &filter_sender); // legs 6 -> true
     push(person_alice(), &source_sender);
     let first = output_stream.next().await.unwrap();
-    assert_eq!(first, person_alice(), "Should emit Alice when filter is true");
+    assert_eq!(
+        first,
+        person_alice(),
+        "Should emit Alice when filter is true"
+    );
 
     // Act: filter false, then source -> no emit
     push(animal_cat(), &filter_sender); // legs 4 -> false
@@ -238,12 +242,20 @@ async fn test_take_latest_when_filter_toggle_emissions() {
     // Act: filter true again -> should emit the latest buffered source (Bob)
     push(animal_ant(), &filter_sender); // true
     let third = output_stream.next().await.unwrap();
-    assert_eq!(third, person_bob(), "Should emit buffered Bob when filter becomes true");
+    assert_eq!(
+        third,
+        person_bob(),
+        "Should emit buffered Bob when filter becomes true"
+    );
 
     // Act: then source emits another -> emit immediately with true filter
     push(person_charlie(), &source_sender);
     let fourth = output_stream.next().await.unwrap();
-    assert_eq!(fourth, person_charlie(), "Should emit Charlie immediately with filter still true");
+    assert_eq!(
+        fourth,
+        person_charlie(),
+        "Should emit Charlie immediately with filter still true"
+    );
 }
 
 #[tokio::test]
@@ -270,7 +282,11 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
     push(animal_ant(), &filter_sender); // true
     push(person_alice(), &source_sender);
     let first = output_stream.next().await.unwrap();
-    assert_eq!(first, person_alice(), "First emission should be Alice with filter true");
+    assert_eq!(
+        first,
+        person_alice(),
+        "First emission should be Alice with filter true"
+    );
 
     // Close the filter stream
     drop(filter_sender);
@@ -278,11 +294,19 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
     // With the last filter value still true, further source events should continue to emit
     push(person_bob(), &source_sender);
     let second = output_stream.next().await.unwrap();
-    assert_eq!(second, person_bob(), "Should emit Bob with persisted filter value after filter stream closes");
+    assert_eq!(
+        second,
+        person_bob(),
+        "Should emit Bob with persisted filter value after filter stream closes"
+    );
 
     push(person_charlie(), &source_sender);
     let third = output_stream.next().await.unwrap();
-    assert_eq!(third, person_charlie(), "Should emit Charlie with persisted filter value");
+    assert_eq!(
+        third,
+        person_charlie(),
+        "Should emit Charlie with persisted filter value"
+    );
 }
 
 #[tokio::test]
@@ -316,7 +340,11 @@ async fn test_take_latest_when_source_publishes_before_filter() {
 
     // Assert: Now we get the buffered source value
     let first = output_stream.next().await.unwrap();
-    assert_eq!(first, person_alice(), "Should emit buffered Alice when filter becomes true");
+    assert_eq!(
+        first,
+        person_alice(),
+        "Should emit buffered Alice when filter becomes true"
+    );
 
     // Act: Filter changes to false first, THEN source updates
     push(animal_cat(), &filter_sender); // legs 4 -> false
@@ -330,7 +358,11 @@ async fn test_take_latest_when_source_publishes_before_filter() {
 
     // Assert: Emits the buffered Bob
     let second = output_stream.next().await.unwrap();
-    assert_eq!(second, person_bob(), "Should emit buffered Bob when filter becomes true again");
+    assert_eq!(
+        second,
+        person_bob(),
+        "Should emit buffered Bob when filter becomes true again"
+    );
 }
 
 #[tokio::test]
@@ -370,7 +402,11 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
 
     // Assert: Only the LATEST source value (Dave) is emitted, not all previous ones
     let first = output_stream.next().await.unwrap();
-    assert_eq!(first, person_dave(), "Should only emit latest value (Dave), not earlier buffered values");
+    assert_eq!(
+        first,
+        person_dave(),
+        "Should only emit latest value (Dave), not earlier buffered values"
+    );
 
     // Assert: No additional emissions (Alice, Bob, Charlie were discarded)
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -380,7 +416,11 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
 
     // Assert: Emits immediately
     let second = output_stream.next().await.unwrap();
-    assert_eq!(second, person_alice(), "Should emit Alice immediately when filter is true");
+    assert_eq!(
+        second,
+        person_alice(),
+        "Should emit Alice immediately when filter is true"
+    );
 }
 
 #[tokio::test]
