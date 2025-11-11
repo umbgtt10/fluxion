@@ -30,6 +30,10 @@ Shared test infrastructure and utilities.
 
 ## Status
 
-✅ All 40 tests passing
+✅ All 47 tests passing
 ✅ Workspace restructured for modularity
 🚧 POC still ongoing - not yet published to crates.io
+
+## TODO
+
+- [ ] Implement `take_while` operator (module exists but is empty)
