@@ -525,17 +525,9 @@ async fn test_subscribe_latest_async_no_concurrent_processing() {
         sleep(Duration::from_millis(5)).await;
     }
 
-    // Wait for first item to complete
-    notify_rx.recv().await.unwrap();
-
-    // Wait for additional processing with timeout
-    tokio::select! {
-        _ = notify_rx.recv() => {},
-        _ = sleep(Duration::from_millis(150)) => {},
-    }
-
-    // Give extra time to ensure last item fully completes (decrement happens)
-    sleep(Duration::from_millis(50)).await;
+    // Close stream and wait for all processing to complete
+    drop(sender);
+    task_handle.await.unwrap();
 
     // Assert
     let max = max_concurrent.load(std::sync::atomic::Ordering::SeqCst);
@@ -551,10 +543,6 @@ async fn test_subscribe_latest_async_no_concurrent_processing() {
         "Expected no active processing at end, but found {}",
         final_active
     );
-
-    // Cleanup
-    drop(sender);
-    task_handle.await.unwrap();
 }
 
 #[tokio::test]
@@ -651,7 +639,10 @@ async fn test_subscribe_latest_async_error_unblocks_state() {
     sleep(Duration::from_millis(5)).await; // Small delay to let Alice start processing
     push(person_bob(), &sender); // This will cause an error
 
-    // Wait for Alice or Bob to complete
+    // Wait for Alice to complete
+    notify_rx.recv().await.unwrap();
+
+    // Wait for Bob to complete (with error)
     notify_rx.recv().await.unwrap();
 
     push(person_charlie(), &sender); // This should still be processed

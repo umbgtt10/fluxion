@@ -1,10 +1,7 @@
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
-use tokio::sync::Mutex;
+use std::sync::Arc;
+use tokio::sync::{Mutex, Notify};
 use tokio_util::sync::CancellationToken;
 
 #[async_trait]
@@ -45,6 +42,7 @@ where
     {
         let state = Arc::new(Context::default());
         let cancellation_token = cancellation_token.unwrap_or_default();
+        let state_for_wait = state.clone();
 
         self.for_each(move |new_data| {
             let on_next_func = on_next_func.clone();
@@ -63,67 +61,121 @@ where
                     let cancellation_token = cancellation_token.clone();
 
                     tokio::spawn(async move {
-                        let item = state.get_item().await;
-                        if let Err(error) = on_next_func(item.clone(), cancellation_token).await {
-                            if let Some(on_error_callback) = on_error_callback {
-                                on_error_callback(error);
-                            } else {
-                                panic!(
-                                    "Unhandled error in subscribe_async while processing item: {:?}, error: {:?}",
-                                    item, error
-                                );
+                        loop {
+                            // Get the latest item
+                            let item = state.get_item().await;
+                            
+                            // Process it
+                            if let Err(error) = on_next_func(item.clone(), cancellation_token.clone()).await {
+                                if let Some(on_error_callback) = on_error_callback.clone() {
+                                    on_error_callback(error);
+                                } else {
+                                    panic!(
+                                        "Unhandled error in subscribe_async while processing item: {:?}, error: {:?}",
+                                        item, error
+                                    );
+                                }
                             }
-                        }
 
-                        state.unblock();
+                            // Check if a new item arrived while we were processing
+                            if !state.finish_processing_and_check_for_next().await {
+                                // No new item, we're done
+                                break;
+                            }
+                            // Loop to process the next item
+                        }
+                        
+                        // Notify that this processing task has completed
+                        state.notify_task_complete();
                     });
                 }
             }
         })
         .await;
+        
+        // Wait for any remaining processing tasks to complete
+        state_for_wait.wait_for_processing_complete().await;
     }
 }
 
 #[derive(Debug)]
 struct Context<T> {
-    item: Mutex<Option<T>>,
-    is_processing: AtomicBool,
+    state: Mutex<State<T>>,
+    processing_complete: Notify,
+}
+
+#[derive(Debug)]
+struct State<T> {
+    item: Option<T>,
+    is_processing: bool,
 }
 
 impl<T> Context<T> {
+    /// Enqueues an item. Returns true if we should spawn a processing task.
     pub async fn enqueue_and_try_start_processing(&self, value: T) -> bool {
-        if self
-            .is_processing
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .is_ok()
-        {
-            let mut guard = self.item.lock().await;
-            *guard = Some(value);
+        let mut state = self.state.lock().await;
+        state.item = Some(value);
+        
+        if !state.is_processing {
+            state.is_processing = true;
             true
         } else {
-            let mut guard = self.item.lock().await;
-            *guard = Some(value);
             false
         }
     }
 
+    /// Gets the current item for processing.
     pub async fn get_item(&self) -> T {
-        let mut guard = self.item.lock().await;
-        guard
+        let mut state = self.state.lock().await;
+        state
+            .item
             .take()
-            .expect("Buffer should always contain data when `take` is called")
+            .expect("Buffer should always contain data when `get_item` is called")
     }
 
-    pub fn unblock(&self) {
-        self.is_processing.store(false, Ordering::SeqCst);
+    /// Called when processing finishes. Returns true if there's another item to process.
+    pub async fn finish_processing_and_check_for_next(&self) -> bool {
+        let mut state = self.state.lock().await;
+        
+        if state.item.is_some() {
+            // New item arrived during processing, continue
+            true
+        } else {
+            // No new item, mark as idle
+            state.is_processing = false;
+            false
+        }
+    }
+    
+    /// Notify that a processing task has completed
+    pub fn notify_task_complete(&self) {
+        self.processing_complete.notify_waiters();
+    }
+    
+    /// Wait for all processing to complete
+    pub async fn wait_for_processing_complete(&self) {
+        loop {
+            {
+                let state = self.state.lock().await;
+                if !state.is_processing {
+                    // No active processing
+                    return;
+                }
+            }
+            // Wait for notification
+            self.processing_complete.notified().await;
+        }
     }
 }
 
 impl<T> Default for Context<T> {
     fn default() -> Self {
         Self {
-            item: Mutex::new(None),
-            is_processing: AtomicBool::new(false),
+            state: Mutex::new(State {
+                item: None,
+                is_processing: false,
+            }),
+            processing_complete: Notify::new(),
         }
     }
 }
