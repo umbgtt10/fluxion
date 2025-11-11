@@ -4,17 +4,13 @@ use fluxion_test_utils::test_data::{
     TestData, animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave,
     person_diane, push,
 };
-use std::{
-    sync::Arc,
-    sync::Mutex as StdMutex,
-    time::{Duration, Instant},
-};
-use tokio::{sync::Mutex as TokioMutex, sync::mpsc, time::sleep};
+use std::{sync::Arc, sync::Mutex as StdMutex};
+use tokio::{sync::Mutex as TokioMutex, sync::mpsc};
 use tokio_stream::{StreamExt as _, wrappers::UnboundedReceiverStream};
 use tokio_util::sync::CancellationToken;
 
 #[tokio::test]
-async fn test_subscribe_async_sequential_processing() {
+async fn test_subscribe_async_processes_items_when_waiting_per_item() {
     // Arrange
     let (sender, receiver) = unbounded_channel();
     let stream =
@@ -97,7 +93,7 @@ async fn test_subscribe_async_sequential_processing() {
 }
 
 #[tokio::test]
-async fn test_subscribe_async_with_errors() {
+async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() {
     // Arrange
     let (sender, receiver) = unbounded_channel();
     let stream =
@@ -169,7 +165,7 @@ async fn test_subscribe_async_with_errors() {
 }
 
 #[tokio::test]
-async fn test_subscribe_async_triggered_cancellation_token() {
+async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() {
     // Arrange
     let (sender, receiver) = unbounded_channel();
     let stream =
@@ -186,8 +182,6 @@ async fn test_subscribe_async_triggered_cancellation_token() {
             let results = results.clone();
             let notify_tx = notify_tx.clone();
             async move {
-                sleep(Duration::from_millis(20)).await;
-
                 if ctx.is_cancelled() {
                     let _ = notify_tx.send(()); // Signal completion (cancelled)
                     return Ok(());
@@ -228,17 +222,16 @@ async fn test_subscribe_async_triggered_cancellation_token() {
     push(person_charlie(), &sender);
     push(person_diane(), &sender);
 
-    // Give a moment for potential (incorrect) processing
-    sleep(Duration::from_millis(50)).await;
-
-    assert_eq!(*results.lock().await, vec![person_alice(), person_bob()]);
-
+    // Close the stream and wait for the task to complete deterministically
     drop(sender);
     task_handle.await.unwrap();
+
+    // Assert no further items were processed after cancellation
+    assert_eq!(*results.lock().await, vec![person_alice(), person_bob()]);
 }
 
 #[tokio::test]
-async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
+async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing() {
     // Arrange
     let (sender, receiver) = unbounded_channel();
     let stream =
@@ -262,8 +255,6 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
             let results = results.clone();
             let notify_tx = notify_tx.clone();
             async move {
-                sleep(Duration::from_millis(20)).await;
-
                 if ctx.is_cancelled() {
                     let _ = notify_tx.send(());
                     return Err(ProcessingError::Cancelled(format!(
@@ -333,8 +324,9 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
     push(person_diane(), &sender);
     push(animal_dog(), &sender);
 
-    // Give a moment for potential (incorrect) processing
-    sleep(Duration::from_millis(50)).await;
+    // Close the stream and await task completion deterministically
+    drop(sender);
+    task_handle.await.unwrap();
 
     // No new items processed after cancellation
     assert_eq!(
@@ -347,13 +339,10 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
             "Failed to process Charlie".to_string()
         )]
     );
-
-    drop(sender);
-    task_handle.await.unwrap();
 }
 
 #[tokio::test]
-async fn test_subscribe_async_empty_stream() {
+async fn test_subscribe_async_empty_stream_completes_without_items() {
     // Arrange
     let (sender, receiver) = unbounded_channel::<TestData>();
     let stream =
@@ -396,7 +385,7 @@ async fn test_subscribe_async_empty_stream() {
 }
 
 #[tokio::test]
-async fn test_subscribe_async_parallel_processing() {
+async fn test_subscribe_async_parallelism_max_active_ge_2() {
     // Arrange
     let (sender, receiver) = unbounded_channel();
     let stream =
@@ -404,15 +393,40 @@ async fn test_subscribe_async_parallel_processing() {
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
+    // Concurrency counters
+    let active = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let max_active = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+
+    // Gate to hold completion so tasks overlap; and starter to know when tasks begin
+    let (finish_tx, finish_rx) = mpsc::unbounded_channel::<()>();
+    let finish_rx_shared = Arc::new(TokioMutex::new(finish_rx));
+    let (started_tx, mut started_rx) = mpsc::unbounded_channel::<()>();
+
     let func = {
         let results = results.clone();
         let notify_tx = notify_tx.clone();
+        let active = active.clone();
+        let max_active = max_active.clone();
+        let finish_rx_shared = finish_rx_shared.clone();
+        let started_tx = started_tx.clone();
         move |item, _ctx: CancellationToken| {
             let results = results.clone();
             let notify_tx = notify_tx.clone();
+            let active = active.clone();
+            let max_active = max_active.clone();
+            let finish_rx_shared = finish_rx_shared.clone();
+            let started_tx = started_tx.clone();
             async move {
-                // Each task sleeps for 100ms
-                sleep(Duration::from_millis(100)).await;
+                // Mark task active and track max concurrency
+                let cur = active.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+                max_active.fetch_max(cur, std::sync::atomic::Ordering::SeqCst);
+                let _ = started_tx.send(());
+
+                // Wait until released
+                let _ = finish_rx_shared.lock().await.recv().await;
+
+                // Complete work
+                active.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
                 results.lock().await.push(item);
                 let _ = notify_tx.send(());
                 Ok::<(), ()>(())
@@ -434,29 +448,32 @@ async fn test_subscribe_async_parallel_processing() {
         }
     });
 
-    // Act - Send 3 items rapidly, measure completion time
-    let start = Instant::now();
+    // Act - Send 3 items rapidly and ensure they overlap
     push(person_alice(), &sender);
     push(person_bob(), &sender);
     push(person_charlie(), &sender);
 
-    // Wait for all 3 to complete
+    // Wait until all three tasks have started
+    started_rx.recv().await.unwrap();
+    started_rx.recv().await.unwrap();
+    started_rx.recv().await.unwrap();
+
+    // Release them to finish and await completions
+    let _ = finish_tx.send(());
+    let _ = finish_tx.send(());
+    let _ = finish_tx.send(());
     notify_rx.recv().await.unwrap();
     notify_rx.recv().await.unwrap();
     notify_rx.recv().await.unwrap();
-    let duration = start.elapsed();
 
     // Assert
     let processed = results.lock().await;
     assert_eq!(processed.len(), 3, "All 3 items should be processed");
-
-    // If processed sequentially, would take ~300ms (3 * 100ms)
-    // If processed in parallel, should take ~100ms
-    // Allow margin for overhead
+    let max = max_active.load(std::sync::atomic::Ordering::SeqCst);
     assert!(
-        duration < Duration::from_millis(250),
-        "Processing should be parallel (< 250ms), but took {:?}",
-        duration
+        max >= 2,
+        "Expected parallelism (max_active >= 2), got {}",
+        max
     );
 
     // Cleanup
@@ -465,7 +482,7 @@ async fn test_subscribe_async_parallel_processing() {
 }
 
 #[tokio::test]
-async fn test_subscribe_async_high_volume() {
+async fn test_subscribe_async_high_volume_processes_all() {
     // Arrange
     let (sender, receiver) = unbounded_channel();
     let stream =
@@ -521,7 +538,7 @@ async fn test_subscribe_async_high_volume() {
 }
 
 #[tokio::test]
-async fn test_subscribe_async_precancelled_token() {
+async fn test_subscribe_async_precancelled_token_processes_nothing() {
     // Arrange
     let (sender, receiver) = unbounded_channel();
     let stream =
@@ -560,12 +577,10 @@ async fn test_subscribe_async_precancelled_token() {
     // Act - Send items (should not be processed due to pre-cancelled token)
     push(person_alice(), &sender);
     push(person_bob(), &sender);
-    sleep(Duration::from_millis(50)).await;
+    // Deterministically end the stream and wait for task to finish
+    drop(sender);
+    task_handle.await.unwrap();
 
     // Assert
     assert_eq!(*results.lock().await, Vec::<TestData>::new());
-
-    // Cleanup
-    drop(sender);
-    task_handle.await.unwrap();
 }
