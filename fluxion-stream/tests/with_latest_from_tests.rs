@@ -3,7 +3,7 @@ use fluxion_stream::timestamped::Timestamped;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_test_utils::push;
 use fluxion_test_utils::test_data::{
-    TestData, animal, animal_cat, animal_dog, person, person_alice, person_bob,
+    TestData, animal, animal_cat, animal_dog, person, person_alice, person_bob, person_charlie,
 };
 use fluxion_test_utils::{
     TestChannel, TestChannels,
@@ -342,4 +342,180 @@ async fn test_with_latest_from_boundary_maximum_concurrent_streams() {
             .await
             .expect("Stream task should complete successfully");
     }
+}
+
+#[tokio::test]
+async fn test_with_latest_from_filter_rejects_initial_state() {
+    // Arrange
+    let (primary, secondary) = TestChannels::two();
+
+    // Filter that rejects when primary is Dog
+    let filter = |state: &CombinedState<Timestamped<TestData>>| {
+        let values = state.get_state();
+        values[1].value != animal_dog() // Reject when primary is Dog
+    };
+
+    let combined_stream = primary.stream.with_latest_from(secondary.stream, filter);
+    let mut stream = Box::pin(combined_stream);
+
+    // Act: Send Dog to primary, Alice to secondary (filter should reject)
+    push(animal_dog(), &primary.sender);
+    push(person_alice(), &secondary.sender);
+
+    // Assert: No emission because filter rejects
+    assert_no_element_emitted(&mut stream, 100).await;
+
+    // Act: Send Cat to primary (filter should now accept)
+    push(animal_cat(), &primary.sender);
+
+    // Assert: Now it should emit
+    let (sec, prim) = stream.next().await.unwrap();
+    assert_eq!(sec.value, person_alice());
+    assert_eq!(prim.value, animal_cat());
+}
+
+#[tokio::test]
+async fn test_with_latest_from_filter_alternates() {
+    // Arrange
+    let (primary, secondary) = TestChannels::two();
+
+    // Counter to alternate filter behavior
+    let counter = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counter_clone = counter.clone();
+
+    // Filter alternates: true, false, true, false, ...
+    let filter = move |_: &CombinedState<Timestamped<TestData>>| {
+        let count = counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        count.is_multiple_of(2) // true for even counts, false for odd
+    };
+
+    let combined_stream = primary.stream.with_latest_from(secondary.stream, filter);
+    let mut stream = Box::pin(combined_stream);
+
+    // Act: Initial values (count=0, filter=true)
+    push(animal_dog(), &primary.sender);
+    push(person_alice(), &secondary.sender);
+
+    // Assert: Should emit (filter returns true)
+    let (sec1, prim1) = stream.next().await.unwrap();
+    assert_eq!(sec1.value, person_alice());
+    assert_eq!(prim1.value, animal_dog());
+
+    // Act: Update primary (count=1, filter=false)
+    push(animal_cat(), &primary.sender);
+
+    // Assert: Should not emit (filter returns false)
+    assert_no_element_emitted(&mut stream, 100).await;
+
+    // Act: Update secondary (count=2, filter=true)
+    push(person_bob(), &secondary.sender);
+
+    // Assert: Should emit (filter returns true)
+    let (sec2, prim2) = stream.next().await.unwrap();
+    assert_eq!(sec2.value, person_bob());
+    assert_eq!(prim2.value, animal_cat());
+
+    // Act: Update primary (count=3, filter=false)
+    push(animal_dog(), &primary.sender);
+
+    // Assert: Should not emit (filter returns false)
+    assert_no_element_emitted(&mut stream, 100).await;
+}
+
+#[tokio::test]
+#[should_panic(expected = "Filter panicked")]
+async fn test_with_latest_from_filter_panics() {
+    // Arrange
+    let (primary, secondary) = TestChannels::two();
+
+    // Filter that panics
+    let filter = |_: &CombinedState<Timestamped<TestData>>| -> bool {
+        panic!("Filter panicked");
+    };
+
+    let combined_stream = primary.stream.with_latest_from(secondary.stream, filter);
+    let mut stream = Box::pin(combined_stream);
+
+    // Act: Send values to trigger filter
+    push(animal_dog(), &primary.sender);
+    push(person_alice(), &secondary.sender);
+
+    // This should panic when filter is called
+    let _ = stream.next().await;
+}
+
+#[tokio::test]
+async fn test_with_latest_from_timestamp_ordering() {
+    // Arrange
+    let (primary, secondary) = TestChannels::two();
+
+    let combined_stream = primary.stream.with_latest_from(secondary.stream, FILTER);
+    let mut stream = Box::pin(combined_stream);
+
+    // Act: Send initial values
+    push(animal_dog(), &primary.sender);
+    push(person_alice(), &secondary.sender);
+
+    // Assert: First emission
+    let (_sec1, prim1) = stream.next().await.unwrap();
+    let ts1 = prim1.sequence();
+
+    // Act: Update primary
+    push(animal_cat(), &primary.sender);
+
+    // Assert: Second emission should have later timestamp
+    let (_sec2, prim2) = stream.next().await.unwrap();
+    let ts2 = prim2.sequence();
+    assert!(
+        ts2 > ts1,
+        "Timestamps should be monotonically increasing: {:?} should be > {:?}",
+        ts2,
+        ts1
+    );
+
+    // Act: Update secondary
+    push(person_bob(), &secondary.sender);
+
+    // Assert: Third emission should have later timestamp
+    let (sec3, _prim3) = stream.next().await.unwrap();
+    let ts3 = sec3.sequence();
+    assert!(
+        ts3 > ts2,
+        "Timestamps should be monotonically increasing: {:?} should be > {:?}",
+        ts3,
+        ts2
+    );
+}
+
+#[tokio::test]
+async fn test_with_latest_from_multiple_secondary_before_primary() {
+    // Arrange
+    let (primary, secondary) = TestChannels::two();
+
+    let combined_stream = primary.stream.with_latest_from(secondary.stream, FILTER);
+    let mut stream = Box::pin(combined_stream);
+
+    // Act: Send multiple secondary values before any primary value
+    push(person_alice(), &secondary.sender);
+    push(person_bob(), &secondary.sender);
+    push(person_charlie(), &secondary.sender);
+
+    // Assert: No emission yet (waiting for primary)
+    assert_no_element_emitted(&mut stream, 100).await;
+
+    // Act: Send first primary value
+    push(animal_dog(), &primary.sender);
+
+    // Assert: Should emit with latest secondary value (Charlie)
+    let (sec, prim) = stream.next().await.unwrap();
+    assert_eq!(sec.value, person_charlie()); // Latest secondary
+    assert_eq!(prim.value, animal_dog());
+
+    // Act: Send another secondary value
+    push(person_alice(), &secondary.sender);
+
+    // Assert: Should emit immediately (both streams have values)
+    let (sec2, prim2) = stream.next().await.unwrap();
+    assert_eq!(sec2.value, person_alice());
+    assert_eq!(prim2.value, animal_dog()); // Primary unchanged
 }
