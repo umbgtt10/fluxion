@@ -1,7 +1,7 @@
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
 use fluxion_stream::timestamped_channel::unbounded_channel;
 use fluxion_test_utils::push;
-use fluxion_test_utils::test_data::{person_alice, person_bob, person_charlie};
+use fluxion_test_utils::test_data::{person, person_alice, person_bob, person_charlie};
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -197,4 +197,118 @@ async fn test_combine_with_previous_high_volume_sequential() {
     // Last pair should have a previous
     assert!(last_prev.is_some());
     assert!(last_curr.is_some());
+}
+
+#[tokio::test]
+async fn test_combine_with_previous_boundary_empty_string_zero_values() {
+    // Arrange: Test with boundary values (empty strings, zero numeric values)
+    let (sender, receiver) = unbounded_channel();
+    let stream = UnboundedReceiverStream::new(receiver.into_inner());
+    let mut stream = stream.combine_with_previous();
+
+    // Act: Send empty string with zero value
+    push(person("".to_string(), 0), &sender);
+
+    // Assert: First emission has no previous
+    let result = stream.next().await.unwrap();
+    assert_eq!(
+        (result.0.map(|s| s.value), result.1.value),
+        (None, person("".to_string(), 0))
+    );
+
+    // Act: Send another boundary value
+    push(person("".to_string(), 0), &sender);
+
+    // Assert: Second emission has previous with boundary value
+    let result2 = stream.next().await.unwrap();
+    assert_eq!(
+        (result2.0.map(|s| s.value), result2.1.value),
+        (Some(person("".to_string(), 0)), person("".to_string(), 0))
+    );
+
+    // Act: Transition to normal value
+    push(person_alice(), &sender);
+
+    // Assert: Should track boundary as previous
+    let result3 = stream.next().await.unwrap();
+    assert_eq!(
+        (result3.0.map(|s| s.value), result3.1.value),
+        (Some(person("".to_string(), 0)), person_alice())
+    );
+}
+
+#[tokio::test]
+async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
+    // Arrange: Test concurrent handling with many parallel streams
+    let num_concurrent = 50;
+    let mut handles = Vec::new();
+
+    for i in 0..num_concurrent {
+        let handle = tokio::spawn(async move {
+            let (sender, receiver) = unbounded_channel();
+            let stream = UnboundedReceiverStream::new(receiver.into_inner());
+            let mut stream = stream.combine_with_previous();
+
+            // Act: Send first value
+            push(person(format!("Person{}", i), i), &sender);
+
+            // Assert: No previous
+            let result = stream.next().await.unwrap();
+            assert_eq!(
+                (result.0.map(|s| s.value), result.1.value),
+                (None, person(format!("Person{}", i), i))
+            );
+
+            // Act: Send second value
+            push(person_alice(), &sender);
+
+            // Assert: Has previous
+            let result2 = stream.next().await.unwrap();
+            assert_eq!(
+                (result2.0.map(|s| s.value), result2.1.value),
+                (Some(person(format!("Person{}", i), i)), person_alice())
+            );
+
+            // Act: Send third value
+            push(person_bob(), &sender);
+
+            // Assert: Previous is Alice
+            let result3 = stream.next().await.unwrap();
+            assert_eq!(
+                (result3.0.map(|s| s.value), result3.1.value),
+                (Some(person_alice()), person_bob())
+            );
+        });
+
+        handles.push(handle);
+    }
+
+    // Wait for all concurrent streams to complete
+    for handle in handles {
+        handle
+            .await
+            .expect("Concurrent stream task should complete successfully");
+    }
+}
+
+#[tokio::test]
+async fn test_combine_with_previous_single_value_stream() {
+    // Arrange: Stream that emits only one value
+    let (sender, receiver) = unbounded_channel();
+    let stream = UnboundedReceiverStream::new(receiver.into_inner());
+    let mut stream = stream.combine_with_previous();
+
+    // Act: Send single value and close
+    push(person_alice(), &sender);
+    drop(sender);
+
+    // Assert: Should emit with no previous
+    let result = stream.next().await.unwrap();
+    assert_eq!(
+        (result.0.map(|s| s.value), result.1.value),
+        (None, person_alice())
+    );
+
+    // Assert: Stream ends
+    assert!(stream.next().await.is_none());
 }
