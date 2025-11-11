@@ -94,98 +94,61 @@ pub async fn assert(
 
 pub async fn assert_person_received(results: impl Stream<Item = Sequenced<SimpleEnum>> + Send) {
     let state = Box::pin(results).next().await.unwrap();
-    match state.value {
-        SimpleEnum::Person(p) => {
-            assert_eq!(p, Person::new("Alice".to_string(), 25));
-        }
-        _ => panic!("Expected Person, got {:?}", state),
-    }
+    assert_eq!(state.value, alice());
 }
 
 pub async fn assert_animal_received(results: impl Stream<Item = Sequenced<SimpleEnum>> + Send) {
     let state = Box::pin(results).next().await.unwrap();
-    match state.value {
-        SimpleEnum::Animal(a) => {
-            assert_eq!(a, Animal::new("Dog".to_string(), 4));
-        }
-        _ => panic!("Expected Animal, got {:?}", state),
-    }
+    assert_eq!(state.value, dog());
 }
 
 pub async fn assert_plant_received(results: impl Stream<Item = Sequenced<SimpleEnum>> + Send) {
     let state = Box::pin(results).next().await.unwrap();
-    match state.value {
-        SimpleEnum::Plant(p) => {
-            assert_eq!(p, Plant::new("Rose".to_string(), 15));
-        }
-        _ => panic!("Expected Plant, got {:?}", state),
-    }
+    assert_eq!(state.value, rose());
 }
 
 pub fn send_alice(sender: &UnboundedSender<SimpleEnum>) {
-    sender
-        .send(SimpleEnum::Person(Person::new("Alice".to_string(), 25)))
-        .unwrap()
+    sender.send(alice()).unwrap()
 }
 
 pub fn send_bob(sender: &UnboundedSender<SimpleEnum>) {
-    sender
-        .send(SimpleEnum::Person(Person::new("Bob".to_string(), 30)))
-        .unwrap()
+    sender.send(bob()).unwrap()
 }
 
 pub fn send_charlie(sender: &UnboundedSender<SimpleEnum>) {
-    sender
-        .send(SimpleEnum::Person(Person::new("Charlie".to_string(), 35)))
-        .unwrap()
+    sender.send(charlie()).unwrap()
 }
 
 pub fn send_diane(sender: &UnboundedSender<SimpleEnum>) {
-    sender
-        .send(SimpleEnum::Person(Person::new("Diane".to_string(), 40)))
-        .unwrap()
+    sender.send(diane()).unwrap()
 }
 
 pub fn send_dave(sender: &UnboundedSender<SimpleEnum>) {
-    sender
-        .send(SimpleEnum::Person(Person::new("Dave".to_string(), 45)))
-        .unwrap()
+    sender.send(dave()).unwrap()
 }
 
 pub fn send_dog(sender: &UnboundedSender<SimpleEnum>) {
-    sender
-        .send(SimpleEnum::Animal(Animal::new("Dog".to_string(), 4)))
-        .unwrap()
+    sender.send(dog()).unwrap()
 }
 
 pub fn send_spider(sender: &UnboundedSender<SimpleEnum>) {
-    sender
-        .send(SimpleEnum::Animal(Animal::new("Spider".to_string(), 8)))
-        .unwrap()
+    sender.send(spider()).unwrap()
 }
 
 pub fn send_ant(sender: &UnboundedSender<SimpleEnum>) {
-    sender
-        .send(SimpleEnum::Animal(Animal::new("Ant".to_string(), 6)))
-        .unwrap()
+    sender.send(ant()).unwrap()
 }
 
 pub fn send_cat(sender: &UnboundedSender<SimpleEnum>) {
-    sender
-        .send(SimpleEnum::Animal(Animal::new("Cat".to_string(), 4)))
-        .unwrap()
+    sender.send(cat()).unwrap()
 }
 
 pub fn send_sunflower(sender: &UnboundedSender<SimpleEnum>) {
-    sender
-        .send(SimpleEnum::Plant(Plant::new("Sunflower".to_string(), 180)))
-        .unwrap()
+    sender.send(sunflower()).unwrap()
 }
 
 pub fn send_rose(sender: &UnboundedSender<SimpleEnum>) {
-    sender
-        .send(SimpleEnum::Plant(Plant::new("Rose".to_string(), 15)))
-        .unwrap()
+    sender.send(rose()).unwrap()
 }
 
 impl Display for SimpleEnum {
