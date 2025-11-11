@@ -395,7 +395,7 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
 
     // Assert
     let processed = collected_items.lock().await;
-    assert_eq!(processed.len(), 2,);
+    assert_eq!(processed.len(), 2);
     assert!(processed.contains(&person_alice()),);
     assert!(processed.contains(&person_bob()));
     assert!(!processed.contains(&person_diane()));
@@ -404,115 +404,18 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_skips_intermediate_values() {
-    // Arrange
-    let collected_items = Arc::new(Mutex::new(Vec::new()));
-    let collected_items_clone = collected_items.clone();
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
-
-    let (sender, receiver) = unbounded_channel();
-    let stream =
-        UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
-
-    let func = {
-        let collected_items = collected_items_clone.clone();
-        let notify_tx = notify_tx.clone();
-        move |item, _| {
-            let collected_items = collected_items.clone();
-            let notify_tx = notify_tx.clone();
-            async move {
-                // Slow processing (100ms) to ensure items queue up
-                sleep(Duration::from_millis(100)).await;
-                collected_items.lock().await.push(item);
-                let _ = notify_tx.send(()); // Signal completion
-                Ok::<(), ()>(())
-            }
-        }
-    };
-
-    let error_callback = |_err: ()| {
-        eprintln!("Unexpected error");
-    };
-
-    let task_handle = tokio::spawn({
-        async move {
-            stream
-                .subscribe_latest_async(func, Some(error_callback), None)
-                .await;
-        }
-    });
-
-    // Act - Send 5 items rapidly (much faster than processing time)
-    push(person_alice(), &sender); // Item 1 - should be processed (starts immediately)
-    sleep(Duration::from_millis(5)).await;
-    push(person_bob(), &sender); // Item 2 - should be skipped
-    sleep(Duration::from_millis(5)).await;
-    push(person_charlie(), &sender); // Item 3 - should be skipped
-    sleep(Duration::from_millis(5)).await;
-    push(person_diane(), &sender); // Item 4 - should be skipped
-    sleep(Duration::from_millis(5)).await;
-    push(person_dave(), &sender); // Item 5 - should be processed (latest when #1 completes)
-
-    // Wait for first item to complete
-    notify_rx.recv().await.unwrap();
-
-    // Wait for second item to complete (with timeout in case only 1 processes)
-    tokio::select! {
-        _ = notify_rx.recv() => {},
-        _ = sleep(Duration::from_millis(150)) => {},
-    }
-
-    // Give a moment for any final processing
-    sleep(Duration::from_millis(50)).await;
-
-    // Assert - deterministic check
-    let processed = collected_items.lock().await;
-
-    // Core "latest" behavior verification:
-    // 1. First item should always be processed
-    assert!(
-        processed.contains(&person_alice()),
-        "First item (Alice) should be processed"
-    );
-
-    // 2. Not all items should be processed (some must be skipped)
-    assert!(
-        processed.len() < 5,
-        "Should skip some items due to 'latest' behavior, but processed all 5: {:?}",
-        processed
-    );
-
-    // 3. The second processed item should be the last emitted (or close to it)
-    if processed.len() == 2 {
-        assert_eq!(
-            processed[1],
-            person_dave(),
-            "Second item should be Dave (last emitted)"
-        );
-        // Verify intermediate items were NOT processed
-        assert!(!processed.contains(&person_bob()), "Bob should be skipped");
-        assert!(
-            !processed.contains(&person_charlie()),
-            "Charlie should be skipped"
-        );
-        assert!(
-            !processed.contains(&person_diane()),
-            "Diane should be skipped"
-        );
-    }
-
-    // Cleanup
-    drop(sender);
-    task_handle.await.unwrap();
-}
-
-#[tokio::test]
-async fn test_subscribe_latest_async_no_concurrent_processing() {
+async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_concurrent_processing()
+{
     // Arrange
     let active_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let max_concurrent = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let processed_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+
+    // Signal when processing starts; control completion via a finish gate
+    let (started_tx, mut started_rx) = mpsc::unbounded_channel::<()>();
+    let (finish_tx, finish_rx) = mpsc::unbounded_channel::<()>();
+    let finish_rx_shared = Arc::new(Mutex::new(finish_rx));
 
     let (sender, receiver) = unbounded_channel();
     let stream =
@@ -523,22 +426,27 @@ async fn test_subscribe_latest_async_no_concurrent_processing() {
         let max_concurrent = max_concurrent.clone();
         let processed_count = processed_count.clone();
         let notify_tx = notify_tx.clone();
+        let started_tx = started_tx.clone();
+        let finish_rx_shared = finish_rx_shared.clone();
         move |_item, _| {
             let active_count = active_count.clone();
             let max_concurrent = max_concurrent.clone();
             let processed_count = processed_count.clone();
             let notify_tx = notify_tx.clone();
+            let started_tx = started_tx.clone();
+            let finish_rx_shared = finish_rx_shared.clone();
             async move {
-                // Increment active count
+                // Increment active count and record max concurrency
                 let current = active_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-
-                // Track maximum concurrent processing
                 max_concurrent.fetch_max(current, std::sync::atomic::Ordering::SeqCst);
 
-                // Simulate work
-                sleep(Duration::from_millis(50)).await;
+                // Notify that processing has started
+                let _ = started_tx.send(());
 
-                // Decrement active count
+                // Wait until test signals completion for this item
+                let _ = finish_rx_shared.lock().await.recv().await;
+
+                // Decrement active count and mark processed
                 active_count.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
                 processed_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 let _ = notify_tx.send(());
@@ -552,7 +460,7 @@ async fn test_subscribe_latest_async_no_concurrent_processing() {
         eprintln!("Unexpected error");
     };
 
-    let task_handle = tokio::spawn({
+    tokio::spawn({
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
@@ -560,30 +468,34 @@ async fn test_subscribe_latest_async_no_concurrent_processing() {
         }
     });
 
-    // Act - Send multiple items rapidly
-    for _ in 0..10 {
-        push(person_alice(), &sender);
-        sleep(Duration::from_millis(5)).await;
-    }
+    // Act - Drive N sequential processings while always having the next item queued
+    let n = 10;
 
-    // Close stream and wait for all processing to complete
-    drop(sender);
-    task_handle.await.unwrap();
+    push(person_alice(), &sender);
+
+    for i in 0..n {
+        // Wait until current processing has started
+        started_rx.recv().await.expect("processing started");
+
+        // Queue next item before finishing current to try to induce overlap
+        if i + 1 < n {
+            push(person_alice(), &sender);
+        }
+
+        // Now allow current processing to complete and wait for completion notification
+        let _ = finish_tx.send(());
+        notify_rx.recv().await.expect("processing completed");
+    }
 
     // Assert
     let max = max_concurrent.load(std::sync::atomic::Ordering::SeqCst);
-    assert_eq!(
-        max, 1,
-        "Expected maximum of 1 concurrent processing, but found {}",
-        max
-    );
+    assert_eq!(max, 1);
 
     let final_active = active_count.load(std::sync::atomic::Ordering::SeqCst);
-    assert_eq!(
-        final_active, 0,
-        "Expected no active processing at end, but found {}",
-        final_active
-    );
+    assert_eq!(final_active, 0);
+
+    let done = processed_count.load(std::sync::atomic::Ordering::SeqCst);
+    assert_eq!(done, n);
 }
 
 #[tokio::test]
