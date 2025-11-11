@@ -172,7 +172,10 @@ async fn test_combine_with_previous_high_volume_sequential() {
 
     // Assert: first has no previous
     let first = stream.next().await.unwrap();
-    assert_eq!((first.0.map(|s| s.value), first.1.value), (None, person_alice()));
+    assert_eq!(
+        (first.0.map(|s| s.value), first.1.value),
+        (None, person_alice())
+    );
 
     // Then verify a few samples and the last pair to ensure previous tracking holds
     let second = stream.next().await.unwrap();
