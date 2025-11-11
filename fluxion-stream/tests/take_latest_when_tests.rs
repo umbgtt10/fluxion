@@ -4,8 +4,8 @@ use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     push,
     test_data::{
-        TestData, animal_ant, animal_cat, animal_dog, person_alice, person_bob, person_charlie,
-        person_dave,
+        TestData, animal, animal_ant, animal_cat, animal_dog, person, person_alice, person_bob,
+        person_charlie, person_dave,
     },
 };
 use futures::StreamExt;
@@ -409,10 +409,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     for i in 0..10000 {
         source
             .sender
-            .send(fluxion_test_utils::test_data::person(
-                format!("Person{}", i),
-                i as u32,
-            ))
+            .send(person(format!("Person{}", i), i as u32))
             .unwrap();
     }
 
@@ -424,10 +421,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
 
     // Assert: Only the LATEST value is emitted (Person9999)
     let first = output_stream.next().await.unwrap();
-    assert_eq!(
-        first,
-        fluxion_test_utils::test_data::person("Person9999".to_string(), 9999)
-    );
+    assert_eq!(first, person("Person9999".to_string(), 9999));
 
     // Assert: No additional emissions (buffer only held the latest, not all 10000)
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -437,10 +431,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     for i in 10000..20000 {
         source
             .sender
-            .send(fluxion_test_utils::test_data::person(
-                format!("Person{}", i),
-                i as u32,
-            ))
+            .send(person(format!("Person{}", i), i as u32))
             .unwrap();
     }
 
@@ -452,11 +443,103 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
 
     // Assert: Only the latest from the second batch (Person19999)
     let second = output_stream.next().await.unwrap();
-    assert_eq!(
-        second,
-        fluxion_test_utils::test_data::person("Person19999".to_string(), 19999)
-    );
+    assert_eq!(second, person("Person19999".to_string(), 19999));
 
     // This test validates that the buffer doesn't grow unbounded - it only keeps
     // the latest source value, not all historical values while the filter is false
+}
+
+#[tokio::test]
+async fn test_take_latest_when_boundary_empty_string_zero_values() {
+    static FILTER: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
+
+    // Arrange: Test boundary values (empty strings, zero numeric values)
+    let (source, filter) = TestChannels::two();
+
+    let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+    let mut output_stream = Box::pin(output_stream);
+
+    // Act: Send empty string with zero value to source
+    push(person("".to_string(), 0), &source.sender);
+
+    // Act: Send filter trigger with empty/zero
+    push(animal("".to_string(), 0), &filter.sender);
+
+    // Assert: Should emit the boundary value
+    let result = output_stream.next().await.unwrap();
+    assert_eq!(
+        result,
+        person("".to_string(), 0),
+        "Should handle empty string and zero age"
+    );
+
+    // Act: Update to normal values
+    push(person_alice(), &source.sender);
+    push(animal_dog(), &filter.sender);
+
+    // Assert: Should emit normal value
+    let result2 = output_stream.next().await.unwrap();
+    assert_eq!(result2, person_alice());
+}
+
+#[tokio::test]
+async fn test_take_latest_when_boundary_maximum_concurrent_streams() {
+    static FILTER: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
+
+    // Arrange: Test concurrent handling with many parallel streams
+    let num_concurrent = 50;
+    let mut handles = Vec::new();
+
+    for i in 0..num_concurrent {
+        let handle = tokio::spawn(async move {
+            let (source, filter) = TestChannels::two();
+            let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+            let mut output_stream = Box::pin(output_stream);
+
+            // Act: Send values
+            push(person(format!("Person{}", i), i), &source.sender);
+            push(animal(format!("Animal{}", i), i), &filter.sender);
+
+            // Assert: Should emit
+            let result = output_stream.next().await.unwrap();
+            assert_eq!(result, person(format!("Person{}", i), i));
+
+            // Act: Update source and trigger again
+            push(person_bob(), &source.sender);
+            push(animal_cat(), &filter.sender);
+
+            // Assert: Should emit updated value
+            let result2 = output_stream.next().await.unwrap();
+            assert_eq!(result2, person_bob());
+        });
+
+        handles.push(handle);
+    }
+
+    // Wait for all concurrent streams to complete
+    for handle in handles {
+        handle
+            .await
+            .expect("Concurrent stream task should complete successfully");
+    }
+}
+
+#[tokio::test]
+#[should_panic(expected = "Filter panicked")]
+async fn test_take_latest_when_filter_panics() {
+    // Arrange:
+    let filter_fn = |_: &CombinedState<TestData>| -> bool {
+        panic!("Filter panicked");
+    };
+
+    let (source, filter) = TestChannels::two();
+    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+
+    // Act
+    push(person_alice(), &source.sender);
+    push(animal_dog(), &filter.sender);
+
+    // Assert
+    let mut output_stream = Box::pin(output_stream);
+    let _ = output_stream.next().await;
 }
