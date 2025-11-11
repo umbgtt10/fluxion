@@ -1,6 +1,6 @@
 use fluxion_stream::{merge_with::MergedStream, timestamped::Timestamped};
 use fluxion_test_utils::{
-    TestChannels,
+    TestChannel, TestChannels,
     animal::Animal,
     person::Person,
     plant::Plant,
@@ -10,7 +10,7 @@ use fluxion_test_utils::{
         person_dave, plant_fern, plant_oak,
     },
 };
-use futures::{StreamExt, stream};
+use futures::StreamExt;
 
 #[tokio::test]
 async fn test_merge_with_empty_streams() {
@@ -223,11 +223,12 @@ async fn test_merge_with_parallel_processing() {
 #[tokio::test]
 async fn test_merge_with_large_streams_emits() {
     // Arrange
-    let large_stream1 = stream::iter((0..10000).map(Timestamped::new));
-    let large_stream2 = stream::iter((10000..20000).map(Timestamped::new));
+    let channel1 = TestChannel::<i32>::new();
+    let channel2 = TestChannel::<i32>::new();
+    let large_stream1 = channel1.stream;
+    let large_stream2 = channel2.stream;
 
-    // Act
-    let result_stream = MergedStream::seed(0)
+    let merged_stream = MergedStream::seed(0)
         .merge_with(large_stream1, |num, state| {
             *state += num;
             *state
@@ -237,16 +238,27 @@ async fn test_merge_with_large_streams_emits() {
             *state
         });
 
+    // Act
+    for i in 0..10000 {
+        push(i, &channel1.sender);
+    }
+    for i in 10000..20000 {
+        push(i, &channel2.sender);
+    }
+
     // Assert
-    let result: Vec<Timestamped<i32>> = result_stream.collect().await;
+    let mut merged_stream = Box::pin(merged_stream);
+    let mut count = 0;
+    let mut final_state = None;
+    for _ in 0..20000 {
+        let state = merged_stream.next().await.unwrap();
+        count += 1;
+        final_state = Some(state);
+    }
+    assert_eq!(count, 20000, "Should have processed all 20000 emissions");
     assert_eq!(
-        result.len(),
-        20000,
-        "Should have processed all 20000 emissions"
-    );
-    assert_eq!(
-        result.last().map(|ts| ts.get()),
-        Some(&199990000),
+        final_state.as_ref().map(|ts| *ts.get()),
+        Some(199990000),
         "Final accumulated sum should be correct"
     );
 }
@@ -277,12 +289,11 @@ async fn test_merge_with_hybrid_using_repository_emits() {
             TestData::Plant(pl) => state.from_plant(pl),
         });
 
-    let mut merged_stream = Box::pin(merged_stream);
-
     // Act
     push(animal_dog(), &animal.sender);
 
     // Assert
+    let mut merged_stream = Box::pin(merged_stream);
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
         *state.get(),
