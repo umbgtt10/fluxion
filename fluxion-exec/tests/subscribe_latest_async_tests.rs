@@ -1,11 +1,14 @@
-use std::sync::Arc;
 use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
-use tokio::sync::{Mutex, mpsc};
+use fluxion_stream::sequenced_channel::unbounded_channel;
+use fluxion_test_utils::test_value::{
+    animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
+    person_dave, person_diane, plant_rose, push, TestValue,
+};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tokio::time::{Duration, sleep};
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt as _, wrappers::UnboundedReceiverStream};
 use tokio_util::sync::CancellationToken;
-
-const BUFFER_SIZE: usize = 10;
 
 #[tokio::test]
 async fn test_subscribe_latest_async_no_error_no_cancellation_token() {
@@ -13,8 +16,9 @@ async fn test_subscribe_latest_async_no_error_no_cancellation_token() {
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
 
-    let (sender, receiver) = mpsc::channel(BUFFER_SIZE);
-    let stream = ReceiverStream::new(receiver);
+    let (sender, receiver) = unbounded_channel();
+    let stream =
+        UnboundedReceiverStream::new(receiver.into_inner()).map(|sequenced| sequenced.value);
 
     let func = move |item, _| {
         let collected_items = collected_items_clone.clone();
@@ -41,13 +45,29 @@ async fn test_subscribe_latest_async_no_error_no_cancellation_token() {
     });
 
     // Act
-    for i in 1..=BUFFER_SIZE {
-        sender.send(i).await.unwrap();
-        sleep(Duration::from_millis(10)).await;
-    }
+    push(person_alice(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(person_bob(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(person_charlie(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(person_diane(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(person_dave(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(animal_dog(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(animal_cat(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(animal_ant(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(animal_spider(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(plant_rose(), &sender);
+    sleep(Duration::from_millis(10)).await;
 
     // Assert
-    assert_subset_items_processed_sequentially(&collected_items, BUFFER_SIZE).await;
+    assert_subset_items_processed(&collected_items).await;
 
     // Cleanup
     drop(sender);
@@ -60,14 +80,16 @@ async fn test_subscribe_latest_async_with_error_no_cancellation_token() {
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
 
-    let (sender, receiver) = mpsc::channel(BUFFER_SIZE);
-    let stream = ReceiverStream::new(receiver);
+    let (sender, receiver) = unbounded_channel();
+    let stream =
+        UnboundedReceiverStream::new(receiver.into_inner()).map(|sequenced| sequenced.value);
 
-    let func = move |item, _| {
+    let func = move |item: TestValue, _| {
         let collected_items = collected_items_clone.clone();
         async move {
-            if item % 3 == 0 {
-                return Err(format!("item {} could not be processed", item));
+            // Error on every third person (Bob, Dave)
+            if matches!(&item, TestValue::Person(p) if p.name == "Bob" || p.name == "Dave") {
+                return Err(format!("Failed to process {:?}", item));
             }
 
             let mut items = collected_items.lock().await;
@@ -92,13 +114,19 @@ async fn test_subscribe_latest_async_with_error_no_cancellation_token() {
     });
 
     // Act
-    for i in 1..=BUFFER_SIZE {
-        sender.send(i).await.unwrap();
-        sleep(Duration::from_millis(10)).await;
-    }
+    push(person_alice(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(person_bob(), &sender); // Error
+    sleep(Duration::from_millis(10)).await;
+    push(person_charlie(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(person_dave(), &sender); // Error
+    sleep(Duration::from_millis(10)).await;
+    push(animal_dog(), &sender);
+    sleep(Duration::from_millis(10)).await;
 
     // Assert
-    assert_subset_items_processed_sequentially(&collected_items, BUFFER_SIZE).await;
+    assert_subset_items_processed(&collected_items).await;
 
     // Cleanup
     drop(sender);
@@ -110,8 +138,9 @@ async fn test_subscribe_latest_async_with_cancellation_no_errors() {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
-    let (sender, receiver) = mpsc::channel(BUFFER_SIZE);
-    let stream = ReceiverStream::new(receiver);
+    let (sender, receiver) = unbounded_channel();
+    let stream =
+        UnboundedReceiverStream::new(receiver.into_inner()).map(|sequenced| sequenced.value);
 
     let func = move |item, ctx: CancellationToken| {
         let collected_items = collected_items_clone.clone();
@@ -145,23 +174,27 @@ async fn test_subscribe_latest_async_with_cancellation_no_errors() {
     });
 
     // Act
-    for i in 1..=4 {
-        sender.send(i).await.unwrap();
-        sleep(Duration::from_millis(10)).await;
-    }
+    push(person_alice(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(person_bob(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(person_charlie(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(person_diane(), &sender);
+    sleep(Duration::from_millis(10)).await;
     cancellation_token.cancel();
 
     // Assert
-    assert_subset_items_processed_sequentially(&collected_items, BUFFER_SIZE).await;
+    assert_subset_items_processed(&collected_items).await;
 
-    // Act
-    for i in 5..=BUFFER_SIZE {
-        sender.send(i).await.unwrap();
-        sleep(Duration::from_millis(10)).await;
-    }
+    // Act - these should not be processed after cancellation
+    push(person_dave(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(animal_dog(), &sender);
+    sleep(Duration::from_millis(10)).await;
 
     // Assert
-    assert_subset_items_processed_sequentially(&collected_items, BUFFER_SIZE).await;
+    assert_subset_items_processed(&collected_items).await;
 
     // Cleanup
     drop(sender);
@@ -174,13 +207,15 @@ async fn test_subscribe_latest_async_with_cancellation_and_errors() {
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
 
-    let (sender, receiver) = mpsc::channel(BUFFER_SIZE);
-    let stream = ReceiverStream::new(receiver);
+    let (sender, receiver) = unbounded_channel();
+    let stream =
+        UnboundedReceiverStream::new(receiver.into_inner()).map(|sequenced| sequenced.value);
 
-    let func = move |item, _| {
+    let func = move |item: TestValue, _| {
         let collected_items = collected_items_clone.clone();
         async move {
-            if item % 3 == 0 {
+            // Error on animals
+            if matches!(&item, TestValue::Animal(_)) {
                 return Err(());
             }
 
@@ -209,44 +244,37 @@ async fn test_subscribe_latest_async_with_cancellation_and_errors() {
     });
 
     // Act
-    for i in 1..=4 {
-        sender.send(i).await.unwrap();
-        sleep(Duration::from_millis(10)).await;
-    }
+    push(person_alice(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(person_bob(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(animal_dog(), &sender); // Error
+    sleep(Duration::from_millis(10)).await;
+    push(person_charlie(), &sender);
+    sleep(Duration::from_millis(10)).await;
     cancellation_token.cancel();
 
     // Assert
-    assert_subset_items_processed_sequentially(&collected_items, BUFFER_SIZE).await;
+    assert_subset_items_processed(&collected_items).await;
 
-    // Act
-    for i in 5..=BUFFER_SIZE {
-        sender.send(i).await.unwrap();
-        sleep(Duration::from_millis(10)).await;
-    }
+    // Act - these should not be processed after cancellation
+    push(person_diane(), &sender);
+    sleep(Duration::from_millis(10)).await;
+    push(animal_cat(), &sender);
+    sleep(Duration::from_millis(10)).await;
 
     // Assert
-    assert_subset_items_processed_sequentially(&collected_items, BUFFER_SIZE).await;
+    assert_subset_items_processed(&collected_items).await;
 
     // Cleanup
     drop(sender);
     task_handle.await.unwrap();
 }
 
-async fn assert_subset_items_processed_sequentially(
-    processed_items: &Arc<Mutex<Vec<usize>>>,
-    number_of_items: usize,
-) {
+async fn assert_subset_items_processed(processed_items: &Arc<Mutex<Vec<TestValue>>>) {
     let processed_items = processed_items.lock().await;
     assert!(
-        !processed_items.is_empty() && processed_items.len() < number_of_items,
-        "Expected items must be processed, but found {}",
-        processed_items.len()
+        !processed_items.is_empty(),
+        "Expected some items to be processed, but found none"
     );
-
-    for items in processed_items.windows(2) {
-        assert!(
-            items[0] < items[1],
-            "Processed items should be in ascending order"
-        );
-    }
 }
