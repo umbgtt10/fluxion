@@ -1,106 +1,69 @@
-use fluxion::combine_latest::{CombinedState, CompareByInner};
+use fluxion::combine_latest::CombinedState;
+use fluxion::sequenced::Sequenced;
+use fluxion::sequenced_channel::unbounded_channel;
 use fluxion::with_latest_from::WithLatestFromExt;
-use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use futures::StreamExt;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 mod infra;
 mod test_data;
 use crate::infra::infrastructure::assert_no_element_emitted;
-use crate::test_data::animal::Animal;
-use crate::test_data::person::Person;
+use crate::test_data::simple_enum::{
+    SimpleEnum, alice, animal, bob, cat, dog, send_alice, send_bob, send_cat, send_dog,
+};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum StreamValue {
-    Animal(Animal),
-    Person(Person),
-}
-
-impl CompareByInner for StreamValue {
-    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
-        self.cmp(other)
-    }
-}
-
-static FILTER: fn(&CombinedState<StreamValue>) -> bool = |_: &CombinedState<StreamValue>| true;
+static FILTER: fn(&CombinedState<Sequenced<SimpleEnum>>) -> bool =
+    |_: &CombinedState<Sequenced<SimpleEnum>>| true;
 
 #[tokio::test]
 async fn test_with_latest_from_complete() {
     // Arrange
-    let (animal_sender, animal_receiver) = mpsc::channel(10);
-    let animal_stream = ReceiverStream::new(animal_receiver);
-    let (person_sender, person_receiver) = mpsc::channel(10);
-    let person_stream = ReceiverStream::new(person_receiver);
+    let (animal_sender, animal_receiver) = unbounded_channel();
+    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
+    let (person_sender, person_receiver) = unbounded_channel();
+    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
 
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
+
+    // Act
+    send_cat(&animal_sender);
+    send_alice(&person_sender);
+
+    // Assert
     let mut combined_stream = Box::pin(combined_stream);
 
-    // Act
-    animal_sender
-        .send(StreamValue::Animal(Animal::new("Cat".to_string(), 4)))
-        .await
-        .unwrap();
-    person_sender
-        .send(StreamValue::Person(Person::new("Alice".to_string(), 30)))
-        .await
-        .unwrap();
-
-    // Assert
-    assert_eq!(
-        combined_stream.next().await.unwrap(),
-        (
-            StreamValue::Animal(Animal::new("Cat".to_string(), 4)),
-            StreamValue::Person(Person::new("Alice".to_string(), 30))
-        )
-    );
+    let (p, a) = combined_stream.next().await.unwrap();
+    assert_eq!((p.value, a.value), (alice(), cat()));
 
     // Act
-    animal_sender
-        .send(StreamValue::Animal(Animal::new("Dog".to_string(), 4)))
-        .await
-        .unwrap();
+    send_dog(&animal_sender);
 
     // Assert
-    assert_eq!(
-        combined_stream.next().await.unwrap(),
-        (
-            StreamValue::Animal(Animal::new("Dog".to_string(), 4)),
-            StreamValue::Person(Person::new("Alice".to_string(), 30))
-        )
-    );
+    let (p, a) = combined_stream.next().await.unwrap();
+    assert_eq!((p.value, a.value), (alice(), dog()));
 
     // Act
-    person_sender
-        .send(StreamValue::Person(Person::new("Bob".to_string(), 25)))
-        .await
-        .unwrap();
+    send_bob(&person_sender);
 
     // Assert
-    assert_eq!(
-        combined_stream.next().await.unwrap(),
-        (
-            StreamValue::Animal(Animal::new("Dog".to_string(), 4)),
-            StreamValue::Person(Person::new("Bob".to_string(), 25))
-        )
-    );
+    let (p, a) = combined_stream.next().await.unwrap();
+    assert_eq!((p.value, a.value), (bob(), dog()));
 }
 
 #[tokio::test]
 async fn test_with_latest_from_second_stream_does_not_emit_no_output() {
     // Arrange
-    let (animal_sender, animal_receiver) = mpsc::channel(10);
-    let animal_stream = ReceiverStream::new(animal_receiver);
+    let (animal_sender, animal_receiver) = unbounded_channel();
+    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
 
-    let (_, person_receiver) = mpsc::channel(10);
-    let person_stream = ReceiverStream::new(person_receiver);
+    let (_, person_receiver) = unbounded_channel();
+    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
 
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    animal_sender
-        .send(StreamValue::Animal(Animal::new("Cat".to_string(), 4)))
-        .await
-        .unwrap();
+    send_cat(&animal_sender);
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
@@ -109,137 +72,96 @@ async fn test_with_latest_from_second_stream_does_not_emit_no_output() {
 #[tokio::test]
 async fn test_with_latest_from_secondary_completes_early() {
     // Arrange
-    let (animal_sender, animal_receiver) = mpsc::channel(10);
-    let animal_stream = ReceiverStream::new(animal_receiver);
+    let (animal_sender, animal_receiver) = unbounded_channel();
+    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
 
-    let (person_sender, person_receiver) = mpsc::channel(10);
-    let person_stream = ReceiverStream::new(person_receiver);
+    let (person_sender, person_receiver) = unbounded_channel();
+    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
 
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
-    let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    person_sender
-        .send(StreamValue::Person(Person::new("Alice".to_string(), 30)))
-        .await
-        .unwrap();
+    send_alice(&person_sender);
     drop(person_sender);
 
     // Assert
+    let mut combined_stream = Box::pin(combined_stream);
+
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act
-    animal_sender
-        .send(StreamValue::Animal(Animal::new("Cat".to_string(), 4)))
-        .await
-        .unwrap();
+    send_cat(&animal_sender);
 
     // Assert
-    assert_eq!(
-        combined_stream.next().await.unwrap(),
-        (
-            StreamValue::Animal(Animal::new("Cat".to_string(), 4)),
-            StreamValue::Person(Person::new("Alice".to_string(), 30))
-        )
-    );
+    let (p, a) = combined_stream.next().await.unwrap();
+    assert_eq!((p.value, a.value), (alice(), cat()));
 
     // Act
-    animal_sender
-        .send(StreamValue::Animal(Animal::new("Dog".to_string(), 4)))
-        .await
-        .unwrap();
+    send_dog(&animal_sender);
 
     // Assert
-    assert_eq!(
-        combined_stream.next().await.unwrap(),
-        (
-            StreamValue::Animal(Animal::new("Dog".to_string(), 4)),
-            StreamValue::Person(Person::new("Alice".to_string(), 30))
-        )
-    );
+    let (p, a) = combined_stream.next().await.unwrap();
+    assert_eq!((p.value, a.value), (alice(), dog()));
 }
 
 #[tokio::test]
 async fn test_with_latest_from_primary_completes_early() {
     // Arrange
-    let (animal_sender, animal_receiver) = mpsc::channel(10);
-    let animal_stream = ReceiverStream::new(animal_receiver);
+    let (animal_sender, animal_receiver) = unbounded_channel();
+    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
 
-    let (person_sender, person_receiver) = mpsc::channel(10);
-    let person_stream = ReceiverStream::new(person_receiver);
+    let (person_sender, person_receiver) = unbounded_channel();
+    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
 
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
-    let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    animal_sender
-        .send(StreamValue::Animal(Animal::new("Cat".to_string(), 4)))
-        .await
-        .unwrap();
-    person_sender
-        .send(StreamValue::Person(Person::new("Alice".to_string(), 30)))
-        .await
-        .unwrap();
+    send_cat(&animal_sender);
+    send_alice(&person_sender);
 
     // Assert
-    assert_eq!(
-        combined_stream.next().await.unwrap(),
-        (
-            StreamValue::Animal(Animal::new("Cat".to_string(), 4)),
-            StreamValue::Person(Person::new("Alice".to_string(), 30))
-        )
-    );
+    let mut combined_stream = Box::pin(combined_stream);
+
+    let (p, a) = combined_stream.next().await.unwrap();
+    assert_eq!((p.value, a.value), (alice(), cat()));
 
     // Act
     drop(animal_sender);
-    person_sender
-        .send(StreamValue::Person(Person::new("Bob".to_string(), 25)))
-        .await
-        .unwrap();
+    send_bob(&person_sender);
 
     // Assert
-    assert_eq!(
-        combined_stream.next().await.unwrap(),
-        (
-            StreamValue::Animal(Animal::new("Cat".to_string(), 4)),
-            StreamValue::Person(Person::new("Bob".to_string(), 25))
-        )
-    );
+    let (p, a) = combined_stream.next().await.unwrap();
+    assert_eq!((p.value, a.value), (bob(), cat()));
 }
 
 #[tokio::test]
 async fn test_large_number_of_emissions() {
     // Arrange
-    let (animal_sender, animal_receiver) = mpsc::channel(1000);
-    let animal_stream = ReceiverStream::new(animal_receiver);
+    let (animal_sender, animal_receiver) = unbounded_channel();
+    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
 
-    let (person_sender, person_receiver) = mpsc::channel(1000);
-    let person_stream = ReceiverStream::new(person_receiver);
+    let (person_sender, person_receiver) = unbounded_channel();
+    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
 
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
-    let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    person_sender
-        .send(StreamValue::Person(Person::new("Alice".to_string(), 30)))
-        .await
-        .unwrap();
+    send_alice(&person_sender);
 
     for i in 0..1000 {
         animal_sender
-            .send(StreamValue::Animal(Animal::new(format!("Animal{}", i), 4)))
-            .await
+            .send(animal(format!("Animal{}", i), 4))
             .unwrap();
     }
 
     // Assert
+    let mut combined_stream = Box::pin(combined_stream);
+
     for i in 0..1000 {
+        let (p, a) = combined_stream.next().await.unwrap();
         assert_eq!(
-            combined_stream.next().await.unwrap(),
-            (
-                StreamValue::Animal(Animal::new(format!("Animal{}", i), 4)),
-                StreamValue::Person(Person::new("Alice".to_string(), 30))
-            )
+            (p.value, a.value),
+            (alice(), animal(format!("Animal{}", i), 4))
         );
     }
 }

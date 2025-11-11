@@ -10,16 +10,14 @@ mod test_data;
 use crate::{
     infra::infrastructure::assert_no_element_emitted,
     test_data::simple_enum::{
-        SimpleEnum, alice, bob, cat, charlie, dave, send_alice, send_ant, send_bob, send_charlie,
-        send_dog,
+        SimpleEnum, alice, bob, charlie, send_alice, send_ant, send_bob, send_cat, send_charlie,
+        send_dave, send_dog,
     },
 };
 
-type StreamValue = SimpleEnum;
-
 #[tokio::test]
 async fn test_take_latest_when_empty_streams() {
-    static FILTER: fn(&CombinedState<StreamValue>) -> bool = |_: &CombinedState<StreamValue>| true;
+    static FILTER: fn(&CombinedState<SimpleEnum>) -> bool = |_: &CombinedState<SimpleEnum>| true;
 
     // Arrange
     let (_, source_receiver) = unbounded_channel();
@@ -48,10 +46,10 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
     let (filter_sender, filter_receiver) = unbounded_channel();
     let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
-    static FILTER: fn(&CombinedState<StreamValue>) -> bool = |state| {
+    static FILTER: fn(&CombinedState<SimpleEnum>) -> bool = |state| {
         let state = state.get_state().first().unwrap().clone();
         match state {
-            StreamValue::Animal(animal) => animal.legs > 5,
+            SimpleEnum::Animal(animal) => animal.legs > 5,
             _ => false,
         }
     };
@@ -76,11 +74,11 @@ async fn test_take_latest_when_filter_satisfied_emits() {
     let (filter_sender, filter_receiver) = unbounded_channel();
     let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
-    static FILTER: fn(&CombinedState<StreamValue>) -> bool = |state| {
+    static FILTER: fn(&CombinedState<SimpleEnum>) -> bool = |state| {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
-            StreamValue::Animal(animal) => animal.legs > 5,
+            SimpleEnum::Animal(animal) => animal.legs > 5,
             _ => {
                 panic!(
                     "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
@@ -115,11 +113,11 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     let (filter_sender, filter_receiver) = unbounded_channel();
     let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
-    static FILTER: fn(&CombinedState<StreamValue>) -> bool = |state| {
+    static FILTER: fn(&CombinedState<SimpleEnum>) -> bool = |state| {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
-            StreamValue::Animal(animal) => animal.legs > 5,
+            SimpleEnum::Animal(animal) => animal.legs > 5,
             _ => {
                 panic!(
                     "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
@@ -166,11 +164,11 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     let (filter_sender, filter_receiver) = unbounded_channel();
     let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
-    static FILTER: fn(&CombinedState<StreamValue>) -> bool = |state| {
+    static FILTER: fn(&CombinedState<SimpleEnum>) -> bool = |state| {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
-            StreamValue::Animal(animal) => animal.legs > 5,
+            SimpleEnum::Animal(animal) => animal.legs > 5,
             _ => {
                 panic!(
                     "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
@@ -197,9 +195,8 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     );
 
     // Act
-    filter_sender.send(cat()).unwrap();
-
-    source_sender.send(dave()).unwrap();
+    send_cat(&filter_sender);
+    send_dave(&source_sender);
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;

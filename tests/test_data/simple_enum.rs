@@ -64,6 +64,15 @@ pub fn cat() -> SimpleEnum {
     SimpleEnum::Animal(Animal::new("Cat".to_string(), 4))
 }
 
+// Helper functions for creating dynamic instances
+pub fn animal(name: String, legs: u32) -> SimpleEnum {
+    SimpleEnum::Animal(Animal::new(name, legs))
+}
+
+pub fn person(name: String, age: u32) -> SimpleEnum {
+    SimpleEnum::Person(Person::new(name, age))
+}
+
 pub fn send(order: &Order, senders: &[UnboundedSender<SimpleEnum>]) {
     match order {
         Order::Person => send_alice(&senders[0]),
@@ -137,6 +146,12 @@ pub fn send_diane(sender: &UnboundedSender<SimpleEnum>) {
         .unwrap()
 }
 
+pub fn send_dave(sender: &UnboundedSender<SimpleEnum>) {
+    sender
+        .send(SimpleEnum::Person(Person::new("Dave".to_string(), 45)))
+        .unwrap()
+}
+
 pub fn send_dog(sender: &UnboundedSender<SimpleEnum>) {
     sender
         .send(SimpleEnum::Animal(Animal::new("Dog".to_string(), 4)))
@@ -152,6 +167,12 @@ pub fn send_spider(sender: &UnboundedSender<SimpleEnum>) {
 pub fn send_ant(sender: &UnboundedSender<SimpleEnum>) {
     sender
         .send(SimpleEnum::Animal(Animal::new("Ant".to_string(), 6)))
+        .unwrap()
+}
+
+pub fn send_cat(sender: &UnboundedSender<SimpleEnum>) {
+    sender
+        .send(SimpleEnum::Animal(Animal::new("Cat".to_string(), 4)))
         .unwrap()
 }
 
