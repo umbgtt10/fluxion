@@ -199,3 +199,49 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
 }
+
+#[tokio::test]
+async fn test_take_latest_when_filter_toggle_emissions() {
+    // Arrange
+    let (source_sender, source_receiver) = unbounded_channel();
+    let source_stream = UnboundedReceiverStream::new(source_receiver.into_inner());
+
+    let (filter_sender, filter_receiver) = unbounded_channel();
+    let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
+
+    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
+        let filter_value = state.get_state()[1].clone();
+
+        match filter_value {
+            TestData::Animal(animal) => animal.legs > 5,
+            _ => panic!(
+                "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
+                filter_value
+            ),
+        }
+    };
+
+    let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
+    let mut output_stream = Box::pin(output_stream);
+
+    // Act: filter true, then source -> emit
+    push(animal_ant(), &filter_sender); // legs 6 -> true
+    push(person_alice(), &source_sender);
+    let first = output_stream.next().await.unwrap();
+    assert_eq!(first, person_alice());
+
+    // Act: filter false, then source -> no emit
+    push(animal_cat(), &filter_sender); // legs 4 -> false
+    push(person_bob(), &source_sender);
+    fluxion_test_utils::helpers::assert_no_element_emitted(&mut output_stream, 100).await;
+
+    // Act: filter true again -> should emit the latest buffered source (Bob)
+    push(animal_ant(), &filter_sender); // true
+    let third = output_stream.next().await.unwrap();
+    assert_eq!(third, person_bob());
+
+    // Act: then source emits another -> emit immediately with true filter
+    push(person_charlie(), &source_sender);
+    let fourth = output_stream.next().await.unwrap();
+    assert_eq!(fourth, person_charlie());
+}

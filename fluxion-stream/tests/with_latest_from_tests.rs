@@ -68,6 +68,32 @@ async fn test_with_latest_from_second_stream_does_not_emit_no_output() {
 }
 
 #[tokio::test]
+async fn test_with_latest_from_primary_waits_for_secondary() {
+    // Arrange: Secondary must publish first for any emission
+    let (primary_sender, primary_receiver) = unbounded_channel();
+    let primary_stream = UnboundedReceiverStream::new(primary_receiver.into_inner());
+
+    let (secondary_sender, secondary_receiver) = unbounded_channel();
+    let secondary_stream = UnboundedReceiverStream::new(secondary_receiver.into_inner());
+
+    let combined_stream = primary_stream.with_latest_from(secondary_stream, FILTER);
+    let mut combined_stream = Box::pin(combined_stream);
+
+    // Act: Primary publishes before secondary
+    push(animal_cat(), &primary_sender);
+
+    // Assert: No emission yet
+    assert_no_element_emitted(&mut combined_stream, 100).await;
+
+    // Act: Secondary publishes
+    push(person_alice(), &secondary_sender);
+
+    // Assert: Now emission occurs pairing latest secondary with primary
+    let (p, a) = combined_stream.next().await.unwrap();
+    assert_eq!((p.value, a.value), (person_alice(), animal_cat()));
+}
+
+#[tokio::test]
 async fn test_with_latest_from_secondary_completes_early() {
     // Arrange
     let (animal_sender, animal_receiver) = unbounded_channel();

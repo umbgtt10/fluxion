@@ -68,6 +68,39 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
 }
 
 #[tokio::test]
+async fn test_combine_latest_stream_closes_before_publish_no_output() {
+    // Arrange
+    let (person_sender, person_receiver) = unbounded_channel();
+    let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
+
+    let (animal_sender, animal_receiver) = unbounded_channel();
+    let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
+
+    let (plant_sender, plant_receiver) = unbounded_channel();
+    let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
+
+    let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+
+    // Act: Close one stream before it ever publishes
+    drop(plant_sender);
+
+    // Publish on the other streams
+    push(person_alice(), &person_sender);
+    push(animal_dog(), &animal_sender);
+
+    // Assert: No emission should occur because not all streams have published
+    let mut combined_stream = Box::pin(combined_stream);
+    assert_no_element_emitted(&mut combined_stream, 100).await;
+
+    // Close remaining senders; the stream should end cleanly
+    drop(person_sender);
+    drop(animal_sender);
+
+    let next = combined_stream.next().await;
+    assert!(next.is_none(), "Expected stream to end without emissions");
+}
+
+#[tokio::test]
 async fn test_combine_latest_all_streams_have_published_different_order_emits_updates() {
     combine_latest_template_test(DataVariant::Plant, DataVariant::Animal, DataVariant::Person)
         .await;
