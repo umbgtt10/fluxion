@@ -5,27 +5,27 @@ use fluxion_stream::{
 };
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
-    test_value::{
-        TestValue, Variant, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
-        person_diane, plant_rose, plant_sunflower, push, send,
+    test_data::{
+        DataVariant, TestData, animal_dog, animal_spider, person_alice, person_bob,
+        person_charlie, person_diane, plant_rose, plant_sunflower, push, send_variant,
     },
 };
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-static FILTER: fn(&CombinedState<Sequenced<TestValue>>) -> bool =
-    |_: &CombinedState<Sequenced<TestValue>>| true;
+static FILTER: fn(&CombinedState<Sequenced<TestData>>) -> bool =
+    |_: &CombinedState<Sequenced<TestData>>| true;
 
 #[tokio::test]
 async fn test_combine_latest_empty_streams() {
     // Arrange
-    let (_, person_receiver) = unbounded_channel::<TestValue>();
+    let (_, person_receiver) = unbounded_channel::<TestData>();
     let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
 
-    let (_, animal_receiver) = unbounded_channel::<TestValue>();
+    let (_, animal_receiver) = unbounded_channel::<TestData>();
     let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
 
-    let (_, plant_receiver) = unbounded_channel::<TestValue>();
+    let (_, plant_receiver) = unbounded_channel::<TestData>();
     let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
 
     let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
@@ -69,12 +69,18 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
 
 #[tokio::test]
 async fn test_combine_latest_all_streams_have_published_different_order_emits_updates() {
-    combine_latest_template_test(Variant::Plant, Variant::Animal, Variant::Person).await;
-    combine_latest_template_test(Variant::Plant, Variant::Person, Variant::Animal).await;
-    combine_latest_template_test(Variant::Animal, Variant::Plant, Variant::Person).await;
-    combine_latest_template_test(Variant::Animal, Variant::Person, Variant::Plant).await;
-    combine_latest_template_test(Variant::Person, Variant::Animal, Variant::Plant).await;
-    combine_latest_template_test(Variant::Person, Variant::Plant, Variant::Animal).await;
+    combine_latest_template_test(DataVariant::Plant, DataVariant::Animal, DataVariant::Person)
+        .await;
+    combine_latest_template_test(DataVariant::Plant, DataVariant::Person, DataVariant::Animal)
+        .await;
+    combine_latest_template_test(DataVariant::Animal, DataVariant::Plant, DataVariant::Person)
+        .await;
+    combine_latest_template_test(DataVariant::Animal, DataVariant::Person, DataVariant::Plant)
+        .await;
+    combine_latest_template_test(DataVariant::Person, DataVariant::Animal, DataVariant::Plant)
+        .await;
+    combine_latest_template_test(DataVariant::Person, DataVariant::Plant, DataVariant::Animal)
+        .await;
 }
 
 /// Test template for `combine_latest` that verifies consistent enum-based ordering regardless of send sequence.
@@ -82,7 +88,11 @@ async fn test_combine_latest_all_streams_have_published_different_order_emits_up
 /// that results are always in enum variant Variant (Person, Animal, Plant) determined by the Ord trait,
 /// not by send Variant. Called with different permutations to validate that ordering is based on enum
 /// definition rather than temporal arrival sequence.
-async fn combine_latest_template_test(order1: Variant, order2: Variant, order3: Variant) {
+async fn combine_latest_template_test(
+    order1: DataVariant,
+    order2: DataVariant,
+    order3: DataVariant,
+) {
     // Arrange
     let (person_sender, person_receiver) = unbounded_channel();
     let (animal_sender, animal_receiver) = unbounded_channel();
@@ -97,15 +107,15 @@ async fn combine_latest_template_test(order1: Variant, order2: Variant, order3: 
     let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
-    send(&order1, &senders);
-    send(&order2, &senders);
-    send(&order3, &senders);
+    send_variant(&order1, &senders);
+    send_variant(&order2, &senders);
+    send_variant(&order3, &senders);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
 
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
@@ -114,13 +124,13 @@ async fn combine_latest_template_test(order1: Variant, order2: Variant, order3: 
 #[tokio::test]
 async fn test_combine_latest_all_streams_have_published_emits_updates() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel::<TestValue>();
+    let (person_sender, person_receiver) = unbounded_channel::<TestData>();
     let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
 
-    let (animal_sender, animal_receiver) = unbounded_channel::<TestValue>();
+    let (animal_sender, animal_receiver) = unbounded_channel::<TestData>();
     let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
 
-    let (plant_sender, plant_receiver) = unbounded_channel::<TestValue>();
+    let (plant_sender, plant_receiver) = unbounded_channel::<TestData>();
     let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
 
     let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
@@ -134,7 +144,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     let mut combined_stream = Box::pin(combined_stream);
 
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
     assert_eq!(actual, expected);
 
@@ -143,7 +153,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![person_bob(), animal_dog(), plant_rose()];
     assert_eq!(actual, expected);
 
@@ -152,7 +162,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![person_bob(), animal_spider(), plant_rose()];
     assert_eq!(actual, expected);
 
@@ -161,19 +171,25 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![person_bob(), animal_spider(), plant_sunflower()];
     assert_eq!(actual, expected);
 }
 
 #[tokio::test]
 async fn test_combine_latest_different_stream_order_emits_consistent_results() {
-    combine_latest_stream_order_test(Variant::Person, Variant::Animal, Variant::Plant).await;
-    combine_latest_stream_order_test(Variant::Person, Variant::Plant, Variant::Animal).await;
-    combine_latest_stream_order_test(Variant::Animal, Variant::Person, Variant::Plant).await;
-    combine_latest_stream_order_test(Variant::Animal, Variant::Plant, Variant::Person).await;
-    combine_latest_stream_order_test(Variant::Plant, Variant::Person, Variant::Animal).await;
-    combine_latest_stream_order_test(Variant::Plant, Variant::Animal, Variant::Person).await;
+    combine_latest_stream_order_test(DataVariant::Person, DataVariant::Animal, DataVariant::Plant)
+        .await;
+    combine_latest_stream_order_test(DataVariant::Person, DataVariant::Plant, DataVariant::Animal)
+        .await;
+    combine_latest_stream_order_test(DataVariant::Animal, DataVariant::Person, DataVariant::Plant)
+        .await;
+    combine_latest_stream_order_test(DataVariant::Animal, DataVariant::Plant, DataVariant::Person)
+        .await;
+    combine_latest_stream_order_test(DataVariant::Plant, DataVariant::Person, DataVariant::Animal)
+        .await;
+    combine_latest_stream_order_test(DataVariant::Plant, DataVariant::Animal, DataVariant::Person)
+        .await;
 }
 
 /// Test template for `combine_latest` that verifies consistent enum-based ordering regardless of stream Variant.
@@ -181,7 +197,11 @@ async fn test_combine_latest_different_stream_order_emits_consistent_results() {
 /// that results are always in enum variant Variant (Person, Animal, Plant) determined by the Ord trait,
 /// not by stream registration Variant. Called with different permutations to validate that ordering is based
 /// on enum definition rather than the Variant streams were passed to combine_latest.
-async fn combine_latest_stream_order_test(stream1: Variant, stream2: Variant, stream3: Variant) {
+async fn combine_latest_stream_order_test(
+    stream1: DataVariant,
+    stream2: DataVariant,
+    stream3: DataVariant,
+) {
     // Arrange
     let (person_sender, person_receiver) = unbounded_channel();
     let (animal_sender, animal_receiver) = unbounded_channel();
@@ -192,9 +212,9 @@ async fn combine_latest_stream_order_test(stream1: Variant, stream2: Variant, st
     let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
 
     let mut streams = vec![
-        (Variant::Person, person_stream),
-        (Variant::Animal, animal_stream),
-        (Variant::Plant, plant_stream),
+        (DataVariant::Person, person_stream),
+        (DataVariant::Animal, animal_stream),
+        (DataVariant::Plant, plant_stream),
     ];
 
     let ordered_streams: Vec<_> = vec![&stream1, &stream2, &stream3]
@@ -205,9 +225,9 @@ async fn combine_latest_stream_order_test(stream1: Variant, stream2: Variant, st
                 .position(|(o, _)| {
                     matches!(
                         (o, variant),
-                        (Variant::Person, Variant::Person)
-                            | (Variant::Animal, Variant::Animal)
-                            | (Variant::Plant, Variant::Plant)
+                        (DataVariant::Person, DataVariant::Person)
+                            | (DataVariant::Animal, DataVariant::Animal)
+                            | (DataVariant::Plant, DataVariant::Plant)
                     )
                 })
                 .unwrap();
@@ -229,7 +249,7 @@ async fn combine_latest_stream_order_test(stream1: Variant, stream2: Variant, st
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
@@ -253,7 +273,7 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![person_alice(), person_bob()];
     assert_eq!(actual, expected);
 
@@ -262,7 +282,7 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![person_charlie(), person_bob()];
     assert_eq!(actual, expected);
 
@@ -271,7 +291,7 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![person_charlie(), person_diane()];
     assert_eq!(actual, expected);
 }

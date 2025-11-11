@@ -1,7 +1,7 @@
 use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
 use fluxion_stream::sequenced_channel::unbounded_channel;
-use fluxion_test_utils::test_value::{
-    TestValue, animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
+use fluxion_test_utils::test_data::{
+    TestData, animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
     person_charlie, person_dave, person_diane, plant_rose, push,
 };
 use std::sync::Arc;
@@ -84,11 +84,11 @@ async fn test_subscribe_latest_async_with_error_no_cancellation_token() {
     let stream =
         UnboundedReceiverStream::new(receiver.into_inner()).map(|sequenced| sequenced.value);
 
-    let func = move |item: TestValue, _| {
+    let func = move |item: TestData, _| {
         let collected_items = collected_items_clone.clone();
         async move {
             // Error on every third person (Bob, Dave)
-            if matches!(&item, TestValue::Person(p) if p.name == "Bob" || p.name == "Dave") {
+            if matches!(&item, TestData::Person(p) if p.name == "Bob" || p.name == "Dave") {
                 return Err(format!("Failed to process {:?}", item));
             }
 
@@ -211,11 +211,11 @@ async fn test_subscribe_latest_async_with_cancellation_and_errors() {
     let stream =
         UnboundedReceiverStream::new(receiver.into_inner()).map(|sequenced| sequenced.value);
 
-    let func = move |item: TestValue, _| {
+    let func = move |item: TestData, _| {
         let collected_items = collected_items_clone.clone();
         async move {
             // Error on animals
-            if matches!(&item, TestValue::Animal(_)) {
+            if matches!(&item, TestData::Animal(_)) {
                 return Err(());
             }
 
@@ -271,7 +271,7 @@ async fn test_subscribe_latest_async_with_cancellation_and_errors() {
     task_handle.await.unwrap();
 }
 
-async fn assert_subset_items_processed(processed_items: &Arc<Mutex<Vec<TestValue>>>) {
+async fn assert_subset_items_processed(processed_items: &Arc<Mutex<Vec<TestData>>>) {
     let processed_items = processed_items.lock().await;
     assert!(
         !processed_items.is_empty(),

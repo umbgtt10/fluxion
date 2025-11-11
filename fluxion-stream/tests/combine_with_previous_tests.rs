@@ -1,7 +1,7 @@
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
 use fluxion_stream::sequenced_channel::unbounded_channel;
 use fluxion_test_utils::push;
-use fluxion_test_utils::test_value::{person_alice, person_bob, person_charlie};
+use fluxion_test_utils::test_data::{person_alice, person_bob, person_charlie};
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 

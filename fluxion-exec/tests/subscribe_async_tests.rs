@@ -1,7 +1,7 @@
 use fluxion_exec::subscribe_async::SubscribeAsyncExt;
 use fluxion_stream::sequenced_channel::unbounded_channel;
-use fluxion_test_utils::test_value::{
-    TestValue, animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave,
+use fluxion_test_utils::test_data::{
+    TestData, animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave,
     person_diane, push,
 };
 use std::{sync::Arc, sync::Mutex as StdMutex, time::Duration};
@@ -102,11 +102,11 @@ async fn test_subscribe_async_with_errors() {
 
     let func = {
         let results = results.clone();
-        move |item: TestValue, _ctx: CancellationToken| {
+        move |item: TestData, _ctx: CancellationToken| {
             let results = results.clone();
             async move {
                 // Error on every animal
-                if matches!(&item, TestValue::Animal(_)) {
+                if matches!(&item, TestData::Animal(_)) {
                     return Err(format!("Error processing animal: {:?}", item));
                 }
                 results.lock().await.push(item);
@@ -162,7 +162,7 @@ async fn test_subscribe_async_triggered_cancellation_token() {
 
     let func = {
         let results = results.clone();
-        move |item: TestValue, ctx: CancellationToken| {
+        move |item: TestData, ctx: CancellationToken| {
             let results = results.clone();
             async move {
                 sleep(Duration::from_millis(20)).await;
@@ -232,7 +232,7 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
 
     let func = {
         let results = results.clone();
-        move |item: TestValue, ctx: CancellationToken| {
+        move |item: TestData, ctx: CancellationToken| {
             let results = results.clone();
             async move {
                 sleep(Duration::from_millis(20)).await;
@@ -247,7 +247,7 @@ async fn test_subscribe_async_errors_and_triggered_cancellation_token() {
                 results.lock().await.push(item.clone());
 
                 // Error on Charlie
-                if matches!(&item, TestValue::Person(p) if p.name == "Charlie") {
+                if matches!(&item, TestData::Person(p) if p.name == "Charlie") {
                     Err(ProcessingError::Other(
                         "Failed to process Charlie".to_string(),
                     ))

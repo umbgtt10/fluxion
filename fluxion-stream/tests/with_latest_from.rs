@@ -4,14 +4,14 @@ use fluxion_stream::sequenced_channel::unbounded_channel;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::push;
-use fluxion_test_utils::test_value::{
-    TestValue, animal, animal_cat, animal_dog, person_alice, person_bob,
+use fluxion_test_utils::test_data::{
+    TestData, animal, animal_cat, animal_dog, person_alice, person_bob,
 };
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-static FILTER: fn(&CombinedState<Sequenced<TestValue>>) -> bool =
-    |_: &CombinedState<Sequenced<TestValue>>| true;
+static FILTER: fn(&CombinedState<Sequenced<TestData>>) -> bool =
+    |_: &CombinedState<Sequenced<TestData>>| true;
 
 #[tokio::test]
 async fn test_with_latest_from_complete() {

@@ -5,8 +5,8 @@ use fluxion_stream::{
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     push,
-    test_value::{
-        TestValue, animal_ant, animal_cat, animal_dog, person_alice, person_bob, person_charlie,
+    test_data::{
+        TestData, animal_ant, animal_cat, animal_dog, person_alice, person_bob, person_charlie,
         person_dave,
     },
 };
@@ -15,7 +15,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_take_latest_when_empty_streams() {
-    static FILTER: fn(&CombinedState<TestValue>) -> bool = |_: &CombinedState<TestValue>| true;
+    static FILTER: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
 
     // Arrange
     let (_, source_receiver) = unbounded_channel();
@@ -44,10 +44,10 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
     let (filter_sender, filter_receiver) = unbounded_channel();
     let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
-    static FILTER: fn(&CombinedState<TestValue>) -> bool = |state| {
+    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
         let state = state.get_state().first().unwrap().clone();
         match state {
-            TestValue::Animal(animal) => animal.legs > 5,
+            TestData::Animal(animal) => animal.legs > 5,
             _ => false,
         }
     };
@@ -72,11 +72,11 @@ async fn test_take_latest_when_filter_satisfied_emits() {
     let (filter_sender, filter_receiver) = unbounded_channel();
     let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
-    static FILTER: fn(&CombinedState<TestValue>) -> bool = |state| {
+    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
-            TestValue::Animal(animal) => animal.legs > 5,
+            TestData::Animal(animal) => animal.legs > 5,
             _ => {
                 panic!(
                     "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
@@ -111,11 +111,11 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     let (filter_sender, filter_receiver) = unbounded_channel();
     let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
-    static FILTER: fn(&CombinedState<TestValue>) -> bool = |state| {
+    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
-            TestValue::Animal(animal) => animal.legs > 5,
+            TestData::Animal(animal) => animal.legs > 5,
             _ => {
                 panic!(
                     "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
@@ -162,11 +162,11 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     let (filter_sender, filter_receiver) = unbounded_channel();
     let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
-    static FILTER: fn(&CombinedState<TestValue>) -> bool = |state| {
+    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
-            TestValue::Animal(animal) => animal.legs > 5,
+            TestData::Animal(animal) => animal.legs > 5,
             _ => {
                 panic!(
                     "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
