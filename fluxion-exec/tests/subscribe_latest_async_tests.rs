@@ -159,8 +159,8 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation_toke
         }
     });
 
-    // Act - push first item, wait until processing starts and is blocked on gate
-    push(person_alice(), &sender); // will block on gate
+    // Act
+    push(person_alice(), &sender);
     start_rx.recv().await.expect("first processing started");
 
     // While the first item is blocked, send 4 more items rapidly
@@ -182,7 +182,7 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation_toke
         .await
         .expect("Latest (Dave) should be processed next");
 
-    // Assert - exactly 2 processed, 3 skipped (Bob, Charlie, Diane)
+    // Assert
     let processed = collected_items.lock().await;
     assert_eq!(
         processed.len(),
@@ -208,7 +208,7 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation_toke
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_with_error_no_cancellation_token() {
+async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation_token() {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -225,7 +225,6 @@ async fn test_subscribe_latest_async_with_error_no_cancellation_token() {
             let collected_items = collected_items.clone();
             let notify_tx = notify_tx.clone();
             async move {
-                // Error on every third person (Bob, Dave)
                 if matches!(&item, TestData::Person(p) if p.name == "Bob" || p.name == "Dave") {
                     let _ = notify_tx.send(());
                     return Err(format!("Failed to process {:?}", item));
@@ -233,8 +232,6 @@ async fn test_subscribe_latest_async_with_error_no_cancellation_token() {
 
                 let mut items = collected_items.lock().await;
                 items.push(item);
-
-                sleep(Duration::from_millis(50)).await;
                 let _ = notify_tx.send(());
 
                 Ok(())
@@ -246,7 +243,7 @@ async fn test_subscribe_latest_async_with_error_no_cancellation_token() {
         eprintln!("Error occurred: {:?}", err);
     };
 
-    let task_handle = tokio::spawn({
+    tokio::spawn({
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
@@ -254,32 +251,38 @@ async fn test_subscribe_latest_async_with_error_no_cancellation_token() {
         }
     });
 
-    // Act - emit items with small delay to ensure proper "latest" behavior
+    // Act
     push(person_alice(), &sender);
-    sleep(Duration::from_millis(5)).await; // Small delay to let Alice start processing
+    notify_rx.recv().await.expect("Alice processed");
+
     push(person_bob(), &sender); // Error
+    notify_rx.recv().await.expect("Bob handled (error)");
+
     push(person_charlie(), &sender);
+    notify_rx.recv().await.expect("Charlie processed");
+
     push(person_dave(), &sender); // Error
+    notify_rx.recv().await.expect("Dave handled (error)");
+
     push(animal_dog(), &sender);
-
-    // Wait for first item to complete
-    notify_rx.recv().await.unwrap();
-
-    // Wait for additional processing with timeout (latest behavior may skip items)
-    tokio::select! {
-        _ = notify_rx.recv() => {},
-        _ = sleep(Duration::from_millis(150)) => {},
-    }
+    notify_rx.recv().await.expect("Dog processed");
 
     // Assert
     let processed = collected_items.lock().await;
-    assert!(!processed.is_empty(), "Expected some items to be processed");
-    // Alice and Charlie should be processed, Bob and Dave cause errors and skip
-    // Due to rapid emissions, some items may be skipped by "latest" behavior
-    assert!(
-        processed.contains(&person_alice()) || processed.contains(&person_charlie()),
-        "At least one valid person should be processed"
+    assert_eq!(
+        processed.len(),
+        3,
+        "Expected exactly 3 processed items with 2 skipped due to errors"
     );
+    assert!(
+        processed.contains(&person_alice()),
+        "Alice must be processed"
+    );
+    assert!(
+        processed.contains(&person_charlie()),
+        "Charlie must be processed"
+    );
+    assert!(processed.contains(&animal_dog()), "Dog must be processed");
     assert!(
         !processed.contains(&person_bob()),
         "Bob should not be in processed items (error case)"
@@ -288,10 +291,6 @@ async fn test_subscribe_latest_async_with_error_no_cancellation_token() {
         !processed.contains(&person_dave()),
         "Dave should not be in processed items (error case)"
     );
-
-    // Cleanup
-    drop(sender);
-    task_handle.await.unwrap();
 }
 
 #[tokio::test]
