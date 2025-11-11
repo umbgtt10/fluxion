@@ -18,20 +18,27 @@ async fn test_subscribe_latest_async_no_error_no_cancellation_token() {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let (sender, receiver) = unbounded_channel();
     let stream =
         UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
 
-    let func = move |item, _| {
+    let func = {
         let collected_items = collected_items_clone.clone();
-        async move {
-            {
-                let mut items = collected_items.lock().await;
-                items.push(item);
-                sleep(Duration::from_millis(50)).await;
+        let notify_tx = notify_tx.clone();
+        move |item, _| {
+            let collected_items = collected_items.clone();
+            let notify_tx = notify_tx.clone();
+            async move {
+                {
+                    let mut items = collected_items.lock().await;
+                    items.push(item);
+                    sleep(Duration::from_millis(50)).await;
+                }
+                let _ = notify_tx.send(());
+                Ok(())
             }
-            Ok(())
         }
     };
 
@@ -47,30 +54,27 @@ async fn test_subscribe_latest_async_no_error_no_cancellation_token() {
         }
     });
 
-    // Act
+    // Act - emit items with small delays to ensure proper "latest" behavior
     push(person_alice(), &sender);
-    sleep(Duration::from_millis(10)).await;
+    sleep(Duration::from_millis(5)).await; // Small delay to let Alice start processing
     push(person_bob(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(person_charlie(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(person_diane(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(person_dave(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(animal_dog(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(animal_cat(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(animal_ant(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(animal_spider(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(plant_rose(), &sender);
-    sleep(Duration::from_millis(10)).await;
 
-    // Wait for processing to complete
-    sleep(Duration::from_millis(200)).await;
+    // Wait for first item to complete
+    notify_rx.recv().await.unwrap();
+
+    // Wait for additional processing with timeout (latest behavior may skip items)
+    tokio::select! {
+        _ = notify_rx.recv() => {},
+        _ = sleep(Duration::from_millis(150)) => {},
+    }
 
     // Assert
     let processed = collected_items.lock().await;
@@ -99,25 +103,33 @@ async fn test_subscribe_latest_async_with_error_no_cancellation_token() {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let (sender, receiver) = unbounded_channel();
     let stream =
         UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
 
-    let func = move |item: TestData, _| {
+    let func = {
         let collected_items = collected_items_clone.clone();
-        async move {
-            // Error on every third person (Bob, Dave)
-            if matches!(&item, TestData::Person(p) if p.name == "Bob" || p.name == "Dave") {
-                return Err(format!("Failed to process {:?}", item));
+        let notify_tx = notify_tx.clone();
+        move |item: TestData, _| {
+            let collected_items = collected_items.clone();
+            let notify_tx = notify_tx.clone();
+            async move {
+                // Error on every third person (Bob, Dave)
+                if matches!(&item, TestData::Person(p) if p.name == "Bob" || p.name == "Dave") {
+                    let _ = notify_tx.send(());
+                    return Err(format!("Failed to process {:?}", item));
+                }
+
+                let mut items = collected_items.lock().await;
+                items.push(item);
+
+                sleep(Duration::from_millis(50)).await;
+                let _ = notify_tx.send(());
+
+                Ok(())
             }
-
-            let mut items = collected_items.lock().await;
-            items.push(item);
-
-            sleep(Duration::from_millis(50)).await;
-
-            Ok(())
         }
     };
 
@@ -133,17 +145,22 @@ async fn test_subscribe_latest_async_with_error_no_cancellation_token() {
         }
     });
 
-    // Act
+    // Act - emit items with small delay to ensure proper "latest" behavior
     push(person_alice(), &sender);
-    sleep(Duration::from_millis(10)).await;
+    sleep(Duration::from_millis(5)).await; // Small delay to let Alice start processing
     push(person_bob(), &sender); // Error
-    sleep(Duration::from_millis(10)).await;
     push(person_charlie(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(person_dave(), &sender); // Error
-    sleep(Duration::from_millis(10)).await;
     push(animal_dog(), &sender);
-    sleep(Duration::from_millis(10)).await;
+
+    // Wait for first item to complete
+    notify_rx.recv().await.unwrap();
+
+    // Wait for additional processing with timeout (latest behavior may skip items)
+    tokio::select! {
+        _ = notify_rx.recv() => {},
+        _ = sleep(Duration::from_millis(150)) => {},
+    }
 
     // Assert
     let processed = collected_items.lock().await;
@@ -173,23 +190,31 @@ async fn test_subscribe_latest_async_with_cancellation_no_errors() {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
     let (sender, receiver) = unbounded_channel();
     let stream =
         UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
 
-    let func = move |item, ctx: CancellationToken| {
+    let func = {
         let collected_items = collected_items_clone.clone();
-        async move {
-            if ctx.is_cancelled() {
-                return Ok(());
+        let notify_tx = notify_tx.clone();
+        move |item, ctx: CancellationToken| {
+            let collected_items = collected_items.clone();
+            let notify_tx = notify_tx.clone();
+            async move {
+                if ctx.is_cancelled() {
+                    let _ = notify_tx.send(());
+                    return Ok(());
+                }
+
+                let mut items = collected_items.lock().await;
+                items.push(item);
+
+                sleep(Duration::from_millis(50)).await;
+                let _ = notify_tx.send(());
+
+                Ok(())
             }
-
-            let mut items = collected_items.lock().await;
-            items.push(item);
-
-            sleep(Duration::from_millis(50)).await;
-
-            Ok(())
         }
     };
 
@@ -210,23 +235,24 @@ async fn test_subscribe_latest_async_with_cancellation_no_errors() {
 
     // Act
     push(person_alice(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(person_bob(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(person_charlie(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(person_diane(), &sender);
-    sleep(Duration::from_millis(10)).await;
-    cancellation_token.cancel();
 
-    // Assert
-    assert_subset_items_processed(&collected_items).await;
+    // Wait for first item to complete
+    notify_rx.recv().await.unwrap();
+
+    cancellation_token.cancel();
 
     // Act - these should not be processed after cancellation
     push(person_dave(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(animal_dog(), &sender);
-    sleep(Duration::from_millis(10)).await;
+
+    // Try to receive more notifications with timeout
+    tokio::select! {
+        _ = notify_rx.recv() => {},
+        _ = sleep(Duration::from_millis(100)) => {},
+    }
 
     // Assert
     let processed = collected_items.lock().await;
@@ -252,25 +278,33 @@ async fn test_subscribe_latest_async_with_cancellation_and_errors() {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let (sender, receiver) = unbounded_channel();
     let stream =
         UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
 
-    let func = move |item: TestData, _| {
+    let func = {
         let collected_items = collected_items_clone.clone();
-        async move {
-            // Error on animals
-            if matches!(&item, TestData::Animal(_)) {
-                return Err(());
+        let notify_tx = notify_tx.clone();
+        move |item: TestData, _| {
+            let collected_items = collected_items.clone();
+            let notify_tx = notify_tx.clone();
+            async move {
+                // Error on animals
+                if matches!(&item, TestData::Animal(_)) {
+                    let _ = notify_tx.send(());
+                    return Err(());
+                }
+
+                let mut items = collected_items.lock().await;
+                items.push(item);
+
+                sleep(Duration::from_millis(50)).await;
+                let _ = notify_tx.send(());
+
+                Ok(())
             }
-
-            let mut items = collected_items.lock().await;
-            items.push(item);
-
-            sleep(Duration::from_millis(50)).await;
-
-            Ok(())
         }
     };
 
@@ -291,23 +325,24 @@ async fn test_subscribe_latest_async_with_cancellation_and_errors() {
 
     // Act
     push(person_alice(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(person_bob(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(animal_dog(), &sender); // Error
-    sleep(Duration::from_millis(10)).await;
     push(person_charlie(), &sender);
-    sleep(Duration::from_millis(10)).await;
-    cancellation_token.cancel();
 
-    // Assert
-    assert_subset_items_processed(&collected_items).await;
+    // Wait for first item to complete
+    notify_rx.recv().await.unwrap();
+
+    cancellation_token.cancel();
 
     // Act - these should not be processed after cancellation
     push(person_diane(), &sender);
-    sleep(Duration::from_millis(10)).await;
     push(animal_cat(), &sender);
-    sleep(Duration::from_millis(10)).await;
+
+    // Try to receive more notifications with timeout
+    tokio::select! {
+        _ = notify_rx.recv() => {},
+        _ = sleep(Duration::from_millis(100)) => {},
+    }
 
     // Assert
     let processed = collected_items.lock().await;
@@ -325,14 +360,6 @@ async fn test_subscribe_latest_async_with_cancellation_and_errors() {
     // Cleanup
     drop(sender);
     task_handle.await.unwrap();
-}
-
-async fn assert_subset_items_processed(processed_items: &Arc<Mutex<Vec<TestData>>>) {
-    let processed_items = processed_items.lock().await;
-    assert!(
-        !processed_items.is_empty(),
-        "Expected some items to be processed, but found none"
-    );
 }
 
 #[tokio::test]
@@ -444,6 +471,7 @@ async fn test_subscribe_latest_async_no_concurrent_processing() {
     let active_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let max_concurrent = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let processed_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let (sender, receiver) = unbounded_channel();
     let stream =
@@ -453,10 +481,12 @@ async fn test_subscribe_latest_async_no_concurrent_processing() {
         let active_count = active_count.clone();
         let max_concurrent = max_concurrent.clone();
         let processed_count = processed_count.clone();
+        let notify_tx = notify_tx.clone();
         move |_item, _| {
             let active_count = active_count.clone();
             let max_concurrent = max_concurrent.clone();
             let processed_count = processed_count.clone();
+            let notify_tx = notify_tx.clone();
             async move {
                 // Increment active count
                 let current = active_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
@@ -470,6 +500,7 @@ async fn test_subscribe_latest_async_no_concurrent_processing() {
                 // Decrement active count
                 active_count.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
                 processed_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                let _ = notify_tx.send(());
 
                 Ok::<(), ()>(())
             }
@@ -494,8 +525,17 @@ async fn test_subscribe_latest_async_no_concurrent_processing() {
         sleep(Duration::from_millis(5)).await;
     }
 
-    // Wait for all processing to complete
-    sleep(Duration::from_millis(200)).await;
+    // Wait for first item to complete
+    notify_rx.recv().await.unwrap();
+
+    // Wait for additional processing with timeout
+    tokio::select! {
+        _ = notify_rx.recv() => {},
+        _ = sleep(Duration::from_millis(150)) => {},
+    }
+
+    // Give extra time to ensure last item fully completes (decrement happens)
+    sleep(Duration::from_millis(50)).await;
 
     // Assert
     let max = max_concurrent.load(std::sync::atomic::Ordering::SeqCst);
@@ -563,23 +603,31 @@ async fn test_subscribe_latest_async_error_unblocks_state() {
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
     let error_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let (sender, receiver) = unbounded_channel();
     let stream =
         UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
 
-    let func = move |item: TestData, _| {
+    let func = {
         let collected_items = collected_items_clone.clone();
-        async move {
-            // Error on Bob
-            if matches!(&item, TestData::Person(p) if p.name == "Bob") {
-                sleep(Duration::from_millis(50)).await;
-                return Err("Error processing Bob".to_string());
-            }
+        let notify_tx = notify_tx.clone();
+        move |item: TestData, _| {
+            let collected_items = collected_items.clone();
+            let notify_tx = notify_tx.clone();
+            async move {
+                // Error on Bob
+                if matches!(&item, TestData::Person(p) if p.name == "Bob") {
+                    sleep(Duration::from_millis(50)).await;
+                    let _ = notify_tx.send(());
+                    return Err("Error processing Bob".to_string());
+                }
 
-            sleep(Duration::from_millis(50)).await;
-            collected_items.lock().await.push(item);
-            Ok::<(), String>(())
+                sleep(Duration::from_millis(50)).await;
+                collected_items.lock().await.push(item);
+                let _ = notify_tx.send(());
+                Ok::<(), String>(())
+            }
         }
     };
 
@@ -600,11 +648,16 @@ async fn test_subscribe_latest_async_error_unblocks_state() {
 
     // Act - Send Alice, then Bob (error), then Charlie (should still process)
     push(person_alice(), &sender);
-    sleep(Duration::from_millis(10)).await;
+    sleep(Duration::from_millis(5)).await; // Small delay to let Alice start processing
     push(person_bob(), &sender); // This will cause an error
-    sleep(Duration::from_millis(150)).await; // Wait for error to complete
+
+    // Wait for Alice or Bob to complete
+    notify_rx.recv().await.unwrap();
+
     push(person_charlie(), &sender); // This should still be processed
-    sleep(Duration::from_millis(150)).await;
+
+    // Wait for Charlie to complete
+    notify_rx.recv().await.unwrap();
 
     // Assert
     let processed = collected_items.lock().await;
@@ -698,17 +751,24 @@ async fn test_subscribe_latest_async_single_item() {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     let (sender, receiver) = unbounded_channel();
     let stream =
         UnboundedReceiverStream::new(receiver.into_inner()).map(|timestamped| timestamped.value);
 
-    let func = move |item, _| {
+    let func = {
         let collected_items = collected_items_clone.clone();
-        async move {
-            sleep(Duration::from_millis(50)).await;
-            collected_items.lock().await.push(item);
-            Ok::<(), ()>(())
+        let notify_tx = notify_tx.clone();
+        move |item, _| {
+            let collected_items = collected_items.clone();
+            let notify_tx = notify_tx.clone();
+            async move {
+                sleep(Duration::from_millis(50)).await;
+                collected_items.lock().await.push(item);
+                let _ = notify_tx.send(());
+                Ok::<(), ()>(())
+            }
         }
     };
 
@@ -726,7 +786,9 @@ async fn test_subscribe_latest_async_single_item() {
 
     // Act - Send only one item
     push(person_alice(), &sender);
-    sleep(Duration::from_millis(100)).await;
+
+    // Wait for item to complete
+    notify_rx.recv().await.unwrap();
 
     // Assert
     let processed = collected_items.lock().await;
