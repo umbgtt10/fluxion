@@ -1,9 +1,8 @@
 use fluxion_stream::{
-    combine_latest::{CombineLatestExt, CombinedState},
-    timestamped::Timestamped,
+    TestChannel, combine_latest::{CombineLatestExt, CombinedState}, timestamped::Timestamped
 };
 use fluxion_test_utils::{
-    TestChannel, TestChannels,
+    TestChannels,
     helpers::{assert_no_element_emitted, expect_next_combined_equals},
     test_data::{
         DataVariant, TestData, animal_dog, animal_spider, person_alice, person_bob, person_charlie,

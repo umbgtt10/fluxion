@@ -1,3 +1,4 @@
+use fluxion_stream::TestChannel;
 use fluxion_stream::combine_latest::CombinedState;
 use fluxion_stream::timestamped::Timestamped;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
@@ -6,7 +7,7 @@ use fluxion_test_utils::test_data::{
     TestData, animal, animal_cat, animal_dog, person, person_alice, person_bob, person_charlie,
 };
 use fluxion_test_utils::{
-    TestChannel, TestChannels,
+    TestChannels,
     helpers::{assert_no_element_emitted, expect_next_pair},
 };
 use futures::StreamExt;

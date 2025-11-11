@@ -1,6 +1,6 @@
-use fluxion_stream::{merge_with::MergedStream, timestamped::Timestamped};
+use fluxion_stream::{merge_with::MergedStream, timestamped::Timestamped, TestChannel};
 use fluxion_test_utils::{
-    TestChannel, TestChannels,
+    TestChannels,
     animal::Animal,
     person::Person,
     plant::Plant,
@@ -15,8 +15,8 @@ use futures::StreamExt;
 #[tokio::test]
 async fn test_merge_with_empty_streams() {
     // Arrange
-    let empty_channel1 = fluxion_test_utils::TestChannel::<i32>::empty();
-    let empty_channel2 = fluxion_test_utils::TestChannel::<i32>::empty();
+    let empty_channel1 = TestChannel::<i32>::empty();
+    let empty_channel2 = TestChannel::<i32>::empty();
     let empty_stream1 = empty_channel1.stream;
     let empty_stream2 = empty_channel2.stream;
 
@@ -57,12 +57,11 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
             *state
         });
 
-    let mut merged_stream = Box::pin(merged_stream);
-
     // Act
     push(person_alice(), &non_empty.sender);
 
     // Assert
+    let mut merged_stream = Box::pin(merged_stream);
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
         state.into_inner(),
@@ -118,12 +117,11 @@ async fn test_merge_with_similar_streams_emits() {
             },
         );
 
-    let mut merged_stream = Box::pin(merged_stream);
-
     // Act
     push(person_alice(), &channel1.sender);
 
     // Assert
+    let mut merged_stream = Box::pin(merged_stream);
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
         state.person_name,
@@ -508,7 +506,7 @@ impl Repository {
 #[should_panic(expected = "User closure panicked on purpose")]
 async fn test_merge_with_user_closure_panics() {
     // Arrange
-    let channel = fluxion_test_utils::TestChannel::<TestData>::new();
+    let channel = TestChannel::<TestData>::new();
     let stream = channel.stream;
 
     // Create a merge_with stream where the closure panics on the second emission

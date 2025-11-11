@@ -3,7 +3,8 @@ use fluxion_test_utils::test_data::{
     DataVariant, TestData, animal_dog, animal_spider, expect_variant, person_alice, person_bob,
     person_charlie, plant_rose, plant_sunflower, push, send_variant,
 };
-use fluxion_test_utils::{TestChannel, TestChannels, helpers::expect_next_timestamped};
+use fluxion_stream::TestChannel;
+use fluxion_test_utils::{TestChannels, helpers::expect_next_timestamped};
 use futures::StreamExt;
 
 #[tokio::test]
