@@ -1,24 +1,24 @@
 use fluxion_stream::select_all_ordered::SelectAllExt;
 use fluxion_stream::sequenced_channel::unbounded_channel;
-use fluxion_test_utils::simple_enum::{Order, assert, send};
+use fluxion_test_utils::test_value::{Variant, expect_variant, send};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_select_all_ordered_all_permutations() {
-    select_all_ordered_template_test(Order::Person, Order::Animal, Order::Plant).await;
-    select_all_ordered_template_test(Order::Person, Order::Plant, Order::Animal).await;
-    select_all_ordered_template_test(Order::Plant, Order::Animal, Order::Person).await;
-    select_all_ordered_template_test(Order::Plant, Order::Person, Order::Animal).await;
-    select_all_ordered_template_test(Order::Animal, Order::Person, Order::Plant).await;
-    select_all_ordered_template_test(Order::Animal, Order::Plant, Order::Person).await;
+    select_all_ordered_template_test(Variant::Person, Variant::Animal, Variant::Plant).await;
+    select_all_ordered_template_test(Variant::Person, Variant::Plant, Variant::Animal).await;
+    select_all_ordered_template_test(Variant::Plant, Variant::Animal, Variant::Person).await;
+    select_all_ordered_template_test(Variant::Plant, Variant::Person, Variant::Animal).await;
+    select_all_ordered_template_test(Variant::Animal, Variant::Person, Variant::Plant).await;
+    select_all_ordered_template_test(Variant::Animal, Variant::Plant, Variant::Person).await;
 }
 
-/// Test template for `select_all_ordered` that verifies temporal order preservation in stream merging.
-/// Sets up channels for Person/Animal/Plant, merges streams, sends in specified order, and asserts correct reception.
+/// Test template for `select_all_ordered` that verifies temporal Variant preservation in stream merging.
+/// Sets up channels for Person/Animal/Plant, merges streams, sends in specified Variant, and asserts correct reception.
 /// Crucial for deterministic async processing; ensures `select_all_ordered` avoids race conditions of `select_all`.
 /// Called with different permutations to validate robustness across send sequences.
-/// Validates sequence-based ordering over poll-time randomness for reliable event handling.
-async fn select_all_ordered_template_test(order1: Order, order2: Order, order3: Order) {
+/// Validates sequence-based Varianting over poll-time randomness for reliable event handling.
+async fn select_all_ordered_template_test(variant1: Variant, variant2: Variant, variant3: Variant) {
     // Arrange
     let (person_sender, person_receiver) = unbounded_channel();
     let (animal_sender, animal_receiver) = unbounded_channel();
@@ -34,14 +34,14 @@ async fn select_all_ordered_template_test(order1: Order, order2: Order, order3: 
     let results = streams.select_all_ordered();
 
     // Act
-    send(&order1, &senders);
-    send(&order2, &senders);
-    send(&order3, &senders);
+    send(&variant1, &senders);
+    send(&variant2, &senders);
+    send(&variant3, &senders);
 
     // Assert
     let mut results = Box::pin(results);
 
-    assert(&order1, &mut results).await;
-    assert(&order2, &mut results).await;
-    assert(&order3, &mut results).await;
+    expect_variant(&variant1, &mut results).await;
+    expect_variant(&variant2, &mut results).await;
+    expect_variant(&variant3, &mut results).await;
 }

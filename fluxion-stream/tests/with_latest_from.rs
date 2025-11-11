@@ -3,14 +3,13 @@ use fluxion_stream::sequenced::Sequenced;
 use fluxion_stream::sequenced_channel::unbounded_channel;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
-use fluxion_test_utils::simple_enum::{
-    SimpleEnum, alice, animal, bob, cat, dog, send_alice, send_bob, send_cat, send_dog,
-};
+use fluxion_test_utils::push;
+use fluxion_test_utils::test_value::{TestValue, alice, animal, bob, cat, dog};
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-static FILTER: fn(&CombinedState<Sequenced<SimpleEnum>>) -> bool =
-    |_: &CombinedState<Sequenced<SimpleEnum>>| true;
+static FILTER: fn(&CombinedState<Sequenced<TestValue>>) -> bool =
+    |_: &CombinedState<Sequenced<TestValue>>| true;
 
 #[tokio::test]
 async fn test_with_latest_from_complete() {
@@ -23,8 +22,8 @@ async fn test_with_latest_from_complete() {
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
 
     // Act
-    send_cat(&animal_sender);
-    send_alice(&person_sender);
+    push(cat(), &animal_sender);
+    push(alice(), &person_sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
@@ -33,14 +32,14 @@ async fn test_with_latest_from_complete() {
     assert_eq!((p.value, a.value), (alice(), cat()));
 
     // Act
-    send_dog(&animal_sender);
+    push(dog(), &animal_sender);
 
     // Assert
     let (p, a) = combined_stream.next().await.unwrap();
     assert_eq!((p.value, a.value), (alice(), dog()));
 
     // Act
-    send_bob(&person_sender);
+    push(bob(), &person_sender);
 
     // Assert
     let (p, a) = combined_stream.next().await.unwrap();
@@ -60,7 +59,7 @@ async fn test_with_latest_from_second_stream_does_not_emit_no_output() {
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    send_cat(&animal_sender);
+    push(cat(), &animal_sender);
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
@@ -78,7 +77,7 @@ async fn test_with_latest_from_secondary_completes_early() {
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
 
     // Act
-    send_alice(&person_sender);
+    push(alice(), &person_sender);
     drop(person_sender);
 
     // Assert
@@ -87,14 +86,14 @@ async fn test_with_latest_from_secondary_completes_early() {
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act
-    send_cat(&animal_sender);
+    push(cat(), &animal_sender);
 
     // Assert
     let (p, a) = combined_stream.next().await.unwrap();
     assert_eq!((p.value, a.value), (alice(), cat()));
 
     // Act
-    send_dog(&animal_sender);
+    push(dog(), &animal_sender);
 
     // Assert
     let (p, a) = combined_stream.next().await.unwrap();
@@ -113,8 +112,8 @@ async fn test_with_latest_from_primary_completes_early() {
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
 
     // Act
-    send_cat(&animal_sender);
-    send_alice(&person_sender);
+    push(cat(), &animal_sender);
+    push(alice(), &person_sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
@@ -124,7 +123,7 @@ async fn test_with_latest_from_primary_completes_early() {
 
     // Act
     drop(animal_sender);
-    send_bob(&person_sender);
+    push(bob(), &person_sender);
 
     // Assert
     let (p, a) = combined_stream.next().await.unwrap();
@@ -143,7 +142,7 @@ async fn test_large_number_of_emissions() {
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
 
     // Act
-    send_alice(&person_sender);
+    push(alice(), &person_sender);
 
     for i in 0..1000 {
         animal_sender

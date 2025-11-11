@@ -1,6 +1,7 @@
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
 use fluxion_stream::sequenced_channel::unbounded_channel;
-use fluxion_test_utils::simple_enum::{alice, bob, charlie, send_alice, send_bob, send_charlie};
+use fluxion_test_utils::push;
+use fluxion_test_utils::test_value::{alice, bob, charlie};
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -12,7 +13,7 @@ async fn test_combine_with_previous_no_previous_value_emits() {
     let mut stream = stream.combine_with_previous();
 
     // Act
-    send_alice(&sender);
+    push(alice(), &sender);
 
     // Assert
     let result = stream.next().await.unwrap();
@@ -27,7 +28,7 @@ async fn test_combine_with_previous_single_previous_value() {
     let mut stream = stream.combine_with_previous();
 
     // Act
-    send_alice(&sender);
+    push(alice(), &sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
@@ -37,7 +38,7 @@ async fn test_combine_with_previous_single_previous_value() {
     );
 
     // Act
-    send_bob(&sender);
+    push(bob(), &sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
@@ -55,7 +56,7 @@ async fn test_combine_with_previous_multiple_values() {
     let mut stream = stream.combine_with_previous();
 
     // Act
-    send_alice(&sender);
+    push(alice(), &sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
@@ -65,7 +66,7 @@ async fn test_combine_with_previous_multiple_values() {
     );
 
     // Act
-    send_bob(&sender);
+    push(bob(), &sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
@@ -75,7 +76,7 @@ async fn test_combine_with_previous_multiple_values() {
     );
 
     // Act
-    send_charlie(&sender);
+    push(charlie(), &sender);
 
     // Assert
     let third_result = stream.next().await.unwrap();
@@ -93,7 +94,7 @@ async fn test_combine_with_previous_stream_ends() {
     let mut stream = stream.combine_with_previous();
 
     // Act
-    send_alice(&sender);
+    push(alice(), &sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
@@ -103,7 +104,7 @@ async fn test_combine_with_previous_stream_ends() {
     );
 
     // Act
-    send_bob(&sender);
+    push(bob(), &sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
@@ -128,7 +129,7 @@ async fn test_combine_with_previous_for_types() {
     let mut stream = stream.combine_with_previous();
 
     // Act
-    send_alice(&sender);
+    push(alice(), &sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
@@ -138,7 +139,7 @@ async fn test_combine_with_previous_for_types() {
     );
 
     // Act
-    send_bob(&sender);
+    push(bob(), &sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();

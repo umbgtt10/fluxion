@@ -5,28 +5,26 @@ use fluxion_stream::{
 };
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
-    simple_enum::{
-        Order, SimpleEnum, alice, bob, charlie, diane, dog, rose, send, send_alice, send_bob,
-        send_charlie, send_diane, send_dog, send_rose, send_spider, send_sunflower, spider,
-        sunflower,
+    test_value::{
+        TestValue, Variant, alice, bob, charlie, diane, dog, push, rose, send, spider, sunflower,
     },
 };
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-static FILTER: fn(&CombinedState<Sequenced<SimpleEnum>>) -> bool =
-    |_: &CombinedState<Sequenced<SimpleEnum>>| true;
+static FILTER: fn(&CombinedState<Sequenced<TestValue>>) -> bool =
+    |_: &CombinedState<Sequenced<TestValue>>| true;
 
 #[tokio::test]
 async fn test_combine_latest_empty_streams() {
     // Arrange
-    let (_, person_receiver) = unbounded_channel::<SimpleEnum>();
+    let (_, person_receiver) = unbounded_channel::<TestValue>();
     let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
 
-    let (_, animal_receiver) = unbounded_channel::<SimpleEnum>();
+    let (_, animal_receiver) = unbounded_channel::<TestValue>();
     let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
 
-    let (_, plant_receiver) = unbounded_channel::<SimpleEnum>();
+    let (_, plant_receiver) = unbounded_channel::<TestValue>();
     let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
 
     let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
@@ -56,13 +54,13 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    send_alice(&person_sender);
+    push(alice(), &person_sender);
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act
-    send_dog(&animal_sender);
+    push(dog(), &animal_sender);
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
@@ -70,20 +68,20 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
 
 #[tokio::test]
 async fn test_combine_latest_all_streams_have_published_different_order_emits_updates() {
-    combine_latest_template_test(Order::Plant, Order::Animal, Order::Person).await;
-    combine_latest_template_test(Order::Plant, Order::Person, Order::Animal).await;
-    combine_latest_template_test(Order::Animal, Order::Plant, Order::Person).await;
-    combine_latest_template_test(Order::Animal, Order::Person, Order::Plant).await;
-    combine_latest_template_test(Order::Person, Order::Animal, Order::Plant).await;
-    combine_latest_template_test(Order::Person, Order::Plant, Order::Animal).await;
+    combine_latest_template_test(Variant::Plant, Variant::Animal, Variant::Person).await;
+    combine_latest_template_test(Variant::Plant, Variant::Person, Variant::Animal).await;
+    combine_latest_template_test(Variant::Animal, Variant::Plant, Variant::Person).await;
+    combine_latest_template_test(Variant::Animal, Variant::Person, Variant::Plant).await;
+    combine_latest_template_test(Variant::Person, Variant::Animal, Variant::Plant).await;
+    combine_latest_template_test(Variant::Person, Variant::Plant, Variant::Animal).await;
 }
 
 /// Test template for `combine_latest` that verifies consistent enum-based ordering regardless of send sequence.
-/// Sets up channels for Person/Animal/Plant, combines streams, sends in specified order, and asserts
-/// that results are always in enum variant order (Person, Animal, Plant) determined by the Ord trait,
-/// not by send order. Called with different permutations to validate that ordering is based on enum
+/// Sets up channels for Person/Animal/Plant, combines streams, sends in specified Variant, and asserts
+/// that results are always in enum variant Variant (Person, Animal, Plant) determined by the Ord trait,
+/// not by send Variant. Called with different permutations to validate that ordering is based on enum
 /// definition rather than temporal arrival sequence.
-async fn combine_latest_template_test(order1: Order, order2: Order, order3: Order) {
+async fn combine_latest_template_test(order1: Variant, order2: Variant, order3: Variant) {
     // Arrange
     let (person_sender, person_receiver) = unbounded_channel();
     let (animal_sender, animal_receiver) = unbounded_channel();
@@ -106,7 +104,7 @@ async fn combine_latest_template_test(order1: Order, order2: Order, order3: Orde
     let mut combined_stream = Box::pin(combined_stream);
 
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![alice(), dog(), rose()];
 
     assert_eq!(actual, expected);
@@ -115,74 +113,74 @@ async fn combine_latest_template_test(order1: Order, order2: Order, order3: Orde
 #[tokio::test]
 async fn test_combine_latest_all_streams_have_published_emits_updates() {
     // Arrange
-    let (person_sender, person_receiver) = unbounded_channel::<SimpleEnum>();
+    let (person_sender, person_receiver) = unbounded_channel::<TestValue>();
     let person_stream = UnboundedReceiverStream::new(person_receiver.into_inner());
 
-    let (animal_sender, animal_receiver) = unbounded_channel::<SimpleEnum>();
+    let (animal_sender, animal_receiver) = unbounded_channel::<TestValue>();
     let animal_stream = UnboundedReceiverStream::new(animal_receiver.into_inner());
 
-    let (plant_sender, plant_receiver) = unbounded_channel::<SimpleEnum>();
+    let (plant_sender, plant_receiver) = unbounded_channel::<TestValue>();
     let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
 
     let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
-    send_alice(&person_sender);
-    send_dog(&animal_sender);
-    send_rose(&plant_sender);
+    push(alice(), &person_sender);
+    push(dog(), &animal_sender);
+    push(rose(), &plant_sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
 
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![alice(), dog(), rose()];
     assert_eq!(actual, expected);
 
     // Act
-    send_bob(&person_sender);
+    push(bob(), &person_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![bob(), dog(), rose()];
     assert_eq!(actual, expected);
 
     // Act
-    send_spider(&animal_sender);
+    push(spider(), &animal_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![bob(), spider(), rose()];
     assert_eq!(actual, expected);
 
     // Act
-    send_sunflower(&plant_sender);
+    push(sunflower(), &plant_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![bob(), spider(), sunflower()];
     assert_eq!(actual, expected);
 }
 
 #[tokio::test]
 async fn test_combine_latest_different_stream_order_emits_consistent_results() {
-    combine_latest_stream_order_test(Order::Person, Order::Animal, Order::Plant).await;
-    combine_latest_stream_order_test(Order::Person, Order::Plant, Order::Animal).await;
-    combine_latest_stream_order_test(Order::Animal, Order::Person, Order::Plant).await;
-    combine_latest_stream_order_test(Order::Animal, Order::Plant, Order::Person).await;
-    combine_latest_stream_order_test(Order::Plant, Order::Person, Order::Animal).await;
-    combine_latest_stream_order_test(Order::Plant, Order::Animal, Order::Person).await;
+    combine_latest_stream_order_test(Variant::Person, Variant::Animal, Variant::Plant).await;
+    combine_latest_stream_order_test(Variant::Person, Variant::Plant, Variant::Animal).await;
+    combine_latest_stream_order_test(Variant::Animal, Variant::Person, Variant::Plant).await;
+    combine_latest_stream_order_test(Variant::Animal, Variant::Plant, Variant::Person).await;
+    combine_latest_stream_order_test(Variant::Plant, Variant::Person, Variant::Animal).await;
+    combine_latest_stream_order_test(Variant::Plant, Variant::Animal, Variant::Person).await;
 }
 
-/// Test template for `combine_latest` that verifies consistent enum-based ordering regardless of stream order.
+/// Test template for `combine_latest` that verifies consistent enum-based ordering regardless of stream Variant.
 /// Sets up channels for Person/Animal/Plant in different orders, combines them, sends values, and asserts
-/// that results are always in enum variant order (Person, Animal, Plant) determined by the Ord trait,
-/// not by stream registration order. Called with different permutations to validate that ordering is based
-/// on enum definition rather than the order streams were passed to combine_latest.
-async fn combine_latest_stream_order_test(stream1: Order, stream2: Order, stream3: Order) {
+/// that results are always in enum variant Variant (Person, Animal, Plant) determined by the Ord trait,
+/// not by stream registration Variant. Called with different permutations to validate that ordering is based
+/// on enum definition rather than the Variant streams were passed to combine_latest.
+async fn combine_latest_stream_order_test(stream1: Variant, stream2: Variant, stream3: Variant) {
     // Arrange
     let (person_sender, person_receiver) = unbounded_channel();
     let (animal_sender, animal_receiver) = unbounded_channel();
@@ -193,22 +191,22 @@ async fn combine_latest_stream_order_test(stream1: Order, stream2: Order, stream
     let plant_stream = UnboundedReceiverStream::new(plant_receiver.into_inner());
 
     let mut streams = vec![
-        (Order::Person, person_stream),
-        (Order::Animal, animal_stream),
-        (Order::Plant, plant_stream),
+        (Variant::Person, person_stream),
+        (Variant::Animal, animal_stream),
+        (Variant::Plant, plant_stream),
     ];
 
     let ordered_streams: Vec<_> = vec![&stream1, &stream2, &stream3]
         .into_iter()
-        .map(|order| {
+        .map(|variant| {
             let idx = streams
                 .iter()
                 .position(|(o, _)| {
                     matches!(
-                        (o, order),
-                        (Order::Person, Order::Person)
-                            | (Order::Animal, Order::Animal)
-                            | (Order::Plant, Order::Plant)
+                        (o, variant),
+                        (Variant::Person, Variant::Person)
+                            | (Variant::Animal, Variant::Animal)
+                            | (Variant::Plant, Variant::Plant)
                     )
                 })
                 .unwrap();
@@ -223,14 +221,14 @@ async fn combine_latest_stream_order_test(stream1: Order, stream2: Order, stream
     let combined_stream = first_stream.combine_latest(remaining_streams, FILTER);
 
     // Act
-    send_alice(&person_sender);
-    send_dog(&animal_sender);
-    send_rose(&plant_sender);
+    push(alice(), &person_sender);
+    push(dog(), &animal_sender);
+    push(rose(), &plant_sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![alice(), dog(), rose()];
 
     assert_eq!(actual, expected);
@@ -249,30 +247,30 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    send_alice(&stream1_sender);
-    send_bob(&stream2_sender);
+    push(alice(), &stream1_sender);
+    push(bob(), &stream2_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![alice(), bob()];
     assert_eq!(actual, expected);
 
     // Act
-    send_charlie(&stream1_sender);
+    push(charlie(), &stream1_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![charlie(), bob()];
     assert_eq!(actual, expected);
 
     // Act
-    send_diane(&stream2_sender);
+    push(diane(), &stream2_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<SimpleEnum> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
     let expected = vec![charlie(), diane()];
     assert_eq!(actual, expected);
 }

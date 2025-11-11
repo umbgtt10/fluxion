@@ -4,17 +4,15 @@ use fluxion_stream::{
 };
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
-    simple_enum::{
-        SimpleEnum, alice, bob, charlie, send_alice, send_ant, send_bob, send_cat, send_charlie,
-        send_dave, send_dog,
-    },
+    push,
+    test_value::{TestValue, alice, ant, bob, cat, charlie, dave, dog},
 };
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_take_latest_when_empty_streams() {
-    static FILTER: fn(&CombinedState<SimpleEnum>) -> bool = |_: &CombinedState<SimpleEnum>| true;
+    static FILTER: fn(&CombinedState<TestValue>) -> bool = |_: &CombinedState<TestValue>| true;
 
     // Arrange
     let (_, source_receiver) = unbounded_channel();
@@ -43,10 +41,10 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
     let (filter_sender, filter_receiver) = unbounded_channel();
     let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
-    static FILTER: fn(&CombinedState<SimpleEnum>) -> bool = |state| {
+    static FILTER: fn(&CombinedState<TestValue>) -> bool = |state| {
         let state = state.get_state().first().unwrap().clone();
         match state {
-            SimpleEnum::Animal(animal) => animal.legs > 5,
+            TestValue::Animal(animal) => animal.legs > 5,
             _ => false,
         }
     };
@@ -55,8 +53,8 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
     let mut output_stream = Box::pin(output_stream);
 
     // Act
-    send_alice(&source_sender);
-    send_dog(&filter_sender);
+    push(alice(), &source_sender);
+    push(dog(), &filter_sender);
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -71,11 +69,11 @@ async fn test_take_latest_when_filter_satisfied_emits() {
     let (filter_sender, filter_receiver) = unbounded_channel();
     let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
-    static FILTER: fn(&CombinedState<SimpleEnum>) -> bool = |state| {
+    static FILTER: fn(&CombinedState<TestValue>) -> bool = |state| {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
-            SimpleEnum::Animal(animal) => animal.legs > 5,
+            TestValue::Animal(animal) => animal.legs > 5,
             _ => {
                 panic!(
                     "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
@@ -88,8 +86,8 @@ async fn test_take_latest_when_filter_satisfied_emits() {
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
 
     // Act
-    send_alice(&source_sender);
-    send_ant(&filter_sender);
+    push(alice(), &source_sender);
+    push(ant(), &filter_sender);
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
@@ -110,11 +108,11 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     let (filter_sender, filter_receiver) = unbounded_channel();
     let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
-    static FILTER: fn(&CombinedState<SimpleEnum>) -> bool = |state| {
+    static FILTER: fn(&CombinedState<TestValue>) -> bool = |state| {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
-            SimpleEnum::Animal(animal) => animal.legs > 5,
+            TestValue::Animal(animal) => animal.legs > 5,
             _ => {
                 panic!(
                     "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
@@ -127,8 +125,8 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
 
     // Act
-    send_alice(&source_sender);
-    send_ant(&filter_sender);
+    push(alice(), &source_sender);
+    push(ant(), &filter_sender);
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
@@ -141,7 +139,7 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     );
 
     // Act
-    send_bob(&source_sender);
+    push(bob(), &source_sender);
 
     // Assert
     let second_item = output_stream.next().await.unwrap();
@@ -161,11 +159,11 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     let (filter_sender, filter_receiver) = unbounded_channel();
     let filter_stream = UnboundedReceiverStream::new(filter_receiver.into_inner());
 
-    static FILTER: fn(&CombinedState<SimpleEnum>) -> bool = |state| {
+    static FILTER: fn(&CombinedState<TestValue>) -> bool = |state| {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
-            SimpleEnum::Animal(animal) => animal.legs > 5,
+            TestValue::Animal(animal) => animal.legs > 5,
             _ => {
                 panic!(
                     "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
@@ -178,8 +176,8 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
 
     // Act
-    send_ant(&filter_sender);
-    send_charlie(&source_sender);
+    push(ant(), &filter_sender);
+    push(charlie(), &source_sender);
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
@@ -192,8 +190,8 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     );
 
     // Act
-    send_cat(&filter_sender);
-    send_dave(&source_sender);
+    push(cat(), &filter_sender);
+    push(dave(), &source_sender);
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
