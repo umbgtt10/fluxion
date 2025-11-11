@@ -377,7 +377,7 @@ impl Repository {
 
     pub fn update_with_animal(&mut self, animal: Animal) {
         self.last_animal = Some(animal.clone());
-        self.animal_species = Some(animal.species);
+        self.animal_species = Some(animal.name);
         self.animal_legs = Some(animal.legs);
     }
 

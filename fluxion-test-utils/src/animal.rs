@@ -2,18 +2,18 @@ use std::fmt::{self, Display};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Animal {
-    pub species: String,
+    pub name: String,
     pub legs: u32,
 }
 
 impl Animal {
-    pub fn new(species: String, legs: u32) -> Self {
-        Self { species, legs }
+    pub fn new(name: String, legs: u32) -> Self {
+        Self { name, legs }
     }
 }
 
 impl Display for Animal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Animal[species={}, legs={}]", self.species, self.legs)
+        write!(f, "Animal[name={}, legs={}]", self.name, self.legs)
     }
 }

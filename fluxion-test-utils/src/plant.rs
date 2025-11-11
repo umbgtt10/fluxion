@@ -14,10 +14,6 @@ impl Plant {
 
 impl Display for Plant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Plant[species={}, height={}cm]",
-            self.species, self.height
-        )
+        write!(f, "Plant[species={}, height={}]", self.species, self.height)
     }
 }
