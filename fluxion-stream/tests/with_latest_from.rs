@@ -4,7 +4,9 @@ use fluxion_stream::sequenced_channel::unbounded_channel;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::push;
-use fluxion_test_utils::test_value::{TestValue, person_alice, animal, person_bob, animal_cat, animal_dog};
+use fluxion_test_utils::test_value::{
+    TestValue, animal, animal_cat, animal_dog, person_alice, person_bob,
+};
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 

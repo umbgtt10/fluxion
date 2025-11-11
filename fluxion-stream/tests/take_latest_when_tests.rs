@@ -5,7 +5,10 @@ use fluxion_stream::{
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     push,
-    test_value::{TestValue, person_alice, animal_ant, person_bob, animal_cat, person_charlie, person_dave, animal_dog},
+    test_value::{
+        TestValue, animal_ant, animal_cat, animal_dog, person_alice, person_bob, person_charlie,
+        person_dave,
+    },
 };
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;

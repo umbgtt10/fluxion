@@ -17,7 +17,10 @@ async fn test_combine_with_previous_no_previous_value_emits() {
 
     // Assert
     let result = stream.next().await.unwrap();
-    assert_eq!((result.0.map(|s| s.value), result.1.value), (None, person_alice()));
+    assert_eq!(
+        (result.0.map(|s| s.value), result.1.value),
+        (None, person_alice())
+    );
 }
 
 #[tokio::test]

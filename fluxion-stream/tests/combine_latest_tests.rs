@@ -6,7 +6,8 @@ use fluxion_stream::{
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     test_value::{
-        TestValue, Variant, person_alice, person_bob, person_charlie, person_diane, animal_dog, push, plant_rose, send, animal_spider, plant_sunflower,
+        TestValue, Variant, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
+        person_diane, plant_rose, plant_sunflower, push, send,
     },
 };
 use futures::StreamExt;
