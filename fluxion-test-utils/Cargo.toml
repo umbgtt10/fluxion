@@ -1,0 +1,20 @@
+[package]
+name = "fluxion-test-utils"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+description = "Test utilities and infrastructure for fluxion workspace"
+keywords = ["testing", "async", "stream"]
+categories = ["development-tools::testing"]
+
+[dependencies]
+futures = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+fluxion-stream = { workspace = true }
+
+[dev-dependencies]
+rstest = { workspace = true }

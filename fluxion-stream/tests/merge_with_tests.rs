@@ -1,12 +1,12 @@
+use fluxion_stream::merge_with::MergedStream;
+use fluxion_test_utils::animal::Animal;
+use fluxion_test_utils::person::Person;
+use fluxion_test_utils::plant::Plant;
 use futures::StreamExt;
 use futures::stream;
-use fluxion_stream::merge_with::MergedStream;
-use fluxion_test_utils::test_data::animal::Animal;
-use fluxion_test_utils::test_data::person::Person;
 use tokio::sync::mpsc;
 use tokio::time;
 use tokio_stream::wrappers::ReceiverStream;
-use crate::test_data::plant::Plant;
 
 const BUFFER_SIZE: usize = 10;
 

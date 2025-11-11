@@ -1,5 +1,5 @@
 use crate::test_data::{animal::Animal, person::Person, plant::Plant};
-use fluxion::{sequenced::Sequenced, sequenced_channel::UnboundedSender};
+use fluxion_stream::{sequenced::Sequenced, sequenced_channel::UnboundedSender};
 use futures::Stream;
 use futures::StreamExt;
 use std::fmt::{self, Display};

@@ -3,8 +3,8 @@ use fluxion_stream::{
     take_latest_when::TakeLatestWhenExt,
 };
 use fluxion_test_utils::{
-    infra::infrastructure::assert_no_element_emitted,
-    test_data::simple_enum::{
+    helpers::assert_no_element_emitted,
+    simple_enum::{
         SimpleEnum, alice, bob, charlie, send_alice, send_ant, send_bob, send_cat, send_charlie,
         send_dave, send_dog,
     },

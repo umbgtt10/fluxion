@@ -1,6 +1,6 @@
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
 use fluxion_stream::sequenced_channel::unbounded_channel;
-use fluxion_test_utils::test_data::simple_enum::{alice, bob, charlie, send_alice, send_bob, send_charlie};
+use fluxion_test_utils::simple_enum::{alice, bob, charlie, send_alice, send_bob, send_charlie};
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 

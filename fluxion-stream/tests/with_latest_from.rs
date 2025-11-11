@@ -2,8 +2,8 @@ use fluxion_stream::combine_latest::CombinedState;
 use fluxion_stream::sequenced::Sequenced;
 use fluxion_stream::sequenced_channel::unbounded_channel;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
-use fluxion_test_utils::infra::infrastructure::assert_no_element_emitted;
-use fluxion_test_utils::test_data::simple_enum::{
+use fluxion_test_utils::helpers::assert_no_element_emitted;
+use fluxion_test_utils::simple_enum::{
     SimpleEnum, alice, animal, bob, cat, dog, send_alice, send_bob, send_cat, send_dog,
 };
 use futures::StreamExt;

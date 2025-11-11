@@ -1,0 +1,22 @@
+[package]
+name = "fluxion-stream"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+description = "Stream combinators with ordering guarantees for async Rust"
+keywords = ["async", "stream", "reactive", "combinators", "futures"]
+categories = ["asynchronous", "concurrency"]
+
+[dependencies]
+futures = { workspace = true }
+futures-util = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+pin-project = { workspace = true }
+
+[dev-dependencies]
+rstest = { workspace = true }
+fluxion-test-utils = { workspace = true }

@@ -4,8 +4,8 @@ use fluxion_stream::{
     sequenced_channel::unbounded_channel,
 };
 use fluxion_test_utils::{
-    infra::infrastructure::assert_no_element_emitted,
-    test_data::simple_enum::{
+    helpers::assert_no_element_emitted,
+    simple_enum::{
         Order, SimpleEnum, alice, bob, charlie, diane, dog, rose, send, send_alice, send_bob,
         send_charlie, send_diane, send_dog, send_rose, send_spider, send_sunflower, spider,
         sunflower,

@@ -1,21 +1,33 @@
-[package]
-name = "fluxion"
+[workspace]
+resolver = "2"
+members = [
+    "fluxion-stream",
+    "fluxion-exec",
+    "fluxion-test-utils",
+]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
+authors = ["umbgtt10"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/umbgtt10/fluxion"
 
-[dependencies]
+[workspace.dependencies]
+# Stream utilities
 futures = "0.3.31"
 futures-util = "0.3.31"
-stream-utils = "0.2.0"
-pin-project = "1.1.0"
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
 tokio-util = "0.7"
+pin-project = "1.1.0"
 async-trait = "0.1.68"
 async-stream = "0.3"
-shared_stream = "0.2"
-futures-stream-select-all = "0.1"
-futures-stream-select-all-send = "0.1.2"
 
-[dev-dependencies]
+# Internal workspace dependencies
+fluxion-stream = { path = "fluxion-stream" }
+fluxion-exec = { path = "fluxion-exec" }
+fluxion-test-utils = { path = "fluxion-test-utils" }
+
+# Dev dependencies
 rstest = "0.26.1"

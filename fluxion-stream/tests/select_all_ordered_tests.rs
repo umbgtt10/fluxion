@@ -1,6 +1,6 @@
 use fluxion_stream::select_all_ordered::SelectAllExt;
 use fluxion_stream::sequenced_channel::unbounded_channel;
-use fluxion_test_utils::test_data::simple_enum::{Order, assert, send};
+use fluxion_test_utils::simple_enum::{Order, assert, send};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
