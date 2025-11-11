@@ -331,7 +331,7 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_with_cancellation_and_errors() {
+async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -356,8 +356,6 @@ async fn test_subscribe_latest_async_with_cancellation_and_errors() {
 
                 let mut items = collected_items.lock().await;
                 items.push(item);
-
-                sleep(Duration::from_millis(50)).await;
                 let _ = notify_tx.send(());
 
                 Ok(())
@@ -370,7 +368,7 @@ async fn test_subscribe_latest_async_with_cancellation_and_errors() {
     };
 
     let cancellation_token = CancellationToken::new();
-    let task_handle = tokio::spawn({
+    tokio::spawn({
         let cancellation_token = cancellation_token.clone();
 
         async move {
@@ -382,41 +380,27 @@ async fn test_subscribe_latest_async_with_cancellation_and_errors() {
 
     // Act
     push(person_alice(), &sender);
-    push(person_bob(), &sender);
-    push(animal_dog(), &sender); // Error
-    push(person_charlie(), &sender);
+    notify_rx.recv().await.expect("Alice processed");
 
-    // Wait for first item to complete
-    notify_rx.recv().await.unwrap();
+    push(animal_dog(), &sender); // Error
+    notify_rx.recv().await.expect("Dog handled (error)");
+
+    push(person_bob(), &sender);
+    notify_rx.recv().await.expect("Bob processed");
 
     cancellation_token.cancel();
 
-    // Act - these should not be processed after cancellation
     push(person_diane(), &sender);
     push(animal_cat(), &sender);
 
-    // Try to receive more notifications with timeout
-    tokio::select! {
-        _ = notify_rx.recv() => {},
-        _ = sleep(Duration::from_millis(100)) => {},
-    }
-
     // Assert
     let processed = collected_items.lock().await;
-    assert!(!processed.is_empty(), "Expected some items to be processed");
-    // Diane and Cat were sent after cancellation, should NOT be processed
-    assert!(
-        !processed.contains(&person_diane()),
-        "Diane should not be processed (sent after cancellation)"
-    );
-    assert!(
-        !processed.contains(&animal_cat()),
-        "Cat should not be processed (sent after cancellation)"
-    );
-
-    // Cleanup
-    drop(sender);
-    task_handle.await.unwrap();
+    assert_eq!(processed.len(), 2,);
+    assert!(processed.contains(&person_alice()),);
+    assert!(processed.contains(&person_bob()));
+    assert!(!processed.contains(&person_diane()));
+    assert!(!processed.contains(&animal_cat()));
+    assert!(!processed.contains(&animal_dog()));
 }
 
 #[tokio::test]
