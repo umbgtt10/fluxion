@@ -1,9 +1,9 @@
+use fluxion_stream::FluxionChannel;
 use fluxion_stream::select_all_ordered::SelectAllExt;
 use fluxion_test_utils::test_data::{
     DataVariant, TestData, animal_dog, animal_spider, expect_variant, person_alice, person_bob,
     person_charlie, plant_rose, plant_sunflower, push, send_variant,
 };
-use fluxion_stream::TestChannel;
 use fluxion_test_utils::{TestChannels, helpers::expect_next_timestamped};
 use futures::StreamExt;
 
@@ -76,7 +76,7 @@ async fn test_select_all_ordered_empty_streams() {
 #[tokio::test]
 async fn test_select_all_ordered_single_stream() {
     // Arrange
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
 
     let streams = vec![channel.stream];
     let results = streams.select_all_ordered();
@@ -101,9 +101,9 @@ async fn test_select_all_ordered_single_stream() {
 #[tokio::test]
 async fn test_select_all_ordered_one_empty_stream() {
     // Arrange
-    let person = TestChannel::new();
-    let animal = TestChannel::new();
-    let plant = TestChannel::new();
+    let person = FluxionChannel::new();
+    let animal = FluxionChannel::new();
+    let plant = FluxionChannel::new();
 
     let streams = vec![person.stream, animal.stream, plant.stream];
     let results = streams.select_all_ordered();

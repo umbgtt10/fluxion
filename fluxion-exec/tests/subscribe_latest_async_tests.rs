@@ -1,5 +1,5 @@
 use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
-use fluxion_stream::TestChannel;
+use fluxion_stream::FluxionChannel;
 use fluxion_test_utils::test_data::{
     TestData, animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
     person_charlie, person_dave, person_diane, plant_rose, push,
@@ -20,7 +20,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
 
     let func = {
@@ -110,7 +110,7 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
     let (start_tx, mut start_rx) = mpsc::unbounded_channel::<()>();
     let start_tx_shared = Arc::new(Mutex::new(Some(start_tx)));
 
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
 
     let func = {
@@ -193,7 +193,7 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
 
     let func = {
@@ -261,7 +261,7 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
 
     let func = {
@@ -333,7 +333,7 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
 
     let func = {
@@ -412,7 +412,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
     let (finish_tx, finish_rx) = mpsc::unbounded_channel::<()>();
     let finish_rx_shared = Arc::new(Mutex::new(finish_rx));
 
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
 
     let func = {
@@ -498,7 +498,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_
     let collected_items = Arc::new(Mutex::new(Vec::<TestData>::new()));
     let collected_items_clone = collected_items.clone();
 
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
 
     let func = move |item, _| {
@@ -546,7 +546,7 @@ async fn test_subscribe_latest_async_high_volume() {
     let (flood_done_tx, flood_done_rx) = mpsc::unbounded_channel::<()>();
     let flood_done_rx_shared = Arc::new(Mutex::new(Some(flood_done_rx)));
 
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
 
     let func = {
@@ -630,7 +630,7 @@ async fn test_subscribe_latest_async_single_item() {
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
 
     let func = {

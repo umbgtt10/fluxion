@@ -1,5 +1,5 @@
 use fluxion_exec::subscribe_async::SubscribeAsyncExt;
-use fluxion_stream::TestChannel;
+use fluxion_stream::FluxionChannel;
 use fluxion_test_utils::test_data::{
     TestData, animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave,
     person_diane, push,
@@ -12,7 +12,7 @@ use tokio_util::sync::CancellationToken;
 #[tokio::test]
 async fn test_subscribe_async_processes_items_when_waiting_per_item() {
     // Arrange
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
@@ -94,7 +94,7 @@ async fn test_subscribe_async_processes_items_when_waiting_per_item() {
 #[tokio::test]
 async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() {
     // Arrange
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let errors = Arc::new(StdMutex::new(Vec::new()));
@@ -165,7 +165,7 @@ async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() {
 #[tokio::test]
 async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() {
     // Arrange
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let cancellation_token = CancellationToken::new();
@@ -230,7 +230,7 @@ async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() {
 #[tokio::test]
 async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing() {
     // Arrange
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let errors = Arc::new(StdMutex::new(Vec::new()));
@@ -340,7 +340,7 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
 #[tokio::test]
 async fn test_subscribe_async_empty_stream_completes_without_items() {
     // Arrange
-    let channel = TestChannel::<TestData>::new();
+    let channel = FluxionChannel::<TestData>::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
 
@@ -382,7 +382,7 @@ async fn test_subscribe_async_empty_stream_completes_without_items() {
 #[tokio::test]
 async fn test_subscribe_async_parallelism_max_active_ge_2() {
     // Arrange
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
@@ -478,7 +478,7 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() {
 #[tokio::test]
 async fn test_subscribe_async_high_volume_processes_all() {
     // Arrange
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
@@ -533,7 +533,7 @@ async fn test_subscribe_async_high_volume_processes_all() {
 #[tokio::test]
 async fn test_subscribe_async_precancelled_token_processes_nothing() {
     // Arrange
-    let channel = TestChannel::new();
+    let channel = FluxionChannel::new();
     let stream = channel.stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let cancellation_token = CancellationToken::new();

@@ -1,4 +1,4 @@
-use fluxion_stream::{merge_with::MergedStream, timestamped::Timestamped, TestChannel};
+use fluxion_stream::{FluxionChannel, merge_with::MergedStream, timestamped::Timestamped};
 use fluxion_test_utils::{
     TestChannels,
     animal::Animal,
@@ -15,8 +15,8 @@ use futures::StreamExt;
 #[tokio::test]
 async fn test_merge_with_empty_streams() {
     // Arrange
-    let empty_channel1 = TestChannel::<i32>::empty();
-    let empty_channel2 = TestChannel::<i32>::empty();
+    let empty_channel1 = FluxionChannel::<i32>::empty();
+    let empty_channel2 = FluxionChannel::<i32>::empty();
     let empty_stream1 = empty_channel1.stream;
     let empty_stream2 = empty_channel2.stream;
 
@@ -221,8 +221,8 @@ async fn test_merge_with_parallel_processing() {
 #[tokio::test]
 async fn test_merge_with_large_streams_emits() {
     // Arrange
-    let channel1 = TestChannel::<i32>::new();
-    let channel2 = TestChannel::<i32>::new();
+    let channel1 = FluxionChannel::<i32>::new();
+    let channel2 = FluxionChannel::<i32>::new();
     let large_stream1 = channel1.stream;
     let large_stream2 = channel2.stream;
 
@@ -506,7 +506,7 @@ impl Repository {
 #[should_panic(expected = "User closure panicked on purpose")]
 async fn test_merge_with_user_closure_panics() {
     // Arrange
-    let channel = TestChannel::<TestData>::new();
+    let channel = FluxionChannel::<TestData>::new();
     let stream = channel.stream;
 
     // Create a merge_with stream where the closure panics on the second emission

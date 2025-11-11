@@ -1,5 +1,7 @@
 use fluxion_stream::{
-    TestChannel, combine_latest::{CombineLatestExt, CombinedState}, timestamped::Timestamped
+    FluxionChannel,
+    combine_latest::{CombineLatestExt, CombinedState},
+    timestamped::Timestamped,
 };
 use fluxion_test_utils::{
     TestChannels,
@@ -42,9 +44,9 @@ async fn test_combine_latest_empty_streams() {
 #[tokio::test]
 async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
     // Arrange
-    let person = TestChannel::new();
-    let animal = TestChannel::new();
-    let plant = TestChannel::new();
+    let person = FluxionChannel::new();
+    let animal = FluxionChannel::new();
+    let plant = FluxionChannel::new();
 
     let combined_stream = person
         .stream
@@ -67,9 +69,9 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
 #[tokio::test]
 async fn test_combine_latest_stream_closes_before_publish_no_output() {
     // Arrange
-    let person = TestChannel::new();
-    let animal = TestChannel::new();
-    let plant = TestChannel::new();
+    let person = FluxionChannel::new();
+    let animal = FluxionChannel::new();
+    let plant = FluxionChannel::new();
 
     let combined_stream = person
         .stream
@@ -97,9 +99,9 @@ async fn test_combine_latest_stream_closes_before_publish_no_output() {
 #[tokio::test]
 async fn test_combine_latest_secondary_closes_after_initial_emission_continues() {
     // Arrange
-    let person = TestChannel::new();
-    let animal = TestChannel::new();
-    let plant = TestChannel::new();
+    let person = FluxionChannel::new();
+    let animal = FluxionChannel::new();
+    let plant = FluxionChannel::new();
 
     let combined_stream = person
         .stream
@@ -260,9 +262,9 @@ async fn combine_latest_stream_order_test(
     stream3: DataVariant,
 ) {
     // Arrange
-    let person = TestChannel::new();
-    let animal = TestChannel::new();
-    let plant = TestChannel::new();
+    let person = FluxionChannel::new();
+    let animal = FluxionChannel::new();
+    let plant = FluxionChannel::new();
 
     let mut streams = vec![
         (DataVariant::Person, person.stream),

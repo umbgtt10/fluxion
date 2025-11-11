@@ -5,12 +5,12 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// A channel utility (moved from test-utils) combining sender and timestamped stream.
 /// Intended for ergonomic stream construction in tests and simple scenarios.
-pub struct TestChannel<T> {
+pub struct FluxionChannel<T> {
     pub sender: timestamped_channel::UnboundedSender<T>,
     pub stream: UnboundedReceiverStream<Timestamped<T>>,
 }
 
-impl<T> TestChannel<T> {
+impl<T> FluxionChannel<T> {
     /// Create a new unbounded timestamped channel pair.
     pub fn new() -> Self {
         let (sender, receiver) = timestamped_channel::unbounded_channel();
@@ -26,7 +26,10 @@ impl<T> TestChannel<T> {
         drop(sender);
         // provide a dummy sender to satisfy struct field; sends will just be ignored if used.
         let (dummy_sender, _) = timestamped_channel::unbounded_channel();
-        Self { sender: dummy_sender, stream }
+        Self {
+            sender: dummy_sender,
+            stream,
+        }
     }
 
     /// Send a value, returning an error if the receiver is gone.
@@ -45,6 +48,8 @@ impl<T> TestChannel<T> {
     }
 }
 
-impl<T> Default for TestChannel<T> {
-    fn default() -> Self { Self::new() }
+impl<T> Default for FluxionChannel<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }

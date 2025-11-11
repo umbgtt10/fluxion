@@ -1,4 +1,4 @@
-use fluxion_stream::TestChannel;
+use fluxion_stream::FluxionChannel;
 use fluxion_stream::combine_latest::CombinedState;
 use fluxion_stream::timestamped::Timestamped;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
@@ -18,8 +18,8 @@ static FILTER: fn(&CombinedState<Timestamped<TestData>>) -> bool =
 #[tokio::test]
 async fn test_with_latest_from_complete() {
     // Arrange
-    let animal = TestChannel::new();
-    let person = TestChannel::new();
+    let animal = FluxionChannel::new();
+    let person = FluxionChannel::new();
 
     let combined_stream = animal.stream.with_latest_from(person.stream, FILTER);
 
@@ -48,8 +48,8 @@ async fn test_with_latest_from_complete() {
 #[tokio::test]
 async fn test_with_latest_from_second_stream_does_not_emit_no_output() {
     // Arrange
-    let animal = TestChannel::new();
-    let person = TestChannel::new();
+    let animal = FluxionChannel::new();
+    let person = FluxionChannel::new();
 
     let combined_stream = animal.stream.with_latest_from(person.stream, FILTER);
     let mut combined_stream = Box::pin(combined_stream);
