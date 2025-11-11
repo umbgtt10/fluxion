@@ -5,7 +5,7 @@ use fluxion_stream::{
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     push,
-    test_value::{TestValue, alice, ant, bob, cat, charlie, dave, dog},
+    test_value::{TestValue, person_alice, animal_ant, person_bob, animal_cat, person_charlie, person_dave, animal_dog},
 };
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -53,8 +53,8 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
     let mut output_stream = Box::pin(output_stream);
 
     // Act
-    push(alice(), &source_sender);
-    push(dog(), &filter_sender);
+    push(person_alice(), &source_sender);
+    push(animal_dog(), &filter_sender);
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -86,15 +86,15 @@ async fn test_take_latest_when_filter_satisfied_emits() {
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
 
     // Act
-    push(alice(), &source_sender);
-    push(ant(), &filter_sender);
+    push(person_alice(), &source_sender);
+    push(animal_ant(), &filter_sender);
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
     let emitted_item = output_stream.next().await.unwrap();
     assert_eq!(
         emitted_item,
-        alice(),
+        person_alice(),
         "Expected the source item to be emitted when the filter is satisfied"
     );
 }
@@ -125,8 +125,8 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
 
     // Act
-    push(alice(), &source_sender);
-    push(ant(), &filter_sender);
+    push(person_alice(), &source_sender);
+    push(animal_ant(), &filter_sender);
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
@@ -134,18 +134,18 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     let first_item = output_stream.next().await.unwrap();
     assert_eq!(
         first_item,
-        alice(),
+        person_alice(),
         "First emitted item did not match expected"
     );
 
     // Act
-    push(bob(), &source_sender);
+    push(person_bob(), &source_sender);
 
     // Assert
     let second_item = output_stream.next().await.unwrap();
     assert_eq!(
         second_item,
-        bob(),
+        person_bob(),
         "Second emitted item did not match expected"
     );
 }
@@ -176,8 +176,8 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     let output_stream = source_stream.take_latest_when(filter_stream, FILTER);
 
     // Act
-    push(ant(), &filter_sender);
-    push(charlie(), &source_sender);
+    push(animal_ant(), &filter_sender);
+    push(person_charlie(), &source_sender);
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
@@ -185,13 +185,13 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     let first_item = output_stream.next().await.unwrap();
     assert_eq!(
         first_item,
-        charlie(),
+        person_charlie(),
         "First emitted item did not match expected"
     );
 
     // Act
-    push(cat(), &filter_sender);
-    push(dave(), &source_sender);
+    push(animal_cat(), &filter_sender);
+    push(person_dave(), &source_sender);
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;

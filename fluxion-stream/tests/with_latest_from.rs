@@ -4,7 +4,7 @@ use fluxion_stream::sequenced_channel::unbounded_channel;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::push;
-use fluxion_test_utils::test_value::{TestValue, alice, animal, bob, cat, dog};
+use fluxion_test_utils::test_value::{TestValue, person_alice, animal, person_bob, animal_cat, animal_dog};
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -22,28 +22,28 @@ async fn test_with_latest_from_complete() {
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
 
     // Act
-    push(cat(), &animal_sender);
-    push(alice(), &person_sender);
+    push(animal_cat(), &animal_sender);
+    push(person_alice(), &person_sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
 
     let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (alice(), cat()));
+    assert_eq!((p.value, a.value), (person_alice(), animal_cat()));
 
     // Act
-    push(dog(), &animal_sender);
+    push(animal_dog(), &animal_sender);
 
     // Assert
     let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (alice(), dog()));
+    assert_eq!((p.value, a.value), (person_alice(), animal_dog()));
 
     // Act
-    push(bob(), &person_sender);
+    push(person_bob(), &person_sender);
 
     // Assert
     let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (bob(), dog()));
+    assert_eq!((p.value, a.value), (person_bob(), animal_dog()));
 }
 
 #[tokio::test]
@@ -59,7 +59,7 @@ async fn test_with_latest_from_second_stream_does_not_emit_no_output() {
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    push(cat(), &animal_sender);
+    push(animal_cat(), &animal_sender);
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
@@ -77,7 +77,7 @@ async fn test_with_latest_from_secondary_completes_early() {
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
 
     // Act
-    push(alice(), &person_sender);
+    push(person_alice(), &person_sender);
     drop(person_sender);
 
     // Assert
@@ -86,18 +86,18 @@ async fn test_with_latest_from_secondary_completes_early() {
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act
-    push(cat(), &animal_sender);
+    push(animal_cat(), &animal_sender);
 
     // Assert
     let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (alice(), cat()));
+    assert_eq!((p.value, a.value), (person_alice(), animal_cat()));
 
     // Act
-    push(dog(), &animal_sender);
+    push(animal_dog(), &animal_sender);
 
     // Assert
     let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (alice(), dog()));
+    assert_eq!((p.value, a.value), (person_alice(), animal_dog()));
 }
 
 #[tokio::test]
@@ -112,22 +112,22 @@ async fn test_with_latest_from_primary_completes_early() {
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
 
     // Act
-    push(cat(), &animal_sender);
-    push(alice(), &person_sender);
+    push(animal_cat(), &animal_sender);
+    push(person_alice(), &person_sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
 
     let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (alice(), cat()));
+    assert_eq!((p.value, a.value), (person_alice(), animal_cat()));
 
     // Act
     drop(animal_sender);
-    push(bob(), &person_sender);
+    push(person_bob(), &person_sender);
 
     // Assert
     let (p, a) = combined_stream.next().await.unwrap();
-    assert_eq!((p.value, a.value), (bob(), cat()));
+    assert_eq!((p.value, a.value), (person_bob(), animal_cat()));
 }
 
 #[tokio::test]
@@ -142,7 +142,7 @@ async fn test_large_number_of_emissions() {
     let combined_stream = animal_stream.with_latest_from(person_stream, FILTER);
 
     // Act
-    push(alice(), &person_sender);
+    push(person_alice(), &person_sender);
 
     for i in 0..1000 {
         animal_sender
@@ -157,7 +157,7 @@ async fn test_large_number_of_emissions() {
         let (p, a) = combined_stream.next().await.unwrap();
         assert_eq!(
             (p.value, a.value),
-            (alice(), animal(format!("Animal{}", i), 4))
+            (person_alice(), animal(format!("Animal{}", i), 4))
         );
     }
 }

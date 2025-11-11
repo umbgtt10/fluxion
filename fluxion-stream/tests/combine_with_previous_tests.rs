@@ -1,7 +1,7 @@
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
 use fluxion_stream::sequenced_channel::unbounded_channel;
 use fluxion_test_utils::push;
-use fluxion_test_utils::test_value::{alice, bob, charlie};
+use fluxion_test_utils::test_value::{person_alice, person_bob, person_charlie};
 use futures::StreamExt;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -13,11 +13,11 @@ async fn test_combine_with_previous_no_previous_value_emits() {
     let mut stream = stream.combine_with_previous();
 
     // Act
-    push(alice(), &sender);
+    push(person_alice(), &sender);
 
     // Assert
     let result = stream.next().await.unwrap();
-    assert_eq!((result.0.map(|s| s.value), result.1.value), (None, alice()));
+    assert_eq!((result.0.map(|s| s.value), result.1.value), (None, person_alice()));
 }
 
 #[tokio::test]
@@ -28,23 +28,23 @@ async fn test_combine_with_previous_single_previous_value() {
     let mut stream = stream.combine_with_previous();
 
     // Act
-    push(alice(), &sender);
+    push(person_alice(), &sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
         (first_result.0.map(|s| s.value), first_result.1.value),
-        (None, alice())
+        (None, person_alice())
     );
 
     // Act
-    push(bob(), &sender);
+    push(person_bob(), &sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
         (second_result.0.map(|s| s.value), second_result.1.value),
-        (Some(alice()), bob())
+        (Some(person_alice()), person_bob())
     );
 }
 
@@ -56,33 +56,33 @@ async fn test_combine_with_previous_multiple_values() {
     let mut stream = stream.combine_with_previous();
 
     // Act
-    push(alice(), &sender);
+    push(person_alice(), &sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
         (first_result.0.map(|s| s.value), first_result.1.value),
-        (None, alice())
+        (None, person_alice())
     );
 
     // Act
-    push(bob(), &sender);
+    push(person_bob(), &sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
         (second_result.0.map(|s| s.value), second_result.1.value),
-        (Some(alice()), bob())
+        (Some(person_alice()), person_bob())
     );
 
     // Act
-    push(charlie(), &sender);
+    push(person_charlie(), &sender);
 
     // Assert
     let third_result = stream.next().await.unwrap();
     assert_eq!(
         (third_result.0.map(|s| s.value), third_result.1.value),
-        (Some(bob()), charlie())
+        (Some(person_bob()), person_charlie())
     );
 }
 
@@ -94,23 +94,23 @@ async fn test_combine_with_previous_stream_ends() {
     let mut stream = stream.combine_with_previous();
 
     // Act
-    push(alice(), &sender);
+    push(person_alice(), &sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
         (first_result.0.map(|s| s.value), first_result.1.value),
-        (None, alice())
+        (None, person_alice())
     );
 
     // Act
-    push(bob(), &sender);
+    push(person_bob(), &sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
         (second_result.0.map(|s| s.value), second_result.1.value),
-        (Some(alice()), bob())
+        (Some(person_alice()), person_bob())
     );
 
     // Act
@@ -129,22 +129,22 @@ async fn test_combine_with_previous_for_types() {
     let mut stream = stream.combine_with_previous();
 
     // Act
-    push(alice(), &sender);
+    push(person_alice(), &sender);
 
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
         (first_result.0.map(|s| s.value), first_result.1.value),
-        (None, alice())
+        (None, person_alice())
     );
 
     // Act
-    push(bob(), &sender);
+    push(person_bob(), &sender);
 
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
         (second_result.0.map(|s| s.value), second_result.1.value),
-        (Some(alice()), bob())
+        (Some(person_alice()), person_bob())
     );
 }

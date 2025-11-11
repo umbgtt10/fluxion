@@ -6,7 +6,7 @@ use fluxion_stream::{
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     test_value::{
-        TestValue, Variant, alice, bob, charlie, diane, dog, push, rose, send, spider, sunflower,
+        TestValue, Variant, person_alice, person_bob, person_charlie, person_diane, animal_dog, push, plant_rose, send, animal_spider, plant_sunflower,
     },
 };
 use futures::StreamExt;
@@ -54,13 +54,13 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    push(alice(), &person_sender);
+    push(person_alice(), &person_sender);
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act
-    push(dog(), &animal_sender);
+    push(animal_dog(), &animal_sender);
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
@@ -105,7 +105,7 @@ async fn combine_latest_template_test(order1: Variant, order2: Variant, order3: 
 
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![alice(), dog(), rose()];
+    let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
 }
@@ -125,43 +125,43 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     let combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
-    push(alice(), &person_sender);
-    push(dog(), &animal_sender);
-    push(rose(), &plant_sender);
+    push(person_alice(), &person_sender);
+    push(animal_dog(), &animal_sender);
+    push(plant_rose(), &plant_sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
 
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![alice(), dog(), rose()];
+    let expected = vec![person_alice(), animal_dog(), plant_rose()];
     assert_eq!(actual, expected);
 
     // Act
-    push(bob(), &person_sender);
+    push(person_bob(), &person_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![bob(), dog(), rose()];
+    let expected = vec![person_bob(), animal_dog(), plant_rose()];
     assert_eq!(actual, expected);
 
     // Act
-    push(spider(), &animal_sender);
+    push(animal_spider(), &animal_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![bob(), spider(), rose()];
+    let expected = vec![person_bob(), animal_spider(), plant_rose()];
     assert_eq!(actual, expected);
 
     // Act
-    push(sunflower(), &plant_sender);
+    push(plant_sunflower(), &plant_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![bob(), spider(), sunflower()];
+    let expected = vec![person_bob(), animal_spider(), plant_sunflower()];
     assert_eq!(actual, expected);
 }
 
@@ -221,15 +221,15 @@ async fn combine_latest_stream_order_test(stream1: Variant, stream2: Variant, st
     let combined_stream = first_stream.combine_latest(remaining_streams, FILTER);
 
     // Act
-    push(alice(), &person_sender);
-    push(dog(), &animal_sender);
-    push(rose(), &plant_sender);
+    push(person_alice(), &person_sender);
+    push(animal_dog(), &animal_sender);
+    push(plant_rose(), &plant_sender);
 
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![alice(), dog(), rose()];
+    let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
 }
@@ -247,30 +247,30 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act
-    push(alice(), &stream1_sender);
-    push(bob(), &stream2_sender);
+    push(person_alice(), &stream1_sender);
+    push(person_bob(), &stream2_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![alice(), bob()];
+    let expected = vec![person_alice(), person_bob()];
     assert_eq!(actual, expected);
 
     // Act
-    push(charlie(), &stream1_sender);
+    push(person_charlie(), &stream1_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![charlie(), bob()];
+    let expected = vec![person_charlie(), person_bob()];
     assert_eq!(actual, expected);
 
     // Act
-    push(diane(), &stream2_sender);
+    push(person_diane(), &stream2_sender);
 
     // Assert
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestValue> = state.get_state().iter().map(|s| s.value.clone()).collect();
-    let expected = vec![charlie(), diane()];
+    let expected = vec![person_charlie(), person_diane()];
     assert_eq!(actual, expected);
 }
