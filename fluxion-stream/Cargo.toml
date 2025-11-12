@@ -19,3 +19,4 @@ pin-project = { workspace = true }
 
 [dev-dependencies]
 fluxion-test-utils = { workspace = true }
+criterion = { version = "0.4", features = ["async"] }
