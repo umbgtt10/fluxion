@@ -162,6 +162,10 @@ jobs:
         run: |
           cargo llvm-cov --workspace --lcov --output-path target/coverage/lcov.info
 
+      - name: Ensure coverage output directory exists
+        run: |
+          mkdir -p target/coverage
+
       - name: Run coverage (html)
         run: |
           cargo llvm-cov --workspace --html --output-dir target/coverage/html --fail-under 0
