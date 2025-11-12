@@ -41,6 +41,16 @@ function Run-Step {
 Write-Host "Starting local CI checks..." -ForegroundColor Cyan
 
 Run-Step "Format check" 'cargo fmt --all -- --check'
+
+# Run upgrade & build early to fail fast on dependency or build regressions
+Write-Host "=== Upgrade & build ===" -ForegroundColor Yellow
+& .\.ci\build.ps1
+$rc = $LASTEXITCODE
+if ($rc -ne 0) {
+  Write-Host "Upgrade & build failed (exit code $rc). Aborting CI. See .ci\\build.ps1 output for details." -ForegroundColor Red
+  exit $rc
+}
+
 Run-Step "Cargo check (all targets & features)" 'cargo check --all-targets --all-features --verbose'
 Run-Step "Clippy (deny warnings)" 'cargo clippy --all-targets --all-features -- -D warnings'
 Run-Step "Release build" 'cargo build --release --all-targets --all-features --verbose'

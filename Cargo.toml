@@ -17,12 +17,12 @@ repository = "https://github.com/umbgtt10/fluxion"
 # Stream utilities
 futures = "0.3.31"
 futures-util = "0.3.31"
-tokio = { version = "1.47.1", features = ["full"] }
+tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
-tokio-util = "0.7"
-pin-project = "1.1.0"
-async-trait = "0.1.68"
-async-stream = "0.3"
+tokio-util = "0.7.17"
+pin-project = "1.1.10"
+async-trait = "0.1.89"
+async-stream = "0.3.6"
 
 # Internal workspace dependencies
 fluxion-stream = { path = "fluxion-stream" }
