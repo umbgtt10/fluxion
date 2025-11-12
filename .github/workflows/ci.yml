@@ -30,7 +30,11 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
-          components: rustfmt clippy
+
+      - name: Install rustfmt & clippy components
+        run: |
+          rustup component add rustfmt --toolchain stable
+          rustup component add clippy --toolchain stable
 
       - name: Cache cargo registry and target
         uses: actions/cache@v4

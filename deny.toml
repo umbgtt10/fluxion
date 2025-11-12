@@ -1,0 +1,11 @@
+# cargo-deny configuration: allow common permissive licenses used by this workspace
+# This file is used by `cargo deny check` to enforce licensing policy in CI.
+
+[licenses]
+# Allow common Rust ecosystem licenses used by dependencies and our crates.
+# Some crates use composite SPDX expressions such as "(MIT OR Apache-2.0) AND Unicode-3.0",
+# so we must allow the additional license identifiers (e.g., Unicode-3.0) as well.
+allow = ["MIT", "Apache-2.0", "Unicode-3.0"]
+
+# Optionally, you can add SPDX exceptions or more strict rules later.
+# See: https://embarkstudios.github.io/cargo-deny/ for configuration details.
