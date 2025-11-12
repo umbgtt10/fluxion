@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::select_all_ordered::SelectAllExt;
 use crate::timestamped::Timestamped;
+use crate::timestamped_stream::TimestampedStreamExt;
 
 /// Trait for comparing values by their inner content rather than wrapper metadata.
 /// This is automatically implemented for Timestamped<T> to allow sorting by inner value.
@@ -19,7 +20,7 @@ impl<T: Ord> CompareByInner for Timestamped<T> {
     }
 }
 
-pub trait CombineLatestExt<T, S>: Stream<Item = Timestamped<T>> + Sized
+pub trait CombineLatestExt<T, S>: TimestampedStreamExt<T> + Sized
 where
     Timestamped<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     S: Stream<Item = Timestamped<T>> + Send + 'static,
@@ -36,7 +37,7 @@ type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (Timestamped<T>, usize)> +
 impl<T, S> CombineLatestExt<T, S> for S
 where
     Timestamped<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
-    S: Stream<Item = Timestamped<T>> + Send + 'static,
+    S: TimestampedStreamExt<T> + Send + 'static,
 {
     fn combine_latest(
         self,

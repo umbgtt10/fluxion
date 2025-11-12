@@ -8,6 +8,7 @@ use tokio::sync::Mutex;
 
 use crate::select_all_ordered::SelectAllExt;
 use crate::timestamped::Timestamped;
+use crate::timestamped_stream::TimestampedStreamExt;
 
 #[pin_project]
 pub struct MergedStream<S, State, Item> {
@@ -45,7 +46,7 @@ where
         process_fn: F,
     ) -> MergedStream<impl Stream<Item = Timestamped<T>>, State, Timestamped<T>>
     where
-        NewStream: Stream<Item = Timestamped<NewItem>> + Send + 'static,
+        NewStream: TimestampedStreamExt<NewItem> + Send + 'static,
         // Option B: the processor takes the whole Timestamped<NewItem> and returns
         // a Timestamped<T>.
         F: FnMut(Timestamped<NewItem>, &mut State) -> Timestamped<T>

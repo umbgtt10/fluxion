@@ -6,6 +6,7 @@ pub mod select_all_ordered;
 pub mod take_latest_when;
 pub mod timestamped;
 pub mod timestamped_channel;
+pub mod timestamped_stream;
 pub mod with_latest_from;
 
 // Re-export commonly used types
@@ -17,4 +18,5 @@ pub use select_all_ordered::SelectAllExt;
 pub use take_latest_when::TakeLatestWhenExt;
 pub use timestamped::Timestamped;
 pub use timestamped_channel::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+pub use timestamped_stream::TimestampedStreamExt;
 pub use with_latest_from::WithLatestFromExt;

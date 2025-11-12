@@ -3,10 +3,11 @@ use std::fmt::Debug;
 
 use crate::combine_latest::{CombineLatestExt, CombinedState, CompareByInner};
 use crate::timestamped::Timestamped;
+use crate::timestamped_stream::TimestampedStreamExt;
 
-pub trait WithLatestFromExt<T, S>: Stream<Item = Timestamped<T>> + Sized
+pub trait WithLatestFromExt<T, S>: TimestampedStreamExt<T> + Sized
 where
-    Self: Stream<Item = Timestamped<T>> + Send + 'static,
+    Self: TimestampedStreamExt<T> + Send + 'static,
     Timestamped<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     S: Stream<Item = Timestamped<T>> + Send + 'static,
 {
@@ -19,10 +20,10 @@ where
 
 impl<T, S, P> WithLatestFromExt<T, S> for P
 where
-    Self: Stream<Item = Timestamped<T>> + Send + 'static,
+    Self: TimestampedStreamExt<T> + Send + 'static,
     Timestamped<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     S: Stream<Item = Timestamped<T>> + Send + 'static,
-    P: Stream<Item = Timestamped<T>> + CombineLatestExt<T, S> + Sized + Unpin + Send + 'static,
+    P: TimestampedStreamExt<T> + CombineLatestExt<T, S> + Sized + Unpin + Send + 'static,
 {
     fn with_latest_from(
         self,
