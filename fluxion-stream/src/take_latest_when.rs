@@ -46,8 +46,12 @@ where
 
     fn get_values(&self) -> Vec<T> {
         vec![
-            self.source_value.clone().unwrap(),
-            self.filter_value.clone().unwrap(),
+            self.source_value
+                .clone()
+                .expect("source_value should be set when state is complete"),
+            self.filter_value
+                .clone()
+                .expect("filter_value should be set when state is complete"),
         ]
     }
 }
@@ -78,7 +82,9 @@ where
                 let state = Arc::clone(&state);
                 let filter = Arc::clone(&filter);
                 async move {
-                    let mut state = state.lock().unwrap();
+                    let mut state = state
+                        .lock()
+                        .expect("Failed to acquire lock on take_latest_when state");
 
                     match index {
                         0 => state.source_value = Some(timestamped_value.value.clone()),
@@ -91,7 +97,12 @@ where
                         let combined_state = CombinedState::new(values);
 
                         if filter(&combined_state) {
-                            Some(state.source_value.clone().unwrap())
+                            Some(
+                                state
+                                    .source_value
+                                    .clone()
+                                    .expect("source_value should be set when state is complete"),
+                            )
                         } else {
                             None
                         }

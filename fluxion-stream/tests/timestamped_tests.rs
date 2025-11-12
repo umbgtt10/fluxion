@@ -228,7 +228,7 @@ fn test_timestamped_sorting_by_sequence() {
     let item2 = Timestamped::new("first");
     let item3 = Timestamped::new("second");
 
-    let mut items = vec![item1.clone(), item2.clone(), item3.clone()];
+    let mut items = [item1.clone(), item2.clone(), item3.clone()];
 
     // Capture the original sequence order
     let original_order: Vec<_> = items.iter().map(|item| item.sequence()).collect();

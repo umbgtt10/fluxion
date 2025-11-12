@@ -63,7 +63,9 @@ where
                 move |(value, index)| {
                     let state = Arc::clone(&state);
                     async move {
-                        let mut state = state.lock().unwrap();
+                        let mut state = state
+                            .lock()
+                            .expect("Failed to acquire lock on combine_latest state");
                         state.insert(index, value);
 
                         if state.is_complete() {
