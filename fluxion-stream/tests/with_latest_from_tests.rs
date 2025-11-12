@@ -1,7 +1,7 @@
-use fluxion_test_utils::FluxionChannel;
 use fluxion_stream::combine_latest::CombinedState;
 use fluxion_stream::timestamped::Timestamped;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
+use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::push;
 use fluxion_test_utils::test_data::{
     TestData, animal, animal_cat, animal_dog, person, person_alice, person_bob, person_charlie,

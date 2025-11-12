@@ -1,4 +1,4 @@
-use crate::timestamped_channel::UnboundedSender;
+use crate::fluxion_channel::timestamped_channel::UnboundedSender;
 use crate::{animal::Animal, person::Person, plant::Plant};
 use fluxion_stream::timestamped::Timestamped;
 use futures::Stream;

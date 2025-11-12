@@ -1,5 +1,5 @@
-use fluxion_test_utils::FluxionChannel;
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
+use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::push;
 use fluxion_test_utils::test_data::{person, person_alice, person_bob, person_charlie};
 use futures::StreamExt;
