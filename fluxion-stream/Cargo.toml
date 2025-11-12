@@ -18,5 +18,4 @@ tokio-stream = { workspace = true }
 pin-project = { workspace = true }
 
 [dev-dependencies]
-rstest = { workspace = true }
 fluxion-test-utils = { workspace = true }

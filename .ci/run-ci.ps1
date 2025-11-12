@@ -47,6 +47,41 @@ Run-Step "Release build" 'cargo build --release --all-targets --all-features --v
 Run-Step "Tests" 'cargo test --all-features --all-targets --verbose'
 Run-Step "Docs (deny doc warnings)" 'cargo doc --no-deps --all-features --verbose'
 
+Run-Step "Install nightly toolchain" 'rustup toolchain install nightly'
+
+# Ensure cargo-udeps is installed (needed for workspace-wide unused-deps analysis)
+if (-not (Get-Command cargo-udeps -ErrorAction SilentlyContinue)) {
+  Write-Host "cargo-udeps not found; installing..." -ForegroundColor Cyan
+  Invoke-Expression 'cargo install --locked cargo-udeps'
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "Failed to install cargo-udeps" -ForegroundColor Red
+    exit $LASTEXITCODE
+  }
+}
+
+Write-Host "=== Run cargo +nightly udeps (check for unused deps) ===" -ForegroundColor Yellow
+$stdoutFile = [System.IO.Path]::GetTempFileName()
+$stderrFile = [System.IO.Path]::GetTempFileName()
+$args = @('+nightly','udeps','--all-targets','--all-features','--workspace')
+$proc = Start-Process -FilePath 'cargo' -ArgumentList $args -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+
+$stdOut = Get-Content -Raw -Path $stdoutFile -ErrorAction SilentlyContinue
+$stdErr = Get-Content -Raw -Path $stderrFile -ErrorAction SilentlyContinue
+Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
+
+$udepsOutput = $stdOut + "`n" + $stdErr
+Write-Host $udepsOutput
+
+if ($proc.ExitCode -ne 0) {
+    Write-Host "cargo-udeps failed with exit code $($proc.ExitCode)" -ForegroundColor Red
+    exit $proc.ExitCode
+}
+
+if ($udepsOutput -notmatch 'All deps seem to have been used\.') {
+  Write-Host "cargo-udeps reported unused dependencies; failing local CI." -ForegroundColor Red
+  exit 1
+}
+
 Write-Host "=== Install & run cargo-audit ===" -ForegroundColor Yellow
 try {
   cargo audit --version | Out-Null

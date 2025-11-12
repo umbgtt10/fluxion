@@ -16,5 +16,3 @@ tokio = { workspace = true }
 tokio-stream = { workspace = true }
 fluxion-stream = { workspace = true }
 
-[dev-dependencies]
-rstest = { workspace = true }
