@@ -1,6 +1,5 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-// Single global sequence counter for the entire crate
 static GLOBAL_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 /// A wrapper that adds automatic timestamping to any value for temporal ordering.

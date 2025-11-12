@@ -1,4 +1,5 @@
-use fluxion_stream::{FluxionChannel, merge_with::MergedStream, timestamped::Timestamped};
+use fluxion_stream::{merge_with::MergedStream, timestamped::Timestamped};
+use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::{
     TestChannels,
     animal::Animal,

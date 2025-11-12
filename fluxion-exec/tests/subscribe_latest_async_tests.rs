@@ -1,5 +1,5 @@
 use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
-use fluxion_stream::FluxionChannel;
+use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::test_data::{
     TestData, animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
     person_charlie, person_dave, person_diane, plant_rose, push,

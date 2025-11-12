@@ -1,8 +1,8 @@
 use fluxion_stream::{
-    FluxionChannel,
     combine_latest::{CombineLatestExt, CombinedState},
     timestamped::Timestamped,
 };
+use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::{
     TestChannels,
     helpers::{assert_no_element_emitted, expect_next_combined_equals},

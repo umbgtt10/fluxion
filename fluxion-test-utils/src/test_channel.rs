@@ -1,4 +1,4 @@
-pub use fluxion_stream::FluxionChannel;
+pub use crate::fluxion_channel::FluxionChannel;
 
 /// Helper to create multiple test channels at once.
 pub struct TestChannels;

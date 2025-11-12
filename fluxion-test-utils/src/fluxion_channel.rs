@@ -1,5 +1,5 @@
-use crate::timestamped::Timestamped;
 use crate::timestamped_channel;
+use fluxion_stream::timestamped::Timestamped;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub struct FluxionChannel<T> {

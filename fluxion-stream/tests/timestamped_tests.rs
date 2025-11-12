@@ -1,4 +1,4 @@
-use fluxion_stream::timestamped::Timestamped;
+﻿use fluxion_stream::Timestamped;
 
 #[test]
 fn test_timestamped_ordering() {

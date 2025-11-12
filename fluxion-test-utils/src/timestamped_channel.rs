@@ -3,7 +3,7 @@
 //! This module provides channel implementations that transparently add sequence numbers
 //! (logical timestamps) to messages as they're sent, enabling temporal ordering when merging streams.
 
-use crate::timestamped::Timestamped;
+use fluxion_stream::timestamped::Timestamped;
 use tokio::sync::mpsc::{
     self, UnboundedReceiver as TokioUnboundedReceiver, UnboundedSender as TokioUnboundedSender,
 };
@@ -102,7 +102,7 @@ impl<T> UnboundedReceiver<T> {
 /// # Examples
 ///
 /// ```
-/// use fluxion_stream::timestamped_channel::unbounded_channel;
+/// use fluxion_test_utils::timestamped_channel::unbounded_channel;
 /// use tokio_stream::{StreamExt, wrappers::UnboundedReceiverStream};
 /// use fluxion_stream::select_all_ordered::SelectAllExt;
 ///

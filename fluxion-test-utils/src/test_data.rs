@@ -1,5 +1,6 @@
+use crate::timestamped_channel::UnboundedSender;
 use crate::{animal::Animal, person::Person, plant::Plant};
-use fluxion_stream::{timestamped::Timestamped, timestamped_channel::UnboundedSender};
+use fluxion_stream::timestamped::Timestamped;
 use futures::Stream;
 use futures::StreamExt;
 use std::fmt::{self, Display};

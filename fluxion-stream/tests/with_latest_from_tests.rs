@@ -1,4 +1,4 @@
-use fluxion_stream::FluxionChannel;
+use fluxion_test_utils::FluxionChannel;
 use fluxion_stream::combine_latest::CombinedState;
 use fluxion_stream::timestamped::Timestamped;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
