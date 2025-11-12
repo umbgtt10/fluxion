@@ -1,44 +1,81 @@
-# fluxion-stream
+﻿# fluxion-stream# fluxion-stream
 
-Stream combinators with ordering guarantees for async Rust.
 
-## Features
 
-- **Temporal Ordering**: Built-in sequence numbering ensures correct event ordering
-- **Composable**: Combine streams in various ways while maintaining order guarantees
-- **Zero-copy**: Efficient stream processing with minimal allocations
-- **Type-safe**: Leverages Rust's type system for compile-time guarantees
+Stream combinators for async Rust with strong temporal-ordering guarantees. This crate provides a set of composable operators and lightweight timestamping utilities designed for correctness and performance in event-driven systems.Stream combinators for async Rust with strong temporal-ordering guarantees. This crate provides a set of composable operators and lightweight timestamping utilities designed for correctness and performance in event-driven systems.
 
-## Stream Combinators
 
-- `combine_latest` - Combine multiple streams, emitting when all have published
-- `combine_with_previous` - Pair each value with its predecessor
-- `with_latest_from` - Combine with the latest value from another stream
-- `merge_with` - Merge streams with shared state management
-- `take_latest_when` - Conditionally take latest value
-- `select_all_ordered` - Multiplex streams with ordering
 
-## Core Types
+FeaturesKey features
 
-- `Timestamped<T>` - Wrapper that adds logical timestamps for temporal ordering
-- `timestamped_channel` - Channels that automatically timestamp messages
-- `CompareByInner` - Trait for dual-ordering strategies (structural vs temporal)
 
-## Example
+
+- Temporal ordering via `Timestamped<T>` and sequence numbers- Temporal ordering via Timestamped<T> and sequence numbers
+
+- Composable operators: `combine_latest`, `with_latest_from`, `merge_with`, `take_latest_when`, `select_all_ordered`, and more- Composable operators: combine_latest, with_latest_from, merge_with, take_latest_when, and more
+
+- Efficient implementation with minimal allocations- Efficient implementation with minimal allocations
+
+
+
+Core modulesCore modules
+
+
+
+- `timestamped` — `Timestamped<T>` wrapper and helpers- 	imestamped  Timestamped<T> wrapper and helpers
+
+- `timestamped_channel` — channels that assign timestamps automatically- 	imestamped_channel  channels that assign timestamps automatically
+
+- `combine_latest`, `merge_with`, `combine_with_previous`, `select_all_ordered`, `take_latest_when`- combine_latest  combine multiple streams while preserving order guarantees
+
+- merge_with, combine_with_previous, select_all_ordered, 	ake_latest_when
+
+Quick example
+
+Quick example
 
 ```rust
-use fluxion_stream::{timestamped_channel::unbounded_channel, combine_latest::CombineLatestExt};
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
-let (tx1, rx1) = unbounded_channel();
-let (tx2, rx2) = unbounded_channel();
+use fluxion_stream::timestamped::Timestamped;`
 
-let stream1 = UnboundedReceiverStream::new(rx1.into_inner());
-let stream2 = UnboundedReceiverStream::new(rx2.into_inner());
+use tokio_stream::StreamExt;ust
 
-let combined = stream1.combine_latest(vec![stream2], |_| true);
+use fluxion_stream::timestamped::Timestamped;
+
+// `stream` is a Stream of Timestamped itemsuse tokio_stream::StreamExt;
+
+// create streams and combine (see crate docs for detailed examples)
+
+```// create streams and combine (see crate docs for detailed examples)
+
+`
+
+Running tests
+
+Running tests
+
+```powershell
+
+cargo test --package fluxion-stream --all-features --all-targets`powershell
+
+```cargo test --package fluxion-stream --all-features --all-targets
+
+`
+
+Documentation
+
+Documentation
+
+```powershell
+
+cargo doc --package fluxion-stream --no-deps --openRun cargo doc --package fluxion-stream --no-deps --open to view generated docs locally.
+
 ```
 
-## License
+License
+
+License
+
+MIT OR Apache-2.0
 
 MIT OR Apache-2.0
