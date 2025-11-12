@@ -24,7 +24,6 @@ where
     }
 }
 
-/// Expect the next item from a stream of plain TestData values to equal `expected`.
 pub async fn expect_next_value<S>(stream: &mut S, expected: TestData)
 where
     S: Stream<Item = TestData> + Unpin,
@@ -33,7 +32,6 @@ where
     assert_eq!(item, expected);
 }
 
-/// Expect the next item from a stream of Timestamped<TestData> to equal `expected` by value.
 pub async fn expect_next_timestamped<S>(stream: &mut S, expected: TestData)
 where
     S: Stream<Item = Timestamped<TestData>> + Unpin,
@@ -51,7 +49,6 @@ where
     assert_eq!((left.value, right.value), (expected_left, expected_right));
 }
 
-/// Read the next CombinedState<Timestamped<TestData>> and assert it equals `expected` by values.
 pub async fn expect_next_combined_equals<S>(stream: &mut S, expected: &[TestData])
 where
     S: Stream<Item = CombinedState<Timestamped<TestData>>> + Unpin,

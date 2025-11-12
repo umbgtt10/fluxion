@@ -8,8 +8,6 @@ use crate::select_all_ordered::SelectAllExt;
 use crate::timestamped::Timestamped;
 use crate::timestamped_stream::TimestampedStreamExt;
 
-/// Trait for comparing values by their inner content rather than wrapper metadata.
-/// This is automatically implemented for Timestamped<T> to allow sorting by inner value.
 pub trait CompareByInner {
     fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering;
 }
