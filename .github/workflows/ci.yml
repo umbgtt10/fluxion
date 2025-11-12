@@ -36,6 +36,16 @@ jobs:
           rustup component add rustfmt --toolchain stable
           rustup component add clippy --toolchain stable
 
+      - name: Install cargo-deny and run license checks
+        # Use bash shell for cross-platform consistency; GitHub runners provide bash on all hosted runners.
+        shell: bash
+        run: |
+          if ! command -v cargo-deny >/dev/null 2>&1; then
+            echo "cargo-deny not found; installing..."
+            cargo install --locked cargo-deny
+          fi
+          cargo deny check
+
       - name: Cache cargo registry and target
         uses: actions/cache@v4
         with:
