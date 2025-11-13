@@ -1,4 +1,4 @@
-use fluxion_stream::take_while::TakeWhileStreamExt;
+use fluxion_stream::take_while::TakeWhileExt;
 use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::push;
@@ -13,8 +13,9 @@ async fn test_take_while_basic() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream =
-        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
+    let result_stream = source
+        .stream
+        .take_while_with(filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -43,8 +44,9 @@ async fn test_take_while_filter_false_immediately() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream =
-        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
+    let result_stream = source
+        .stream
+        .take_while_with(filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -60,8 +62,9 @@ async fn test_take_while_always_true() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream =
-        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
+    let result_stream = source
+        .stream
+        .take_while_with(filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -85,10 +88,9 @@ async fn test_take_while_complex_predicate() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream =
-        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val: &i32| {
-            *filter_val < 10
-        });
+    let result_stream = source
+        .stream
+        .take_while_with(filter.stream, |filter_val: &i32| *filter_val < 10);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -113,8 +115,9 @@ async fn test_take_while_interleaved_updates() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream =
-        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
+    let result_stream = source
+        .stream
+        .take_while_with(filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -145,8 +148,9 @@ async fn test_take_while_no_filter_value() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream =
-        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
+    let result_stream = source
+        .stream
+        .take_while_with(filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -170,8 +174,9 @@ async fn test_take_while_empty_source() {
     let source = FluxionChannel::<bool>::new();
     let filter = FluxionChannel::<bool>::new();
 
-    let result_stream =
-        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
+    let result_stream = source
+        .stream
+        .take_while_with(filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act
@@ -188,8 +193,9 @@ async fn test_take_while_empty_filter() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::<bool>::new();
 
-    let result_stream =
-        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
+    let result_stream = source
+        .stream
+        .take_while_with(filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act
@@ -206,8 +212,9 @@ async fn test_take_while_filter_changes_back_to_true() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream =
-        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
+    let result_stream = source
+        .stream
+        .take_while_with(filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -231,8 +238,9 @@ async fn test_take_while_multiple_source_items_same_filter() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream =
-        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
+    let result_stream = source
+        .stream
+        .take_while_with(filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -265,8 +273,9 @@ async fn test_take_while_filter_updates_without_source() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream =
-        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
+    let result_stream = source
+        .stream
+        .take_while_with(filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert

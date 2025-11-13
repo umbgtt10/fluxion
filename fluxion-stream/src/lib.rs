@@ -16,5 +16,5 @@ pub use ordered_merge::OrderedMergeExt;
 pub use sequenced::Sequenced;
 pub use sequenced_stream::SequencedStreamExt;
 pub use take_latest_when::TakeLatestWhenExt;
-pub use take_while::TakeWhileStreamExt;
+pub use take_while::TakeWhileExt;
 pub use with_latest_from::WithLatestFromExt;

@@ -27,7 +27,7 @@ type PinnedItemStream<TI, TFI> = Pin<Box<dyn Stream<Item = Item<TI, TFI>> + Send
 ///     *filter_val
 /// });
 /// ```
-pub trait TakeWhileStreamExt<T, TF, S>: SequencedStreamExt<T> + Sized
+pub trait TakeWhileExt<T, TF, S>: SequencedStreamExt<T> + Sized
 where
     T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     TF: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
@@ -56,7 +56,7 @@ where
     ) -> impl Stream<Item = T> + Send;
 }
 
-impl<T, TF, S, P> TakeWhileStreamExt<T, TF, S> for P
+impl<T, TF, S, P> TakeWhileExt<T, TF, S> for P
 where
     P: SequencedStreamExt<T> + Send + Sync + Unpin + 'static,
     T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
