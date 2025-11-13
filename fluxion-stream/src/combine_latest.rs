@@ -18,28 +18,29 @@ impl<T: Ord> CompareByInner for Sequenced<T> {
     }
 }
 
-pub trait CombineLatestExt<T, S>: SequencedStreamExt<T> + Sized
+pub trait CombineLatestExt<T, S2>: SequencedStreamExt<T> + Sized
 where
     Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
-    S: Stream<Item = Sequenced<T>> + Send + 'static,
+    S2: Stream<Item = Sequenced<T>> + Send + 'static,
 {
     fn combine_latest(
         self,
-        others: Vec<S>,
+        others: Vec<S2>,
         filter: impl Fn(&CombinedState<Sequenced<T>>) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = CombinedState<Sequenced<T>>> + Send;
 }
 
 type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send>>>;
 
-impl<T, S> CombineLatestExt<T, S> for S
+impl<T, S, S2> CombineLatestExt<T, S2> for S
 where
     Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     S: SequencedStreamExt<T> + Send + 'static,
+    S2: Stream<Item = Sequenced<T>> + Send + 'static,
 {
     fn combine_latest(
         self,
-        others: Vec<S>,
+        others: Vec<S2>,
         filter: impl Fn(&CombinedState<Sequenced<T>>) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = CombinedState<Sequenced<T>>> + Send {
         let mut streams: PinnedStreams<T> = vec![];

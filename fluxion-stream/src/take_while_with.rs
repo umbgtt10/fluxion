@@ -1,3 +1,4 @@
+use crate::fluxion_stream_wrapper::FluxionStream;
 use crate::ordered_merge::OrderedMergeExt;
 use crate::sequenced::Sequenced;
 use crate::sequenced_stream::SequencedStreamExt;
@@ -17,7 +18,7 @@ type PinnedItemStream<TI, TFI> = Pin<Box<dyn Stream<Item = Item<TI, TFI>> + Send
 ///
 /// Usage (instance-method form):
 ///
-/// ```rust
+/// ```ignore
 /// // `source_stream` is a `Sequenced` stream of `T`
 /// // `filter_stream` is a `Sequenced` stream of `TF`
 /// // `filter` is a `Fn(&TF) -> bool`
@@ -46,14 +47,14 @@ where
     ///
     /// Example:
     ///
-    /// ```rust
+    /// ```ignore
     /// let output = source_stream.take_while_with(filter_stream, |f| *f);
     /// ```
     fn take_while_with(
         self,
         filter_stream: S,
         filter: impl Fn(&TF) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = T> + Send;
+    ) -> FluxionStream<impl Stream<Item = T> + Send>;
 }
 
 impl<T, TF, S, P> TakeWhileExt<T, TF, S> for P
@@ -67,7 +68,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TF) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = T> + Send {
+    ) -> FluxionStream<impl Stream<Item = T> + Send> {
         let filter = Arc::new(filter);
 
         // Tag each stream with its type (explicitly specify generic params so both streams
@@ -83,7 +84,7 @@ where
         let state = Arc::new(Mutex::new((None::<TF>, false)));
 
         // Use ordered_merge and process items in sequence order
-        streams.ordered_merge().filter_map({
+        let result = streams.ordered_merge().filter_map({
             let state = Arc::clone(&state);
             move |item| {
                 let state = Arc::clone(&state);
@@ -121,7 +122,9 @@ where
                     }
                 }
             }
-        })
+        });
+
+        FluxionStream::new(result)
     }
 }
 

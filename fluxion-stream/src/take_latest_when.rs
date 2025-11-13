@@ -8,14 +8,14 @@ use crate::ordered_merge::OrderedMergeExt;
 use crate::sequenced::Sequenced;
 use crate::sequenced_stream::SequencedStreamExt;
 
-pub trait TakeLatestWhenExt<T, S>: SequencedStreamExt<T> + Sized
+pub trait TakeLatestWhenExt<T, SF>: SequencedStreamExt<T> + Sized
 where
     T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    S: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
+    SF: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
 {
     fn take_latest_when(
         self,
-        filter_stream: S,
+        filter_stream: SF,
         filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = T>;
 }
@@ -58,14 +58,15 @@ where
 
 type IndexedStream<T> = Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send>>;
 
-impl<T, S> TakeLatestWhenExt<T, S> for S
+impl<T, S, SF> TakeLatestWhenExt<T, SF> for S
 where
     S: SequencedStreamExt<T> + Send + Sync + 'static,
+    SF: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
     T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     fn take_latest_when(
         self,
-        filter_stream: S,
+        filter_stream: SF,
         filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
     ) -> impl futures::Stream<Item = T> {
         let source_stream = Box::pin(self.map(|value| (value, 0)));

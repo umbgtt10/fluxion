@@ -1,5 +1,6 @@
 pub mod combine_latest;
 pub mod combine_with_previous;
+pub mod fluxion_stream_wrapper;
 pub mod merge_with;
 pub mod ordered_merge;
 pub mod sequenced;
@@ -11,6 +12,7 @@ pub mod with_latest_from;
 // Re-export commonly used types
 pub use combine_latest::{CombineLatestExt, CombinedState, CompareByInner};
 pub use combine_with_previous::CombineWithPreviousExt;
+pub use fluxion_stream_wrapper::FluxionStream;
 pub use merge_with::MergedStream;
 pub use ordered_merge::OrderedMergeExt;
 pub use sequenced::Sequenced;
