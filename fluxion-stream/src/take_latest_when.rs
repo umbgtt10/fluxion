@@ -4,7 +4,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 use crate::combine_latest::CombinedState;
-use crate::ordered_merge::OrderedMergeSyncExt;
+use crate::ordered_merge::OrderedMergeExt;
 use crate::sequenced::Sequenced;
 use crate::sequenced_stream::SequencedStreamExt;
 
@@ -56,7 +56,7 @@ where
     }
 }
 
-type IndexedStream<T> = Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send + Sync>>;
+type IndexedStream<T> = Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send>>;
 
 impl<T, S, SF> TakeLatestWhenExt<T, SF> for S
 where
@@ -79,7 +79,7 @@ where
 
         Box::pin(
             streams
-                .ordered_merge_sync()
+                .ordered_merge()
                 .filter_map(move |(timestamped_value, index)| {
                     let state = Arc::clone(&state);
                     let filter = Arc::clone(&filter);

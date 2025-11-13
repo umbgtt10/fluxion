@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-use crate::ordered_merge::OrderedMergeSyncExt;
+use crate::ordered_merge::OrderedMergeExt;
 use crate::sequenced::Sequenced;
 use crate::sequenced_stream::SequencedStreamExt;
 
@@ -31,7 +31,7 @@ where
     ) -> impl Stream<Item = Sequenced<CombinedState<T>>> + Send + Unpin;
 }
 
-type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send + Sync>>>;
+type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send>>>;
 
 impl<T, S, S2> CombineLatestExt<T, S2> for S
 where
@@ -58,7 +58,7 @@ where
 
         Box::pin(
             streams
-                .ordered_merge_sync()
+                .ordered_merge()
                 .filter_map({
                     let state = Arc::clone(&state);
 

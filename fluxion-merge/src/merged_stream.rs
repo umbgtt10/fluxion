@@ -1,3 +1,4 @@
+use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::{Empty, Stream, StreamExt, empty};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
@@ -6,10 +7,13 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use fluxion_ordered_merge::OrderedMergeSyncExt;
 use fluxion_stream::sequenced::Sequenced;
 use fluxion_stream::sequenced_stream::SequencedStreamExt;
 
+/// A stateful stream merger that combines multiple sequenced streams while maintaining state.
+///
+/// Internally uses [`fluxion_ordered_merge`] to merge streams in order
+/// based on their sequence numbers, ensuring temporal consistency across merged streams.
 #[pin_project]
 pub struct MergedStream<S, State, Item> {
     #[pin]
@@ -37,6 +41,14 @@ where
     State: Send + Sync + 'static,
     Item: Send + Ord + Unpin + 'static,
 {
+    /// Merges a new sequenced stream into the existing merged stream.
+    ///
+    /// Uses [`fluxion_ordered_merge`] to combine the streams while preserving
+    /// temporal order based on sequence numbers.
+    ///
+    /// # Parameters
+    /// - `new_stream`: The new sequenced stream to merge
+    /// - `process_fn`: Function to process each item with mutable access to shared state
     pub fn merge_with<NewStream, F, NewItem, T>(
         self,
         new_stream: NewStream,
@@ -62,10 +74,10 @@ where
         let self_stream_mapped = self.inner.map(|item| item.into());
 
         let merged_stream = vec![
-            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>,
-            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>,
+            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send>>,
+            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send>>,
         ]
-        .ordered_merge_sync();
+        .ordered_merge();
 
         MergedStream {
             inner: merged_stream,

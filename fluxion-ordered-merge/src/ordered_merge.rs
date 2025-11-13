@@ -62,6 +62,10 @@ where
     }
 }
 
+// SAFETY: OrderedMerge only accesses streams through pinned references and doesn't
+// share mutable state across threads. The streams are polled only through &mut self.
+unsafe impl<T> Sync for OrderedMerge<T> where T: Send + Ord + 'static {}
+
 impl<T> Stream for OrderedMerge<T>
 where
     T: Send + Unpin + Ord + 'static,
@@ -166,17 +170,5 @@ where
 
     fn ordered_merge(self) -> OrderedMerge<Self::Item> {
         OrderedMerge::new(self)
-    }
-}
-
-impl<T, S> OrderedMergeSyncExt for Vec<S>
-where
-    S: Stream<Item = T> + Send + Sync + 'static,
-    T: Send + Ord + 'static,
-{
-    type Item = T;
-
-    fn ordered_merge_sync(self) -> OrderedMergeSync<Self::Item> {
-        OrderedMergeSync::new(self)
     }
 }
