@@ -1,9 +1,9 @@
 use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::test_data::{
     TestData, animal_dog, person_alice, person_bob, person_charlie, person_dave, plant_rose,
 };
 use fluxion_test_utils::{FluxionChannel, TestChannels, push};
-use fluxion_test_utils::helpers::assert_no_element_emitted;
 use futures::StreamExt;
 
 static FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
@@ -155,7 +155,48 @@ async fn test_fluxion_stream_take_while_with() {
     // Filter becomes false
     push(false, &filter.sender);
     push(person_charlie(), &source.sender);
-    
+
     // Stream should not emit when filter is false
+    assert_no_element_emitted(&mut composed, 100).await;
+}
+
+/// Test FluxionStream composition chaining take_latest_when with take_while_with
+/// This demonstrates filtering emissions with two different criteria
+#[tokio::test]
+async fn test_fluxion_stream_take_latest_when_take_while() {
+    // Arrange
+    let source: FluxionChannel<TestData> = FluxionChannel::new();
+    let latest_filter = FluxionChannel::new();
+    let while_filter: FluxionChannel<bool> = FluxionChannel::new();
+
+    static LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+
+    // Compose: take_latest_when -> take_while_with
+    // First operator filters when to emit, second stops emitting when condition is false
+    let composed = FluxionStream::new(source.stream)
+        .take_latest_when(latest_filter.stream, LATEST_FILTER)
+        .take_while_with(while_filter.stream, |f| *f);
+
+    let mut composed = Box::pin(composed);
+
+    // Act & Assert - Set filter values FIRST before pushing to source
+    push(true, &while_filter.sender);
+    push(person_alice(), &latest_filter.sender);
+
+    // Now push to source - take_latest_when will emit Sequenced<TestData>
+    push(person_alice(), &source.sender);
+
+    // take_while_with unwraps Sequenced and returns TestData
+    let result = composed.next().await.unwrap();
+    assert_eq!(result, person_alice());
+
+    // Second emission with while_filter still true
+    push(person_bob(), &source.sender);
+    let result = composed.next().await.unwrap();
+    assert_eq!(result, person_bob());
+
+    // while_filter becomes false - stream terminates (take_while_with terminates on false)
+    push(false, &while_filter.sender);
+    push(person_charlie(), &source.sender);
     assert_no_element_emitted(&mut composed, 100).await;
 }
