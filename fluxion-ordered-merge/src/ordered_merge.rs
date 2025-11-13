@@ -1,6 +1,4 @@
 use futures::Stream;
-use std::cmp::Reverse;
-use std::collections::BinaryHeap;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -10,7 +8,7 @@ use std::task::{Context, Poll};
 /// Streams must be `Send + Sync` to ensure safe concurrent access.
 pub struct OrderedMerge<T> {
     streams: Vec<Pin<Box<dyn Stream<Item = T> + Send + Sync>>>,
-    buffer: BinaryHeap<Reverse<T>>,
+    buffered: Vec<Option<T>>,
 }
 
 impl<T> OrderedMerge<T>
@@ -21,15 +19,15 @@ where
     where
         S: Stream<Item = T> + Send + Sync + 'static,
     {
+        let count = streams.len();
         let streams = streams
             .into_iter()
             .map(|stream| Box::pin(stream) as Pin<Box<dyn Stream<Item = T> + Send + Sync>>)
             .collect::<Vec<_>>();
 
-        Self {
-            streams,
-            buffer: BinaryHeap::new(),
-        }
+        let buffered = (0..count).map(|_| None).collect();
+
+        Self { streams, buffered }
     }
 }
 
@@ -42,31 +40,49 @@ where
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = Pin::into_inner(self);
 
-        if let Some(Reverse(item)) = this.buffer.pop() {
-            return Poll::Ready(Some(item));
-        }
+        // Poll streams to fill empty buffer slots
+        let mut any_pending = false;
 
-        let mut all_done = true;
-
-        for stream in this.streams.iter_mut() {
-            match stream.as_mut().poll_next(cx) {
-                Poll::Ready(Some(item)) => {
-                    this.buffer.push(Reverse(item));
-                    all_done = false;
-                }
-                Poll::Ready(None) => {}
-                Poll::Pending => {
-                    all_done = false;
+        for i in 0..this.streams.len() {
+            if this.buffered[i].is_none() {
+                match this.streams[i].as_mut().poll_next(cx) {
+                    Poll::Ready(Some(item)) => {
+                        this.buffered[i] = Some(item);
+                    }
+                    Poll::Ready(None) => {
+                        // Stream is done, leave as None
+                    }
+                    Poll::Pending => {
+                        any_pending = true;
+                    }
                 }
             }
         }
 
-        if let Some(Reverse(item)) = this.buffer.pop() {
+        // Find the minimum item among all buffered items
+        let mut min_idx = None;
+        let mut min_val: Option<&T> = None;
+
+        for (i, item) in this.buffered.iter().enumerate() {
+            if let Some(val) = item {
+                let should_update = match min_val {
+                    None => true,
+                    Some(curr_val) => val < curr_val,
+                };
+
+                if should_update {
+                    min_idx = Some(i);
+                    min_val = Some(val);
+                }
+            }
+        } // Return the minimum item if found
+        if let Some(idx) = min_idx {
+            let item = this.buffered[idx].take().unwrap();
             Poll::Ready(Some(item))
-        } else if all_done {
-            Poll::Ready(None)
-        } else {
+        } else if any_pending {
             Poll::Pending
+        } else {
+            Poll::Ready(None)
         }
     }
 }

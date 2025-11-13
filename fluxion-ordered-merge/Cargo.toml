@@ -21,3 +21,4 @@ pin-project = { workspace = true }
 [dev-dependencies]
 fluxion-test-utils = { path = "../fluxion-test-utils" }
 tokio = { workspace = true }
+rstest = "0.26.1"
