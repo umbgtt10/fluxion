@@ -38,8 +38,13 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          iex ((New-Object System.Net.WebClient).DownloadString('https://sh.rustup.rs'))
-          $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+          $url = 'https://win.rustup.rs/x86_64'
+          Write-Host "Downloading rustup-init from $url"
+          Invoke-WebRequest -Uri $url -OutFile rustup-init.exe -UseBasicParsing
+          Write-Host 'Running rustup-init.exe -y'
+          Start-Process -FilePath .\rustup-init.exe -ArgumentList '-y' -NoNewWindow -Wait
+          Remove-Item .\rustup-init.exe -Force
+          $env:Path = "$env:USERPROFILE\\.cargo\\bin;$env:Path"
           rustup toolchain install stable
           rustup default stable
           rustup component add rustfmt clippy --toolchain stable
@@ -119,8 +124,13 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          iex ((New-Object System.Net.WebClient).DownloadString('https://sh.rustup.rs'))
-          $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+          $url = 'https://win.rustup.rs/x86_64'
+          Write-Host "Downloading rustup-init from $url"
+          Invoke-WebRequest -Uri $url -OutFile rustup-init.exe -UseBasicParsing
+          Write-Host 'Running rustup-init.exe -y'
+          Start-Process -FilePath .\rustup-init.exe -ArgumentList '-y' -NoNewWindow -Wait
+          Remove-Item .\rustup-init.exe -Force
+          $env:Path = "$env:USERPROFILE\\.cargo\\bin;$env:Path"
           rustup toolchain install stable
           rustup default stable
           rustup component add rustfmt clippy --toolchain stable
@@ -170,8 +180,13 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          iex ((New-Object System.Net.WebClient).DownloadString('https://sh.rustup.rs'))
-          $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+          $url = 'https://win.rustup.rs/x86_64'
+          Write-Host "Downloading rustup-init from $url"
+          Invoke-WebRequest -Uri $url -OutFile rustup-init.exe -UseBasicParsing
+          Write-Host 'Running rustup-init.exe -y'
+          Start-Process -FilePath .\rustup-init.exe -ArgumentList '-y' -NoNewWindow -Wait
+          Remove-Item .\rustup-init.exe -Force
+          $env:Path = "$env:USERPROFILE\\.cargo\\bin;$env:Path"
           rustup toolchain install stable
           rustup default stable
           rustup component add rustfmt clippy llvm-tools-preview --toolchain stable
