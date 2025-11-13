@@ -7,42 +7,6 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-// Module-level enum for tagged items from source or filter streams
-#[derive(Clone, Debug)]
-enum Item<T, TF> {
-    Source(Sequenced<T>),
-    Filter(Sequenced<TF>),
-}
-
-impl<T, TF> Item<T, TF> {
-    fn sequence(&self) -> u64 {
-        match self {
-            Item::Source(s) => s.sequence(),
-            Item::Filter(f) => f.sequence(),
-        }
-    }
-}
-
-impl<T, TF> PartialEq for Item<T, TF> {
-    fn eq(&self, other: &Self) -> bool {
-        self.sequence() == other.sequence()
-    }
-}
-
-impl<T, TF> Eq for Item<T, TF> {}
-
-impl<T, TF> PartialOrd for Item<T, TF> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<T, TF> Ord for Item<T, TF> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.sequence().cmp(&other.sequence())
-    }
-}
-
 type PinnedItemStream<TI, TFI> = Pin<Box<dyn Stream<Item = Item<TI, TFI>> + Send>>;
 
 /// Takes elements from the source stream while the condition on the filter stream is satisfied.
@@ -50,6 +14,19 @@ type PinnedItemStream<TI, TFI> = Pin<Box<dyn Stream<Item = Item<TI, TFI>> + Send
 /// This operator combines the source stream with a filter stream, emitting source elements
 /// only while the filter predicate applied to the latest filter stream element returns true.
 /// Once the predicate returns false, the stream terminates.
+///
+/// Usage (instance-method form):
+///
+/// ```rust
+/// // `source_stream` is a `Sequenced` stream of `T`
+/// // `filter_stream` is a `Sequenced` stream of `TF`
+/// // `filter` is a `Fn(&TF) -> bool`
+///
+/// let filtered = source_stream.take_while_with(filter_stream, |filter_val| {
+///     // return true to continue emitting source items
+///     *filter_val
+/// });
+/// ```
 pub trait TakeWhileStreamExt<T, TF, S>: SequencedStreamExt<T> + Sized
 where
     T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
@@ -58,13 +35,21 @@ where
 {
     /// Takes elements from the source stream while the filter predicate returns true.
     ///
+    /// This method is an instance-style operator: call it on the source stream.
+    ///
     /// # Arguments
     /// * `filter_stream` - The stream providing filter values
     /// * `filter` - A function that takes the latest filter stream element and returns whether to continue
     ///
     /// # Returns
     /// A stream of unwrapped source elements that passes while the filter condition is true
-    fn take_while(
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// let output = source_stream.take_while_with(filter_stream, |f| *f);
+    /// ```
+    fn take_while_with(
         self,
         filter_stream: S,
         filter: impl Fn(&TF) -> bool + Send + Sync + 'static,
@@ -78,7 +63,7 @@ where
     TF: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = Sequenced<TF>> + Send + Sync + 'static,
 {
-    fn take_while(
+    fn take_while_with(
         self,
         filter_stream: S,
         filter: impl Fn(&TF) -> bool + Send + Sync + 'static,
@@ -137,5 +122,40 @@ where
                 }
             }
         })
+    }
+}
+
+#[derive(Clone, Debug)]
+enum Item<T, TF> {
+    Source(Sequenced<T>),
+    Filter(Sequenced<TF>),
+}
+
+impl<T, TF> Item<T, TF> {
+    fn sequence(&self) -> u64 {
+        match self {
+            Item::Source(s) => s.sequence(),
+            Item::Filter(f) => f.sequence(),
+        }
+    }
+}
+
+impl<T, TF> PartialEq for Item<T, TF> {
+    fn eq(&self, other: &Self) -> bool {
+        self.sequence() == other.sequence()
+    }
+}
+
+impl<T, TF> Eq for Item<T, TF> {}
+
+impl<T, TF> PartialOrd for Item<T, TF> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T, TF> Ord for Item<T, TF> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.sequence().cmp(&other.sequence())
     }
 }
