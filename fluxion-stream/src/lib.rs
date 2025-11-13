@@ -6,6 +6,7 @@ pub mod sequenced;
 pub mod sequenced_stream;
 pub mod take_latest_when;
 pub mod with_latest_from;
+pub mod take_while;
 
 // Re-export commonly used types
 pub use combine_latest::{CombineLatestExt, CombinedState, CompareByInner};
@@ -16,3 +17,4 @@ pub use sequenced::Sequenced;
 pub use sequenced_stream::SequencedStreamExt;
 pub use take_latest_when::TakeLatestWhenExt;
 pub use with_latest_from::WithLatestFromExt;
+pub use take_while::TakeWhileStreamExt;
