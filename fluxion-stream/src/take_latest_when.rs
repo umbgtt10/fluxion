@@ -4,7 +4,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 use crate::combine_latest::CombinedState;
-use crate::select_all_ordered::SelectAllExt;
+use crate::ordered_merge::OrderedMergeExt;
 use crate::timestamped::Timestamped;
 use crate::timestamped_stream::TimestampedStreamExt;
 
@@ -77,7 +77,7 @@ where
         let filter = Arc::new(filter);
 
         streams
-            .select_all_ordered()
+            .ordered_merge()
             .filter_map(move |(timestamped_value, index)| {
                 let state = Arc::clone(&state);
                 let filter = Arc::clone(&filter);

@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-use crate::select_all_ordered::SelectAllExt;
+use crate::ordered_merge::OrderedMergeExt;
 use crate::timestamped::Timestamped;
 use crate::timestamped_stream::TimestampedStreamExt;
 
@@ -54,7 +54,7 @@ where
         let state = Arc::new(Mutex::new(IntermediateState::new(num_streams)));
 
         streams
-            .select_all_ordered()
+            .ordered_merge()
             .filter_map({
                 let state = Arc::clone(&state);
 

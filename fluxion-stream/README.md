@@ -12,7 +12,7 @@ FeaturesKey features
 
 - Temporal ordering via `Timestamped<T>` and sequence numbers- Temporal ordering via Timestamped<T> and sequence numbers
 
-- Composable operators: `combine_latest`, `with_latest_from`, `merge_with`, `take_latest_when`, `select_all_ordered`, and more- Composable operators: combine_latest, with_latest_from, merge_with, take_latest_when, and more
+- Composable operators: `combine_latest`, `with_latest_from`, `merge_with`, `take_latest_when`, `ordered_merge`, and more- Composable operators: combine_latest, with_latest_from, merge_with, take_latest_when, and more
 
 - Efficient implementation with minimal allocations- Efficient implementation with minimal allocations
 
@@ -26,9 +26,9 @@ Core modulesCore modules
 
 - `timestamped_channel` — channels that assign timestamps automatically- 	imestamped_channel  channels that assign timestamps automatically
 
-- `combine_latest`, `merge_with`, `combine_with_previous`, `select_all_ordered`, `take_latest_when`- combine_latest  combine multiple streams while preserving order guarantees
+- `combine_latest`, `merge_with`, `combine_with_previous`, `ordered_merge`, `take_latest_when`- combine_latest  combine multiple streams while preserving order guarantees
 
-- merge_with, combine_with_previous, select_all_ordered, 	ake_latest_when
+- merge_with, combine_with_previous, ordered_merge, 	ake_latest_when
 
 Quick example
 

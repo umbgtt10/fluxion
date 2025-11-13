@@ -6,7 +6,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::select_all_ordered::SelectAllExt;
+use crate::ordered_merge::OrderedMergeExt;
 use crate::timestamped::Timestamped;
 use crate::timestamped_stream::TimestampedStreamExt;
 
@@ -76,12 +76,12 @@ where
         // Convert existing stream items to Timestamped<T>
         let self_stream_mapped = self.inner.map(|item| item.into());
 
-        // Use select_all_ordered to merge streams with guaranteed temporal ordering
+        // Use ordered_merge to merge streams with guaranteed temporal ordering
         let merged_stream = vec![
             Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Timestamped<T>> + Send>>,
             Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Timestamped<T>> + Send>>,
         ]
-        .select_all_ordered();
+        .ordered_merge();
 
         MergedStream {
             inner: merged_stream,
