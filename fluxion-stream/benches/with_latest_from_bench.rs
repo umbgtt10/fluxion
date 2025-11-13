@@ -5,7 +5,10 @@ use futures::stream::{self, StreamExt};
 use std::hint::black_box;
 use tokio::runtime::Runtime;
 
-fn make_stream(size: usize, payload_size: usize) -> impl futures::Stream<Item = Sequenced<Vec<u8>>> {
+fn make_stream(
+    size: usize,
+    payload_size: usize,
+) -> impl futures::Stream<Item = Sequenced<Vec<u8>>> {
     let items: Vec<Sequenced<Vec<u8>>> = (0..size)
         .map(|_i| Sequenced::new(vec![0u8; payload_size]))
         .collect();
