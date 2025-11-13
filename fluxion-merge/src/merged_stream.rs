@@ -1,4 +1,9 @@
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
 use fluxion_ordered_merge::OrderedMergeExt;
+use fluxion_test_utils::sequenced::Sequenced;
 use futures::stream::{Empty, Stream, StreamExt, empty};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
@@ -6,8 +11,6 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-
-use fluxion_test_utils::sequenced::Sequenced;
 
 /// A stateful stream merger that combines multiple sequenced streams while maintaining state.
 ///

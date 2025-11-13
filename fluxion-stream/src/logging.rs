@@ -1,4 +1,6 @@
-// Conditional logging shim: uses `tracing` when enabled, falls back to eprintln!/println!
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 
 #[cfg(feature = "tracing")]
 #[macro_export]

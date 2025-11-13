@@ -1,3 +1,7 @@
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
 /// A trait for types that have an intrinsic ordering for stream merging.
 ///
 /// This trait allows stream operators like `combine_latest` and `ordered_merge`

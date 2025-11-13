@@ -1,3 +1,7 @@
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
 use fluxion_core::{Ordered, OrderedWrapper};
 use fluxion_stream::{CombinedState, FluxionStream};
 use fluxion_test_utils::helpers::assert_no_element_emitted;
@@ -9,8 +13,6 @@ use futures::StreamExt;
 
 static FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
 
-/// Test demonstrating composition of multiple FluxionStream extensions
-/// This test chains: take_latest_when -> combine_with_previous -> with_latest_from
 #[tokio::test]
 async fn test_fluxion_stream_composition() {
     // Arrange

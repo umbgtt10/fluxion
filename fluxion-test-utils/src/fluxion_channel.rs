@@ -1,12 +1,9 @@
-//! Sequenced channels and testing utilities.
-//!
-//! This module provides:
-//! - Low-level sequenced channels (`sequenced_channel` submodule)
-//! - High-level `FluxionChannel` for convenient testing
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::sequenced::Sequenced;
 use fluxion_error::{FluxionError, Result};
-// mpsc types are only used inside the `sequenced_channel` submodule
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub struct FluxionChannel<T> {

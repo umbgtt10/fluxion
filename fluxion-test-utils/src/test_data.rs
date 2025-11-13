@@ -1,3 +1,7 @@
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
 use crate::fluxion_channel::sequenced_channel::UnboundedSender;
 use crate::sequenced::Sequenced;
 use crate::{animal::Animal, person::Person, plant::Plant};

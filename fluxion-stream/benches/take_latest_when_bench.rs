@@ -1,3 +1,7 @@
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::TakeLatestWhenExt;
 use fluxion_test_utils::sequenced::Sequenced;
@@ -15,6 +19,9 @@ fn make_stream(
     stream::iter(items)
 }
 
+/// # Panics
+///
+/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_take_latest_when(c: &mut Criterion) {
     let mut group = c.benchmark_group("take_latest_when");
     let sizes = [100usize, 1000usize];

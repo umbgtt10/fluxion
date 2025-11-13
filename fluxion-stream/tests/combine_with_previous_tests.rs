@@ -1,3 +1,7 @@
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
 use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::push;
@@ -199,23 +203,23 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() {
     let mut stream = channel.stream.combine_with_previous();
 
     // Act: Send empty string with zero value
-    push(person("".to_string(), 0), &channel.sender);
+    push(person(String::new(), 0), &channel.sender);
 
     // Assert: First emission has no previous
     let result = stream.next().await.unwrap();
     assert_eq!(
         (result.0.map(|s| s.value), result.1.value),
-        (None, person("".to_string(), 0))
+        (None, person(String::new(), 0))
     );
 
     // Act: Send another boundary value
-    push(person("".to_string(), 0), &channel.sender);
+    push(person(String::new(), 0), &channel.sender);
 
     // Assert: Second emission has previous with boundary value
     let result2 = stream.next().await.unwrap();
     assert_eq!(
         (result2.0.map(|s| s.value), result2.1.value),
-        (Some(person("".to_string(), 0)), person("".to_string(), 0))
+        (Some(person(String::new(), 0)), person(String::new(), 0))
     );
 
     // Act: Transition to normal value
@@ -225,7 +229,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() {
     let result3 = stream.next().await.unwrap();
     assert_eq!(
         (result3.0.map(|s| s.value), result3.1.value),
-        (Some(person("".to_string(), 0)), person_alice())
+        (Some(person(String::new(), 0)), person_alice())
     );
 }
 
@@ -241,13 +245,13 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
             let mut stream = channel.stream.combine_with_previous();
 
             // Act: Send first value
-            push(person(format!("Person{}", i), i), &channel.sender);
+            push(person(format!("Person{i}"), i), &channel.sender);
 
             // Assert: No previous
             let result = stream.next().await.unwrap();
             assert_eq!(
                 (result.0.map(|s| s.value), result.1.value),
-                (None, person(format!("Person{}", i), i))
+                (None, person(format!("Person{i}"), i))
             );
 
             // Act: Send second value
@@ -257,7 +261,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
             let result2 = stream.next().await.unwrap();
             assert_eq!(
                 (result2.0.map(|s| s.value), result2.1.value),
-                (Some(person(format!("Person{}", i), i)), person_alice())
+                (Some(person(format!("Person{i}"), i)), person_alice())
             );
 
             // Act: Send third value

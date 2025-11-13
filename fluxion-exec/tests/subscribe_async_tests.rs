@@ -1,3 +1,7 @@
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
 use fluxion_exec::subscribe_async::SubscribeAsyncExt;
 use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::test_data::{
@@ -43,7 +47,7 @@ async fn test_subscribe_async_processes_items_when_waiting_per_item() {
 
     let error_callback = {
         move |err| {
-            panic!("Unexpected error while processing: {:?}", err);
+            panic!("Unexpected error while processing: {err:?}");
         }
     };
 
@@ -51,7 +55,7 @@ async fn test_subscribe_async_processes_items_when_waiting_per_item() {
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
-                .await
+                .await;
         }
     });
 
@@ -121,8 +125,7 @@ async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() {
                 if matches!(&item, TestData::Animal(_)) {
                     let _ = notify_tx.send(()); // Signal completion (error case)
                     return Err(TestError::new(format!(
-                        "Error processing animal: {:?}",
-                        item
+                        "Error processing animal: {item:?}",
                     )));
                 }
                 results.lock().await.push(item);
@@ -207,7 +210,7 @@ async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() {
 
     let error_callback = {
         move |err| {
-            panic!("Unexpected error while processing: {:?}", err);
+            panic!("Unexpected error while processing: {err:?}");
         }
     };
 
@@ -372,7 +375,7 @@ async fn test_subscribe_async_empty_stream_completes_without_items() {
 
     let error_callback = {
         move |err| {
-            panic!("Unexpected error while processing: {:?}", err);
+            panic!("Unexpected error while processing: {err:?}");
         }
     };
 
@@ -380,7 +383,7 @@ async fn test_subscribe_async_empty_stream_completes_without_items() {
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
-                .await
+                .await;
         }
     });
 
@@ -445,7 +448,7 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() {
 
     let error_callback = {
         move |err| {
-            panic!("Unexpected error while processing: {:?}", err);
+            panic!("Unexpected error while processing: {err:?}");
         }
     };
 
@@ -453,7 +456,7 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() {
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
-                .await
+                .await;
         }
     });
 
@@ -476,14 +479,12 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() {
     notify_rx.recv().await.unwrap();
 
     // Assert
-    let processed = results.lock().await;
-    assert_eq!(processed.len(), 3, "All 3 items should be processed");
+    {
+        let processed = results.lock().await;
+        assert_eq!(processed.len(), 3, "All 3 items should be processed");
+    }
     let max = max_active.load(std::sync::atomic::Ordering::SeqCst);
-    assert!(
-        max >= 2,
-        "Expected parallelism (max_active >= 2), got {}",
-        max
-    );
+    assert!(max >= 2, "Expected parallelism (max_active >= 2), got {max}");
 
     // Cleanup
     drop(channel.sender);
@@ -514,7 +515,7 @@ async fn test_subscribe_async_high_volume_processes_all() {
 
     let error_callback = {
         move |err| {
-            panic!("Unexpected error while processing: {:?}", err);
+            panic!("Unexpected error while processing: {err:?}");
         }
     };
 
@@ -522,7 +523,7 @@ async fn test_subscribe_async_high_volume_processes_all() {
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
-                .await
+                .await;
         }
     });
 
@@ -537,8 +538,10 @@ async fn test_subscribe_async_high_volume_processes_all() {
     }
 
     // Assert
-    let processed = results.lock().await;
-    assert_eq!(processed.len(), 100, "All 100 items should be processed");
+    {
+        let processed = results.lock().await;
+        assert_eq!(processed.len(), 100, "All 100 items should be processed");
+    }
 
     // Cleanup
     drop(channel.sender);
@@ -569,7 +572,7 @@ async fn test_subscribe_async_precancelled_token_processes_nothing() {
 
     let error_callback = {
         move |err| {
-            panic!("Unexpected error while processing: {:?}", err);
+            panic!("Unexpected error while processing: {err:?}");
         }
     };
 

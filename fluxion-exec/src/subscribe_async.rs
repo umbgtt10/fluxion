@@ -1,4 +1,8 @@
-﻿use async_trait::async_trait;
+﻿// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
+use async_trait::async_trait;
 use futures::stream::Stream;
 use futures::stream::StreamExt;
 use std::future::Future;

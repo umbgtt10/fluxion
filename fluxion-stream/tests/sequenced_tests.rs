@@ -1,4 +1,8 @@
-﻿use fluxion_test_utils::Sequenced;
+﻿// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
+use fluxion_test_utils::Sequenced;
 
 #[test]
 fn test_sequenced_ordering() {
@@ -18,7 +22,7 @@ fn test_sequenced_deref() {
     // Arrange
     let seq = Sequenced::new("hello");
 
-    // Assert - Derefs to &str
+    // Assert
     assert_eq!(seq.len(), 5);
 }
 
@@ -28,7 +32,7 @@ fn test_sequenced_new_assigns_sequence() {
     let item1 = Sequenced::new(42);
     let item2 = Sequenced::new(100);
 
-    // Assert - Each new item gets a unique sequence
+    // Assert
     assert_ne!(item1.sequence(), item2.sequence());
     assert!(item1.sequence() < item2.sequence());
 }
@@ -88,7 +92,7 @@ fn test_sequenced_equality_same_value_different_sequence() {
     let item1 = Sequenced::new(42);
     let item2 = Sequenced::new(42);
 
-    // Assert - Different sequences means not equal
+    // Assert
     assert_ne!(item1, item2);
 }
 
@@ -111,7 +115,7 @@ fn test_sequenced_partial_ord() {
     // Act
     let comparison = first.partial_cmp(&second);
 
-    // Assert - Ordering is based on sequence, not value
+    // Assert
     assert_eq!(comparison, Some(std::cmp::Ordering::Less));
 }
 
@@ -121,7 +125,7 @@ fn test_sequenced_ord_consistent_with_sequence() {
     let early = Sequenced::new(999);
     let late = Sequenced::new(1);
 
-    // Assert - Even though 999 > 1, early was created first
+    // Assert
     assert!(early < late);
     assert_eq!(early.cmp(&late), std::cmp::Ordering::Less);
 }
@@ -132,7 +136,7 @@ fn test_sequenced_display() {
     let sequenced = Sequenced::new("hello world");
 
     // Act
-    let displayed = format!("{}", sequenced);
+    let displayed = format!("{sequenced}");
 
     // Assert
     assert_eq!(displayed, "hello world");
@@ -144,7 +148,7 @@ fn test_sequenced_display_with_number() {
     let sequenced = Sequenced::new(12345);
 
     // Act
-    let displayed = format!("{}", sequenced);
+    let displayed = format!("{sequenced}");
 
     // Assert
     assert_eq!(displayed, "12345");
@@ -155,7 +159,7 @@ fn test_sequenced_deref_mut() {
     // Arrange
     let mut sequenced = Sequenced::new(String::from("hello"));
 
-    // Act - Use deref_mut to modify
+    // Act
     sequenced.push_str(" world");
 
     // Assert
@@ -171,7 +175,7 @@ fn test_sequenced_clone_independence() {
     // Act
     cloned.value.push(4);
 
-    // Assert - Original is unchanged
+    // Assert
     assert_eq!(original.value, vec![1, 2, 3]);
     assert_eq!(cloned.value, vec![1, 2, 3, 4]);
     assert_eq!(original.sequence(), cloned.sequence());
@@ -182,7 +186,7 @@ fn test_sequenced_sequence_monotonic() {
     // Arrange & Act
     let items: Vec<Sequenced<i32>> = (0..100).map(Sequenced::new).collect();
 
-    // Assert - Sequences are strictly monotonically increasing
+    // Assert
     for i in 1..items.len() {
         assert!(
             items[i - 1].sequence() < items[i].sequence(),
@@ -199,9 +203,9 @@ fn test_sequenced_debug() {
     let sequenced = Sequenced::new(42);
 
     // Act
-    let debug_string = format!("{:?}", sequenced);
+    let debug_string = format!("{sequenced:?}");
 
-    // Assert - Should contain both value and sequence
+    // Assert
     assert!(debug_string.contains("42"));
     assert!(debug_string.contains("value"));
     assert!(debug_string.contains("sequence"));
@@ -215,7 +219,7 @@ fn test_sequenced_multiple_types() {
     let vec_ts = Sequenced::new(vec![1, 2, 3]);
     let tuple_ts = Sequenced::new((1, "a"));
 
-    // Assert - All have valid sequences
+    // Assert
     assert!(string_ts.sequence() < int_ts.sequence());
     assert!(int_ts.sequence() < vec_ts.sequence());
     assert!(vec_ts.sequence() < tuple_ts.sequence());
@@ -231,14 +235,14 @@ fn test_sequenced_sorting_by_sequence() {
     let mut items = [item1.clone(), item2.clone(), item3.clone()];
 
     // Capture the original sequence order
-    let original_order: Vec<_> = items.iter().map(|item| item.sequence()).collect();
+    let original_order: Vec<_> = items.iter().map(Sequenced::sequence).collect();
 
-    // Act - Reverse the vec (but sequences stay the same)
+    // Act
     items.reverse();
     items.sort();
 
-    // Assert - After sorting, items are back in sequence order
-    let sorted_order: Vec<_> = items.iter().map(|item| item.sequence()).collect();
+    // Assert
+    let sorted_order: Vec<_> = items.iter().map(Sequenced::sequence).collect();
     assert_eq!(sorted_order, original_order);
 }
 
@@ -247,6 +251,6 @@ fn test_sequenced_value_field_public() {
     // Arrange
     let sequenced = Sequenced::new(String::from("public"));
 
-    // Act & Assert - Can access value field directly
+    // Act & Assert
     assert_eq!(sequenced.value, "public");
 }

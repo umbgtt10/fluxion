@@ -1,3 +1,7 @@
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
 use fluxion_stream::{combine_latest::CombinedState, take_latest_when::TakeLatestWhenExt};
 use fluxion_test_utils::{
     TestChannels,
@@ -12,14 +16,14 @@ use futures::StreamExt;
 
 #[tokio::test]
 async fn test_take_latest_when_empty_streams() {
-    static FILTER: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
+    let filter_fn = |_: &CombinedState<TestData>| -> bool { true };
 
     // Arrange
     let (source, filter) = TestChannels::two();
     drop(source.sender);
     drop(filter.sender);
 
-    let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act & Assert
@@ -35,7 +39,7 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
     // Arrange
     let (source, filter) = TestChannels::two();
 
-    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let state = state.get_state().first().unwrap().clone();
         match state {
             TestData::Animal(animal) => animal.legs > 5,
@@ -43,7 +47,7 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act
@@ -59,21 +63,18 @@ async fn test_take_latest_when_filter_satisfied_emits() {
     // Arrange
     let (source, filter) = TestChannels::two();
 
-    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
             TestData::Animal(animal) => animal.legs > 5,
-            _ => {
-                panic!(
-                    "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
-                    filter_value
-                );
-            }
+                _ => {
+                    panic!("Expected the filter stream to emit an Animal value. But it emitted: {filter_value:?} instead!");
+                }
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
 
     // Act
     push(person_alice(), &source.sender);
@@ -94,21 +95,18 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     // Arrange
     let (source, filter) = TestChannels::two();
 
-    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
             TestData::Animal(animal) => animal.legs > 5,
-            _ => {
-                panic!(
-                    "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
-                    filter_value
-                );
-            }
+            _ => panic!(
+                "Expected the filter stream to emit an Animal value. But it emitted: {filter_value:?} instead!",
+            ),
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
 
     // Act
     push(person_alice(), &source.sender);
@@ -141,21 +139,18 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     // Arrange
     let (source, filter) = TestChannels::two();
 
-    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
             TestData::Animal(animal) => animal.legs > 5,
-            _ => {
-                panic!(
-                    "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
-                    filter_value
-                );
-            }
+            _ => panic!(
+                "Expected the filter stream to emit an Animal value. But it emitted: {filter_value:?} instead!",
+            ),
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
 
     // Act
     push(animal_ant(), &filter.sender);
@@ -184,19 +179,18 @@ async fn test_take_latest_when_filter_toggle_emissions() {
     // Arrange
     let (source, filter) = TestChannels::two();
 
-    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
 
         match filter_value {
             TestData::Animal(animal) => animal.legs > 5,
             _ => panic!(
-                "Expected the filter stream to emit an Animal value. But it emitted: {:?} instead!",
-                filter_value
+                "Expected the filter stream to emit an Animal value. But it emitted: {filter_value:?} instead!",
             ),
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act: filter true, then source -> emit
@@ -238,7 +232,7 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
     // Arrange
     let (source, filter) = TestChannels::two();
 
-    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
         match filter_value {
             TestData::Animal(animal) => animal.legs > 5,
@@ -246,7 +240,7 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Prime both streams so a first emission can happen
@@ -285,7 +279,7 @@ async fn test_take_latest_when_source_publishes_before_filter() {
     // Arrange
     let (source, filter) = TestChannels::two();
 
-    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
         match filter_value {
             TestData::Animal(animal) => animal.legs > 5,
@@ -293,7 +287,7 @@ async fn test_take_latest_when_source_publishes_before_filter() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act: Source publishes first (before filter has any value)
@@ -337,7 +331,7 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
     // Arrange
     let (source, filter) = TestChannels::two();
 
-    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
         match filter_value {
             TestData::Animal(animal) => animal.legs > 5,
@@ -345,7 +339,7 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act: Start with filter false
@@ -391,7 +385,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     // Arrange
     let (source, filter) = TestChannels::two();
 
-    static FILTER: fn(&CombinedState<TestData>) -> bool = |state| {
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
         match filter_value {
             TestData::Animal(animal) => animal.legs > 5,
@@ -399,17 +393,17 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act: Set filter to false
     push(animal_cat(), &filter.sender); // legs 4 -> false
 
     // Act: Publish a large number of source events while filter is false
-    for i in 0..10000 {
+    for i in 0u32..10000u32 {
         source
             .sender
-            .send(person(format!("Person{i}"), i as u32))
+            .send(person(format!("Person{i}"), i))
             .unwrap();
     }
 
@@ -421,17 +415,17 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
 
     // Assert: Only the LATEST value is emitted (Person9999)
     let first = output_stream.next().await.unwrap();
-    assert_eq!(first.get(), &person("Person9999".to_string(), 9999));
+    assert_eq!(first.get(), &person(String::from("Person9999"), 9999u32));
 
     // Assert: No additional emissions (buffer only held the latest, not all 10000)
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Toggle filter false and publish more
     push(animal_dog(), &filter.sender); // legs 4 -> false
-    for i in 10000..20000 {
+    for i in 10000u32..20000u32 {
         source
             .sender
-            .send(person(format!("Person{i}"), i as u32))
+            .send(person(format!("Person{i}"), i))
             .unwrap();
     }
 
@@ -443,7 +437,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
 
     // Assert: Only the latest from the second batch (Person19999)
     let second = output_stream.next().await.unwrap();
-    assert_eq!(second.get(), &person("Person19999".to_string(), 19999));
+    assert_eq!(second.get(), &person(String::from("Person19999"), 19999u32));
 
     // This test validates that the buffer doesn't grow unbounded - it only keeps
     // the latest source value, not all historical values while the filter is false
@@ -451,12 +445,12 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
 
 #[tokio::test]
 async fn test_take_latest_when_boundary_empty_string_zero_values() {
-    static FILTER: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
+    let filter_fn: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
 
     // Arrange: Test boundary values (empty strings, zero numeric values)
     let (source, filter) = TestChannels::two();
 
-    let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act: Send empty string with zero value to source
@@ -484,16 +478,16 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() {
 
 #[tokio::test]
 async fn test_take_latest_when_boundary_maximum_concurrent_streams() {
-    static FILTER: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
+    let filter_fn: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
 
     // Arrange: Test concurrent handling with many parallel streams
-    let num_concurrent = 50;
+    let num_concurrent: u32 = 50;
     let mut handles = Vec::new();
 
     for i in 0..num_concurrent {
         let handle = tokio::spawn(async move {
             let (source, filter) = TestChannels::two();
-            let output_stream = source.stream.take_latest_when(filter.stream, FILTER);
+            let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
             let mut output_stream = Box::pin(output_stream);
 
             // Act: Send values

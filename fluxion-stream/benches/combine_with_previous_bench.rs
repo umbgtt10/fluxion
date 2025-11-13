@@ -1,3 +1,7 @@
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::CombineWithPreviousExt;
 use fluxion_test_utils::sequenced::Sequenced;
@@ -15,6 +19,9 @@ fn make_stream(
     stream::iter(items)
 }
 
+/// # Panics
+///
+/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_combine_with_previous(c: &mut Criterion) {
     let mut group = c.benchmark_group("combine_with_previous");
     let sizes = [100usize, 1000usize, 10_000usize];
@@ -22,7 +29,7 @@ pub fn bench_combine_with_previous(c: &mut Criterion) {
 
     for &size in &sizes {
         for &payload_size in &payload_sizes {
-            let id = BenchmarkId::from_parameter(format!("m{}_p{}", size, payload_size));
+            let id = BenchmarkId::from_parameter(format!("m{size}_p{payload_size}"));
             group.throughput(Throughput::Elements(size as u64));
             group.bench_with_input(
                 id,
@@ -39,7 +46,7 @@ pub fn bench_combine_with_previous(c: &mut Criterion) {
                                 black_box(v);
                             }
                         });
-                    })
+                    });
                 },
             );
         }

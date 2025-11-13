@@ -1,3 +1,7 @@
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
 use fluxion_core::Ordered;
 use fluxion_stream::combine_latest::{CombineLatestExt, CombinedState};
 use fluxion_test_utils::FluxionChannel;
@@ -10,6 +14,8 @@ use fluxion_test_utils::{
     },
 };
 use futures::{Stream, StreamExt};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 async fn expect_next_combined_equals<S, T>(stream: &mut S, expected: &[TestData])
 where
@@ -17,12 +23,9 @@ where
     T: Ordered<Inner = CombinedState<TestData>>,
 {
     let state = stream.next().await.expect("expected next combined state");
-    let actual: Vec<TestData> = state.get().get_state().to_vec();
+    let actual: Vec<TestData> = state.get().get_state().clone();
     assert_eq!(actual, expected);
 }
-
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 static FILTER: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
 
@@ -121,19 +124,19 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues()
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get().get_state().to_vec();
+    let actual: Vec<TestData> = state.get().get_state().clone();
     assert_eq!(actual, vec![person_alice(), animal_dog(), plant_rose()]);
 
     drop(plant.sender);
 
     push(person_bob(), &person.sender);
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get().get_state().to_vec();
+    let actual: Vec<TestData> = state.get().get_state().clone();
     assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
 
     push(animal_spider(), &animal.sender);
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get().get_state().to_vec();
+    let actual: Vec<TestData> = state.get().get_state().clone();
     assert_eq!(actual, vec![person_bob(), animal_spider(), plant_rose()]);
 }
 
@@ -181,7 +184,7 @@ async fn combine_latest_template_test(
     let mut combined_stream = Box::pin(combined_stream);
 
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get().get_state().to_vec();
+    let actual: Vec<TestData> = state.get().get_state().clone();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
@@ -310,7 +313,7 @@ async fn combine_latest_stream_order_test(
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get().get_state().to_vec();
+    let actual: Vec<TestData> = state.get().get_state().clone();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
@@ -385,10 +388,10 @@ async fn test_combine_latest_filter_alternates_between_true_false() {
     // Filter that only allows emissions when person is Alice or Charlie (rejects Bob and Diane)
     let filter = |state: &CombinedState<TestData>| {
         let values = state.get_state();
-        if !values.is_empty() {
-            values[0] == person_alice() || values[0] == person_charlie()
-        } else {
+        if values.is_empty() {
             false
+        } else {
+            values[0] == person_alice() || values[0] == person_charlie()
         }
     };
 

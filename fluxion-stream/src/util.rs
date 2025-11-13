@@ -1,4 +1,6 @@
-//! Utility functions for safe error handling in stream operations
+// Copyright 2025 Umberto Gotti
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_error::{FluxionError, Result};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
