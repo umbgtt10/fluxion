@@ -6,7 +6,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use fluxion_stream::ordered_merge::OrderedMergeSyncExt;
+use fluxion_ordered_merge::OrderedMergeSyncExt;
 use fluxion_stream::sequenced::Sequenced;
 use fluxion_stream::sequenced_stream::SequencedStreamExt;
 

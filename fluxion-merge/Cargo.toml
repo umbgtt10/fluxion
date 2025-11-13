@@ -11,6 +11,7 @@ name = "benchmarks"
 harness = false
 
 [dependencies]
+fluxion-ordered-merge.workspace = true
 futures.workspace = true
 futures-util.workspace = true
 tokio.workspace = true

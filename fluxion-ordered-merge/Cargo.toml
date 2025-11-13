@@ -1,0 +1,18 @@
+[package]
+name = "fluxion-ordered-merge"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+description = "Generic ordered stream merging utilities for async Rust"
+keywords = ["async", "stream", "merge", "ordered", "futures"]
+categories = ["asynchronous", "concurrency"]
+
+[package.metadata.cargo-udeps.ignore]
+normal = ["pin-project"]
+
+[dependencies]
+futures = { workspace = true }
+pin-project = { workspace = true }
