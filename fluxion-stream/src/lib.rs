@@ -4,6 +4,7 @@ pub mod fluxion_stream;
 pub mod ordered_merge;
 pub mod take_latest_when;
 pub mod take_while_with;
+pub mod util;
 pub mod with_latest_from;
 
 // Re-export commonly used types

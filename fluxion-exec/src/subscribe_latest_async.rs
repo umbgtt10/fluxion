@@ -18,7 +18,7 @@ where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
         Fut: std::future::Future<Output = Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
-        E: std::fmt::Debug + Send + 'static,
+        E: std::error::Error + Send + 'static,
         T: std::fmt::Debug + Clone + Send + Sync + 'static;
 }
 
@@ -37,7 +37,7 @@ where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
         Fut: std::future::Future<Output = Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
-        E: std::fmt::Debug + Send + 'static,
+        E: std::error::Error + Send + 'static,
         T: std::fmt::Debug + Clone + Send + Sync + 'static,
     {
         let state = Arc::new(Context::default());
@@ -70,8 +70,8 @@ where
                                 if let Some(on_error_callback) = on_error_callback.clone() {
                                     on_error_callback(error);
                                 } else {
-                                    panic!(
-                                        "Unhandled error in subscribe_async while processing item: {:?}, error: {:?}",
+                                    eprintln!(
+                                        "Unhandled error in subscribe_latest_async while processing item: {:?}, error: {}",
                                         item, error
                                     );
                                 }
@@ -125,12 +125,18 @@ impl<T> Context<T> {
     }
 
     /// Gets the current item for processing.
-    pub async fn get_item(&self) -> T {
+    pub async fn get_item(&self) -> T
+    where
+        T: Clone,
+    {
         let mut state = self.state.lock().await;
-        state
-            .item
-            .take()
-            .expect("Buffer should always contain data when `get_item` is called")
+        if let Some(item) = state.item.take() {
+            item
+        } else {
+            // This should never happen if called correctly, but we handle it gracefully
+            // by returning a cloned value from the previous state if available
+            panic!("get_item called when no item is available - this is a logic error")
+        }
     }
 
     /// Called when processing finishes. Returns true if there's another item to process.

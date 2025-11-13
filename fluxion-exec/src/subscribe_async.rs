@@ -16,7 +16,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
         Fut: Future<Output = Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
         T: std::fmt::Debug + Send + Clone + 'static,
-        E: std::fmt::Debug + Send + 'static;
+        E: std::error::Error + Send + 'static;
 }
 
 #[async_trait]
@@ -35,7 +35,7 @@ where
         Fut: Future<Output = Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
         T: std::fmt::Debug + Send + Clone + 'static,
-        E: std::fmt::Debug + Send + 'static,
+        E: std::error::Error + Send + 'static,
     {
         let cancellation_token = cancellation_token.unwrap_or_default();
 
@@ -55,8 +55,8 @@ where
                     if let Some(on_error_callback) = on_error_callback {
                         on_error_callback(error);
                     } else {
-                        panic!(
-                            "Unhandled error in subscribe_async while processing item: {:?}, error: {:?}",
+                        eprintln!(
+                            "Unhandled error in subscribe_async while processing item: {:?}, error: {}",
                             item, error
                         );
                     }

@@ -7,6 +7,8 @@ use std::sync::{Arc, Mutex};
 use fluxion_core::{CompareByInner, Ordered, OrderedWrapper};
 use fluxion_ordered_merge::OrderedMergeExt;
 
+use crate::util::safe_lock;
+
 pub trait CombineLatestExt<T>: Stream<Item = T> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
@@ -58,15 +60,21 @@ where
                         let state = Arc::clone(&state);
                         let order = value.order(); // Capture order of triggering value
                         async move {
-                            let mut state = state
-                                .lock()
-                                .expect("Failed to acquire lock on combine_latest state");
-                            state.insert(index, value);
+                            // Use safe_lock to handle potential lock errors
+                            match safe_lock(&state, "combine_latest state") {
+                                Ok(mut guard) => {
+                                    guard.insert(index, value);
 
-                            if state.is_complete() {
-                                Some((state.clone(), order))
-                            } else {
-                                None
+                                    if guard.is_complete() {
+                                        Some((guard.clone(), order))
+                                    } else {
+                                        None
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!("Failed to acquire lock in combine_latest: {}", e);
+                                    None
+                                }
                             }
                         }
                     }

@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::Ordered;
 use crate::combine_latest::CombinedState;
+use crate::util::safe_lock;
 use fluxion_ordered_merge::OrderedMergeExt;
 
 pub trait TakeLatestWhenExt<T, SF>: Stream<Item = T> + Sized
@@ -44,15 +45,12 @@ where
         self.source_value.is_some() && self.filter_value.is_some()
     }
 
-    fn get_values(&self) -> Vec<T> {
-        vec![
-            self.source_value
-                .clone()
-                .expect("source_value should be set when state is complete"),
-            self.filter_value
-                .clone()
-                .expect("filter_value should be set when state is complete"),
-        ]
+    fn get_values(&self) -> Option<Vec<T>> {
+        if let (Some(source), Some(filter)) = (&self.source_value, &self.filter_value) {
+            Some(vec![source.clone(), filter.clone()])
+        } else {
+            None
+        }
     }
 }
 
@@ -85,9 +83,15 @@ where
                     let filter = Arc::clone(&filter);
                     let order = ordered_value.order();
                     async move {
-                        let mut state = state
-                            .lock()
-                            .expect("Failed to acquire lock on take_latest_when state");
+                        let state_lock = match safe_lock(&state, "take_latest_when state") {
+                            Ok(lock) => lock,
+                            Err(e) => {
+                                eprintln!("Failed to acquire lock in take_latest_when: {}", e);
+                                return None;
+                            }
+                        };
+                        
+                        let mut state = state_lock;
 
                         match index {
                             0 => state.source_value = Some(ordered_value.get().clone()),
@@ -96,16 +100,13 @@ where
                         }
 
                         if state.is_complete() {
-                            let values = state.get_values();
+                            let values = state.get_values()?;
                             let combined_state = CombinedState::new(values);
 
                             if filter(&combined_state) {
-                                Some(T::with_order(
-                                    state.source_value.clone().expect(
-                                        "source_value should be set when state is complete",
-                                    ),
-                                    order,
-                                ))
+                                state.source_value.clone().map(|source| {
+                                    T::with_order(source, order)
+                                })
                             } else {
                                 None
                             }

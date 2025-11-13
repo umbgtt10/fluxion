@@ -1,4 +1,5 @@
 use crate::fluxion_stream::FluxionStream;
+use crate::util::safe_lock;
 use fluxion_core::Ordered;
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::Stream;
@@ -74,7 +75,15 @@ where
                 let filter = Arc::clone(&filter);
 
                 async move {
-                    let mut state_guard = state.lock().unwrap();
+                    let state_guard = match safe_lock(&state, "take_while_with state") {
+                        Ok(guard) => guard,
+                        Err(e) => {
+                            eprintln!("Failed to acquire lock in take_while_with: {}", e);
+                            return None;
+                        }
+                    };
+                    
+                    let mut state_guard = state_guard;
                     let (filter_state, terminated) = &mut *state_guard;
 
                     // If already terminated, signal stream end

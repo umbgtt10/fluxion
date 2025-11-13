@@ -9,6 +9,16 @@ use tokio::{sync::Mutex as TokioMutex, sync::mpsc};
 use tokio_stream::StreamExt as _;
 use tokio_util::sync::CancellationToken;
 
+#[derive(Debug, thiserror::Error)]
+#[error("Test error: {0}")]
+struct TestError(String);
+
+impl TestError {
+    fn new(msg: impl Into<String>) -> Self {
+        Self(msg.into())
+    }
+}
+
 #[tokio::test]
 async fn test_subscribe_async_processes_items_when_waiting_per_item() {
     // Arrange
@@ -26,7 +36,7 @@ async fn test_subscribe_async_processes_items_when_waiting_per_item() {
             async move {
                 results.lock().await.push(item);
                 let _ = notify_tx.send(()); // Signal completion
-                Ok::<(), ()>(())
+                Ok::<(), TestError>(())
             }
         }
     };
@@ -110,11 +120,11 @@ async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() {
                 // Error on every animal
                 if matches!(&item, TestData::Animal(_)) {
                     let _ = notify_tx.send(()); // Signal completion (error case)
-                    return Err(format!("Error processing animal: {:?}", item));
+                    return Err(TestError::new(format!("Error processing animal: {:?}", item)));
                 }
                 results.lock().await.push(item);
                 let _ = notify_tx.send(()); // Signal completion
-                Ok::<(), String>(())
+                Ok::<(), TestError>(())
             }
         }
     };
@@ -187,7 +197,7 @@ async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() {
                 results.lock().await.push(item);
                 let _ = notify_tx.send(()); // Signal completion
 
-                Ok::<(), ()>(())
+                Ok::<(), TestError>(())
             }
         }
     };
@@ -238,9 +248,11 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
     let cancellation_token_clone = cancellation_token.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, PartialEq, Eq, thiserror::Error)]
     enum ProcessingError {
+        #[error("Cancelled: {0}")]
         Cancelled(String),
+        #[error("Other error: {0}")]
         Other(String),
     }
 
@@ -350,7 +362,7 @@ async fn test_subscribe_async_empty_stream_completes_without_items() {
             let results = results.clone();
             async move {
                 results.lock().await.push(item);
-                Ok::<(), ()>(())
+                Ok::<(), TestError>(())
             }
         }
     };
@@ -423,7 +435,7 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() {
                 active.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
                 results.lock().await.push(item);
                 let _ = notify_tx.send(());
-                Ok::<(), ()>(())
+                Ok::<(), TestError>(())
             }
         }
     };
@@ -492,7 +504,7 @@ async fn test_subscribe_async_high_volume_processes_all() {
             async move {
                 results.lock().await.push(item);
                 let _ = notify_tx.send(());
-                Ok::<(), ()>(())
+                Ok::<(), TestError>(())
             }
         }
     };
@@ -547,7 +559,7 @@ async fn test_subscribe_async_precancelled_token_processes_nothing() {
             let results = results.clone();
             async move {
                 results.lock().await.push(item);
-                Ok::<(), ()>(())
+                Ok::<(), TestError>(())
             }
         }
     };

@@ -1,0 +1,16 @@
+[package]
+name = "fluxion-error"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+description = "Error types for the Fluxion reactive streaming library"
+keywords = ["async", "stream", "error", "reactive"]
+categories = ["asynchronous", "concurrency"]
+
+[dependencies]
+thiserror = { workspace = true }
+
+[dev-dependencies]

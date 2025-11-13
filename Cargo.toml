@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "fluxion-core",
+    "fluxion-error",
     "fluxion-ordered-merge",
     "fluxion-stream",
     "fluxion-exec",
@@ -27,8 +28,12 @@ pin-project = "1.1.10"
 async-trait = "0.1.89"
 async-stream = "0.3.6"
 
+# Error handling
+thiserror = "2.0"
+
 # Internal workspace dependencies
 fluxion-core = { path = "fluxion-core" }
+fluxion-error = { path = "fluxion-error" }
 fluxion-ordered-merge = { path = "fluxion-ordered-merge" }
 fluxion-stream = { path = "fluxion-stream" }
 fluxion-exec = { path = "fluxion-exec" }

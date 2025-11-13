@@ -13,6 +13,16 @@ use tokio::{
 use tokio_stream::StreamExt as _;
 use tokio_util::sync::CancellationToken;
 
+#[derive(Debug, thiserror::Error)]
+#[error("Test error: {0}")]
+struct TestError(String);
+
+impl TestError {
+    fn new(msg: impl Into<String>) -> Self {
+        Self(msg.into())
+    }
+}
+
 #[tokio::test]
 async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
     // Arrange
@@ -32,12 +42,12 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
             async move {
                 collected_items.lock().await.push(item);
                 let _ = notify_tx.send(());
-                Ok(())
+                Ok::<(), TestError>(())
             }
         }
     };
 
-    let error_callback = |err: ()| {
+    let error_callback = |err: TestError| {
         eprintln!("Error occurred: {:?}", err);
     };
 
@@ -136,12 +146,12 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
 
                 collected_items.lock().await.push(item);
                 let _ = notify_tx.send(());
-                Ok(())
+                Ok::<(), TestError>(())
             }
         }
     };
 
-    let error_callback = |err: ()| {
+    let error_callback = |err: TestError| {
         eprintln!("Error occurred: {:?}", err);
     };
 
@@ -205,19 +215,19 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
             async move {
                 if matches!(&item, TestData::Person(p) if p.name == "Bob" || p.name == "Dave") {
                     let _ = notify_tx.send(());
-                    return Err(format!("Failed to process {:?}", item));
+                    return Err(TestError::new(format!("Failed to process {:?}", item)));
                 }
 
                 let mut items = collected_items.lock().await;
                 items.push(item);
                 let _ = notify_tx.send(());
 
-                Ok(())
+                Ok::<(), TestError>(())
             }
         }
     };
 
-    let error_callback = |err: String| {
+    let error_callback = |err: TestError| {
         eprintln!("Error occurred: {:?}", err);
     };
 
@@ -280,12 +290,12 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
                 items.push(item);
                 let _ = notify_tx.send(());
 
-                Ok(())
+                Ok::<(), TestError>(())
             }
         }
     };
 
-    let error_callback = |_err: ()| {
+    let error_callback = |_err: TestError| {
         eprintln!("Error occurred.");
     };
 
@@ -346,19 +356,19 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
                 // Error on animals
                 if matches!(&item, TestData::Animal(_)) {
                     let _ = notify_tx.send(());
-                    return Err(());
+                    return Err(TestError::new("Animal processing error"));
                 }
 
                 let mut items = collected_items.lock().await;
                 items.push(item);
                 let _ = notify_tx.send(());
 
-                Ok(())
+                Ok::<(), TestError>(())
             }
         }
     };
 
-    let error_callback = |err: ()| {
+    let error_callback = |err: TestError| {
         eprintln!("Error occurred: {:?}", err);
     };
 
@@ -445,12 +455,12 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
                 processed_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 let _ = notify_tx.send(());
 
-                Ok::<(), ()>(())
+                Ok::<(), TestError>(())
             }
         }
     };
 
-    let error_callback = |_err: ()| {
+    let error_callback = |_err: TestError| {
         eprintln!("Unexpected error");
     };
 
@@ -505,11 +515,11 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_
         let collected_items = collected_items_clone.clone();
         async move {
             collected_items.lock().await.push(item);
-            Ok::<(), ()>(())
+            Ok::<(), TestError>(())
         }
     };
 
-    let error_callback = |_err: ()| {
+    let error_callback = |_err: TestError| {
         eprintln!("Unexpected error");
     };
 
@@ -577,12 +587,12 @@ async fn test_subscribe_latest_async_high_volume() {
 
                 collected_items.lock().await.push(item);
                 let _ = notify_tx.send(());
-                Ok::<(), ()>(())
+                Ok::<(), TestError>(())
             }
         }
     };
 
-    let error_callback = |_err: ()| {
+    let error_callback = |_err: TestError| {
         eprintln!("Unexpected error");
     };
 
@@ -643,12 +653,12 @@ async fn test_subscribe_latest_async_single_item() {
                 sleep(Duration::from_millis(50)).await;
                 collected_items.lock().await.push(item);
                 let _ = notify_tx.send(());
-                Ok::<(), ()>(())
+                Ok::<(), TestError>(())
             }
         }
     };
 
-    let error_callback = |_err: ()| {
+    let error_callback = |_err: TestError| {
         eprintln!("Unexpected error");
     };
 
