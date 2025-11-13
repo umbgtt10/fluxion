@@ -10,10 +10,6 @@ description = "Stream combinators with ordering guarantees for async Rust"
 keywords = ["async", "stream", "reactive", "combinators", "futures"]
 categories = ["asynchronous", "concurrency"]
 
-[[bench]]
-name = "benchmarks"
-harness = false
-
 [dependencies]
 futures = { workspace = true }
 futures-util = { workspace = true }
@@ -23,4 +19,3 @@ pin-project = { workspace = true }
 
 [dev-dependencies]
 fluxion-test-utils = { workspace = true }
-criterion = { version = "0.7.0", features = ["async"] }

@@ -6,9 +6,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::ordered_merge::OrderedMergeExt;
-use crate::sequenced::Sequenced;
-use crate::sequenced_stream::SequencedStreamExt;
+use fluxion_stream::ordered_merge::OrderedMergeSyncExt;
+use fluxion_stream::sequenced::Sequenced;
+use fluxion_stream::sequenced_stream::SequencedStreamExt;
 
 #[pin_project]
 pub struct MergedStream<S, State, Item> {
@@ -33,7 +33,7 @@ where
 
 impl<S, State, Item> MergedStream<S, State, Item>
 where
-    S: Stream<Item = Item> + Send + 'static,
+    S: Stream<Item = Item> + Send + Sync + 'static,
     State: Send + Sync + 'static,
     Item: Send + Ord + Unpin + 'static,
 {
@@ -43,10 +43,10 @@ where
         process_fn: F,
     ) -> MergedStream<impl Stream<Item = Sequenced<T>>, State, Sequenced<T>>
     where
-        NewStream: SequencedStreamExt<NewItem> + Send + 'static,
+        NewStream: SequencedStreamExt<NewItem> + Send + Sync + 'static,
         F: FnMut(Sequenced<NewItem>, &mut State) -> Sequenced<T> + Send + Sync + Clone + 'static,
-        NewItem: Send + 'static,
-        T: Send + Ord + Unpin + 'static,
+        NewItem: Send + Sync + 'static,
+        T: Send + Sync + Ord + Unpin + 'static,
         Item: Into<Sequenced<T>>,
     {
         let shared_state = Arc::clone(&self.state);
@@ -62,10 +62,10 @@ where
         let self_stream_mapped = self.inner.map(|item| item.into());
 
         let merged_stream = vec![
-            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send>>,
-            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send>>,
+            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>,
+            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>,
         ]
-        .ordered_merge();
+        .ordered_merge_sync();
 
         MergedStream {
             inner: merged_stream,

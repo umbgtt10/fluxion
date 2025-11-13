@@ -1,6 +1,6 @@
 use crate::combine_latest::{CombineLatestExt, CombinedState, CompareByInner};
 use crate::combine_with_previous::CombineWithPreviousExt;
-use crate::ordered_merge::OrderedMergeSequencedExt;
+use crate::ordered_merge::OrderedMergeSequencedSyncExt;
 use crate::sequenced::Sequenced;
 use crate::sequenced_stream::SequencedStreamExt;
 use crate::take_latest_when::TakeLatestWhenExt;
@@ -135,26 +135,15 @@ where
     pub fn ordered_merge<S2>(
         self,
         others: Vec<S2>,
-    ) -> FluxionStream<impl Stream<Item = Sequenced<T>> + Send>
+    ) -> FluxionStream<impl Stream<Item = Sequenced<T>> + Send + Sync>
     where
-        S: SequencedStreamExt<T> + Send + 'static,
-        S2: Stream<Item = Sequenced<T>> + Send + 'static,
+        S: SequencedStreamExt<T> + Send + Sync + 'static,
+        S2: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
-        FluxionStream::new(OrderedMergeSequencedExt::ordered_merge(inner, others))
-    }
-
-    /// Merges this stream with multiple others, emitting all values in sequence order.
-    /// This is an alias for ordered_merge, provided for API consistency.
-    pub fn merge_with<S2>(
-        self,
-        others: Vec<S2>,
-    ) -> FluxionStream<impl Stream<Item = Sequenced<T>> + Send>
-    where
-        S: SequencedStreamExt<T> + Send + 'static,
-        S2: Stream<Item = Sequenced<T>> + Send + 'static,
-    {
-        self.ordered_merge(others)
+        FluxionStream::new(OrderedMergeSequencedSyncExt::ordered_merge_sync(
+            inner, others,
+        ))
     }
 }
 

@@ -1,0 +1,26 @@
+[package]
+name = "fluxion-merge"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+[dependencies]
+futures.workspace = true
+futures-util.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+pin-project.workspace = true
+
+# Depend on fluxion-stream for Sequenced and traits
+fluxion-stream.workspace = true
+
+[dev-dependencies]
+fluxion-test-utils.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+criterion = { version = "0.7.0", features = ["async"] }

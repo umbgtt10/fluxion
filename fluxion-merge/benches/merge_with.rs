@@ -1,5 +1,5 @@
 use criterion::{BenchmarkId, Criterion, Throughput};
-use fluxion_stream::MergedStream;
+use fluxion_merge::MergedStream;
 use fluxion_stream::sequenced::Sequenced;
 use futures::stream::{self, StreamExt};
 use std::hint::black_box;

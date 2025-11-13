@@ -4,6 +4,7 @@ members = [
     "fluxion-stream",
     "fluxion-exec",
     "fluxion-test-utils",
+    "fluxion-merge",
 ]
 
 [workspace.package]

@@ -1,4 +1,5 @@
-use fluxion_stream::{merge_with::MergedStream, sequenced::Sequenced};
+use fluxion_merge::MergedStream;
+use fluxion_stream::sequenced::Sequenced;
 use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::{
     TestChannels,

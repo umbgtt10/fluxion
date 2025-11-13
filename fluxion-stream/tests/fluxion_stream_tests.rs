@@ -280,3 +280,261 @@ async fn test_fluxion_stream_ordered_merge() {
     let result3 = merged.next().await.unwrap();
     assert_eq!(result3.get(), &plant_rose());
 }
+
+/// Test ordered_merge -> combine_with_previous composition
+/// Merges multiple streams and tracks deltas between consecutive values
+#[tokio::test]
+async fn test_ordered_merge_then_combine_with_previous() {
+    // Arrange
+    let person = FluxionChannel::new();
+    let animal = FluxionChannel::new();
+
+    // Chain: ordered_merge -> combine_with_previous
+    let composed = FluxionStream::new(person.stream)
+        .ordered_merge(vec![animal.stream])
+        .combine_with_previous();
+
+    let mut composed = Box::pin(composed);
+
+    // Act & Assert
+    push(person_alice(), &person.sender);
+    let (prev, curr) = composed.next().await.unwrap();
+    assert!(prev.is_none());
+    assert_eq!(curr.get(), &person_alice());
+
+    push(animal_dog(), &animal.sender);
+    let (prev, curr) = composed.next().await.unwrap();
+    assert_eq!(prev.unwrap().get(), &person_alice());
+    assert_eq!(curr.get(), &animal_dog());
+
+    push(person_bob(), &person.sender);
+    let (prev, curr) = composed.next().await.unwrap();
+    assert_eq!(prev.unwrap().get(), &animal_dog());
+    assert_eq!(curr.get(), &person_bob());
+}
+
+/// Test combine_latest -> combine_with_previous composition
+/// Creates combined state, then tracks how it changes over time
+#[tokio::test]
+async fn test_combine_latest_then_combine_with_previous() {
+    // Arrange
+    let person: FluxionChannel<TestData> = FluxionChannel::new();
+    let animal: FluxionChannel<TestData> = FluxionChannel::new();
+
+    static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+
+    // Chain: combine_latest -> combine_with_previous
+    let composed = FluxionStream::new(person.stream)
+        .combine_latest(vec![animal.stream], COMBINE_FILTER)
+        .combine_with_previous();
+
+    let mut composed = Box::pin(composed);
+
+    // Act & Assert
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
+
+    let (prev, curr) = composed.next().await.unwrap();
+    assert!(prev.is_none());
+    let curr_state = curr.get().get_state();
+    assert_eq!(curr_state[0], person_alice());
+    assert_eq!(curr_state[1], animal_dog());
+
+    push(person_bob(), &person.sender);
+    let (prev, curr) = composed.next().await.unwrap();
+    let prev_seq = prev.unwrap();
+    let prev_state = prev_seq.get().get_state();
+    assert_eq!(prev_state[0], person_alice());
+    assert_eq!(prev_state[1], animal_dog());
+    let curr_state = curr.get().get_state();
+    assert_eq!(curr_state[0], person_bob());
+    assert_eq!(curr_state[1], animal_dog());
+}
+
+/// Test combine_latest -> take_latest_when composition
+/// Creates combined state, then conditionally emits based on another filter stream
+#[tokio::test]
+async fn test_combine_latest_then_take_latest_when() {
+    // Arrange
+    let person: FluxionChannel<TestData> = FluxionChannel::new();
+    let animal: FluxionChannel<TestData> = FluxionChannel::new();
+    let filter: FluxionChannel<CombinedState<TestData>> = FluxionChannel::new();
+
+    static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+    static LATEST_FILTER: fn(&CombinedState<CombinedState<TestData>>) -> bool = |_| true;
+
+    // Chain: combine_latest -> take_latest_when
+    let composed = FluxionStream::new(person.stream)
+        .combine_latest(vec![animal.stream], COMBINE_FILTER)
+        .take_latest_when(filter.stream, LATEST_FILTER);
+
+    let mut composed = Box::pin(composed);
+
+    // Act & Assert
+    let filter_state = CombinedState::new(vec![person_alice()]);
+    push(filter_state, &filter.sender);
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
+
+    let result = composed.next().await.unwrap();
+    let state = result.get().get_state();
+    assert_eq!(state.len(), 2);
+    assert_eq!(state[0], person_alice());
+    assert_eq!(state[1], animal_dog());
+
+    push(person_bob(), &person.sender);
+    let result = composed.next().await.unwrap();
+    let state = result.get().get_state();
+    assert_eq!(state[0], person_bob());
+    assert_eq!(state[1], animal_dog());
+}
+
+/// Test ordered_merge -> take_while_with composition
+/// Merges streams and terminates when a condition is no longer met
+#[tokio::test]
+async fn test_ordered_merge_then_take_while_with() {
+    // Arrange
+    let person = FluxionChannel::new();
+    let animal = FluxionChannel::new();
+    let filter: FluxionChannel<bool> = FluxionChannel::new();
+
+    // Chain: ordered_merge -> take_while_with
+    let composed = FluxionStream::new(person.stream)
+        .ordered_merge(vec![animal.stream])
+        .take_while_with(filter.stream, |f| *f);
+
+    let mut composed = Box::pin(composed);
+
+    // Act & Assert
+    push(true, &filter.sender);
+    push(person_alice(), &person.sender);
+    assert_eq!(composed.next().await.unwrap(), person_alice());
+
+    push(animal_dog(), &animal.sender);
+    assert_eq!(composed.next().await.unwrap(), animal_dog());
+
+    push(person_bob(), &person.sender);
+    assert_eq!(composed.next().await.unwrap(), person_bob());
+
+    // Filter becomes false - stream terminates
+    push(false, &filter.sender);
+    push(person_charlie(), &person.sender);
+    assert_no_element_emitted(&mut composed, 100).await;
+}
+
+/// Test combine_latest -> take_while_with, then parallel merge
+/// Three-level composition demonstrating complex stream processing
+#[tokio::test]
+async fn test_triple_composition_combine_latest_take_while_ordered_merge() {
+    // Arrange
+    let person: FluxionChannel<TestData> = FluxionChannel::new();
+    let animal: FluxionChannel<TestData> = FluxionChannel::new();
+    let filter: FluxionChannel<bool> = FluxionChannel::new();
+
+    static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+
+    // Chain: combine_latest -> take_while_with -> combine_with_previous
+    let composed = FluxionStream::new(person.stream)
+        .combine_latest(vec![animal.stream], COMBINE_FILTER)
+        .take_while_with(filter.stream, |f| *f);
+
+    let mut composed = Box::pin(composed);
+
+    // Act & Assert
+    push(true, &filter.sender);
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
+
+    let result = composed.next().await.unwrap();
+    assert_eq!(result.get_state().len(), 2);
+    assert_eq!(result.get_state()[0], person_alice());
+    assert_eq!(result.get_state()[1], animal_dog());
+
+    push(person_bob(), &person.sender);
+    let result = composed.next().await.unwrap();
+    assert_eq!(result.get_state()[0], person_bob());
+    assert_eq!(result.get_state()[1], animal_dog());
+
+    // Filter becomes false - stream terminates
+    push(false, &filter.sender);
+    push(person_charlie(), &person.sender);
+    assert_no_element_emitted(&mut composed, 100).await;
+}
+
+/// Test ordered_merge -> take_latest_when composition
+/// Merges streams, then conditionally emits based on filter
+#[tokio::test]
+async fn test_ordered_merge_then_take_latest_when() {
+    // Arrange
+    let person = FluxionChannel::new();
+    let animal = FluxionChannel::new();
+    let filter: FluxionChannel<TestData> = FluxionChannel::new();
+
+    static LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+
+    // Chain: ordered_merge -> take_latest_when
+    let composed = FluxionStream::new(person.stream)
+        .ordered_merge(vec![animal.stream])
+        .take_latest_when(filter.stream, LATEST_FILTER);
+
+    let mut composed = Box::pin(composed);
+
+    // Act & Assert
+    push(person_alice(), &filter.sender);
+    push(person_alice(), &person.sender);
+    assert_eq!(composed.next().await.unwrap().get(), &person_alice());
+
+    push(animal_dog(), &animal.sender);
+    assert_eq!(composed.next().await.unwrap().get(), &animal_dog());
+
+    push(person_bob(), &person.sender);
+    assert_eq!(composed.next().await.unwrap().get(), &person_bob());
+
+    // Filter closes but stream continues with last filter value
+    drop(filter.sender);
+    push(person_charlie(), &person.sender);
+    assert_eq!(composed.next().await.unwrap().get(), &person_charlie());
+}
+
+/// Test take_latest_when -> ordered_merge composition
+/// Filters a primary stream, then merges it with other streams
+#[tokio::test]
+async fn test_take_latest_when_then_ordered_merge() {
+    // Arrange
+    let source: FluxionChannel<TestData> = FluxionChannel::new();
+    let filter: FluxionChannel<TestData> = FluxionChannel::new();
+    let animal: FluxionChannel<TestData> = FluxionChannel::new();
+
+    static LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+
+    // Chain: take_latest_when -> ordered_merge
+    let composed = FluxionStream::new(source.stream)
+        .take_latest_when(filter.stream, LATEST_FILTER)
+        .ordered_merge(vec![animal.stream]);
+
+    let mut composed = Box::pin(composed);
+
+    // Act & Assert
+    push(person_alice(), &filter.sender);
+    push(person_alice(), &source.sender);
+    push(animal_dog(), &animal.sender);
+
+    // First emission could be either person_alice or animal_dog
+    let result1 = composed.next().await.unwrap();
+    let result2 = composed.next().await.unwrap();
+
+    // Check that we got both values
+    let values: Vec<_> = vec![result1.get(), result2.get()];
+    assert!(values.contains(&&person_alice()));
+    assert!(values.contains(&&animal_dog()));
+
+    push(person_bob(), &source.sender);
+    let result = composed.next().await.unwrap();
+    assert_eq!(result.get(), &person_bob());
+
+    // Filter closes but stream continues
+    drop(filter.sender);
+    push(person_charlie(), &source.sender);
+    let result = composed.next().await.unwrap();
+    assert_eq!(result.get(), &person_charlie());
+}
