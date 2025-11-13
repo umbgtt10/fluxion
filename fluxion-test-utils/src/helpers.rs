@@ -51,9 +51,9 @@ where
 
 pub async fn expect_next_combined_equals<S>(stream: &mut S, expected: &[TestData])
 where
-    S: Stream<Item = CombinedState<Sequenced<TestData>>> + Unpin,
+    S: Stream<Item = Sequenced<CombinedState<TestData>>> + Unpin,
 {
     let state = stream.next().await.expect("expected next combined state");
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.value.get_state().to_vec();
     assert_eq!(actual, expected);
 }

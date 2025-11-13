@@ -1,9 +1,15 @@
 use futures::Stream;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+use std::fmt::Debug;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+use crate::sequenced::Sequenced;
+use crate::sequenced_stream::SequencedStreamExt;
+
+/// Internal low-level ordered merge for non-Sequenced streams
+/// Used by other operators internally
 pub struct OrderedMerge<T> {
     streams: Vec<Pin<Box<dyn Stream<Item = T> + Send>>>,
     buffer: BinaryHeap<Reverse<T>>,
@@ -163,5 +169,44 @@ where
 
     fn ordered_merge_sync(self) -> OrderedMergeSync<Self::Item> {
         OrderedMergeSync::new(self)
+    }
+}
+
+/// High-level ordered merge for Sequenced streams
+/// This is the Fluxion extension trait that merges multiple Sequenced streams
+/// and emits all values in sequence order
+pub trait OrderedMergeSequencedExt<T, S2>: SequencedStreamExt<T> + Sized
+where
+    T: Clone + Debug + Send + Sync + Unpin + 'static,
+    Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    S2: Stream<Item = Sequenced<T>> + Send + 'static,
+{
+    /// Merges multiple Sequenced streams, emitting all values in sequence order.
+    /// Unlike combine_latest, this doesn't wait for all streams - it emits every value
+    /// from all streams in order by sequence number.
+    ///
+    /// # Arguments
+    /// * `others` - Vector of other streams to merge with this stream
+    ///
+    /// # Returns
+    /// Stream of `Sequenced<T>` where values are emitted in sequence order
+    fn ordered_merge(self, others: Vec<S2>) -> impl Stream<Item = Sequenced<T>> + Send;
+}
+
+impl<T, S, S2> OrderedMergeSequencedExt<T, S2> for S
+where
+    T: Clone + Debug + Send + Sync + Unpin + 'static,
+    Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    S: SequencedStreamExt<T> + Send + 'static,
+    S2: Stream<Item = Sequenced<T>> + Send + 'static,
+{
+    fn ordered_merge(self, others: Vec<S2>) -> impl Stream<Item = Sequenced<T>> + Send {
+        let mut all_streams =
+            vec![Box::pin(self) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send>>];
+        for stream in others {
+            all_streams.push(Box::pin(stream));
+        }
+
+        OrderedMerge::new(all_streams)
     }
 }

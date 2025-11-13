@@ -1,5 +1,4 @@
 use fluxion_stream::combine_latest::CombinedState;
-use fluxion_stream::sequenced::Sequenced;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::push;
@@ -12,14 +11,13 @@ use fluxion_test_utils::{
 };
 use futures::StreamExt;
 
-static FILTER: fn(&CombinedState<Sequenced<TestData>>) -> bool =
-    |_: &CombinedState<Sequenced<TestData>>| true;
+static FILTER: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
 
 #[tokio::test]
 async fn test_with_latest_from_complete() {
     // Arrange
-    let animal = FluxionChannel::new();
-    let person = FluxionChannel::new();
+    let animal = FluxionChannel::<TestData>::new();
+    let person = FluxionChannel::<TestData>::new();
 
     let combined_stream = animal.stream.with_latest_from(person.stream, FILTER);
 
@@ -85,7 +83,7 @@ async fn test_with_latest_from_primary_waits_for_secondary() {
 #[tokio::test]
 async fn test_with_latest_from_secondary_completes_early() {
     // Arrange
-    let (animal, person) = TestChannels::two();
+    let (animal, person) = TestChannels::two::<TestData>();
 
     let combined_stream = animal.stream.with_latest_from(person.stream, FILTER);
 
@@ -348,12 +346,12 @@ async fn test_with_latest_from_boundary_maximum_concurrent_streams() {
 #[tokio::test]
 async fn test_with_latest_from_filter_rejects_initial_state() {
     // Arrange
-    let (primary, secondary) = TestChannels::two();
+    let (primary, secondary) = TestChannels::two::<TestData>();
 
     // Filter that rejects when primary is Dog
-    let filter = |state: &CombinedState<Sequenced<TestData>>| {
+    let filter = |state: &CombinedState<TestData>| {
         let values = state.get_state();
-        values[1].value != animal_dog() // Reject when primary is Dog
+        values[1] != animal_dog() // Reject when primary is Dog
     };
 
     let combined_stream = primary.stream.with_latest_from(secondary.stream, filter);
@@ -371,21 +369,21 @@ async fn test_with_latest_from_filter_rejects_initial_state() {
 
     // Assert: Now it should emit
     let (sec, prim) = stream.next().await.unwrap();
-    assert_eq!(sec.value, person_alice());
-    assert_eq!(prim.value, animal_cat());
+    assert_eq!(sec.get(), &person_alice());
+    assert_eq!(prim.get(), &animal_cat());
 }
 
 #[tokio::test]
 async fn test_with_latest_from_filter_alternates() {
     // Arrange
-    let (primary, secondary) = TestChannels::two();
+    let (primary, secondary) = TestChannels::two::<TestData>();
 
     // Counter to alternate filter behavior
     let counter = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let counter_clone = counter.clone();
 
     // Filter alternates: true, false, true, false, ...
-    let filter = move |_: &CombinedState<Sequenced<TestData>>| {
+    let filter = move |_: &CombinedState<TestData>| {
         let count = counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         count.is_multiple_of(2) // true for even counts, false for odd
     };
@@ -427,10 +425,10 @@ async fn test_with_latest_from_filter_alternates() {
 #[should_panic(expected = "Filter panicked")]
 async fn test_with_latest_from_filter_panics() {
     // Arrange
-    let (primary, secondary) = TestChannels::two();
+    let (primary, secondary) = TestChannels::two::<TestData>();
 
     // Filter that panics
-    let filter = |_: &CombinedState<Sequenced<TestData>>| -> bool {
+    let filter = |_: &CombinedState<TestData>| -> bool {
         panic!("Filter panicked");
     };
 
@@ -489,9 +487,9 @@ async fn test_with_latest_from_timestamp_ordering() {
 }
 
 #[tokio::test]
-async fn test_with_latest_from_multiple_secondary_before_primary() {
+async fn test_with_latest_from_multiple_secondary_values_before_primary() {
     // Arrange
-    let (primary, secondary) = TestChannels::two();
+    let (primary, secondary) = TestChannels::two::<TestData>();
 
     let combined_stream = primary.stream.with_latest_from(secondary.stream, FILTER);
     let mut stream = Box::pin(combined_stream);

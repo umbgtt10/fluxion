@@ -1,5 +1,6 @@
 use crate::combine_latest::{CombineLatestExt, CombinedState, CompareByInner};
 use crate::combine_with_previous::CombineWithPreviousExt;
+use crate::ordered_merge::OrderedMergeSequencedExt;
 use crate::sequenced::Sequenced;
 use crate::sequenced_stream::SequencedStreamExt;
 use crate::take_latest_when::TakeLatestWhenExt;
@@ -102,7 +103,7 @@ where
     pub fn with_latest_from<S2>(
         self,
         other: S2,
-        filter: impl Fn(&CombinedState<Sequenced<T>>) -> bool + Send + Sync + 'static,
+        filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = (Sequenced<T>, Sequenced<T>)> + Send
     where
         S: SequencedStreamExt<T> + Send + Unpin + 'static,
@@ -117,15 +118,30 @@ where
     pub fn combine_latest<S2>(
         self,
         others: Vec<S2>,
-        filter: impl Fn(&CombinedState<Sequenced<T>>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = CombinedState<Sequenced<T>>> + Send
+        filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
+    ) -> FluxionStream<impl Stream<Item = Sequenced<CombinedState<T>>> + Send>
     where
         S: SequencedStreamExt<T> + Send + 'static,
         S2: Stream<Item = Sequenced<T>> + Send + 'static,
         Sequenced<T>: CompareByInner,
     {
         let inner = self.into_inner();
-        CombineLatestExt::combine_latest(inner, others, filter)
+        FluxionStream::new(CombineLatestExt::combine_latest(inner, others, filter))
+    }
+
+    /// Merges this stream with multiple others, emitting all values in sequence order.
+    /// Unlike combine_latest, this doesn't wait for all streams - it emits every value
+    /// from all streams individually in sequence order.
+    pub fn ordered_merge<S2>(
+        self,
+        others: Vec<S2>,
+    ) -> FluxionStream<impl Stream<Item = Sequenced<T>> + Send>
+    where
+        S: SequencedStreamExt<T> + Send + 'static,
+        S2: Stream<Item = Sequenced<T>> + Send + 'static,
+    {
+        let inner = self.into_inner();
+        FluxionStream::new(OrderedMergeSequencedExt::ordered_merge(inner, others))
     }
 }
 

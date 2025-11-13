@@ -1,7 +1,4 @@
-use fluxion_stream::{
-    combine_latest::{CombineLatestExt, CombinedState},
-    sequenced::Sequenced,
-};
+use fluxion_stream::combine_latest::{CombineLatestExt, CombinedState};
 use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::{
     TestChannels,
@@ -15,8 +12,7 @@ use futures::StreamExt;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-static FILTER: fn(&CombinedState<Sequenced<TestData>>) -> bool =
-    |_: &CombinedState<Sequenced<TestData>>| true;
+static FILTER: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
 
 #[tokio::test]
 async fn test_combine_latest_empty_streams() {
@@ -113,19 +109,19 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues()
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.value.get_state().to_vec();
     assert_eq!(actual, vec![person_alice(), animal_dog(), plant_rose()]);
 
     drop(plant.sender);
 
     push(person_bob(), &person.sender);
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.value.get_state().to_vec();
     assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
 
     push(animal_spider(), &animal.sender);
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.value.get_state().to_vec();
     assert_eq!(actual, vec![person_bob(), animal_spider(), plant_rose()]);
 }
 
@@ -156,7 +152,7 @@ async fn combine_latest_template_test(
     order3: DataVariant,
 ) {
     // Arrange
-    let (person, animal, plant) = TestChannels::three();
+    let (person, animal, plant) = TestChannels::three::<TestData>();
 
     let senders = vec![person.sender, animal.sender, plant.sender];
 
@@ -173,7 +169,7 @@ async fn combine_latest_template_test(
     let mut combined_stream = Box::pin(combined_stream);
 
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.value.get_state().to_vec();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
@@ -302,7 +298,7 @@ async fn combine_latest_stream_order_test(
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
+    let actual: Vec<TestData> = state.value.get_state().to_vec();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
@@ -339,14 +335,14 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
 #[tokio::test]
 async fn test_combine_latest_filter_rejects_initial_state() {
     // Arrange
-    let (person, animal) = TestChannels::two();
+    let (person, animal) = TestChannels::two::<TestData>();
 
     // Filter that rejects the initial state (when both Alice and Dog are present)
-    let filter = |state: &CombinedState<Sequenced<TestData>>| {
+    let filter = |state: &CombinedState<TestData>| {
         let values = state.get_state();
         if values.len() == 2 {
             // Reject if we have Alice and Dog
-            !(values[0].value == person_alice() && values[1].value == animal_dog())
+            !(values[0] == person_alice() && values[1] == animal_dog())
         } else {
             true
         }
@@ -372,13 +368,13 @@ async fn test_combine_latest_filter_rejects_initial_state() {
 #[tokio::test]
 async fn test_combine_latest_filter_alternates_between_true_false() {
     // Arrange
-    let (person, animal) = TestChannels::two();
+    let (person, animal) = TestChannels::two::<TestData>();
 
     // Filter that only allows emissions when person is Alice or Charlie (rejects Bob and Diane)
-    let filter = |state: &CombinedState<Sequenced<TestData>>| {
+    let filter = |state: &CombinedState<TestData>| {
         let values = state.get_state();
         if !values.is_empty() {
-            values[0].value == person_alice() || values[0].value == person_charlie()
+            values[0] == person_alice() || values[0] == person_charlie()
         } else {
             false
         }
@@ -429,11 +425,11 @@ async fn test_combine_latest_filter_alternates_between_true_false() {
 #[should_panic(expected = "Filter function panicked on purpose")]
 async fn test_combine_latest_filter_function_panics() {
     // Arrange
-    let (person, animal) = TestChannels::two();
+    let (person, animal) = TestChannels::two::<TestData>();
 
     // Filter that panics on the second evaluation
     let call_count = Arc::new(AtomicUsize::new(0));
-    let filter = move |_state: &CombinedState<Sequenced<TestData>>| {
+    let filter = move |_state: &CombinedState<TestData>| {
         let count = call_count.fetch_add(1, Ordering::SeqCst);
         if count == 1 {
             panic!("Filter function panicked on purpose");

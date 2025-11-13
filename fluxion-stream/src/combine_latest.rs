@@ -20,20 +20,22 @@ impl<T: Ord> CompareByInner for Sequenced<T> {
 
 pub trait CombineLatestExt<T, S2>: SequencedStreamExt<T> + Sized
 where
+    T: Clone + Debug + Send + Sync + 'static,
     Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     S2: Stream<Item = Sequenced<T>> + Send + 'static,
 {
     fn combine_latest(
         self,
         others: Vec<S2>,
-        filter: impl Fn(&CombinedState<Sequenced<T>>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = CombinedState<Sequenced<T>>> + Send;
+        filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
+    ) -> impl Stream<Item = Sequenced<CombinedState<T>>> + Send;
 }
 
 type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send>>>;
 
 impl<T, S, S2> CombineLatestExt<T, S2> for S
 where
+    T: Clone + Debug + Send + Sync + 'static,
     Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     S: SequencedStreamExt<T> + Send + 'static,
     S2: Stream<Item = Sequenced<T>> + Send + 'static,
@@ -41,8 +43,8 @@ where
     fn combine_latest(
         self,
         others: Vec<S2>,
-        filter: impl Fn(&CombinedState<Sequenced<T>>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = CombinedState<Sequenced<T>>> + Send {
+        filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
+    ) -> impl Stream<Item = Sequenced<CombinedState<T>>> + Send {
         let mut streams: PinnedStreams<T> = vec![];
 
         streams.push(Box::pin(self.map(move |value| (value, 0))));
@@ -61,6 +63,7 @@ where
 
                 move |(value, index)| {
                     let state = Arc::clone(&state);
+                    let sequence = value.sequence(); // Capture sequence of triggering value
                     async move {
                         let mut state = state
                             .lock()
@@ -68,24 +71,54 @@ where
                         state.insert(index, value);
 
                         if state.is_complete() {
-                            Some(state.clone())
+                            Some((state.clone(), sequence))
                         } else {
                             None
                         }
                     }
                 }
             })
-            .map(|state| CombinedState::new(state.get_ordered_values().clone()))
-            .filter(move |combined_state| ready(filter(combined_state)))
+            .map(|(state, sequence)| {
+                // Extract the inner values from Sequenced<T> to create CombinedState<T>
+                let inner_values: Vec<T> = state
+                    .get_ordered_values()
+                    .iter()
+                    .map(|seq_val| seq_val.get().clone())
+                    .collect();
+                let combined = CombinedState::new(inner_values);
+                Sequenced::with_sequence(combined, sequence)
+            })
+            .filter(move |sequenced_combined| {
+                let combined_state = sequenced_combined.get();
+                ready(filter(combined_state))
+            })
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CombinedState<V>
 where
     V: Clone + Send + Sync,
 {
     state: Vec<V>,
+}
+
+impl<V> PartialOrd for CombinedState<V>
+where
+    V: Clone + Send + Sync + Ord,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<V> Ord for CombinedState<V>
+where
+    V: Clone + Send + Sync + Ord,
+{
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.state.cmp(&other.state)
+    }
 }
 
 impl<V> CombinedState<V>

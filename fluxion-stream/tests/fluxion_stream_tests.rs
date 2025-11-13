@@ -59,8 +59,7 @@ async fn test_fluxion_stream_combine_latest_composition() {
     let animal = FluxionChannel::new();
     let plant = FluxionChannel::new();
 
-    static COMBINE_FILTER: fn(&CombinedState<fluxion_stream::Sequenced<TestData>>) -> bool =
-        |_| true;
+    static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
 
     // Use FluxionStream for combine_latest
     let combined = FluxionStream::new(person.stream)
@@ -73,11 +72,13 @@ async fn test_fluxion_stream_combine_latest_composition() {
     push(animal_dog(), &animal.sender);
     push(plant_rose(), &plant.sender);
 
-    // Assert
+    // Assert - now returns Sequenced<CombinedState<TestData>>
     let result = combined.next().await.unwrap();
-    let state = result.get_state();
+    let state = result.get().get_state();
     assert_eq!(state.len(), 3);
-    assert_eq!(state[0].get(), &person_alice());
+    assert_eq!(state[0], person_alice());
+    assert_eq!(state[1], animal_dog());
+    assert_eq!(state[2], plant_rose());
 }
 
 /// Test FluxionStream with with_latest_from
@@ -86,8 +87,7 @@ async fn test_fluxion_stream_with_latest_from() {
     // Arrange
     let (primary, secondary) = TestChannels::two::<TestData>();
 
-    static WITH_LATEST_FILTER: fn(&CombinedState<fluxion_stream::Sequenced<TestData>>) -> bool =
-        |_| true;
+    static WITH_LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
 
     // Use FluxionStream for with_latest_from
     let combined =
@@ -199,4 +199,48 @@ async fn test_fluxion_stream_take_latest_when_take_while() {
     push(false, &while_filter.sender);
     push(person_charlie(), &source.sender);
     assert_no_element_emitted(&mut composed, 100).await;
+}
+
+// Note: Direct composition of combine_latest + take_while is not possible
+// because combine_latest uses OrderedMerge which boxes streams as dyn Stream + Send (not Sync).
+// take_while_with requires the input stream to be Sync, which would require all combine_latest
+// input streams to also be Sync. This is a known architectural limitation.
+//
+// The refactoring to return Sequenced<CombinedState<T>> (instead of CombinedState<Sequenced<T>>)
+// was still valuable as it:
+// - Properly assigns sequence numbers to combined emissions
+// - Enables CombinedState to implement Ord
+// - Improves composability with other operators that don't require Sync
+// - Provides a cleaner API where filters receive &CombinedState<T>
+
+/// Test FluxionStream ordered_merge - merges multiple streams and emits all values per sequence
+#[tokio::test]
+async fn test_fluxion_stream_ordered_merge() {
+    // Arrange
+    let person = FluxionChannel::new();
+    let animal = FluxionChannel::new();
+    let plant = FluxionChannel::new();
+
+    // Merge all three streams - emits each value individually in sequence order
+    // Note: With FluxionChannel, each push gets a unique global sequence
+    let merged = FluxionStream::new(person.stream).ordered_merge(vec![animal.stream, plant.stream]);
+
+    let mut merged = Box::pin(merged);
+
+    // Act & Assert - Each push gets a unique global sequence
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
+    push(plant_rose(), &plant.sender);
+
+    // First value emitted - should be person_alice
+    let result1 = merged.next().await.unwrap();
+    assert_eq!(result1.get(), &person_alice());
+
+    // Second value emitted - should be animal_dog with next sequence
+    let result2 = merged.next().await.unwrap();
+    assert_eq!(result2.get(), &animal_dog());
+
+    // Third value emitted - should be plant_rose with next sequence
+    let result3 = merged.next().await.unwrap();
+    assert_eq!(result3.get(), &plant_rose());
 }

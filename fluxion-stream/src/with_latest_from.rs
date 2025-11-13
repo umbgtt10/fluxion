@@ -7,6 +7,7 @@ use crate::sequenced_stream::SequencedStreamExt;
 
 pub trait WithLatestFromExt<T, S2>: SequencedStreamExt<T> + Sized
 where
+    T: Clone + Debug + Send + Sync + 'static,
     Self: SequencedStreamExt<T> + Send + 'static,
     Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     S2: Stream<Item = Sequenced<T>> + Send + 'static,
@@ -14,12 +15,13 @@ where
     fn with_latest_from(
         self,
         other: S2,
-        filter: impl Fn(&CombinedState<Sequenced<T>>) -> bool + Send + Sync + 'static,
+        filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = (Sequenced<T>, Sequenced<T>)> + Send;
 }
 
 impl<T, S2, P> WithLatestFromExt<T, S2> for P
 where
+    T: Clone + Debug + Send + Sync + 'static,
     Self: SequencedStreamExt<T> + Send + 'static,
     Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     S2: Stream<Item = Sequenced<T>> + Send + 'static,
@@ -28,12 +30,18 @@ where
     fn with_latest_from(
         self,
         other: S2,
-        filter: impl Fn(&CombinedState<Sequenced<T>>) -> bool + Send + Sync + 'static,
+        filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = (Sequenced<T>, Sequenced<T>)> + Send {
         self.combine_latest(vec![other], filter)
-            .map(|combined_state| {
+            .map(|sequenced_combined| {
+                let combined_state = sequenced_combined.get();
                 let state = combined_state.get_state();
-                (state[0].clone(), state[1].clone())
+                // Create new Sequenced values from the inner T values
+                let seq = sequenced_combined.sequence();
+                (
+                    Sequenced::with_sequence(state[0].clone(), seq),
+                    Sequenced::with_sequence(state[1].clone(), seq),
+                )
             })
     }
 }
