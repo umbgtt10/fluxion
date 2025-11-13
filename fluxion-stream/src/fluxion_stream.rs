@@ -1,7 +1,7 @@
 use crate::Ordered;
 use crate::combine_latest::{CombineLatestExt, CombinedState};
 use crate::combine_with_previous::CombineWithPreviousExt;
-use crate::ordered_merge::OrderedStreamSyncExt;
+use crate::ordered_merge::OrderedStreamExt;
 use crate::take_latest_when::TakeLatestWhenExt;
 use crate::take_while_with::TakeWhileExt;
 use crate::with_latest_from::WithLatestFromExt;
@@ -143,6 +143,6 @@ where
         S2: Stream<Item = T> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
-        FluxionStream::new(OrderedStreamSyncExt::ordered_merge_sync(inner, others))
+        FluxionStream::new(OrderedStreamExt::ordered_merge(inner, others))
     }
 }

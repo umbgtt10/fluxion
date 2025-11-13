@@ -73,8 +73,8 @@ where
         let self_stream_mapped = self.inner.map(|item| item.into());
 
         let merged_stream = vec![
-            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send>>,
-            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send>>,
+            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>,
+            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>,
         ]
         .ordered_merge();
 

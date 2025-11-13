@@ -7,7 +7,8 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-type PinnedItemStream<TItem, TFilter> = Pin<Box<dyn Stream<Item = Item<TItem, TFilter>> + Send>>;
+type PinnedItemStream<TItem, TFilter> =
+    Pin<Box<dyn Stream<Item = Item<TItem, TFilter>> + Send + Sync>>;
 
 /// Takes elements from the source stream while the condition on the filter stream is satisfied.
 ///

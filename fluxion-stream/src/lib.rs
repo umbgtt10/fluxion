@@ -11,7 +11,7 @@ pub use combine_latest::{CombineLatestExt, CombinedState};
 pub use combine_with_previous::CombineWithPreviousExt;
 pub use fluxion_core::{CompareByInner, Ordered, OrderedWrapper};
 pub use fluxion_stream::FluxionStream;
-pub use ordered_merge::{OrderedStreamExt, OrderedStreamSyncExt};
+pub use ordered_merge::OrderedStreamExt;
 pub use take_latest_when::TakeLatestWhenExt;
 pub use take_while_with::TakeWhileExt;
 pub use with_latest_from::WithLatestFromExt;

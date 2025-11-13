@@ -21,7 +21,7 @@ where
         S2: Stream<Item = T> + Send + Sync + 'static;
 }
 
-type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (T, usize)> + Send>>>;
+type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (T, usize)> + Send + Sync>>>;
 
 impl<T, S> CombineLatestExt<T> for S
 where

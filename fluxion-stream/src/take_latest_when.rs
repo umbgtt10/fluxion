@@ -56,8 +56,7 @@ where
     }
 }
 
-type IndexedStream<T> = Pin<Box<dyn Stream<Item = (T, usize)> + Send>>;
-
+type IndexedStream<T> = Pin<Box<dyn Stream<Item = (T, usize)> + Send + Sync>>;
 impl<T, S, SF> TakeLatestWhenExt<T, SF> for S
 where
     S: Stream<Item = T> + Send + Sync + 'static,
