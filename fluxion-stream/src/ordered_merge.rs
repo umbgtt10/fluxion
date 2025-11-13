@@ -10,45 +10,6 @@ pub use fluxion_ordered_merge::{
     OrderedMerge, OrderedMergeExt, OrderedMergeSync, OrderedMergeSyncExt,
 };
 
-/// High-level ordered merge for Sequenced streams
-/// This is the Fluxion extension trait that merges multiple Sequenced streams
-/// and emits all values in sequence order
-pub trait OrderedMergeSequencedExt<T, S2>: SequencedStreamExt<T> + Sized
-where
-    T: Clone + Debug + Send + Sync + Unpin + 'static,
-    Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    S2: Stream<Item = Sequenced<T>> + Send + 'static,
-{
-    /// Merges multiple Sequenced streams, emitting all values in sequence order.
-    /// Unlike combine_latest, this doesn't wait for all streams - it emits every value
-    /// from all streams in order by sequence number.
-    ///
-    /// # Arguments
-    /// * `others` - Vector of other streams to merge with this stream
-    ///
-    /// # Returns
-    /// Stream of `Sequenced<T>` where values are emitted in sequence order
-    fn ordered_merge(self, others: Vec<S2>) -> impl Stream<Item = Sequenced<T>> + Send;
-}
-
-impl<T, S, S2> OrderedMergeSequencedExt<T, S2> for S
-where
-    T: Clone + Debug + Send + Sync + Unpin + 'static,
-    Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    S: SequencedStreamExt<T> + Send + 'static,
-    S2: Stream<Item = Sequenced<T>> + Send + 'static,
-{
-    fn ordered_merge(self, others: Vec<S2>) -> impl Stream<Item = Sequenced<T>> + Send {
-        let mut all_streams =
-            vec![Box::pin(self) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send>>];
-        for stream in others {
-            all_streams.push(Box::pin(stream));
-        }
-
-        OrderedMerge::new(all_streams)
-    }
-}
-
 /// High-level ordered merge for Sequenced streams with Sync support
 /// This variant returns Sync streams for composition with operators requiring Sync
 pub trait OrderedMergeSequencedSyncExt<T, S2>: SequencedStreamExt<T> + Sized
