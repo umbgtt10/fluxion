@@ -9,18 +9,12 @@ use futures::StreamExt;
 
 #[tokio::test]
 async fn test_ordered_merge_all_permutations() {
-    ordered_merge_template_test(DataVariant::Person, DataVariant::Animal, DataVariant::Plant)
-        .await;
-    ordered_merge_template_test(DataVariant::Person, DataVariant::Plant, DataVariant::Animal)
-        .await;
-    ordered_merge_template_test(DataVariant::Plant, DataVariant::Animal, DataVariant::Person)
-        .await;
-    ordered_merge_template_test(DataVariant::Plant, DataVariant::Person, DataVariant::Animal)
-        .await;
-    ordered_merge_template_test(DataVariant::Animal, DataVariant::Person, DataVariant::Plant)
-        .await;
-    ordered_merge_template_test(DataVariant::Animal, DataVariant::Plant, DataVariant::Person)
-        .await;
+    ordered_merge_template_test(DataVariant::Person, DataVariant::Animal, DataVariant::Plant).await;
+    ordered_merge_template_test(DataVariant::Person, DataVariant::Plant, DataVariant::Animal).await;
+    ordered_merge_template_test(DataVariant::Plant, DataVariant::Animal, DataVariant::Person).await;
+    ordered_merge_template_test(DataVariant::Plant, DataVariant::Person, DataVariant::Animal).await;
+    ordered_merge_template_test(DataVariant::Animal, DataVariant::Person, DataVariant::Plant).await;
+    ordered_merge_template_test(DataVariant::Animal, DataVariant::Plant, DataVariant::Person).await;
 }
 
 async fn ordered_merge_template_test(
