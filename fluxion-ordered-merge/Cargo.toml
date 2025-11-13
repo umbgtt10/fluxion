@@ -19,6 +19,6 @@ futures = { workspace = true }
 pin-project = { workspace = true }
 
 [dev-dependencies]
-fluxion-test-utils = { path = "../fluxion-test-utils" }
+fluxion-test-utils = { workspace = true }
 tokio = { workspace = true }
-rstest = "0.26.1"
+rstest = { workspace = true }

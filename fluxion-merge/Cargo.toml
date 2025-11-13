@@ -22,4 +22,4 @@ pin-project.workspace = true
 [dev-dependencies]
 fluxion-test-utils.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-criterion = { version = "0.7.0", features = ["async"] }
+criterion = { workspace = true }

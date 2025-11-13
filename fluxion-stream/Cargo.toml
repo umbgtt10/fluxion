@@ -19,7 +19,7 @@ futures-util = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 pin-project = { workspace = true }
-tracing = { version = "0.1.41", optional = true }
+tracing = { workspace = true, optional = true }
 
 [features]
 default = []
@@ -27,7 +27,7 @@ tracing = ["dep:tracing"]
 
 [dev-dependencies]
 fluxion-test-utils = { workspace = true }
-criterion = { version = "0.7.0", features = ["html_reports"] }
+criterion = { workspace = true }
 
 [[bench]]
 name = "benchmarks"

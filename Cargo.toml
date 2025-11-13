@@ -28,6 +28,9 @@ pin-project = "1.1.10"
 async-trait = "0.1.89"
 async-stream = "0.3.6"
 
+# Logging
+tracing = "0.1.41"
+
 # Error handling
 thiserror = "2.0"
 
@@ -38,3 +41,7 @@ fluxion-ordered-merge = { path = "fluxion-ordered-merge" }
 fluxion-stream = { path = "fluxion-stream" }
 fluxion-exec = { path = "fluxion-exec" }
 fluxion-test-utils = { path = "fluxion-test-utils" }
+
+# Bench & testing utilities (used in members via workspace = true)
+criterion = { version = "0.7.0", features = ["async", "html_reports"] }
+rstest = "0.26.1"
