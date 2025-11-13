@@ -1,33 +1,33 @@
-//! Timestamped channels and testing utilities.
+//! Sequenced channels and testing utilities.
 //!
 //! This module provides:
-//! - Low-level timestamped channels (`timestamped_channel` submodule)
+//! - Low-level sequenced channels (`sequenced_channel` submodule)
 //! - High-level `FluxionChannel` for convenient testing
 
-use fluxion_stream::timestamped::Timestamped;
+use fluxion_stream::sequenced::Sequenced;
 use tokio::sync::mpsc::{
     self, UnboundedReceiver as TokioUnboundedReceiver, UnboundedSender as TokioUnboundedSender,
 };
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub struct FluxionChannel<T> {
-    pub sender: timestamped_channel::UnboundedSender<T>,
-    pub stream: UnboundedReceiverStream<Timestamped<T>>,
+    pub sender: sequenced_channel::UnboundedSender<T>,
+    pub stream: UnboundedReceiverStream<Sequenced<T>>,
 }
 
 impl<T> FluxionChannel<T> {
     pub fn new() -> Self {
-        let (sender, receiver) = timestamped_channel::unbounded_channel();
+        let (sender, receiver) = sequenced_channel::unbounded_channel();
         let stream = UnboundedReceiverStream::new(receiver.into_inner());
         Self { sender, stream }
     }
 
     pub fn empty() -> Self {
-        let (sender, receiver) = timestamped_channel::unbounded_channel();
+        let (sender, receiver) = sequenced_channel::unbounded_channel();
         let stream = UnboundedReceiverStream::new(receiver.into_inner());
         drop(sender);
 
-        let (dummy_sender, _) = timestamped_channel::unbounded_channel();
+        let (dummy_sender, _) = sequenced_channel::unbounded_channel();
         Self {
             sender: dummy_sender,
             stream,
@@ -49,20 +49,20 @@ impl<T> Default for FluxionChannel<T> {
     }
 }
 
-/// Low-level timestamped channel primitives.
+/// Low-level sequenced channel primitives.
 ///
 /// For most testing scenarios, use `FluxionChannel` instead. This submodule
 /// is useful when you need fine-grained control over sender/receiver handling.
-pub(crate) mod timestamped_channel {
+pub(crate) mod sequenced_channel {
     use super::*;
 
-    /// An unbounded sender that automatically wraps values with timestamps.
+    /// An unbounded sender that automatically wraps values with sequence numbers.
     ///
     /// Users send regular values of type `T`, but they're automatically wrapped
-    /// in `Timestamped<T>` with a sequence number assigned at send time.
+    /// in `Sequenced<T>` with a sequence number assigned at send time.
     #[derive(Debug)]
     pub struct UnboundedSender<T> {
-        pub(super) inner: TokioUnboundedSender<Timestamped<T>>,
+        pub(super) inner: TokioUnboundedSender<Sequenced<T>>,
     }
 
     impl<T> Clone for UnboundedSender<T> {
@@ -81,7 +81,7 @@ pub(crate) mod timestamped_channel {
         /// Returns an error if the receiver has been dropped.
         pub fn send(&self, value: T) -> Result<(), mpsc::error::SendError<T>> {
             self.inner
-                .send(Timestamped::new(value))
+                .send(Sequenced::new(value))
                 .map_err(|e| mpsc::error::SendError(e.0.value))
         }
 
@@ -101,23 +101,23 @@ pub(crate) mod timestamped_channel {
         }
     }
 
-    /// An unbounded receiver that receives timestamped values.
+    /// An unbounded receiver that receives sequenced values.
     ///
-    /// Receives values wrapped in `Timestamped<T>` that were automatically
-    /// timestamped by the sender.
+    /// Receives values wrapped in `Sequenced<T>` that were automatically
+    /// sequenced by the sender.
     #[derive(Debug)]
     pub struct UnboundedReceiver<T> {
-        pub(super) inner: TokioUnboundedReceiver<Timestamped<T>>,
+        pub(super) inner: TokioUnboundedReceiver<Sequenced<T>>,
     }
 
     impl<T> UnboundedReceiver<T> {
         #[cfg(test)]
-        pub async fn recv(&mut self) -> Option<Timestamped<T>> {
+        pub async fn recv(&mut self) -> Option<Sequenced<T>> {
             self.inner.recv().await
         }
 
         #[cfg(test)]
-        pub fn try_recv(&mut self) -> Result<Timestamped<T>, mpsc::error::TryRecvError> {
+        pub fn try_recv(&mut self) -> Result<Sequenced<T>, mpsc::error::TryRecvError> {
             self.inner.try_recv()
         }
 
@@ -126,7 +126,7 @@ pub(crate) mod timestamped_channel {
             self.inner.close()
         }
 
-        pub fn into_inner(self) -> TokioUnboundedReceiver<Timestamped<T>> {
+        pub fn into_inner(self) -> TokioUnboundedReceiver<Sequenced<T>> {
             self.inner
         }
     }
@@ -142,7 +142,7 @@ pub(crate) mod timestamped_channel {
 
 #[cfg(test)]
 mod tests {
-    use super::timestamped_channel::unbounded_channel;
+    use super::sequenced_channel::unbounded_channel;
     use tokio::sync::mpsc;
 
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -161,7 +161,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_send_and_receive() {
+    async fn test_sequenced_channel_send_and_receive() {
         let (sender, mut receiver) = unbounded_channel();
         let alice = TestData::new(1, "Alice");
         let bob = TestData::new(2, "Bob");
@@ -179,7 +179,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_ordering_across_channels() {
+    async fn test_sequenced_channel_ordering_across_channels() {
         let (sender1, mut receiver1) = unbounded_channel();
         let (sender2, mut receiver2) = unbounded_channel();
         let alice = TestData::new(1, "Alice");
@@ -203,7 +203,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_send_after_receiver_dropped() {
+    async fn test_sequenced_channel_send_after_receiver_dropped() {
         let (sender, receiver) = unbounded_channel();
         let alice = TestData::new(1, "Alice");
 
@@ -215,7 +215,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_receiver_closes_channel() {
+    async fn test_sequenced_channel_receiver_closes_channel() {
         let (sender, mut receiver) = unbounded_channel();
         let alice = TestData::new(1, "Alice");
         let bob = TestData::new(2, "Bob");
@@ -231,7 +231,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_try_recv_empty() {
+    async fn test_sequenced_channel_try_recv_empty() {
         let (_sender, mut receiver) = unbounded_channel::<TestData>();
 
         let result = receiver.try_recv();
@@ -239,7 +239,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_try_recv_success() {
+    async fn test_sequenced_channel_try_recv_success() {
         let (sender, mut receiver) = unbounded_channel();
         let alice = TestData::new(1, "Alice");
 
@@ -251,7 +251,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_try_recv_after_sender_dropped() {
+    async fn test_sequenced_channel_try_recv_after_sender_dropped() {
         let (sender, mut receiver) = unbounded_channel();
         let cat = TestData::new(1, "Cat");
 
@@ -267,7 +267,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_sender_clone() {
+    async fn test_sequenced_channel_sender_clone() {
         let (sender1, mut receiver) = unbounded_channel();
         let sender2 = sender1.clone();
         let alice = TestData::new(1, "Alice");
@@ -285,7 +285,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_same_channel() {
+    async fn test_sequenced_channel_same_channel() {
         let (sender1, _receiver1) = unbounded_channel::<TestData>();
         let sender2 = sender1.clone();
         let (sender3, _receiver2) = unbounded_channel::<TestData>();
@@ -295,7 +295,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_sender_closed_notification() {
+    async fn test_sequenced_channel_sender_closed_notification() {
         let (sender, receiver) = unbounded_channel::<TestData>();
 
         let closed_task = tokio::spawn(async move {
@@ -308,13 +308,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_is_closed_initially_false() {
+    async fn test_sequenced_channel_is_closed_initially_false() {
         let (sender, _receiver) = unbounded_channel::<TestData>();
         assert!(!sender.is_closed());
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_is_closed_after_receiver_dropped() {
+    async fn test_sequenced_channel_is_closed_after_receiver_dropped() {
         let (sender, receiver) = unbounded_channel::<TestData>();
         assert!(!sender.is_closed());
         drop(receiver);
@@ -322,7 +322,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_multiple_senders_one_receiver() {
+    async fn test_sequenced_channel_multiple_senders_one_receiver() {
         let (sender1, mut receiver) = unbounded_channel();
         let sender2 = sender1.clone();
         let sender3 = sender1.clone();
@@ -352,7 +352,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_receiver_none_after_all_senders_dropped() {
+    async fn test_sequenced_channel_receiver_none_after_all_senders_dropped() {
         let (sender1, mut receiver) = unbounded_channel();
         let sender2 = sender1.clone();
         let cat = TestData::new(1, "Cat");
@@ -370,7 +370,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_high_volume_ordering() {
+    async fn test_sequenced_channel_high_volume_ordering() {
         let (sender, mut receiver) = unbounded_channel();
         let test_items: Vec<TestData> = (0..1000)
             .map(|i| TestData::new(i, &format!("Person{}", i)))
@@ -393,7 +393,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timestamped_channel_sender_error() {
+    async fn test_sequenced_channel_sender_error() {
         let (sender, _receiver) = unbounded_channel::<TestData>();
         let charlie = TestData::new(3, "Charlie");
 

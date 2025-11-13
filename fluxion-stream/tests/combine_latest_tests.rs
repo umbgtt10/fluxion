@@ -1,6 +1,6 @@
 use fluxion_stream::{
     combine_latest::{CombineLatestExt, CombinedState},
-    timestamped::Timestamped,
+    sequenced::Sequenced,
 };
 use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::{
@@ -15,8 +15,8 @@ use futures::StreamExt;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-static FILTER: fn(&CombinedState<Timestamped<TestData>>) -> bool =
-    |_: &CombinedState<Timestamped<TestData>>| true;
+static FILTER: fn(&CombinedState<Sequenced<TestData>>) -> bool =
+    |_: &CombinedState<Sequenced<TestData>>| true;
 
 #[tokio::test]
 async fn test_combine_latest_empty_streams() {
@@ -27,7 +27,7 @@ async fn test_combine_latest_empty_streams() {
         .stream
         .combine_latest(vec![animal.stream, plant.stream], FILTER);
 
-    // Drop senders to close the streams
+    // Act
     drop(person.sender);
     drop(animal.sender);
     drop(plant.sender);
@@ -77,18 +77,16 @@ async fn test_combine_latest_stream_closes_before_publish_no_output() {
         .stream
         .combine_latest(vec![animal.stream, plant.stream], FILTER);
 
-    // Act: Close one stream before it ever publishes
+    // Act
     drop(plant.sender);
 
-    // Publish on the other streams
     push(person_alice(), &person.sender);
     push(animal_dog(), &animal.sender);
 
-    // Assert: No emission should occur because not all streams have published
+    // Assert
     let mut combined_stream = Box::pin(combined_stream);
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
-    // Close remaining senders; the stream should end cleanly
     drop(person.sender);
     drop(animal.sender);
 
@@ -108,18 +106,18 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues()
         .combine_latest(vec![animal.stream, plant.stream], FILTER);
     let mut combined_stream = Box::pin(combined_stream);
 
-    // Initial full emission
+    // Act
     push(person_alice(), &person.sender);
     push(animal_dog(), &animal.sender);
     push(plant_rose(), &plant.sender);
+
+    // Assert
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
     assert_eq!(actual, vec![person_alice(), animal_dog(), plant_rose()]);
 
-    // Close one secondary (plant) after initial emission
     drop(plant.sender);
 
-    // Subsequent updates on remaining streams should still emit using the last plant value
     push(person_bob(), &person.sender);
     let state = combined_stream.next().await.unwrap();
     let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();
@@ -344,7 +342,7 @@ async fn test_combine_latest_filter_rejects_initial_state() {
     let (person, animal) = TestChannels::two();
 
     // Filter that rejects the initial state (when both Alice and Dog are present)
-    let filter = |state: &CombinedState<Timestamped<TestData>>| {
+    let filter = |state: &CombinedState<Sequenced<TestData>>| {
         let values = state.get_state();
         if values.len() == 2 {
             // Reject if we have Alice and Dog
@@ -377,7 +375,7 @@ async fn test_combine_latest_filter_alternates_between_true_false() {
     let (person, animal) = TestChannels::two();
 
     // Filter that only allows emissions when person is Alice or Charlie (rejects Bob and Diane)
-    let filter = |state: &CombinedState<Timestamped<TestData>>| {
+    let filter = |state: &CombinedState<Sequenced<TestData>>| {
         let values = state.get_state();
         if !values.is_empty() {
             values[0].value == person_alice() || values[0].value == person_charlie()
@@ -435,7 +433,7 @@ async fn test_combine_latest_filter_function_panics() {
 
     // Filter that panics on the second evaluation
     let call_count = Arc::new(AtomicUsize::new(0));
-    let filter = move |_state: &CombinedState<Timestamped<TestData>>| {
+    let filter = move |_state: &CombinedState<Sequenced<TestData>>| {
         let count = call_count.fetch_add(1, Ordering::SeqCst);
         if count == 1 {
             panic!("Filter function panicked on purpose");

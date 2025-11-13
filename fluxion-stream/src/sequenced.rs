@@ -2,26 +2,26 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 static GLOBAL_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-/// A wrapper that adds automatic timestamping to any value for temporal ordering.
+/// A wrapper that adds automatic sequencing to any value for temporal ordering.
 ///
 /// Uses a monotonically increasing sequence counter (logical timestamp) to establish
-/// a total ordering of events. The timestamp is assigned when the value is created.
+/// a total ordering of events. The sequence is assigned when the value is created.
 #[derive(Debug, Clone)]
-pub struct Timestamped<T> {
+pub struct Sequenced<T> {
     pub value: T,
     sequence: u64,
 }
 
-impl<T: PartialEq> PartialEq for Timestamped<T> {
+impl<T: PartialEq> PartialEq for Sequenced<T> {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value && self.sequence == other.sequence
     }
 }
 
-impl<T: Eq> Eq for Timestamped<T> {}
+impl<T: Eq> Eq for Sequenced<T> {}
 
-impl<T> Timestamped<T> {
-    /// Creates a new timestamped value with an automatically assigned sequence number.
+impl<T> Sequenced<T> {
+    /// Creates a new sequenced value with an automatically assigned sequence number.
     pub fn new(value: T) -> Self {
         Self {
             value,
@@ -54,19 +54,19 @@ impl<T> Timestamped<T> {
     }
 }
 
-impl<T: PartialEq> PartialOrd for Timestamped<T> {
+impl<T: PartialEq> PartialOrd for Sequenced<T> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.sequence.partial_cmp(&other.sequence)
     }
 }
 
-impl<T: Eq> Ord for Timestamped<T> {
+impl<T: Eq> Ord for Sequenced<T> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.sequence.cmp(&other.sequence)
     }
 }
 
-impl<T> std::ops::Deref for Timestamped<T> {
+impl<T> std::ops::Deref for Sequenced<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -74,13 +74,13 @@ impl<T> std::ops::Deref for Timestamped<T> {
     }
 }
 
-impl<T> std::ops::DerefMut for Timestamped<T> {
+impl<T> std::ops::DerefMut for Sequenced<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.value
     }
 }
 
-impl<T: std::fmt::Display> std::fmt::Display for Timestamped<T> {
+impl<T: std::fmt::Display> std::fmt::Display for Sequenced<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.value)
     }
@@ -88,7 +88,7 @@ impl<T: std::fmt::Display> std::fmt::Display for Timestamped<T> {
 
 // Special conversion for Empty streams - this will never actually be called
 // since Empty streams never yield items, but it's needed for type checking
-impl<T> From<()> for Timestamped<T> {
+impl<T> From<()> for Sequenced<T> {
     fn from(_: ()) -> Self {
         unreachable!("Empty streams never yield items, so this conversion should never be called")
     }

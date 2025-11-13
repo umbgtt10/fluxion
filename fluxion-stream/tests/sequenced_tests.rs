@@ -1,11 +1,11 @@
-﻿use fluxion_stream::Timestamped;
+﻿use fluxion_stream::Sequenced;
 
 #[test]
-fn test_timestamped_ordering() {
+fn test_sequenced_ordering() {
     // Arrange
-    let first = Timestamped::new("first");
-    let second = Timestamped::new("second");
-    let third = Timestamped::new("third");
+    let first = Sequenced::new("first");
+    let second = Sequenced::new("second");
+    let third = Sequenced::new("third");
 
     // Assert
     assert!(first < second);
@@ -14,19 +14,19 @@ fn test_timestamped_ordering() {
 }
 
 #[test]
-fn test_timestamped_deref() {
+fn test_sequenced_deref() {
     // Arrange
-    let seq = Timestamped::new("hello");
+    let seq = Sequenced::new("hello");
 
     // Assert - Derefs to &str
     assert_eq!(seq.len(), 5);
 }
 
 #[test]
-fn test_timestamped_new_assigns_sequence() {
+fn test_sequenced_new_assigns_sequence() {
     // Arrange & Act
-    let item1 = Timestamped::new(42);
-    let item2 = Timestamped::new(100);
+    let item1 = Sequenced::new(42);
+    let item2 = Sequenced::new(100);
 
     // Assert - Each new item gets a unique sequence
     assert_ne!(item1.sequence(), item2.sequence());
@@ -34,48 +34,48 @@ fn test_timestamped_new_assigns_sequence() {
 }
 
 #[test]
-fn test_timestamped_into_inner() {
+fn test_sequenced_into_inner() {
     // Arrange
     let original_value = String::from("test value");
-    let timestamped = Timestamped::new(original_value.clone());
+    let sequenced = Sequenced::new(original_value.clone());
 
     // Act
-    let extracted = timestamped.into_inner();
+    let extracted = sequenced.into_inner();
 
     // Assert
     assert_eq!(extracted, original_value);
 }
 
 #[test]
-fn test_timestamped_get() {
+fn test_sequenced_get() {
     // Arrange
     let value = vec![1, 2, 3, 4, 5];
-    let timestamped = Timestamped::new(value.clone());
+    let sequenced = Sequenced::new(value.clone());
 
     // Act
-    let reference = timestamped.get();
+    let reference = sequenced.get();
 
     // Assert
     assert_eq!(reference, &value);
 }
 
 #[test]
-fn test_timestamped_get_mut() {
+fn test_sequenced_get_mut() {
     // Arrange
-    let mut timestamped = Timestamped::new(vec![1, 2, 3]);
+    let mut sequenced = Sequenced::new(vec![1, 2, 3]);
 
     // Act
-    let mutable_ref = timestamped.get_mut();
+    let mutable_ref = sequenced.get_mut();
     mutable_ref.push(4);
 
     // Assert
-    assert_eq!(timestamped.value, vec![1, 2, 3, 4]);
+    assert_eq!(sequenced.value, vec![1, 2, 3, 4]);
 }
 
 #[test]
-fn test_timestamped_equality_same_value_same_sequence() {
+fn test_sequenced_equality_same_value_same_sequence() {
     // Arrange
-    let item1 = Timestamped::new(42);
+    let item1 = Sequenced::new(42);
     let item2 = item1.clone();
 
     // Assert
@@ -83,30 +83,30 @@ fn test_timestamped_equality_same_value_same_sequence() {
 }
 
 #[test]
-fn test_timestamped_equality_same_value_different_sequence() {
+fn test_sequenced_equality_same_value_different_sequence() {
     // Arrange
-    let item1 = Timestamped::new(42);
-    let item2 = Timestamped::new(42);
+    let item1 = Sequenced::new(42);
+    let item2 = Sequenced::new(42);
 
     // Assert - Different sequences means not equal
     assert_ne!(item1, item2);
 }
 
 #[test]
-fn test_timestamped_inequality() {
+fn test_sequenced_inequality() {
     // Arrange
-    let item1 = Timestamped::new(100);
-    let item2 = Timestamped::new(200);
+    let item1 = Sequenced::new(100);
+    let item2 = Sequenced::new(200);
 
     // Assert
     assert_ne!(item1, item2);
 }
 
 #[test]
-fn test_timestamped_partial_ord() {
+fn test_sequenced_partial_ord() {
     // Arrange
-    let first = Timestamped::new("a");
-    let second = Timestamped::new("z");
+    let first = Sequenced::new("a");
+    let second = Sequenced::new("z");
 
     // Act
     let comparison = first.partial_cmp(&second);
@@ -116,10 +116,10 @@ fn test_timestamped_partial_ord() {
 }
 
 #[test]
-fn test_timestamped_ord_consistent_with_sequence() {
+fn test_sequenced_ord_consistent_with_sequence() {
     // Arrange
-    let early = Timestamped::new(999);
-    let late = Timestamped::new(1);
+    let early = Sequenced::new(999);
+    let late = Sequenced::new(1);
 
     // Assert - Even though 999 > 1, early was created first
     assert!(early < late);
@@ -127,45 +127,45 @@ fn test_timestamped_ord_consistent_with_sequence() {
 }
 
 #[test]
-fn test_timestamped_display() {
+fn test_sequenced_display() {
     // Arrange
-    let timestamped = Timestamped::new("hello world");
+    let sequenced = Sequenced::new("hello world");
 
     // Act
-    let displayed = format!("{}", timestamped);
+    let displayed = format!("{}", sequenced);
 
     // Assert
     assert_eq!(displayed, "hello world");
 }
 
 #[test]
-fn test_timestamped_display_with_number() {
+fn test_sequenced_display_with_number() {
     // Arrange
-    let timestamped = Timestamped::new(12345);
+    let sequenced = Sequenced::new(12345);
 
     // Act
-    let displayed = format!("{}", timestamped);
+    let displayed = format!("{}", sequenced);
 
     // Assert
     assert_eq!(displayed, "12345");
 }
 
 #[test]
-fn test_timestamped_deref_mut() {
+fn test_sequenced_deref_mut() {
     // Arrange
-    let mut timestamped = Timestamped::new(String::from("hello"));
+    let mut sequenced = Sequenced::new(String::from("hello"));
 
     // Act - Use deref_mut to modify
-    timestamped.push_str(" world");
+    sequenced.push_str(" world");
 
     // Assert
-    assert_eq!(timestamped.value, "hello world");
+    assert_eq!(sequenced.value, "hello world");
 }
 
 #[test]
-fn test_timestamped_clone_independence() {
+fn test_sequenced_clone_independence() {
     // Arrange
-    let original = Timestamped::new(vec![1, 2, 3]);
+    let original = Sequenced::new(vec![1, 2, 3]);
     let mut cloned = original.clone();
 
     // Act
@@ -178,9 +178,9 @@ fn test_timestamped_clone_independence() {
 }
 
 #[test]
-fn test_timestamped_sequence_monotonic() {
+fn test_sequenced_sequence_monotonic() {
     // Arrange & Act
-    let items: Vec<Timestamped<i32>> = (0..100).map(Timestamped::new).collect();
+    let items: Vec<Sequenced<i32>> = (0..100).map(Sequenced::new).collect();
 
     // Assert - Sequences are strictly monotonically increasing
     for i in 1..items.len() {
@@ -194,12 +194,12 @@ fn test_timestamped_sequence_monotonic() {
 }
 
 #[test]
-fn test_timestamped_debug() {
+fn test_sequenced_debug() {
     // Arrange
-    let timestamped = Timestamped::new(42);
+    let sequenced = Sequenced::new(42);
 
     // Act
-    let debug_string = format!("{:?}", timestamped);
+    let debug_string = format!("{:?}", sequenced);
 
     // Assert - Should contain both value and sequence
     assert!(debug_string.contains("42"));
@@ -208,12 +208,12 @@ fn test_timestamped_debug() {
 }
 
 #[test]
-fn test_timestamped_multiple_types() {
+fn test_sequenced_multiple_types() {
     // Arrange & Act
-    let string_ts = Timestamped::new(String::from("text"));
-    let int_ts = Timestamped::new(123);
-    let vec_ts = Timestamped::new(vec![1, 2, 3]);
-    let tuple_ts = Timestamped::new((1, "a"));
+    let string_ts = Sequenced::new(String::from("text"));
+    let int_ts = Sequenced::new(123);
+    let vec_ts = Sequenced::new(vec![1, 2, 3]);
+    let tuple_ts = Sequenced::new((1, "a"));
 
     // Assert - All have valid sequences
     assert!(string_ts.sequence() < int_ts.sequence());
@@ -222,11 +222,11 @@ fn test_timestamped_multiple_types() {
 }
 
 #[test]
-fn test_timestamped_sorting_by_sequence() {
+fn test_sequenced_sorting_by_sequence() {
     // Arrange
-    let item1 = Timestamped::new("third");
-    let item2 = Timestamped::new("first");
-    let item3 = Timestamped::new("second");
+    let item1 = Sequenced::new("third");
+    let item2 = Sequenced::new("first");
+    let item3 = Sequenced::new("second");
 
     let mut items = [item1.clone(), item2.clone(), item3.clone()];
 
@@ -243,10 +243,10 @@ fn test_timestamped_sorting_by_sequence() {
 }
 
 #[test]
-fn test_timestamped_value_field_public() {
+fn test_sequenced_value_field_public() {
     // Arrange
-    let timestamped = Timestamped::new(String::from("public"));
+    let sequenced = Sequenced::new(String::from("public"));
 
     // Act & Assert - Can access value field directly
-    assert_eq!(timestamped.value, "public");
+    assert_eq!(sequenced.value, "public");
 }

@@ -7,8 +7,8 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::ordered_merge::OrderedMergeExt;
-use crate::timestamped::Timestamped;
-use crate::timestamped_stream::TimestampedStreamExt;
+use crate::sequenced::Sequenced;
+use crate::sequenced_stream::SequencedStreamExt;
 
 #[pin_project]
 pub struct MergedStream<S, State, Item> {
@@ -37,49 +37,33 @@ where
     State: Send + Sync + 'static,
     Item: Send + Ord + Unpin + 'static,
 {
-    /// Merge where the processor receives and returns Timestamped values
-    /// (Option B canonical API). The processor is responsible for preserving
-    /// the sequence if ordering must be maintained.
     pub fn merge_with<NewStream, F, NewItem, T>(
         self,
         new_stream: NewStream,
         process_fn: F,
-    ) -> MergedStream<impl Stream<Item = Timestamped<T>>, State, Timestamped<T>>
+    ) -> MergedStream<impl Stream<Item = Sequenced<T>>, State, Sequenced<T>>
     where
-        NewStream: TimestampedStreamExt<NewItem> + Send + 'static,
-        // Option B: the processor takes the whole Timestamped<NewItem> and returns
-        // a Timestamped<T>.
-        F: FnMut(Timestamped<NewItem>, &mut State) -> Timestamped<T>
-            + Send
-            + Sync
-            + Clone
-            + 'static,
+        NewStream: SequencedStreamExt<NewItem> + Send + 'static,
+        F: FnMut(Sequenced<NewItem>, &mut State) -> Sequenced<T> + Send + Sync + Clone + 'static,
         NewItem: Send + 'static,
         T: Send + Ord + Unpin + 'static,
-        Item: Into<Timestamped<T>>,
+        Item: Into<Sequenced<T>>,
     {
         let shared_state = Arc::clone(&self.state);
-        // Map the new stream, processing items while holding the async lock.
-        // Under Option B the processor receives the full Timestamped<NewItem>
-        // and must return a Timestamped<T> (preserving sequence if desired).
         let new_stream_mapped = new_stream.then(move |timestamped_item| {
             let shared_state = Arc::clone(&shared_state);
             let mut process_fn = process_fn.clone();
             async move {
                 let mut state = shared_state.lock().await;
-                // Processor is synchronous from the call-site perspective; it may
-                // inspect/modify state and must return a Timestamped<T> itself.
                 process_fn(timestamped_item, &mut *state)
             }
         });
 
-        // Convert existing stream items to Timestamped<T>
         let self_stream_mapped = self.inner.map(|item| item.into());
 
-        // Use ordered_merge to merge streams with guaranteed temporal ordering
         let merged_stream = vec![
-            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Timestamped<T>> + Send>>,
-            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Timestamped<T>> + Send>>,
+            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send>>,
+            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send>>,
         ]
         .ordered_merge();
 

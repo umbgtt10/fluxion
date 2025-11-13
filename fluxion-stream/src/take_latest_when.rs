@@ -5,13 +5,13 @@ use std::sync::{Arc, Mutex};
 
 use crate::combine_latest::CombinedState;
 use crate::ordered_merge::OrderedMergeExt;
-use crate::timestamped::Timestamped;
-use crate::timestamped_stream::TimestampedStreamExt;
+use crate::sequenced::Sequenced;
+use crate::sequenced_stream::SequencedStreamExt;
 
-pub trait TakeLatestWhenExt<T, S>: TimestampedStreamExt<T> + Sized
+pub trait TakeLatestWhenExt<T, S>: SequencedStreamExt<T> + Sized
 where
     T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    S: Stream<Item = Timestamped<T>> + Send + Sync + 'static,
+    S: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
 {
     fn take_latest_when(
         self,
@@ -56,11 +56,11 @@ where
     }
 }
 
-type IndexedStream<T> = Pin<Box<dyn Stream<Item = (Timestamped<T>, usize)> + Send>>;
+type IndexedStream<T> = Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send>>;
 
 impl<T, S> TakeLatestWhenExt<T, S> for S
 where
-    S: TimestampedStreamExt<T> + Send + Sync + 'static,
+    S: SequencedStreamExt<T> + Send + Sync + 'static,
     T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     fn take_latest_when(

@@ -13,7 +13,6 @@ impl<T> OrderedMerge<T>
 where
     T: Send + Ord + 'static,
 {
-    /// Constructs a new `OrderedMerge` stream from a vector of streams.
     pub fn new<S>(streams: Vec<S>) -> Self
     where
         S: Stream<Item = T> + Send + 'static,
@@ -68,7 +67,6 @@ where
     }
 }
 
-/// Extension trait for combining streams into a single ordered merge.
 pub trait OrderedMergeExt {
     type Item;
 

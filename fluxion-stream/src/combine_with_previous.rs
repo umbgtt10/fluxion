@@ -1,27 +1,23 @@
-use crate::timestamped::Timestamped;
-use crate::timestamped_stream::TimestampedStreamExt;
+use crate::sequenced::Sequenced;
+use crate::sequenced_stream::SequencedStreamExt;
 use futures::{Stream, StreamExt, future};
 
-/// Extension trait for streams of `Timestamped<T>` that emits each item along with its previous.
-///
-/// This accepts any stream whose `Item` is `Timestamped<T>`, keeping the operator generic
-/// and allowing callers to pass test helpers or arbitrary streams without boxing.
-pub trait CombineWithPreviousExt<T>: TimestampedStreamExt<T> + Sized
+pub trait CombineWithPreviousExt<T>: SequencedStreamExt<T> + Sized
 where
     T: Clone + Send + Sync + 'static,
 {
-    fn combine_with_previous(self) -> impl Stream<Item = (Option<Timestamped<T>>, Timestamped<T>)>;
+    fn combine_with_previous(self) -> impl Stream<Item = (Option<Sequenced<T>>, Sequenced<T>)>;
 }
 
 impl<T, S> CombineWithPreviousExt<T> for S
 where
-    S: TimestampedStreamExt<T> + Send + Sized + 'static,
+    S: SequencedStreamExt<T> + Send + Sized + 'static,
     T: Clone + Send + Sync + 'static,
 {
-    fn combine_with_previous(self) -> impl Stream<Item = (Option<Timestamped<T>>, Timestamped<T>)> {
+    fn combine_with_previous(self) -> impl Stream<Item = (Option<Sequenced<T>>, Sequenced<T>)> {
         self.scan(
             None,
-            |state: &mut Option<Timestamped<T>>, current: Timestamped<T>| {
+            |state: &mut Option<Sequenced<T>>, current: Sequenced<T>| {
                 let previous = state.take();
                 *state = Some(current.clone());
                 future::ready(Some((previous, current)))

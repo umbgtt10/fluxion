@@ -1,6 +1,6 @@
 use crate::test_data::TestData;
 use fluxion_stream::combine_latest::CombinedState;
-use fluxion_stream::timestamped::Timestamped;
+use fluxion_stream::sequenced::Sequenced;
 use futures::Stream;
 use futures::stream::StreamExt;
 use std::fmt::Debug;
@@ -34,7 +34,7 @@ where
 
 pub async fn expect_next_timestamped<S>(stream: &mut S, expected: TestData)
 where
-    S: Stream<Item = Timestamped<TestData>> + Unpin,
+    S: Stream<Item = Sequenced<TestData>> + Unpin,
 {
     let item = stream.next().await.expect("expected next item");
     assert_eq!(item.value, expected);
@@ -43,7 +43,7 @@ where
 /// Expect the next pair from a with_latest_from stream matches expected left/right by value.
 pub async fn expect_next_pair<S>(stream: &mut S, expected_left: TestData, expected_right: TestData)
 where
-    S: Stream<Item = (Timestamped<TestData>, Timestamped<TestData>)> + Unpin,
+    S: Stream<Item = (Sequenced<TestData>, Sequenced<TestData>)> + Unpin,
 {
     let (left, right) = stream.next().await.expect("expected next pair");
     assert_eq!((left.value, right.value), (expected_left, expected_right));
@@ -51,7 +51,7 @@ where
 
 pub async fn expect_next_combined_equals<S>(stream: &mut S, expected: &[TestData])
 where
-    S: Stream<Item = CombinedState<Timestamped<TestData>>> + Unpin,
+    S: Stream<Item = CombinedState<Sequenced<TestData>>> + Unpin,
 {
     let state = stream.next().await.expect("expected next combined state");
     let actual: Vec<TestData> = state.get_state().iter().map(|s| s.value.clone()).collect();

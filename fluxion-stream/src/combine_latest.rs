@@ -5,43 +5,43 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 use crate::ordered_merge::OrderedMergeExt;
-use crate::timestamped::Timestamped;
-use crate::timestamped_stream::TimestampedStreamExt;
+use crate::sequenced::Sequenced;
+use crate::sequenced_stream::SequencedStreamExt;
 
 pub trait CompareByInner {
     fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering;
 }
 
-impl<T: Ord> CompareByInner for Timestamped<T> {
+impl<T: Ord> CompareByInner for Sequenced<T> {
     fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
         self.value.cmp(&other.value)
     }
 }
 
-pub trait CombineLatestExt<T, S>: TimestampedStreamExt<T> + Sized
+pub trait CombineLatestExt<T, S>: SequencedStreamExt<T> + Sized
 where
-    Timestamped<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
-    S: Stream<Item = Timestamped<T>> + Send + 'static,
+    Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    S: Stream<Item = Sequenced<T>> + Send + 'static,
 {
     fn combine_latest(
         self,
         others: Vec<S>,
-        filter: impl Fn(&CombinedState<Timestamped<T>>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = CombinedState<Timestamped<T>>> + Send;
+        filter: impl Fn(&CombinedState<Sequenced<T>>) -> bool + Send + Sync + 'static,
+    ) -> impl Stream<Item = CombinedState<Sequenced<T>>> + Send;
 }
 
-type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (Timestamped<T>, usize)> + Send>>>;
+type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send>>>;
 
 impl<T, S> CombineLatestExt<T, S> for S
 where
-    Timestamped<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
-    S: TimestampedStreamExt<T> + Send + 'static,
+    Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    S: SequencedStreamExt<T> + Send + 'static,
 {
     fn combine_latest(
         self,
         others: Vec<S>,
-        filter: impl Fn(&CombinedState<Timestamped<T>>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = CombinedState<Timestamped<T>>> + Send {
+        filter: impl Fn(&CombinedState<Sequenced<T>>) -> bool + Send + Sync + 'static,
+    ) -> impl Stream<Item = CombinedState<Sequenced<T>>> + Send {
         let mut streams: PinnedStreams<T> = vec![];
 
         streams.push(Box::pin(self.map(move |value| (value, 0))));
@@ -84,7 +84,7 @@ pub struct CombinedState<V>
 where
     V: Clone + Send + Sync,
 {
-    state: Vec<V>, // Temporal order (sorted by Ord for Sequenced<T>)
+    state: Vec<V>,
 }
 
 impl<V> CombinedState<V>
@@ -107,7 +107,7 @@ where
 {
     state: Vec<Option<V>>,
     ordered_values: Vec<V>,
-    stream_index_to_position: Vec<usize>, // Maps stream index to position in ordered_values
+    stream_index_to_position: Vec<usize>,
     is_initialized: bool,
 }
 

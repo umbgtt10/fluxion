@@ -1,5 +1,5 @@
 use fluxion_stream::combine_latest::CombinedState;
-use fluxion_stream::timestamped::Timestamped;
+use fluxion_stream::sequenced::Sequenced;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::push;
@@ -12,8 +12,8 @@ use fluxion_test_utils::{
 };
 use futures::StreamExt;
 
-static FILTER: fn(&CombinedState<Timestamped<TestData>>) -> bool =
-    |_: &CombinedState<Timestamped<TestData>>| true;
+static FILTER: fn(&CombinedState<Sequenced<TestData>>) -> bool =
+    |_: &CombinedState<Sequenced<TestData>>| true;
 
 #[tokio::test]
 async fn test_with_latest_from_complete() {
@@ -351,7 +351,7 @@ async fn test_with_latest_from_filter_rejects_initial_state() {
     let (primary, secondary) = TestChannels::two();
 
     // Filter that rejects when primary is Dog
-    let filter = |state: &CombinedState<Timestamped<TestData>>| {
+    let filter = |state: &CombinedState<Sequenced<TestData>>| {
         let values = state.get_state();
         values[1].value != animal_dog() // Reject when primary is Dog
     };
@@ -385,7 +385,7 @@ async fn test_with_latest_from_filter_alternates() {
     let counter_clone = counter.clone();
 
     // Filter alternates: true, false, true, false, ...
-    let filter = move |_: &CombinedState<Timestamped<TestData>>| {
+    let filter = move |_: &CombinedState<Sequenced<TestData>>| {
         let count = counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         count.is_multiple_of(2) // true for even counts, false for odd
     };
@@ -430,7 +430,7 @@ async fn test_with_latest_from_filter_panics() {
     let (primary, secondary) = TestChannels::two();
 
     // Filter that panics
-    let filter = |_: &CombinedState<Timestamped<TestData>>| -> bool {
+    let filter = |_: &CombinedState<Sequenced<TestData>>| -> bool {
         panic!("Filter panicked");
     };
 
