@@ -83,8 +83,8 @@ async fn test_take_latest_when_filter_satisfied_emits() {
     let mut output_stream = Box::pin(output_stream);
     let emitted_item = output_stream.next().await.unwrap();
     assert_eq!(
-        emitted_item,
-        person_alice(),
+        emitted_item.get(),
+        &person_alice(),
         "Expected the source item to be emitted when the filter is satisfied"
     );
 }
@@ -119,8 +119,8 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
 
     let first_item = output_stream.next().await.unwrap();
     assert_eq!(
-        first_item,
-        person_alice(),
+        first_item.get(),
+        &person_alice(),
         "First emitted item did not match expected"
     );
 
@@ -130,8 +130,8 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     // Assert
     let second_item = output_stream.next().await.unwrap();
     assert_eq!(
-        second_item,
-        person_bob(),
+        second_item.get(),
+        &person_bob(),
         "Second emitted item did not match expected"
     );
 }
@@ -166,8 +166,8 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
 
     let first_item = output_stream.next().await.unwrap();
     assert_eq!(
-        first_item,
-        person_charlie(),
+        first_item.get(),
+        &person_charlie(),
         "First emitted item did not match expected"
     );
 
@@ -204,8 +204,8 @@ async fn test_take_latest_when_filter_toggle_emissions() {
     push(person_alice(), &source.sender);
     let first = output_stream.next().await.unwrap();
     assert_eq!(
-        first,
-        person_alice(),
+        first.get(),
+        &person_alice(),
         "Should emit Alice when filter is true"
     );
 
@@ -218,8 +218,8 @@ async fn test_take_latest_when_filter_toggle_emissions() {
     push(animal_ant(), &filter.sender); // true
     let third = output_stream.next().await.unwrap();
     assert_eq!(
-        third,
-        person_bob(),
+        third.get(),
+        &person_bob(),
         "Should emit buffered Bob when filter becomes true"
     );
 
@@ -227,8 +227,8 @@ async fn test_take_latest_when_filter_toggle_emissions() {
     push(person_charlie(), &source.sender);
     let fourth = output_stream.next().await.unwrap();
     assert_eq!(
-        fourth,
-        person_charlie(),
+        fourth.get(),
+        &person_charlie(),
         "Should emit Charlie immediately with filter still true"
     );
 }
@@ -254,8 +254,8 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
     push(person_alice(), &source.sender);
     let first = output_stream.next().await.unwrap();
     assert_eq!(
-        first,
-        person_alice(),
+        first.get(),
+        &person_alice(),
         "First emission should be Alice with filter true"
     );
 
@@ -266,16 +266,16 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
     push(person_bob(), &source.sender);
     let second = output_stream.next().await.unwrap();
     assert_eq!(
-        second,
-        person_bob(),
+        second.get(),
+        &person_bob(),
         "Should emit Bob with persisted filter value after filter stream closes"
     );
 
     push(person_charlie(), &source.sender);
     let third = output_stream.next().await.unwrap();
     assert_eq!(
-        third,
-        person_charlie(),
+        third.get(),
+        &person_charlie(),
         "Should emit Charlie with persisted filter value"
     );
 }
@@ -308,8 +308,8 @@ async fn test_take_latest_when_source_publishes_before_filter() {
     // Assert: Now we get the buffered source value
     let first = output_stream.next().await.unwrap();
     assert_eq!(
-        first,
-        person_alice(),
+        first.get(),
+        &person_alice(),
         "Should emit buffered Alice when filter becomes true"
     );
 
@@ -326,8 +326,8 @@ async fn test_take_latest_when_source_publishes_before_filter() {
     // Assert: Emits the buffered Bob
     let second = output_stream.next().await.unwrap();
     assert_eq!(
-        second,
-        person_bob(),
+        second.get(),
+        &person_bob(),
         "Should emit buffered Bob when filter becomes true again"
     );
 }
@@ -366,8 +366,8 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
     // Assert: Only the LATEST source value (Dave) is emitted, not all previous ones
     let first = output_stream.next().await.unwrap();
     assert_eq!(
-        first,
-        person_dave(),
+        first.get(),
+        &person_dave(),
         "Should only emit latest value (Dave), not earlier buffered values"
     );
 
@@ -380,8 +380,8 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
     // Assert: Emits immediately
     let second = output_stream.next().await.unwrap();
     assert_eq!(
-        second,
-        person_alice(),
+        second.get(),
+        &person_alice(),
         "Should emit Alice immediately when filter is true"
     );
 }
@@ -421,7 +421,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
 
     // Assert: Only the LATEST value is emitted (Person9999)
     let first = output_stream.next().await.unwrap();
-    assert_eq!(first, person("Person9999".to_string(), 9999));
+    assert_eq!(first.get(), &person("Person9999".to_string(), 9999));
 
     // Assert: No additional emissions (buffer only held the latest, not all 10000)
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -443,7 +443,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
 
     // Assert: Only the latest from the second batch (Person19999)
     let second = output_stream.next().await.unwrap();
-    assert_eq!(second, person("Person19999".to_string(), 19999));
+    assert_eq!(second.get(), &person("Person19999".to_string(), 19999));
 
     // This test validates that the buffer doesn't grow unbounded - it only keeps
     // the latest source value, not all historical values while the filter is false
@@ -468,8 +468,8 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() {
     // Assert: Should emit the boundary value
     let result = output_stream.next().await.unwrap();
     assert_eq!(
-        result,
-        person("".to_string(), 0),
+        result.get(),
+        &person("".to_string(), 0),
         "Should handle empty string and zero age"
     );
 
@@ -479,7 +479,7 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() {
 
     // Assert: Should emit normal value
     let result2 = output_stream.next().await.unwrap();
-    assert_eq!(result2, person_alice());
+    assert_eq!(result2.get(), &person_alice());
 }
 
 #[tokio::test]
@@ -502,7 +502,7 @@ async fn test_take_latest_when_boundary_maximum_concurrent_streams() {
 
             // Assert: Should emit
             let result = output_stream.next().await.unwrap();
-            assert_eq!(result, person(format!("Person{}", i), i));
+            assert_eq!(result.get(), &person(format!("Person{}", i), i));
 
             // Act: Update source and trigger again
             push(person_bob(), &source.sender);
@@ -510,7 +510,7 @@ async fn test_take_latest_when_boundary_maximum_concurrent_streams() {
 
             // Assert: Should emit updated value
             let result2 = output_stream.next().await.unwrap();
-            assert_eq!(result2, person_bob());
+            assert_eq!(result2.get(), &person_bob());
         });
 
         handles.push(handle);

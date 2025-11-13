@@ -4,7 +4,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 use crate::combine_latest::CombinedState;
-use crate::ordered_merge::OrderedMergeExt;
+use crate::ordered_merge::OrderedMergeSyncExt;
 use crate::sequenced::Sequenced;
 use crate::sequenced_stream::SequencedStreamExt;
 
@@ -17,7 +17,7 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = T>;
+    ) -> Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>;
 }
 
 #[derive(Clone, Debug)]
@@ -56,7 +56,7 @@ where
     }
 }
 
-type IndexedStream<T> = Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send>>;
+type IndexedStream<T> = Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send + Sync>>;
 
 impl<T, S, SF> TakeLatestWhenExt<T, SF> for S
 where
@@ -68,7 +68,7 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
-    ) -> impl futures::Stream<Item = T> {
+    ) -> Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>> {
         let source_stream = Box::pin(self.map(|value| (value, 0)));
         let filter_stream = Box::pin(filter_stream.map(|value| (value, 1)));
 
@@ -77,40 +77,43 @@ where
         let state = Arc::new(Mutex::new(TakeLatestState::new()));
         let filter = Arc::new(filter);
 
-        streams
-            .ordered_merge()
-            .filter_map(move |(timestamped_value, index)| {
-                let state = Arc::clone(&state);
-                let filter = Arc::clone(&filter);
-                async move {
-                    let mut state = state
-                        .lock()
-                        .expect("Failed to acquire lock on take_latest_when state");
+        Box::pin(
+            streams
+                .ordered_merge_sync()
+                .filter_map(move |(timestamped_value, index)| {
+                    let state = Arc::clone(&state);
+                    let filter = Arc::clone(&filter);
+                    let seq_number = timestamped_value.sequence();
+                    async move {
+                        let mut state = state
+                            .lock()
+                            .expect("Failed to acquire lock on take_latest_when state");
 
-                    match index {
-                        0 => state.source_value = Some(timestamped_value.value.clone()),
-                        1 => state.filter_value = Some(timestamped_value.value.clone()),
-                        _ => unreachable!(),
-                    }
+                        match index {
+                            0 => state.source_value = Some(timestamped_value.value.clone()),
+                            1 => state.filter_value = Some(timestamped_value.value.clone()),
+                            _ => unreachable!(),
+                        }
 
-                    if state.is_complete() {
-                        let values = state.get_values();
-                        let combined_state = CombinedState::new(values);
+                        if state.is_complete() {
+                            let values = state.get_values();
+                            let combined_state = CombinedState::new(values);
 
-                        if filter(&combined_state) {
-                            Some(
-                                state
-                                    .source_value
-                                    .clone()
-                                    .expect("source_value should be set when state is complete"),
-                            )
+                            if filter(&combined_state) {
+                                Some(Sequenced::with_sequence(
+                                    state.source_value.clone().expect(
+                                        "source_value should be set when state is complete",
+                                    ),
+                                    seq_number,
+                                ))
+                            } else {
+                                None
+                            }
                         } else {
                             None
                         }
-                    } else {
-                        None
                     }
-                }
-            })
+                }),
+        )
     }
 }

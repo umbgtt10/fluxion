@@ -12,7 +12,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 /// A concrete wrapper type that provides all fluxion stream extensions.
-/// 
+///
 /// This type wraps any stream of `Sequenced<T>` and provides all the fluxion
 /// extension methods directly, allowing easy chaining and composition.
 #[pin_project]
@@ -85,13 +85,17 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = T>
+    ) -> FluxionStream<Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>>
     where
         S: SequencedStreamExt<T> + Send + Sync + 'static,
         SF: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
-        TakeLatestWhenExt::take_latest_when(inner, filter_stream, filter)
+        FluxionStream::new(TakeLatestWhenExt::take_latest_when(
+            inner,
+            filter_stream,
+            filter,
+        ))
     }
 
     /// Combines this stream with another, emitting when the primary stream emits
