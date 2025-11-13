@@ -28,6 +28,3 @@ async-stream = "0.3.6"
 fluxion-stream = { path = "fluxion-stream" }
 fluxion-exec = { path = "fluxion-exec" }
 fluxion-test-utils = { path = "fluxion-test-utils" }
-
-# Dev dependencies
-rstest = "0.26.1"

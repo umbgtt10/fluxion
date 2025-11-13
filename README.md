@@ -37,6 +37,13 @@ Development notes
 - Clippy, formatting and documentation warnings are treated as errors in CI.
 - Local scripts live in `.ci/` (use `coverage.ps1` to collect coverage locally with `cargo-llvm-cov`).
 
+TODO
+- [ ] Bench all remaining stream extensions and record results in `target/criterion`.
+	- Suggested list: `combine_latest`, `combine_with_previous`, `merge`, `merge_ordered`, `merge_with`, `with_latest_from`, `take_latest_when`, `take_while`, `select_all`.
+- [ ] Investigate a clean way to suppress unit-test harness noise when running `cargo bench`.
+	- Consider options: `cargo -q bench`, running the bench binary directly, per-package bench (`-p`), or a `.ci/bench.ps1` wrapper that builds then executes bench executables.
+
+
 Issues & contributions
 
 Contributions are welcome. Please open issues and PRs. Use the existing CI scripts to verify changes locally before pushing.

@@ -1,34 +1,77 @@
 use criterion::{BenchmarkId, Criterion, Throughput};
-use futures::stream::{self, StreamExt};
-use tokio::runtime::Runtime;
+use fluxion_stream::MergedStream;
 use fluxion_stream::timestamped::Timestamped;
-use criterion::black_box;
+use futures::stream::{self, StreamExt};
+use std::hint::black_box;
+use std::pin::Pin;
+use tokio::runtime::Runtime;
 
-// Small helper to create a stream of N Timestamped items with payload of given size
-fn make_stream(n: usize, payload_size: usize) -> impl futures::Stream<Item = Timestamped<Vec<u8>>> {
-    let items: Vec<Timestamped<Vec<u8>>> = (0..n)
+fn make_stream(
+    size: usize,
+    payload_size: usize,
+) -> impl futures::Stream<Item = Timestamped<Vec<u8>>> {
+    let items: Vec<Timestamped<Vec<u8>>> = (0..size)
         .map(|_i| Timestamped::new(vec![0u8; payload_size]))
         .collect();
     stream::iter(items)
 }
 
-// Placeholder: run merge_with benchmark
 pub fn bench_merge_with(c: &mut Criterion) {
     let mut group = c.benchmark_group("merge_with");
-    let items = [1000usize, 10_000usize];
-    let payloads = [0usize, 128usize];
+    let sizes = [1000usize, 10_000usize];
+    let payload_sizes = [0usize, 128usize];
 
-    for &m in &items {
-        for &p in &payloads {
-            let id = BenchmarkId::from_parameter(format!("merge_m{}_p{}", m, p));
-            group.throughput(Throughput::Elements((m * 2) as u64));
-            group.bench_with_input(id, &(m, p), |b, &(m, p)| {
-                b.iter(|| {
-                    let mut s1 = make_stream(m, p);
-                    let mut s2 = make_stream(m, p);
+    for &size in &sizes {
+        for &payload_size in &payload_sizes {
+            let id = BenchmarkId::from_parameter(format!("merge_m{}_p{}", size, payload_size));
+            // We merge three streams, each producing `size` elements, so the
+            // total elements produced per iteration is `size * 3`.
+            group.throughput(Throughput::Elements((size * 3) as u64));
+            group.bench_with_input(id, &(size, payload_size), |bencher, &(size, payload_size)| {
+                bencher.iter(|| {
+                    // new timestamped streams producing `size` items of payload `payload_size`
+                    let new_stream1 = make_stream(size, payload_size);
+                    let new_stream2 = make_stream(size, payload_size);
+                    let new_stream3 = make_stream(size, payload_size);
+
+                    #[derive(Default)]
+                    struct SharedState {
+                        processed: u64,
+                    }
+
+                    impl SharedState {
+                        fn update1(&mut self) {
+                            self.processed += 1;
+                        }
+
+                        fn update2(&mut self) {
+                            self.processed += 2;
+                        }
+
+                        fn update3(&mut self) {
+                            self.processed += 3;
+                        }
+                    }
+
+                    let merged = MergedStream::seed(SharedState::default())
+                        .merge_with(new_stream1, |new_item, state| {
+                            state.update1();
+                            Timestamped::new(new_item.into_inner())
+                        })
+                        .merge_with(new_stream2, |new_item, state| {
+                            state.update2();
+                            Timestamped::new(new_item.into_inner())
+                        })
+                        .merge_with(new_stream3, |new_item, state| {
+                            state.update3();
+                            Timestamped::new(new_item.into_inner())
+                        });
+
                     let rt = Runtime::new().unwrap();
                     rt.block_on(async move {
-                        while let Some(_v) = futures::stream::select(s1, s2).next().await {
+                        let mut s = Box::pin(merged)
+                            as Pin<Box<dyn futures::Stream<Item = Timestamped<Vec<u8>>> + Send>>;
+                        while let Some(_v) = s.next().await {
                             black_box(())
                         }
                     });
