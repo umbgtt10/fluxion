@@ -21,3 +21,8 @@ pin-project = { workspace = true }
 
 [dev-dependencies]
 fluxion-test-utils = { workspace = true }
+criterion = { version = "0.7.0", features = ["html_reports"] }
+
+[[bench]]
+name = "benchmarks"
+harness = false
