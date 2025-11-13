@@ -1,12 +1,12 @@
 pub mod combine_latest;
 pub mod combine_with_previous;
 pub mod fluxion_stream;
+mod logging;
 pub mod ordered_merge;
 pub mod take_latest_when;
 pub mod take_while_with;
 pub mod util;
 pub mod with_latest_from;
-mod logging;
 
 // Re-export commonly used types
 pub use combine_latest::{CombineLatestExt, CombinedState};

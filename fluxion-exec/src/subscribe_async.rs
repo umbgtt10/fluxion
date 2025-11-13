@@ -57,7 +57,8 @@ where
                     } else {
                         crate::error!(
                             "Unhandled error in subscribe_async while processing item: {:?}, error: {}",
-                            item, error
+                            item,
+                            error
                         );
                     }
                 }

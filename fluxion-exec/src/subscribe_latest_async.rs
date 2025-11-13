@@ -63,26 +63,31 @@ where
                     tokio::spawn(async move {
                         loop {
                             // Get the latest item
-                            let item = state.get_item().await;
-
-                            // Process it
-                            if let Err(error) = on_next_func(item.clone(), cancellation_token.clone()).await {
-                                if let Some(on_error_callback) = on_error_callback.clone() {
-                                    on_error_callback(error);
-                                } else {
-                                    crate::error!(
-                                        "Unhandled error in subscribe_latest_async while processing item: {:?}, error: {}",
-                                        item, error
-                                    );
+                            if let Some(item) = state.get_item().await {
+                                // Process it
+                                if let Err(error) =
+                                    on_next_func(item.clone(), cancellation_token.clone()).await
+                                {
+                                    if let Some(on_error_callback) = on_error_callback.clone() {
+                                        on_error_callback(error);
+                                    } else {
+                                        crate::error!(
+                                            "Unhandled error in subscribe_latest_async while processing item: {:?}, error: {}",
+                                            item, error
+                                        );
+                                    }
                                 }
-                            }
 
-                            // Check if a new item arrived while we were processing
-                            if !state.finish_processing_and_check_for_next().await {
-                                // No new item, we're done
+                                // Check if a new item arrived while we were processing
+                                if !state.finish_processing_and_check_for_next().await {
+                                    // No new item, we're done
+                                    break;
+                                }
+                                // Loop to process the next item
+                            } else {
+                                // No current item (invalid state) – exit loop gracefully
                                 break;
                             }
-                            // Loop to process the next item
                         }
 
                         // Notify that this processing task has completed
@@ -125,17 +130,21 @@ impl<T> Context<T> {
     }
 
     /// Gets the current item for processing.
-    pub async fn get_item(&self) -> T
+    /// Returns `None` if no item is available (should be unreachable in normal flow).
+    pub async fn get_item(&self) -> Option<T>
     where
         T: Clone,
     {
         let mut state = self.state.lock().await;
         if let Some(item) = state.item.take() {
-            item
+            Some(item)
         } else {
-            // This should never happen if called correctly, but we handle it gracefully
-            // by returning a cloned value from the previous state if available
-            panic!("get_item called when no item is available - this is a logic error")
+            // Defensive: log invalid state and mark as not processing to avoid deadlock
+            crate::error!(
+                "subscribe_latest_async: get_item called with no current item; marking idle"
+            );
+            state.is_processing = false;
+            None
         }
     }
 

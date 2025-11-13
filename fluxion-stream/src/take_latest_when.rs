@@ -1,12 +1,11 @@
-use futures::{Stream, StreamExt};
-use std::fmt::Debug;
-use std::pin::Pin;
-use std::sync::{Arc, Mutex};
-
 use crate::Ordered;
 use crate::combine_latest::CombinedState;
 use crate::util::safe_lock;
 use fluxion_ordered_merge::OrderedMergeExt;
+use futures::{Stream, StreamExt};
+use std::fmt::Debug;
+use std::pin::Pin;
+use std::sync::{Arc, Mutex};
 
 pub trait TakeLatestWhenExt<T, SF>: Stream<Item = T> + Sized
 where
@@ -96,7 +95,12 @@ where
                         match index {
                             0 => state.source_value = Some(ordered_value.get().clone()),
                             1 => state.filter_value = Some(ordered_value.get().clone()),
-                            _ => unreachable!(),
+                            _ => {
+                                crate::warn!(
+                                    "take_latest_when: unexpected stream index {} – ignoring",
+                                    index
+                                );
+                            }
                         }
 
                         if state.is_complete() {
