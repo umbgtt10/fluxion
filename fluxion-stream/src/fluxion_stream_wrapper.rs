@@ -106,8 +106,8 @@ where
         filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = (Sequenced<T>, Sequenced<T>)> + Send
     where
-        S: SequencedStreamExt<T> + Send + Unpin + 'static,
-        S2: Stream<Item = Sequenced<T>> + Send + 'static,
+        S: SequencedStreamExt<T> + Send + Sync + Unpin + 'static,
+        S2: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
         Sequenced<T>: CompareByInner,
     {
         let inner = self.into_inner();
@@ -121,8 +121,8 @@ where
         filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
     ) -> FluxionStream<impl Stream<Item = Sequenced<CombinedState<T>>> + Send>
     where
-        S: SequencedStreamExt<T> + Send + 'static,
-        S2: Stream<Item = Sequenced<T>> + Send + 'static,
+        S: SequencedStreamExt<T> + Send + Sync + 'static,
+        S2: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
         Sequenced<T>: CompareByInner,
     {
         let inner = self.into_inner();
@@ -142,6 +142,19 @@ where
     {
         let inner = self.into_inner();
         FluxionStream::new(OrderedMergeSequencedExt::ordered_merge(inner, others))
+    }
+
+    /// Merges this stream with multiple others, emitting all values in sequence order.
+    /// This is an alias for ordered_merge, provided for API consistency.
+    pub fn merge_with<S2>(
+        self,
+        others: Vec<S2>,
+    ) -> FluxionStream<impl Stream<Item = Sequenced<T>> + Send>
+    where
+        S: SequencedStreamExt<T> + Send + 'static,
+        S2: Stream<Item = Sequenced<T>> + Send + 'static,
+    {
+        self.ordered_merge(others)
     }
 }
 

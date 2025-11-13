@@ -201,17 +201,53 @@ async fn test_fluxion_stream_take_latest_when_take_while() {
     assert_no_element_emitted(&mut composed, 100).await;
 }
 
-// Note: Direct composition of combine_latest + take_while is not possible
-// because combine_latest uses OrderedMerge which boxes streams as dyn Stream + Send (not Sync).
-// take_while_with requires the input stream to be Sync, which would require all combine_latest
-// input streams to also be Sync. This is a known architectural limitation.
-//
-// The refactoring to return Sequenced<CombinedState<T>> (instead of CombinedState<Sequenced<T>>)
-// was still valuable as it:
-// - Properly assigns sequence numbers to combined emissions
-// - Enables CombinedState to implement Ord
-// - Improves composability with other operators that don't require Sync
-// - Provides a cleaner API where filters receive &CombinedState<T>
+/// Test chaining combine_latest with take_while_with
+#[tokio::test]
+async fn test_fluxion_stream_combine_latest_and_take_while() {
+    // Arrange
+    let person: FluxionChannel<TestData> = FluxionChannel::new();
+    let animal: FluxionChannel<TestData> = FluxionChannel::new();
+    let plant: FluxionChannel<TestData> = FluxionChannel::new();
+    let filter: FluxionChannel<bool> = FluxionChannel::new();
+
+    static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+
+    // Compose: combine_latest -> take_while_with
+    let composed = FluxionStream::new(person.stream)
+        .combine_latest(vec![animal.stream, plant.stream], COMBINE_FILTER)
+        .take_while_with(filter.stream, |f| *f);
+
+    let mut composed = Box::pin(composed);
+
+    // Act & Assert
+    // Enable filter
+    push(true, &filter.sender);
+    // Push initial values to all channels
+    push(person_alice(), &person.sender);
+    push(animal_dog(), &animal.sender);
+    push(plant_rose(), &plant.sender);
+
+    // Should emit combined state
+    let result = composed.next().await.unwrap();
+    let state = result.get_state();
+    assert_eq!(state.len(), 3);
+    assert_eq!(state[0], person_alice());
+    assert_eq!(state[1], animal_dog());
+    assert_eq!(state[2], plant_rose());
+
+    // Push new values
+    push(person_bob(), &person.sender);
+    let result = composed.next().await.unwrap();
+    let state = result.get_state();
+    assert_eq!(state[0], person_bob());
+    assert_eq!(state[1], animal_dog());
+    assert_eq!(state[2], plant_rose());
+
+    // Disable filter - should stop emitting
+    push(false, &filter.sender);
+    push(person_charlie(), &person.sender);
+    assert_no_element_emitted(&mut composed, 100).await;
+}
 
 /// Test FluxionStream ordered_merge - merges multiple streams and emits all values per sequence
 #[tokio::test]

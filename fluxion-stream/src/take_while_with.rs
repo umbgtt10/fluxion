@@ -16,17 +16,25 @@ type PinnedItemStream<TI, TFI> = Pin<Box<dyn Stream<Item = Item<TI, TFI>> + Send
 /// only while the filter predicate applied to the latest filter stream element returns true.
 /// Once the predicate returns false, the stream terminates.
 ///
-/// Usage (instance-method form):
+/// # Example
 ///
-/// ```ignore
-/// // `source_stream` is a `Sequenced` stream of `T`
-/// // `filter_stream` is a `Sequenced` stream of `TF`
-/// // `filter` is a `Fn(&TF) -> bool`
+/// ```
+/// use fluxion_stream::TakeWhileExt;
+/// use fluxion_test_utils::{FluxionChannel, push};
+/// use futures::StreamExt;
 ///
-/// let filtered = source_stream.take_while_with(filter_stream, |filter_val| {
-///     // return true to continue emitting source items
-///     *filter_val
-/// });
+/// # #[tokio::main]
+/// # async fn main() {
+/// let source: FluxionChannel<i32> = FluxionChannel::new();
+/// let filter: FluxionChannel<bool> = FluxionChannel::new();
+///
+/// let mut filtered = Box::pin(source.stream.take_while_with(filter.stream, |f| *f));
+///
+/// push(true, &filter.sender);
+/// push(42, &source.sender);
+///
+/// assert_eq!(filtered.next().await.unwrap(), 42);
+/// # }
 /// ```
 pub trait TakeWhileExt<T, TF, S>: SequencedStreamExt<T> + Sized
 where
@@ -45,10 +53,25 @@ where
     /// # Returns
     /// A stream of unwrapped source elements that passes while the filter condition is true
     ///
-    /// Example:
+    /// # Example
     ///
-    /// ```ignore
-    /// let output = source_stream.take_while_with(filter_stream, |f| *f);
+    /// ```
+    /// use fluxion_stream::TakeWhileExt;
+    /// use fluxion_test_utils::{FluxionChannel, push};
+    /// use futures::StreamExt;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let source: FluxionChannel<String> = FluxionChannel::new();
+    /// let filter: FluxionChannel<bool> = FluxionChannel::new();
+    ///
+    /// let mut output = Box::pin(source.stream.take_while_with(filter.stream, |f| *f));
+    ///
+    /// push(true, &filter.sender);
+    /// push("hello".to_string(), &source.sender);
+    ///
+    /// assert_eq!(output.next().await.unwrap(), "hello");
+    /// # }
     /// ```
     fn take_while_with(
         self,

@@ -10,7 +10,7 @@ where
     T: Clone + Debug + Send + Sync + 'static,
     Self: SequencedStreamExt<T> + Send + 'static,
     Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
-    S2: Stream<Item = Sequenced<T>> + Send + 'static,
+    S2: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
 {
     fn with_latest_from(
         self,
@@ -24,8 +24,8 @@ where
     T: Clone + Debug + Send + Sync + 'static,
     Self: SequencedStreamExt<T> + Send + 'static,
     Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
-    S2: Stream<Item = Sequenced<T>> + Send + 'static,
-    P: SequencedStreamExt<T> + CombineLatestExt<T, S2> + Sized + Unpin + Send + 'static,
+    S2: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
+    P: SequencedStreamExt<T> + CombineLatestExt<T, S2> + Sized + Unpin + Send + Sync + 'static,
 {
     fn with_latest_from(
         self,
