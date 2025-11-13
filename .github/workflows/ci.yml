@@ -24,12 +24,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+      - name: Install Rust toolchain (Linux / macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path
+          source "$HOME/.cargo/env"
+          rustup toolchain install stable
+          rustup default stable
+          rustup component add rustfmt clippy --toolchain stable
+
+      - name: Install Rust toolchain (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          iex ((New-Object System.Net.WebClient).DownloadString('https://sh.rustup.rs'))
+          $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+          rustup toolchain install stable
+          rustup default stable
+          rustup component add rustfmt clippy --toolchain stable
 
       - name: Install rustfmt & clippy components
         run: |
@@ -92,12 +105,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+      - name: Install Rust toolchain (Linux / macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path
+          source "$HOME/.cargo/env"
+          rustup toolchain install stable
+          rustup default stable
+          rustup component add rustfmt clippy --toolchain stable
+
+      - name: Install Rust toolchain (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          iex ((New-Object System.Net.WebClient).DownloadString('https://sh.rustup.rs'))
+          $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+          rustup toolchain install stable
+          rustup default stable
+          rustup component add rustfmt clippy --toolchain stable
 
       - name: Cache cargo registry and target
         uses: actions/cache@v4
@@ -130,12 +156,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+      - name: Install Rust toolchain (Linux / macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path
+          source "$HOME/.cargo/env"
+          rustup toolchain install stable
+          rustup default stable
+          rustup component add rustfmt clippy llvm-tools-preview --toolchain stable
+
+      - name: Install Rust toolchain (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          iex ((New-Object System.Net.WebClient).DownloadString('https://sh.rustup.rs'))
+          $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+          rustup toolchain install stable
+          rustup default stable
+          rustup component add rustfmt clippy llvm-tools-preview --toolchain stable
 
       - name: Install llvm tools
         run: |
@@ -158,13 +197,13 @@ jobs:
           restore-keys: |
             ubuntu-latest-cargo-
 
-      - name: Run coverage (lcov)
-        run: |
-          cargo llvm-cov --workspace --lcov --output-path target/coverage/lcov.info
-
       - name: Ensure coverage output directory exists
         run: |
           mkdir -p target/coverage
+
+      - name: Run coverage (lcov)
+        run: |
+          cargo llvm-cov --workspace --lcov --output-path target/coverage/lcov.info
 
       - name: Run coverage (html)
         run: |
