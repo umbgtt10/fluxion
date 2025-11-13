@@ -4,47 +4,45 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-use crate::ordered_merge::OrderedMergeExt;
-use crate::sequenced::Sequenced;
-use crate::sequenced_stream::SequencedStreamExt;
+use crate::ordered::{Ordered, OrderedWrapper};
+use fluxion_ordered_merge::OrderedMergeExt;
 
+/// Trait for comparing ordered types by their inner values.
+/// This is used by combine_latest to establish a stable ordering of streams.
 pub trait CompareByInner {
     fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering;
 }
 
-impl<T: Ord> CompareByInner for Sequenced<T> {
-    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
-        self.value.cmp(&other.value)
-    }
-}
-
-pub trait CombineLatestExt<T, S2>: SequencedStreamExt<T> + Sized
+pub trait CombineLatestExt<T>: Stream<Item = T> + Sized
 where
-    T: Clone + Debug + Send + Sync + 'static,
-    Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
-    S2: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
+    T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
 {
-    fn combine_latest(
+    fn combine_latest<S2>(
         self,
         others: Vec<S2>,
-        filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = Sequenced<CombinedState<T>>> + Send + Unpin;
+        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
+    ) -> impl Stream<Item = OrderedWrapper<CombinedState<T::Inner>>> + Send + Unpin
+    where
+        S2: Stream<Item = T> + Send + Sync + 'static;
 }
 
-type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send>>>;
+type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (T, usize)> + Send>>>;
 
-impl<T, S, S2> CombineLatestExt<T, S2> for S
+impl<T, S> CombineLatestExt<T> for S
 where
-    T: Clone + Debug + Send + Sync + 'static,
-    Sequenced<T>: Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
-    S: SequencedStreamExt<T> + Send + Sync + 'static,
-    S2: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
+    T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
+    S: Stream<Item = T> + Send + Sync + 'static,
 {
-    fn combine_latest(
+    fn combine_latest<S2>(
         self,
         others: Vec<S2>,
-        filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = Sequenced<CombinedState<T>>> + Send + Unpin {
+        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
+    ) -> impl Stream<Item = OrderedWrapper<CombinedState<T::Inner>>> + Send + Unpin
+    where
+        S2: Stream<Item = T> + Send + Sync + 'static,
+    {
         let mut streams: PinnedStreams<T> = vec![];
 
         streams.push(Box::pin(self.map(move |value| (value, 0))));
@@ -64,7 +62,7 @@ where
 
                     move |(value, index)| {
                         let state = Arc::clone(&state);
-                        let sequence = value.sequence(); // Capture sequence of triggering value
+                        let order = value.order(); // Capture order of triggering value
                         async move {
                             let mut state = state
                                 .lock()
@@ -72,25 +70,25 @@ where
                             state.insert(index, value);
 
                             if state.is_complete() {
-                                Some((state.clone(), sequence))
+                                Some((state.clone(), order))
                             } else {
                                 None
                             }
                         }
                     }
                 })
-                .map(|(state, sequence)| {
-                    // Extract the inner values from Sequenced<T> to create CombinedState<T>
-                    let inner_values: Vec<T> = state
+                .map(|(state, order)| {
+                    // Extract the inner values to create CombinedState
+                    let inner_values: Vec<T::Inner> = state
                         .get_ordered_values()
                         .iter()
-                        .map(|seq_val| seq_val.get().clone())
+                        .map(|ordered_val| ordered_val.get().clone())
                         .collect();
                     let combined = CombinedState::new(inner_values);
-                    Sequenced::with_sequence(combined, sequence)
+                    crate::ordered::OrderedWrapper::with_order(combined, order)
                 })
-                .filter(move |sequenced_combined| {
-                    let combined_state = sequenced_combined.get();
+                .filter(move |ordered_combined| {
+                    let combined_state = ordered_combined.get();
                     ready(filter(combined_state))
                 }),
         )
@@ -133,6 +131,31 @@ where
 
     pub fn get_state(&self) -> &Vec<V> {
         &self.state
+    }
+}
+
+impl<V> Ordered for CombinedState<V>
+where
+    V: Clone + Send + Sync,
+{
+    type Inner = CombinedState<V>;
+
+    fn order(&self) -> u64 {
+        // CombinedState doesn't have its own order - it's always wrapped by an Ordered type
+        // This should never be called directly
+        0
+    }
+
+    fn get(&self) -> &Self::Inner {
+        self
+    }
+
+    fn with_order(value: Self::Inner, _order: u64) -> Self {
+        value
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::fluxion_channel::sequenced_channel::UnboundedSender;
+use crate::sequenced::Sequenced;
 use crate::{animal::Animal, person::Person, plant::Plant};
-use fluxion_stream::sequenced::Sequenced;
 use futures::Stream;
 use futures::StreamExt;
 use std::fmt::{self, Display};

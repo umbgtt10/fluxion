@@ -1,3 +1,4 @@
+use fluxion_stream::Ordered;
 use fluxion_stream::combine_latest::{CombineLatestExt, CombinedState};
 use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::{
@@ -109,19 +110,19 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues()
 
     // Assert
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.value.get_state().to_vec();
+    let actual: Vec<TestData> = state.get().get_state().to_vec();
     assert_eq!(actual, vec![person_alice(), animal_dog(), plant_rose()]);
 
     drop(plant.sender);
 
     push(person_bob(), &person.sender);
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.value.get_state().to_vec();
+    let actual: Vec<TestData> = state.get().get_state().to_vec();
     assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
 
     push(animal_spider(), &animal.sender);
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.value.get_state().to_vec();
+    let actual: Vec<TestData> = state.get().get_state().to_vec();
     assert_eq!(actual, vec![person_bob(), animal_spider(), plant_rose()]);
 }
 
@@ -169,7 +170,7 @@ async fn combine_latest_template_test(
     let mut combined_stream = Box::pin(combined_stream);
 
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.value.get_state().to_vec();
+    let actual: Vec<TestData> = state.get().get_state().to_vec();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
@@ -298,7 +299,7 @@ async fn combine_latest_stream_order_test(
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
     let state = combined_stream.next().await.unwrap();
-    let actual: Vec<TestData> = state.value.get_state().to_vec();
+    let actual: Vec<TestData> = state.get().get_state().to_vec();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);

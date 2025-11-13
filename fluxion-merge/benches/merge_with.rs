@@ -1,6 +1,6 @@
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_merge::MergedStream;
-use fluxion_stream::sequenced::Sequenced;
+use fluxion_test_utils::sequenced::Sequenced;
 use futures::stream::{self, StreamExt};
 use std::hint::black_box;
 use std::pin::Pin;

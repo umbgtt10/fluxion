@@ -1,22 +1,19 @@
+use crate::sequenced::Sequenced;
 use crate::test_data::TestData;
 use fluxion_stream::combine_latest::CombinedState;
-use fluxion_stream::sequenced::Sequenced;
 use futures::Stream;
 use futures::stream::StreamExt;
-use std::fmt::Debug;
 use std::time::Duration;
 use tokio::time::sleep;
 
 pub async fn assert_no_element_emitted<S, T>(stream: &mut S, timeout_ms: u64)
 where
     S: Stream<Item = T> + Unpin,
-    T: Debug,
 {
     tokio::select! {
-        state = stream.next() => {
+        _state = stream.next() => {
             panic!(
-                "Unexpected combination emitted: {:?}, expected no output.",
-                state
+                "Unexpected combination emitted, expected no output."
             );
         }
         _ = sleep(Duration::from_millis(timeout_ms)) => {
@@ -49,11 +46,12 @@ where
     assert_eq!((left.value, right.value), (expected_left, expected_right));
 }
 
-pub async fn expect_next_combined_equals<S>(stream: &mut S, expected: &[TestData])
+pub async fn expect_next_combined_equals<S, T>(stream: &mut S, expected: &[TestData])
 where
-    S: Stream<Item = Sequenced<CombinedState<TestData>>> + Unpin,
+    S: Stream<Item = T> + Unpin,
+    T: fluxion_stream::Ordered<Inner = CombinedState<TestData>>,
 {
     let state = stream.next().await.expect("expected next combined state");
-    let actual: Vec<TestData> = state.value.get_state().to_vec();
+    let actual: Vec<TestData> = state.get().get_state().to_vec();
     assert_eq!(actual, expected);
 }

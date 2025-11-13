@@ -7,8 +7,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use fluxion_stream::sequenced::Sequenced;
-use fluxion_stream::sequenced_stream::SequencedStreamExt;
+use fluxion_test_utils::sequenced::Sequenced;
 
 /// A stateful stream merger that combines multiple sequenced streams while maintaining state.
 ///
@@ -55,7 +54,7 @@ where
         process_fn: F,
     ) -> MergedStream<impl Stream<Item = Sequenced<T>>, State, Sequenced<T>>
     where
-        NewStream: SequencedStreamExt<NewItem> + Send + Sync + 'static,
+        NewStream: Stream<Item = Sequenced<NewItem>> + Send + Sync + 'static,
         F: FnMut(Sequenced<NewItem>, &mut State) -> Sequenced<T> + Send + Sync + Clone + 'static,
         NewItem: Send + Sync + 'static,
         T: Send + Sync + Ord + Unpin + 'static,

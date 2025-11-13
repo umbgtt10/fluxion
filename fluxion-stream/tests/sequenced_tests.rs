@@ -1,4 +1,4 @@
-﻿use fluxion_stream::Sequenced;
+﻿use fluxion_test_utils::Sequenced;
 
 #[test]
 fn test_sequenced_ordering() {

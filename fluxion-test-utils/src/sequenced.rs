@@ -1,5 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use fluxion_stream::Ordered;
+
 static GLOBAL_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 /// A wrapper that adds automatic sequencing to any value for temporal ordering.
@@ -83,6 +85,38 @@ impl<T> std::ops::DerefMut for Sequenced<T> {
 impl<T: std::fmt::Display> std::fmt::Display for Sequenced<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.value)
+    }
+}
+
+impl<T: Clone> Ordered for Sequenced<T> {
+    type Inner = T;
+
+    fn order(&self) -> u64 {
+        self.sequence
+    }
+
+    fn get(&self) -> &T {
+        &self.value
+    }
+
+    fn with_order(value: T, order: u64) -> Self {
+        Self::with_sequence(value, order)
+    }
+
+    fn into_inner(self) -> T {
+        self.value
+    }
+}
+
+impl<T: Ord> fluxion_stream::CompareByInner for Sequenced<T> {
+    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
+        self.value.cmp(&other.value)
+    }
+}
+
+impl<T> From<(T, u64)> for Sequenced<T> {
+    fn from((value, order): (T, u64)) -> Self {
+        Sequenced::with_sequence(value, order)
     }
 }
 

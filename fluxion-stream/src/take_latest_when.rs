@@ -3,21 +3,21 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
+use crate::Ordered;
 use crate::combine_latest::CombinedState;
-use crate::ordered_merge::OrderedMergeExt;
-use crate::sequenced::Sequenced;
-use crate::sequenced_stream::SequencedStreamExt;
+use fluxion_ordered_merge::OrderedMergeExt;
 
-pub trait TakeLatestWhenExt<T, SF>: SequencedStreamExt<T> + Sized
+pub trait TakeLatestWhenExt<T, SF>: Stream<Item = T> + Sized
 where
-    T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    SF: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
+    T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    SF: Stream<Item = T> + Send + Sync + 'static,
 {
     fn take_latest_when(
         self,
         filter_stream: SF,
-        filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>;
+        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
+    ) -> Pin<Box<dyn Stream<Item = T> + Send + Sync>>;
 }
 
 #[derive(Clone, Debug)]
@@ -56,19 +56,20 @@ where
     }
 }
 
-type IndexedStream<T> = Pin<Box<dyn Stream<Item = (Sequenced<T>, usize)> + Send>>;
+type IndexedStream<T> = Pin<Box<dyn Stream<Item = (T, usize)> + Send>>;
 
 impl<T, S, SF> TakeLatestWhenExt<T, SF> for S
 where
-    S: SequencedStreamExt<T> + Send + Sync + 'static,
-    SF: Stream<Item = Sequenced<T>> + Send + Sync + 'static,
-    T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    S: Stream<Item = T> + Send + Sync + 'static,
+    SF: Stream<Item = T> + Send + Sync + 'static,
+    T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     fn take_latest_when(
         self,
         filter_stream: SF,
-        filter: impl Fn(&CombinedState<T>) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>> {
+        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
+    ) -> Pin<Box<dyn Stream<Item = T> + Send + Sync>> {
         let source_stream = Box::pin(self.map(|value| (value, 0)));
         let filter_stream = Box::pin(filter_stream.map(|value| (value, 1)));
 
@@ -80,18 +81,18 @@ where
         Box::pin(
             streams
                 .ordered_merge()
-                .filter_map(move |(timestamped_value, index)| {
+                .filter_map(move |(ordered_value, index)| {
                     let state = Arc::clone(&state);
                     let filter = Arc::clone(&filter);
-                    let seq_number = timestamped_value.sequence();
+                    let order = ordered_value.order();
                     async move {
                         let mut state = state
                             .lock()
                             .expect("Failed to acquire lock on take_latest_when state");
 
                         match index {
-                            0 => state.source_value = Some(timestamped_value.value.clone()),
-                            1 => state.filter_value = Some(timestamped_value.value.clone()),
+                            0 => state.source_value = Some(ordered_value.get().clone()),
+                            1 => state.filter_value = Some(ordered_value.get().clone()),
                             _ => unreachable!(),
                         }
 
@@ -100,11 +101,11 @@ where
                             let combined_state = CombinedState::new(values);
 
                             if filter(&combined_state) {
-                                Some(Sequenced::with_sequence(
+                                Some(T::with_order(
                                     state.source_value.clone().expect(
                                         "source_value should be set when state is complete",
                                     ),
-                                    seq_number,
+                                    order,
                                 ))
                             } else {
                                 None

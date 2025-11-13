@@ -12,14 +12,12 @@ harness = false
 
 [dependencies]
 fluxion-ordered-merge.workspace = true
+fluxion-test-utils.workspace = true
 futures.workspace = true
 futures-util.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
 pin-project.workspace = true
-
-# Depend on fluxion-stream for Sequenced and traits
-fluxion-stream.workspace = true
 
 [dev-dependencies]
 fluxion-test-utils.workspace = true

@@ -1,4 +1,5 @@
-use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_stream::ordered::OrderedWrapper;
+use fluxion_stream::{CombinedState, FluxionStream, Ordered};
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::test_data::{
     TestData, animal_dog, person_alice, person_bob, person_charlie, person_dave, plant_rose,
@@ -364,9 +365,15 @@ async fn test_combine_latest_then_take_latest_when() {
     static LATEST_FILTER: fn(&CombinedState<CombinedState<TestData>>) -> bool = |_| true;
 
     // Chain: combine_latest -> take_latest_when
+    // Note: filter stream needs to be mapped to OrderedWrapper to match combine_latest output
+    let filter_mapped = filter.stream.map(|seq| {
+        let order = seq.order();
+        OrderedWrapper::with_order(seq.into_inner(), order)
+    });
+
     let composed = FluxionStream::new(person.stream)
         .combine_latest(vec![animal.stream], COMBINE_FILTER)
-        .take_latest_when(filter.stream, LATEST_FILTER);
+        .take_latest_when(filter_mapped, LATEST_FILTER);
 
     let mut composed = Box::pin(composed);
 

@@ -1,6 +1,6 @@
 use fluxion_merge::MergedStream;
-use fluxion_stream::sequenced::Sequenced;
 use fluxion_test_utils::FluxionChannel;
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::{
     TestChannels,
     animal::Animal,

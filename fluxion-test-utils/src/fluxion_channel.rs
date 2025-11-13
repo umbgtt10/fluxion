@@ -4,7 +4,7 @@
 //! - Low-level sequenced channels (`sequenced_channel` submodule)
 //! - High-level `FluxionChannel` for convenient testing
 
-use fluxion_stream::sequenced::Sequenced;
+use crate::sequenced::Sequenced;
 use tokio::sync::mpsc::{
     self, UnboundedReceiver as TokioUnboundedReceiver, UnboundedSender as TokioUnboundedSender,
 };
