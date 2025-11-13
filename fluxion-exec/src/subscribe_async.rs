@@ -55,10 +55,9 @@ where
                     if let Some(on_error_callback) = on_error_callback {
                         on_error_callback(error);
                     } else {
-                        crate::error!(
+                        error!(
                             "Unhandled error in subscribe_async while processing item: {:?}, error: {}",
-                            item,
-                            error
+                            item, error
                         );
                     }
                 }

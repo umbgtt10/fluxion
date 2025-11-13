@@ -35,7 +35,7 @@ pub fn safe_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<Mutex
         .lock()
         .map_err(|_poison_err: PoisonError<MutexGuard<T>>| {
             // Log the poison error but recover the data
-            crate::warn!("Mutex poisoned for {}: recovering data", context);
+            warn!("Mutex poisoned for {}: recovering data", context);
             FluxionError::lock_error(context)
         })
         .or_else(|_err| {

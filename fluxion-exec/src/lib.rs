@@ -1,3 +1,4 @@
+#[macro_use]
 mod logging;
 pub mod subscribe_async;
 pub mod subscribe_latest_async;

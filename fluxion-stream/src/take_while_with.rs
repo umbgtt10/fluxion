@@ -78,7 +78,7 @@ where
                     let state_guard = match safe_lock(&state, "take_while_with state") {
                         Ok(guard) => guard,
                         Err(e) => {
-                            crate::error!("Failed to acquire lock in take_while_with: {}", e);
+                            error!("Failed to acquire lock in take_while_with: {}", e);
                             return None;
                         }
                     };

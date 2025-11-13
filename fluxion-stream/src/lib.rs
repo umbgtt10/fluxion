@@ -1,7 +1,8 @@
+#[macro_use]
+mod logging;
 pub mod combine_latest;
 pub mod combine_with_previous;
 pub mod fluxion_stream;
-mod logging;
 pub mod ordered_merge;
 pub mod take_latest_when;
 pub mod take_while_with;

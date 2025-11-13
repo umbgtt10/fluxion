@@ -85,7 +85,7 @@ where
                         let state_lock = match safe_lock(&state, "take_latest_when state") {
                             Ok(lock) => lock,
                             Err(e) => {
-                                crate::error!("Failed to acquire lock in take_latest_when: {}", e);
+                                error!("Failed to acquire lock in take_latest_when: {}", e);
                                 return None;
                             }
                         };
@@ -96,7 +96,7 @@ where
                             0 => state.source_value = Some(ordered_value.get().clone()),
                             1 => state.filter_value = Some(ordered_value.get().clone()),
                             _ => {
-                                crate::warn!(
+                                warn!(
                                     "take_latest_when: unexpected stream index {} – ignoring",
                                     index
                                 );

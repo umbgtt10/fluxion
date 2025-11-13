@@ -61,36 +61,27 @@ where
                     let cancellation_token = cancellation_token.clone();
 
                     tokio::spawn(async move {
-                        loop {
-                            // Get the latest item
-                            if let Some(item) = state.get_item().await {
-                                // Process it
-                                if let Err(error) =
-                                    on_next_func(item.clone(), cancellation_token.clone()).await
-                                {
-                                    if let Some(on_error_callback) = on_error_callback.clone() {
-                                        on_error_callback(error);
-                                    } else {
-                                        crate::error!(
-                                            "Unhandled error in subscribe_latest_async while processing item: {:?}, error: {}",
-                                            item, error
-                                        );
-                                    }
+                        while let Some(item) = state.get_item().await {
+                            if let Err(error) =
+                                on_next_func(item.clone(), cancellation_token.clone()).await
+                            {
+                                if let Some(on_error_callback) = on_error_callback.clone() {
+                                    on_error_callback(error);
+                                } else {
+                                    error!(
+                                        "Unhandled error in subscribe_latest_async while processing item: {:?}, error: {}",
+                                        item, error
+                                    );
                                 }
+                            }
 
-                                // Check if a new item arrived while we were processing
-                                if !state.finish_processing_and_check_for_next().await {
-                                    // No new item, we're done
-                                    break;
-                                }
-                                // Loop to process the next item
-                            } else {
-                                // No current item (invalid state) – exit loop gracefully
+                            // Check if a new item arrived while we were processing
+                            if !state.finish_processing_and_check_for_next().await {
+                                // No new item, we're done
                                 break;
                             }
                         }
 
-                        // Notify that this processing task has completed
                         state.notify_task_complete();
                     });
                 }
@@ -140,9 +131,7 @@ impl<T> Context<T> {
             Some(item)
         } else {
             // Defensive: log invalid state and mark as not processing to avoid deadlock
-            crate::error!(
-                "subscribe_latest_async: get_item called with no current item; marking idle"
-            );
+            error!("subscribe_latest_async: get_item called with no current item; marking idle");
             state.is_processing = false;
             None
         }
