@@ -25,8 +25,8 @@ impl<State> MergedStream<Empty<()>, State, ()>
 where
     State: Send + 'static,
 {
-    pub fn seed(initial_state: State) -> MergedStream<Empty<()>, State, ()> {
-        MergedStream {
+    pub fn seed(initial_state: State) -> Self {
+        Self {
             inner: empty(),
             state: Arc::new(Mutex::new(initial_state)),
             _marker: PhantomData,
@@ -70,7 +70,7 @@ where
             }
         });
 
-        let self_stream_mapped = self.inner.map(|item| item.into());
+        let self_stream_mapped = self.inner.map(Into::into);
 
         let merged_stream = vec![
             Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>,

@@ -6,6 +6,10 @@ use futures::stream::StreamExt;
 use std::time::Duration;
 use tokio::time::sleep;
 
+/// Assert that no element is emitted within the given timeout.
+///
+/// # Panics
+/// Panics if the stream emits an element before the timeout elapses.
 pub async fn assert_no_element_emitted<S, T>(stream: &mut S, timeout_ms: u64)
 where
     S: Stream<Item = T> + Unpin,
@@ -16,12 +20,15 @@ where
                 "Unexpected combination emitted, expected no output."
             );
         }
-        _ = sleep(Duration::from_millis(timeout_ms)) => {
+        () = sleep(Duration::from_millis(timeout_ms)) => {
         }
     }
 }
 
 /// Expect the next value from a stream, returning an error if none available
+///
+/// # Errors
+/// Returns an error if the stream ends before yielding the next item or the value mismatches.
 pub async fn expect_next_value<S>(stream: &mut S, expected: TestData) -> Result<()>
 where
     S: Stream<Item = TestData> + Unpin,
@@ -37,12 +44,15 @@ where
         Ok(())
     } else {
         Err(FluxionError::InvalidState {
-            message: format!("Expected {:?}, got {:?}", expected, item),
+            message: format!("Expected {expected:?}, got {item:?}"),
         })
     }
 }
 
 /// Expect the next value from a stream, panicking if none available (for backward compatibility)
+///
+/// # Panics
+/// Panics if the stream ends before yielding the next item.
 pub async fn expect_next_value_unchecked<S>(stream: &mut S, expected: TestData)
 where
     S: Stream<Item = TestData> + Unpin,
@@ -52,6 +62,9 @@ where
 }
 
 /// Expect the next timestamped value from a stream, returning an error if none available
+///
+/// # Errors
+/// Returns an error if the stream ends before yielding the next item or the value mismatches.
 pub async fn expect_next_timestamped<S>(stream: &mut S, expected: TestData) -> Result<()>
 where
     S: Stream<Item = Sequenced<TestData>> + Unpin,
@@ -67,12 +80,15 @@ where
         Ok(())
     } else {
         Err(FluxionError::InvalidState {
-            message: format!("Expected {:?}, got {:?}", expected, item.value),
+            message: format!("Expected {expected:?}, got {:?}", item.value),
         })
     }
 }
 
 /// Expect the next timestamped value from a stream, panicking if none available (for backward compatibility)
+///
+/// # Panics
+/// Panics if the stream ends before yielding the next item.
 pub async fn expect_next_timestamped_unchecked<S>(stream: &mut S, expected: TestData)
 where
     S: Stream<Item = Sequenced<TestData>> + Unpin,
@@ -81,7 +97,10 @@ where
     assert_eq!(item.value, expected);
 }
 
-/// Expect the next pair from a with_latest_from stream, returning an error if none available
+/// Expect the next pair from a `with_latest_from` stream, returning an error if none available
+///
+/// # Errors
+/// Returns an error if the stream ends before yielding the next pair or the values mismatch.
 pub async fn expect_next_pair<S>(
     stream: &mut S,
     expected_left: TestData,
@@ -102,14 +121,17 @@ where
     } else {
         Err(FluxionError::InvalidState {
             message: format!(
-                "Expected ({:?}, {:?}), got ({:?}, {:?})",
-                expected_left, expected_right, left.value, right.value
+                "Expected ({expected_left:?}, {expected_right:?}), got ({:?}, {:?})",
+                left.value, right.value
             ),
         })
     }
 }
 
-/// Expect the next pair from a with_latest_from stream, panicking if none available (for backward compatibility)
+/// Expect the next pair from a `with_latest_from` stream, panicking if none available (for backward compatibility)
+///
+/// # Panics
+/// Panics if the stream ends before yielding the next pair.
 pub async fn expect_next_pair_unchecked<S>(
     stream: &mut S,
     expected_left: TestData,

@@ -24,10 +24,7 @@ pub fn bench_ordered_merge(c: &mut Criterion) {
     for &size in &sizes {
         for &payload_size in &payload_sizes {
             for &num_streams in &num_streams_variants {
-                let id = BenchmarkId::from_parameter(format!(
-                    "m{}_p{}_s{}",
-                    size, payload_size, num_streams
-                ));
+                let id = BenchmarkId::from_parameter(format!("m{size}_p{payload_size}_s{num_streams}"));
                 group.throughput(Throughput::Elements((size * num_streams) as u64));
                 group.bench_with_input(
                     id,
@@ -47,7 +44,7 @@ pub fn bench_ordered_merge(c: &mut Criterion) {
                                     black_box(v);
                                 }
                             });
-                        })
+                        });
                     },
                 );
             }

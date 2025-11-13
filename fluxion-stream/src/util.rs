@@ -3,7 +3,7 @@
 use fluxion_error::{FluxionError, Result};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-/// Safely acquire a lock on a Mutex, converting poison errors to FluxionError
+/// Safely acquire a lock on a Mutex, converting poison errors to `FluxionError`
 ///
 /// This function handles the case where a thread panicked while holding the lock,
 /// which would normally cause a `PoisonError`. Instead, we recover the data and
@@ -30,6 +30,8 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 ///     Err(e) => eprintln!("Failed to lock: {}", e),
 /// }
 /// ```
+/// # Errors
+/// Returns an error if locking the mutex fails.
 pub fn safe_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<MutexGuard<'a, T>> {
     mutex
         .lock()
@@ -60,9 +62,8 @@ pub fn safe_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<Mutex
 /// * `mutex` - The Arc<Mutex<T>> to lock
 /// * `operation` - Description of the operation being performed
 ///
-/// # Returns
-///
-/// A `Result` containing the `MutexGuard` on success
+/// # Errors
+/// Returns an error if locking the mutex fails.
 pub fn try_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, operation: &str) -> Result<MutexGuard<'a, T>> {
     safe_lock(mutex, operation)
 }
@@ -77,6 +78,7 @@ mod tests {
         let mutex = Arc::new(Mutex::new(42));
         let guard = safe_lock(&mutex, "test").unwrap();
         assert_eq!(*guard, 42);
+        drop(guard);
     }
 
     #[test]
@@ -86,14 +88,15 @@ mod tests {
 
         // Poison the mutex by panicking while holding the lock
         let _ = std::panic::catch_unwind(|| {
-            let mut guard = mutex_clone.lock().unwrap();
-            guard.push(4);
+            // inline the single-use lock to avoid holding the guard across the closure
+            mutex_clone.lock().unwrap().push(4);
             panic!("Intentional panic to poison mutex");
         });
 
         // safe_lock should recover from the poison
         let guard = safe_lock(&mutex, "poisoned test").unwrap();
         assert_eq!(guard.len(), 4); // The data was modified before panic
+        drop(guard);
     }
 
     #[test]
@@ -101,5 +104,6 @@ mod tests {
         let mutex = Arc::new(Mutex::new("test data"));
         let guard = try_lock(&mutex, "reading test data").unwrap();
         assert_eq!(*guard, "test data");
+        drop(guard);
     }
 }

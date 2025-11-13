@@ -87,8 +87,7 @@ fn test_error_type_sizes() {
     // FluxionError should be reasonably sized (less than 128 bytes)
     assert!(
         error_size < 128,
-        "FluxionError is too large: {} bytes",
-        error_size
+        "FluxionError is too large: {error_size} bytes"
     );
 }
 

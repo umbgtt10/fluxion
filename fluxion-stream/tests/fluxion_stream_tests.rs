@@ -508,11 +508,11 @@ async fn test_ordered_merge_then_take_latest_when() {
 #[tokio::test]
 async fn test_take_latest_when_then_ordered_merge() {
     // Arrange
+    static LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+
     let source: FluxionChannel<TestData> = FluxionChannel::new();
     let filter: FluxionChannel<TestData> = FluxionChannel::new();
     let animal: FluxionChannel<TestData> = FluxionChannel::new();
-
-    static LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
 
     // Chain: take_latest_when -> ordered_merge
     let composed = FluxionStream::new(source.stream)

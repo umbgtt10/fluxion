@@ -22,7 +22,7 @@ pub fn bench_take_latest_when(c: &mut Criterion) {
 
     for &size in &sizes {
         for &payload_size in &payload_sizes {
-            let id = BenchmarkId::from_parameter(format!("m{}_p{}", size, payload_size));
+            let id = BenchmarkId::from_parameter(format!("m{size}_p{payload_size}"));
             group.throughput(Throughput::Elements(size as u64));
             group.bench_with_input(
                 id,
@@ -41,7 +41,7 @@ pub fn bench_take_latest_when(c: &mut Criterion) {
                                 black_box(v);
                             }
                         });
-                    })
+                    });
                 },
             );
         }

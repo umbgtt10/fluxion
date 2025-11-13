@@ -15,6 +15,7 @@ impl<T> OrderedMerge<T>
 where
     T: Send + Ord + 'static,
 {
+    #[must_use]
     pub fn new<S>(streams: Vec<S>) -> Self
     where
         S: Stream<Item = T> + Send + Sync + 'static,
@@ -65,10 +66,7 @@ where
 
         for (i, item) in this.buffered.iter().enumerate() {
             if let Some(val) = item {
-                let should_update = match min_val {
-                    None => true,
-                    Some(curr_val) => val < curr_val,
-                };
+                let should_update = min_val.is_none_or(|curr_val| val < curr_val);
 
                 if should_update {
                     min_idx = Some(i);

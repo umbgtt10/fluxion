@@ -7,7 +7,8 @@ pub struct Plant {
 }
 
 impl Plant {
-    pub fn new(species: String, height: u32) -> Self {
+    #[must_use]
+    pub const fn new(species: String, height: u32) -> Self {
         Self { species, height }
     }
 }

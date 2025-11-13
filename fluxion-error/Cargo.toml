@@ -9,6 +9,7 @@ repository.workspace = true
 description = "Error types for the Fluxion reactive streaming library"
 keywords = ["async", "stream", "error", "reactive"]
 categories = ["asynchronous", "concurrency"]
+readme = "../README.md"
 
 [dependencies]
 thiserror = { workspace = true }

@@ -112,11 +112,11 @@ impl<T> Context<T> {
         let mut state = self.state.lock().await;
         state.item = Some(value);
 
-        if !state.is_processing {
+        if state.is_processing {
+            false
+        } else {
             state.is_processing = true;
             true
-        } else {
-            false
         }
     }
 
@@ -127,14 +127,17 @@ impl<T> Context<T> {
         T: Clone,
     {
         let mut state = self.state.lock().await;
-        if let Some(item) = state.item.take() {
-            Some(item)
-        } else {
-            // Defensive: log invalid state and mark as not processing to avoid deadlock
-            error!("subscribe_latest_async: get_item called with no current item; marking idle");
-            state.is_processing = false;
-            None
-        }
+        state.item.take().map_or_else(
+            || {
+                // Defensive: log invalid state and mark as not processing to avoid deadlock
+                error!(
+                    "subscribe_latest_async: get_item called with no current item; marking idle"
+                );
+                state.is_processing = false;
+                None
+            },
+            |item| Some(item),
+        )
     }
 
     /// Called when processing finishes. Returns true if there's another item to process.

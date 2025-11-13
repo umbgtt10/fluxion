@@ -5,6 +5,10 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "Merge multiple Fluxion streams with ordering guarantees"
+keywords = ["async", "stream", "merge", "ordered", "reactive"]
+categories = ["asynchronous", "concurrency"]
+readme = "../README.md"
 
 [[bench]]
 name = "benchmarks"

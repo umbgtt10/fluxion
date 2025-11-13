@@ -33,14 +33,14 @@ impl<T> TakeLatestState<T>
 where
     T: Clone,
 {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             source_value: None,
             filter_value: None,
         }
     }
 
-    fn is_complete(&self) -> bool {
+    const fn is_complete(&self) -> bool {
         self.source_value.is_some() && self.filter_value.is_some()
     }
 
@@ -82,15 +82,13 @@ where
                     let filter = Arc::clone(&filter);
                     let order = ordered_value.order();
                     async move {
-                        let state_lock = match safe_lock(&state, "take_latest_when state") {
+                        let mut state = match safe_lock(&state, "take_latest_when state") {
                             Ok(lock) => lock,
                             Err(e) => {
                                 error!("Failed to acquire lock in take_latest_when: {}", e);
                                 return None;
                             }
                         };
-
-                        let mut state = state_lock;
 
                         match index {
                             0 => state.source_value = Some(ordered_value.get().clone()),

@@ -409,7 +409,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     for i in 0..10000 {
         source
             .sender
-            .send(person(format!("Person{}", i), i as u32))
+            .send(person(format!("Person{i}"), i as u32))
             .unwrap();
     }
 
@@ -431,7 +431,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     for i in 10000..20000 {
         source
             .sender
-            .send(person(format!("Person{}", i), i as u32))
+            .send(person(format!("Person{i}"), i as u32))
             .unwrap();
     }
 
@@ -460,10 +460,10 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() {
     let mut output_stream = Box::pin(output_stream);
 
     // Act: Send empty string with zero value to source
-    push(person("".to_string(), 0), &source.sender);
+    push(person(String::new(), 0), &source.sender);
 
     // Act: Send filter trigger with empty/zero
-    push(animal("".to_string(), 0), &filter.sender);
+    push(animal(String::new(), 0), &filter.sender);
 
     // Assert: Should emit the boundary value
     let result = output_stream.next().await.unwrap();
@@ -497,12 +497,12 @@ async fn test_take_latest_when_boundary_maximum_concurrent_streams() {
             let mut output_stream = Box::pin(output_stream);
 
             // Act: Send values
-            push(person(format!("Person{}", i), i), &source.sender);
-            push(animal(format!("Animal{}", i), i), &filter.sender);
+            push(person(format!("Person{i}"), i), &source.sender);
+            push(animal(format!("Animal{i}"), i), &filter.sender);
 
             // Assert: Should emit
             let result = output_stream.next().await.unwrap();
-            assert_eq!(result.get(), &person(format!("Person{}", i), i));
+            assert_eq!(result.get(), &person(format!("Person{i}"), i));
 
             // Act: Update source and trigger again
             push(person_bob(), &source.sender);

@@ -26,9 +26,9 @@ async fn ordered_merge_template_test(
     let (person, animal, plant) = TestChannels::three();
 
     let senders = vec![person.sender, animal.sender, plant.sender];
-    let streams = vec![person.stream, animal.stream, plant.stream];
+    let streams_vec = vec![person.stream, animal.stream, plant.stream];
 
-    let results = streams.ordered_merge();
+    let results = streams_vec.ordered_merge();
 
     // Act
     send_variant(&variant1, &senders);
@@ -48,8 +48,8 @@ async fn test_ordered_merge_empty_streams() {
     // Arrange
     let (person, animal, plant) = TestChannels::three::<TestData>();
 
-    let streams = vec![person.stream, animal.stream, plant.stream];
-    let results = streams.ordered_merge();
+    let streams_vec = vec![person.stream, animal.stream, plant.stream];
+    let results = streams_vec.ordered_merge();
 
     // Act
     drop(person.sender);
@@ -67,8 +67,8 @@ async fn test_ordered_merge_single_stream() {
     // Arrange
     let channel = FluxionChannel::new();
 
-    let streams = vec![channel.stream];
-    let results = streams.ordered_merge();
+    let streams_vec = vec![channel.stream];
+    let results = streams_vec.ordered_merge();
 
     // Act
     push(person_alice(), &channel.sender);
@@ -94,8 +94,8 @@ async fn test_ordered_merge_one_empty_stream() {
     let animal = FluxionChannel::new();
     let plant = FluxionChannel::new();
 
-    let streams = vec![person.stream, animal.stream, plant.stream];
-    let results = streams.ordered_merge();
+    let streams_vec = vec![person.stream, animal.stream, plant.stream];
+    let results = streams_vec.ordered_merge();
 
     // Act
     drop(animal.sender);
@@ -120,8 +120,8 @@ async fn test_ordered_merge_interleaved_emissions() {
     // Arrange
     let (person, animal, plant) = TestChannels::three();
 
-    let streams = vec![person.stream, animal.stream, plant.stream];
-    let mut results = Box::pin(streams.ordered_merge());
+    let streams_vec = vec![person.stream, animal.stream, plant.stream];
+    let mut results = Box::pin(streams_vec.ordered_merge());
 
     // Act & Assert
     push(person_alice(), &person.sender);
@@ -177,8 +177,8 @@ async fn test_ordered_merge_all_streams_close_simultaneously() {
     // Arrange
     let (person, animal, plant) = TestChannels::three();
 
-    let streams = vec![person.stream, animal.stream, plant.stream];
-    let results = streams.ordered_merge();
+    let streams_vec = vec![person.stream, animal.stream, plant.stream];
+    let results = streams_vec.ordered_merge();
 
     // Act
     push(person_alice(), &person.sender);
@@ -207,8 +207,8 @@ async fn test_ordered_merge_one_stream_closes_midway_three_streams() {
     // Arrange
     let (person, animal, plant) = TestChannels::three();
 
-    let streams = vec![person.stream, animal.stream, plant.stream];
-    let mut results = Box::pin(streams.ordered_merge());
+    let streams_vec = vec![person.stream, animal.stream, plant.stream];
+    let mut results = Box::pin(streams_vec.ordered_merge());
 
     // Act & Assert stepwise
     push(person_alice(), &person.sender);
@@ -241,8 +241,8 @@ async fn test_ordered_merge_large_volume() {
     // Arrange
     let (stream1, stream2) = TestChannels::two();
 
-    let streams = vec![stream1.stream, stream2.stream];
-    let results = streams.ordered_merge();
+    let streams_vec = vec![stream1.stream, stream2.stream];
+    let results = streams_vec.ordered_merge();
 
     // Act
     for _ in 0..500 {
@@ -282,8 +282,8 @@ async fn test_ordered_merge_maximum_concurrent_streams() {
             push(animal_dog(), &stream2.sender);
             push(plant_rose(), &stream3.sender);
 
-            let streams = vec![stream1.stream, stream2.stream, stream3.stream];
-            let results = streams.ordered_merge();
+            let streams_vec = vec![stream1.stream, stream2.stream, stream3.stream];
+            let results = streams_vec.ordered_merge();
             let mut results = Box::pin(results);
 
             // Assert
@@ -301,8 +301,8 @@ async fn test_ordered_merge_maximum_concurrent_streams() {
             push(person_bob(), &stream4.sender);
             push(person_charlie(), &stream5.sender);
 
-            let streams2 = vec![stream4.stream, stream5.stream];
-            let mut results2 = Box::pin(streams2.ordered_merge());
+            let streams2_vec = vec![stream4.stream, stream5.stream];
+            let mut results2 = Box::pin(streams2_vec.ordered_merge());
 
             // Assert (more)
             let fourth = results2.next().await.unwrap();

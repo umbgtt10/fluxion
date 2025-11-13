@@ -9,6 +9,7 @@ repository.workspace = true
 description = "Generic ordered stream merging utilities for async Rust"
 keywords = ["async", "stream", "merge", "ordered", "futures"]
 categories = ["asynchronous", "concurrency"]
+readme = "../README.md"
 
 [package.metadata.cargo-udeps.ignore]
 normal = ["pin-project"]

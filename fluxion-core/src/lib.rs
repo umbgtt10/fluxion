@@ -1,3 +1,4 @@
+#![allow(clippy::multiple_crate_versions)]
 pub mod ordered;
 
 // Re-export commonly used types

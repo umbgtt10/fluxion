@@ -31,7 +31,7 @@ impl<T> Sequenced<T> {
         }
     }
 
-    pub fn with_sequence(value: T, sequence: u64) -> Self {
+    pub const fn with_sequence(value: T, sequence: u64) -> Self {
         Self { value, sequence }
     }
 
@@ -41,17 +41,17 @@ impl<T> Sequenced<T> {
     }
 
     /// Gets a reference to the inner value.
-    pub fn get(&self) -> &T {
+    pub const fn get(&self) -> &T {
         &self.value
     }
 
     /// Gets a mutable reference to the inner value.
-    pub fn get_mut(&mut self) -> &mut T {
+    pub const fn get_mut(&mut self) -> &mut T {
         &mut self.value
     }
 
     /// Gets the sequence number.
-    pub fn sequence(&self) -> u64 {
+    pub const fn sequence(&self) -> u64 {
         self.sequence
     }
 }
@@ -116,14 +116,14 @@ impl<T: Ord> fluxion_core::CompareByInner for Sequenced<T> {
 
 impl<T> From<(T, u64)> for Sequenced<T> {
     fn from((value, order): (T, u64)) -> Self {
-        Sequenced::with_sequence(value, order)
+        Self::with_sequence(value, order)
     }
 }
 
 // Special conversion for Empty streams - this will never actually be called
 // since Empty streams never yield items, but it's needed for type checking
 impl<T> From<()> for Sequenced<T> {
-    fn from(_: ()) -> Self {
+    fn from((): ()) -> Self {
         unreachable!("Empty streams never yield items, so this conversion should never be called")
     }
 }

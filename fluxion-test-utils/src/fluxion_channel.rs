@@ -6,9 +6,7 @@
 
 use crate::sequenced::Sequenced;
 use fluxion_error::{FluxionError, Result};
-use tokio::sync::mpsc::{
-    self, UnboundedReceiver as TokioUnboundedReceiver, UnboundedSender as TokioUnboundedSender,
-};
+// mpsc types are only used inside the `sequenced_channel` submodule
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub struct FluxionChannel<T> {
@@ -17,12 +15,14 @@ pub struct FluxionChannel<T> {
 }
 
 impl<T> FluxionChannel<T> {
+    #[must_use]
     pub fn new() -> Self {
         let (sender, receiver) = sequenced_channel::unbounded_channel();
         let stream = UnboundedReceiverStream::new(receiver.into_inner());
         Self { sender, stream }
     }
 
+    #[must_use]
     pub fn empty() -> Self {
         let (sender, receiver) = sequenced_channel::unbounded_channel();
         let stream = UnboundedReceiverStream::new(receiver.into_inner());
@@ -36,6 +36,9 @@ impl<T> FluxionChannel<T> {
     }
 
     /// Push a value into the channel, returning an error if the receiver is dropped
+    ///
+    /// # Errors
+    /// Returns `Err(FluxionError::ChannelSendError)` if the receiver has been dropped.
     pub fn push(&self, value: T) -> Result<()> {
         self.sender
             .send(value)
@@ -46,6 +49,8 @@ impl<T> FluxionChannel<T> {
     ///
     /// This is provided for backward compatibility with existing tests.
     /// New code should prefer `push()` and handle the Result.
+    /// # Panics
+    /// Panics if the receiver has been dropped.
     pub fn push_unchecked(&self, value: T) {
         self.sender.send(value).expect("receiver dropped");
     }
@@ -66,6 +71,7 @@ pub struct TestChannels;
 
 impl TestChannels {
     /// Creates three test channels.
+    #[must_use]
     pub fn three<T>() -> (FluxionChannel<T>, FluxionChannel<T>, FluxionChannel<T>) {
         (
             FluxionChannel::new(),
@@ -75,6 +81,7 @@ impl TestChannels {
     }
 
     /// Creates two test channels.
+    #[must_use]
     pub fn two<T>() -> (FluxionChannel<T>, FluxionChannel<T>) {
         (FluxionChannel::new(), FluxionChannel::new())
     }
@@ -85,7 +92,10 @@ impl TestChannels {
 /// For most testing scenarios, use `FluxionChannel` instead. This submodule
 /// is useful when you need fine-grained control over sender/receiver handling.
 pub(crate) mod sequenced_channel {
-    use super::*;
+    use super::Sequenced;
+    use tokio::sync::mpsc::{
+        self, UnboundedReceiver as TokioUnboundedReceiver, UnboundedSender as TokioUnboundedSender,
+    };
 
     /// An unbounded sender that automatically wraps values with sequence numbers.
     ///
@@ -123,7 +133,7 @@ pub(crate) mod sequenced_channel {
 
         /// Completes when the receiver has dropped.
         pub async fn closed(&self) {
-            self.inner.closed().await
+            self.inner.closed().await;
         }
 
         /// Checks if the channel is ready to send more messages.
@@ -154,7 +164,7 @@ pub(crate) mod sequenced_channel {
 
         #[cfg(test)]
         pub fn close(&mut self) {
-            self.inner.close()
+            self.inner.close();
         }
 
         pub fn into_inner(self) -> TokioUnboundedReceiver<Sequenced<T>> {
@@ -404,7 +414,7 @@ mod tests {
     async fn test_sequenced_channel_high_volume_ordering() {
         let (sender, mut receiver) = unbounded_channel();
         let test_items: Vec<TestData> = (0..1000)
-            .map(|i| TestData::new(i, &format!("Person{}", i)))
+            .map(|i| TestData::new(i, &format!("Person{i}")))
             .collect();
 
         for item in &test_items {
@@ -414,7 +424,7 @@ mod tests {
         let mut prev_seq = None;
         for (i, expected) in test_items.iter().enumerate() {
             let msg = receiver.recv().await.unwrap();
-            assert_eq!(msg.value, *expected, "Message {} should match", i);
+            assert_eq!(msg.value, *expected, "Message {i} should match");
 
             if let Some(prev) = prev_seq {
                 assert!(msg.sequence() > prev);
@@ -425,10 +435,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_sequenced_channel_sender_error() {
-        let (sender, _receiver) = unbounded_channel::<TestData>();
+        let (sender, receiver) = unbounded_channel::<TestData>();
         let charlie = TestData::new(3, "Charlie");
 
-        drop(_receiver);
+        drop(receiver);
 
         let send_result = sender.send(charlie.clone());
         assert!(send_result.is_err());
@@ -437,7 +447,7 @@ mod tests {
             Err(e) => {
                 assert_eq!(e.0, charlie);
             }
-            Ok(_) => panic!("Send should have failed"),
+            Ok(()) => panic!("Send should have failed"),
         }
     }
 }

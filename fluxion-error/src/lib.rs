@@ -1,3 +1,4 @@
+#![allow(clippy::multiple_crate_versions)]
 //! Error types for Fluxion reactive streaming library
 //!
 //! This crate provides a comprehensive error handling system for all Fluxion operations.
@@ -71,7 +72,7 @@ pub enum FluxionError {
 
     /// Subscription operation failed
     ///
-    /// This encompasses errors during subscribe_async or subscribe_latest_async
+    /// This encompasses errors during `subscribe_async` or `subscribe_latest_async`
     /// operations, including user callback errors when no error handler is provided.
     #[error("Subscription error: {context}")]
     SubscriptionError {
@@ -187,7 +188,8 @@ impl FluxionError {
     }
 
     /// Create an unexpected stream end error
-    pub fn unexpected_end(expected: usize, actual: usize) -> Self {
+    #[must_use]
+    pub const fn unexpected_end(expected: usize, actual: usize) -> Self {
         Self::UnexpectedStreamEnd { expected, actual }
     }
 
@@ -207,22 +209,20 @@ impl FluxionError {
     /// Check if this is a recoverable error
     ///
     /// Some errors indicate transient failures that could succeed on retry.
-    pub fn is_recoverable(&self) -> bool {
+    #[must_use]
+    pub const fn is_recoverable(&self) -> bool {
         matches!(
             self,
-            FluxionError::LockError { .. }
-                | FluxionError::Timeout { .. }
-                | FluxionError::ResourceLimitExceeded { .. }
+            Self::LockError { .. } | Self::Timeout { .. } | Self::ResourceLimitExceeded { .. }
         )
     }
 
     /// Check if this error indicates a permanent failure
-    pub fn is_permanent(&self) -> bool {
+    #[must_use]
+    pub const fn is_permanent(&self) -> bool {
         matches!(
             self,
-            FluxionError::ChannelSendError
-                | FluxionError::ChannelReceiveError { .. }
-                | FluxionError::InvalidState { .. }
+            Self::ChannelSendError | Self::ChannelReceiveError { .. } | Self::InvalidState { .. }
         )
     }
 }
@@ -243,16 +243,16 @@ impl FluxionError {
 /// ```
 pub type Result<T> = std::result::Result<T, FluxionError>;
 
-/// Extension trait for converting errors into FluxionError
+/// Extension trait for converting errors into `FluxionError`
 ///
 /// This trait is automatically implemented for all types that implement
 /// `std::error::Error + Send + Sync + 'static`, allowing easy conversion
-/// to FluxionError.
+/// to `FluxionError`.
 pub trait IntoFluxionError {
-    /// Convert this error into a FluxionError with additional context
+    /// Convert this error into a `FluxionError` with additional context
     fn into_fluxion_error(self, context: &str) -> FluxionError;
 
-    /// Convert this error into a FluxionError without additional context
+    /// Convert this error into a `FluxionError` without additional context
     fn into_fluxion(self) -> FluxionError
     where
         Self: Sized,
@@ -267,14 +267,20 @@ impl<E: std::error::Error + Send + Sync + 'static> IntoFluxionError for E {
     }
 }
 
-/// Helper trait for adding context to Results
+/// Helper trait for adding context to `Result`s
 ///
 /// This allows chaining context information onto errors in a fluent style.
 pub trait ResultExt<T> {
     /// Add context to an error
+    ///
+    /// # Errors
+    /// Returns `Err(FluxionError)` if the underlying result is `Err`.
     fn context(self, context: impl Into<String>) -> Result<T>;
 
     /// Add context to an error using a closure (lazy evaluation)
+    ///
+    /// # Errors
+    /// Returns `Err(FluxionError)` if the underlying result is `Err`.
     fn with_context<F>(self, f: F) -> Result<T>
     where
         F: FnOnce() -> String;
@@ -289,7 +295,7 @@ where
             let context = context.into();
             match e.into() {
                 FluxionError::UserError(inner) => FluxionError::StreamProcessingError {
-                    context: format!("{}: {}", context, inner),
+                    context: format!("{context}: {inner}"),
                 },
                 other => other,
             }
@@ -304,7 +310,7 @@ where
             let context = f();
             match e.into() {
                 FluxionError::UserError(inner) => FluxionError::StreamProcessingError {
-                    context: format!("{}: {}", context, inner),
+                    context: format!("{context}: {inner}"),
                 },
                 other => other,
             }

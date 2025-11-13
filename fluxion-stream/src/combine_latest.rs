@@ -127,11 +127,13 @@ impl<V> CombinedState<V>
 where
     V: Clone + Send + Sync,
 {
-    pub fn new(state: Vec<V>) -> Self {
+    #[must_use]
+    pub const fn new(state: Vec<V>) -> Self {
         Self { state }
     }
 
-    pub fn get_state(&self) -> &Vec<V> {
+    #[must_use]
+    pub const fn get_state(&self) -> &Vec<V> {
         &self.state
     }
 }
@@ -140,7 +142,7 @@ impl<V> Ordered for CombinedState<V>
 where
     V: Clone + Send + Sync,
 {
-    type Inner = CombinedState<V>;
+    type Inner = Self;
 
     fn order(&self) -> u64 {
         // CombinedState doesn't have its own order - it's always wrapped by an Ordered type
@@ -185,12 +187,12 @@ where
         }
     }
 
-    pub fn get_ordered_values(&self) -> &Vec<V> {
+    pub const fn get_ordered_values(&self) -> &Vec<V> {
         &self.ordered_values
     }
 
     pub fn is_complete(&self) -> bool {
-        self.state.iter().all(|entry| entry.is_some())
+        self.state.iter().all(Option::is_some)
     }
 
     pub fn insert(&mut self, index: usize, value: V) {

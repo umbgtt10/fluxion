@@ -23,9 +23,9 @@ pub struct FluxionStream<S> {
 }
 
 impl<S> FluxionStream<S> {
-    /// Wrap a stream in a FluxionStream wrapper
-    pub fn new(stream: S) -> Self {
-        FluxionStream { inner: stream }
+    /// Wrap a stream in a `FluxionStream` wrapper
+    pub const fn new(stream: S) -> Self {
+        Self { inner: stream }
     }
 
     /// Unwrap to get the inner stream
@@ -114,7 +114,7 @@ where
         WithLatestFromExt::with_latest_from(inner, other, filter)
     }
 
-    /// Combines this stream with multiple others using combine_latest semantics
+    /// Combines this stream with multiple others using `combine_latest` semantics
     pub fn combine_latest<S2>(
         self,
         others: Vec<S2>,
@@ -132,7 +132,7 @@ where
     }
 
     /// Merges this stream with multiple others, emitting all values in order.
-    /// Unlike combine_latest, this doesn't wait for all streams - it emits every value
+    /// Unlike `combine_latest`, this doesn't wait for all streams - it emits every value
     /// from all streams individually in order.
     pub fn ordered_merge<S2>(
         self,

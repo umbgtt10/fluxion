@@ -7,7 +7,8 @@ pub struct Person {
 }
 
 impl Person {
-    pub fn new(name: String, age: u32) -> Self {
+    #[must_use]
+    pub const fn new(name: String, age: u32) -> Self {
         Self { name, age }
     }
 }

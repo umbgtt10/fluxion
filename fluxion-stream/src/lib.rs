@@ -1,3 +1,4 @@
+#![allow(clippy::multiple_crate_versions)]
 #[macro_use]
 mod logging;
 pub mod combine_latest;

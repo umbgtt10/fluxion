@@ -75,41 +75,36 @@ where
                 let filter = Arc::clone(&filter);
 
                 async move {
-                    let state_guard = match safe_lock(&state, "take_while_with state") {
-                        Ok(guard) => guard,
-                        Err(e) => {
-                            error!("Failed to acquire lock in take_while_with: {}", e);
-                            return None;
-                        }
-                    };
+                    // Restrict the mutex guard's lifetime to the smallest possible scope
+                    match safe_lock(&state, "take_while_with state") {
+                        Ok(mut guard) => {
+                            let (filter_state, terminated) = &mut *guard;
 
-                    let mut state_guard = state_guard;
-                    let (filter_state, terminated) = &mut *state_guard;
+                            if *terminated {
+                                return None;
+                            }
 
-                    // If already terminated, signal stream end
-                    if *terminated {
-                        return None;
-                    }
-
-                    match item {
-                        Item::Filter(filter_val) => {
-                            // Update the filter state
-                            *filter_state = Some(filter_val.get().clone());
-                            None // Don't emit filter values
-                        }
-                        Item::Source(source_val) => {
-                            // Check the current filter state
-                            if let Some(fval) = filter_state {
-                                if filter(fval) {
-                                    Some(source_val.get().clone())
-                                } else {
-                                    // Filter condition failed, terminate stream
-                                    *terminated = true;
+                            match item {
+                                Item::Filter(filter_val) => {
+                                    *filter_state = Some(filter_val.get().clone());
                                     None
                                 }
-                            } else {
-                                None // No filter value yet, don't emit
+                                Item::Source(source_val) => filter_state.as_ref().map_or_else(
+                                    || None,
+                                    |fval| {
+                                        if filter(fval) {
+                                            Some(source_val.get().clone())
+                                        } else {
+                                            *terminated = true;
+                                            None
+                                        }
+                                    },
+                                ),
                             }
+                        }
+                        Err(e) => {
+                            error!("Failed to acquire lock in take_while_with: {}", e);
+                            None
                         }
                     }
                 }
@@ -133,8 +128,8 @@ where
 {
     fn order(&self) -> u64 {
         match self {
-            Item::Source(s) => s.order(),
-            Item::Filter(f) => f.order(),
+            Self::Source(s) => s.order(),
+            Self::Filter(f) => f.order(),
         }
     }
 }

@@ -15,7 +15,7 @@ where
     S2: Stream<Item = T> + Send + Sync + 'static,
 {
     /// Merges multiple Ordered streams, emitting all values in order.
-    /// Unlike combine_latest, this doesn't wait for all streams - it emits every value
+    /// Unlike `combine_latest`, this doesn't wait for all streams - it emits every value
     /// from all streams in order.
     ///
     /// # Arguments

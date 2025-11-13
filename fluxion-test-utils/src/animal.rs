@@ -7,7 +7,8 @@ pub struct Animal {
 }
 
 impl Animal {
-    pub fn new(name: String, legs: u32) -> Self {
+    #[must_use]
+    pub const fn new(name: String, legs: u32) -> Self {
         Self { name, legs }
     }
 }

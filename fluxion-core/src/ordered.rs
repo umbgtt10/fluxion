@@ -54,7 +54,7 @@ pub trait Ordered: Clone {
     }
 
     /// Creates a new instance with a different inner type.
-    /// This is used by operators like combine_latest that transform the inner value.
+    /// This is used by operators like `combine_latest` that transform the inner value.
     fn map_inner<F, U>(self, f: F, order: u64) -> impl Ordered<Inner = U>
     where
         F: FnOnce(Self::Inner) -> U,
@@ -87,7 +87,7 @@ impl<T: Clone> Ordered for OrderedWrapper<T> {
     }
 
     fn with_order(value: T, order: u64) -> Self {
-        OrderedWrapper { value, order }
+        Self { value, order }
     }
 
     fn into_inner(self) -> T {
