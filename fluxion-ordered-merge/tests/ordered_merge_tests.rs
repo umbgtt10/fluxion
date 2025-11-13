@@ -4,7 +4,7 @@ use fluxion_test_utils::test_data::{
     DataVariant, TestData, animal_dog, animal_spider, expect_variant, person_alice, person_bob,
     person_charlie, plant_rose, plant_sunflower, push, send_variant,
 };
-use fluxion_test_utils::{TestChannels, helpers::expect_next_timestamped};
+use fluxion_test_utils::{TestChannels, helpers::expect_next_timestamped_unchecked};
 use futures::StreamExt;
 
 #[tokio::test]
@@ -78,7 +78,7 @@ async fn test_ordered_merge_single_stream() {
     // Assert
     let mut results = Box::pin(results);
 
-    expect_next_timestamped(&mut results, person_alice()).await;
+    expect_next_timestamped_unchecked(&mut results, person_alice()).await;
 
     let item = results.next().await.unwrap();
     assert_eq!(item.value, person_bob());
@@ -110,9 +110,9 @@ async fn test_ordered_merge_one_empty_stream() {
     let item = results.next().await.unwrap();
     assert_eq!(item.value, person_alice());
 
-    expect_next_timestamped(&mut results, plant_rose()).await;
+    expect_next_timestamped_unchecked(&mut results, plant_rose()).await;
 
-    expect_next_timestamped(&mut results, person_bob()).await;
+    expect_next_timestamped_unchecked(&mut results, person_bob()).await;
 }
 
 #[tokio::test]
@@ -125,22 +125,22 @@ async fn test_ordered_merge_interleaved_emissions() {
 
     // Act & Assert
     push(person_alice(), &person.sender);
-    expect_next_timestamped(&mut results, person_alice()).await;
+    expect_next_timestamped_unchecked(&mut results, person_alice()).await;
 
     push(animal_dog(), &animal.sender);
-    expect_next_timestamped(&mut results, animal_dog()).await;
+    expect_next_timestamped_unchecked(&mut results, animal_dog()).await;
 
     push(person_bob(), &person.sender);
-    expect_next_timestamped(&mut results, person_bob()).await;
+    expect_next_timestamped_unchecked(&mut results, person_bob()).await;
 
     push(plant_rose(), &plant.sender);
-    expect_next_timestamped(&mut results, plant_rose()).await;
+    expect_next_timestamped_unchecked(&mut results, plant_rose()).await;
 
     push(animal_spider(), &animal.sender);
-    expect_next_timestamped(&mut results, animal_spider()).await;
+    expect_next_timestamped_unchecked(&mut results, animal_spider()).await;
 
     push(plant_sunflower(), &plant.sender);
-    expect_next_timestamped(&mut results, plant_sunflower()).await;
+    expect_next_timestamped_unchecked(&mut results, plant_sunflower()).await;
 }
 
 #[tokio::test]
@@ -160,11 +160,11 @@ async fn test_ordered_merge_stream_completes_early() {
     // Assert
     let mut results = Box::pin(results);
 
-    expect_next_timestamped(&mut results, person_alice()).await;
+    expect_next_timestamped_unchecked(&mut results, person_alice()).await;
 
-    expect_next_timestamped(&mut results, animal_dog()).await;
+    expect_next_timestamped_unchecked(&mut results, animal_dog()).await;
 
-    expect_next_timestamped(&mut results, animal_spider()).await;
+    expect_next_timestamped_unchecked(&mut results, animal_spider()).await;
 
     drop(animal.sender);
 
@@ -192,11 +192,11 @@ async fn test_ordered_merge_all_streams_close_simultaneously() {
     // Assert
     let mut results = Box::pin(results);
 
-    expect_next_timestamped(&mut results, person_alice()).await;
+    expect_next_timestamped_unchecked(&mut results, person_alice()).await;
 
-    expect_next_timestamped(&mut results, animal_dog()).await;
+    expect_next_timestamped_unchecked(&mut results, animal_dog()).await;
 
-    expect_next_timestamped(&mut results, plant_rose()).await;
+    expect_next_timestamped_unchecked(&mut results, plant_rose()).await;
 
     let next_item = results.next().await;
     assert!(next_item.is_none(), "Expected stream to end");
@@ -212,13 +212,13 @@ async fn test_ordered_merge_one_stream_closes_midway_three_streams() {
 
     // Act & Assert stepwise
     push(person_alice(), &person.sender);
-    expect_next_timestamped(&mut results, person_alice()).await;
+    expect_next_timestamped_unchecked(&mut results, person_alice()).await;
 
     push(animal_dog(), &animal.sender);
-    expect_next_timestamped(&mut results, animal_dog()).await;
+    expect_next_timestamped_unchecked(&mut results, animal_dog()).await;
 
     push(plant_rose(), &plant.sender);
-    expect_next_timestamped(&mut results, plant_rose()).await;
+    expect_next_timestamped_unchecked(&mut results, plant_rose()).await;
 
     drop(plant.sender);
 

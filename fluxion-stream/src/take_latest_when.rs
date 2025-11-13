@@ -90,7 +90,7 @@ where
                                 return None;
                             }
                         };
-                        
+
                         let mut state = state_lock;
 
                         match index {
@@ -104,9 +104,10 @@ where
                             let combined_state = CombinedState::new(values);
 
                             if filter(&combined_state) {
-                                state.source_value.clone().map(|source| {
-                                    T::with_order(source, order)
-                                })
+                                state
+                                    .source_value
+                                    .clone()
+                                    .map(|source| T::with_order(source, order))
                             } else {
                                 None
                             }

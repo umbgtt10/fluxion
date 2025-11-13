@@ -5,6 +5,7 @@
 //! - High-level `FluxionChannel` for convenient testing
 
 use crate::sequenced::Sequenced;
+use fluxion_error::{FluxionError, Result};
 use tokio::sync::mpsc::{
     self, UnboundedReceiver as TokioUnboundedReceiver, UnboundedSender as TokioUnboundedSender,
 };
@@ -34,7 +35,18 @@ impl<T> FluxionChannel<T> {
         }
     }
 
-    pub fn push(&self, value: T) {
+    /// Push a value into the channel, returning an error if the receiver is dropped
+    pub fn push(&self, value: T) -> Result<()> {
+        self.sender
+            .send(value)
+            .map_err(|_| FluxionError::ChannelSendError)
+    }
+
+    /// Push a value into the channel, panicking if the receiver is dropped.
+    ///
+    /// This is provided for backward compatibility with existing tests.
+    /// New code should prefer `push()` and handle the Result.
+    pub fn push_unchecked(&self, value: T) {
         self.sender.send(value).expect("receiver dropped");
     }
 
@@ -98,7 +110,7 @@ pub(crate) mod sequenced_channel {
         /// # Errors
         ///
         /// Returns an error if the receiver has been dropped.
-        pub fn send(&self, value: T) -> Result<(), mpsc::error::SendError<T>> {
+        pub fn send(&self, value: T) -> std::result::Result<(), mpsc::error::SendError<T>> {
             self.inner
                 .send(Sequenced::new(value))
                 .map_err(|e| mpsc::error::SendError(e.0.value))
@@ -136,7 +148,7 @@ pub(crate) mod sequenced_channel {
         }
 
         #[cfg(test)]
-        pub fn try_recv(&mut self) -> Result<Sequenced<T>, mpsc::error::TryRecvError> {
+        pub fn try_recv(&mut self) -> std::result::Result<Sequenced<T>, mpsc::error::TryRecvError> {
             self.inner.try_recv()
         }
 

@@ -120,7 +120,10 @@ async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() {
                 // Error on every animal
                 if matches!(&item, TestData::Animal(_)) {
                     let _ = notify_tx.send(()); // Signal completion (error case)
-                    return Err(TestError::new(format!("Error processing animal: {:?}", item)));
+                    return Err(TestError::new(format!(
+                        "Error processing animal: {:?}",
+                        item
+                    )));
                 }
                 results.lock().await.push(item);
                 let _ = notify_tx.send(()); // Signal completion

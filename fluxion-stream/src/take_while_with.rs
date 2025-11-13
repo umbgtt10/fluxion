@@ -82,7 +82,7 @@ where
                             return None;
                         }
                     };
-                    
+
                     let mut state_guard = state_guard;
                     let (filter_state, terminated) = &mut *state_guard;
 

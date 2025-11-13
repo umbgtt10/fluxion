@@ -31,20 +31,23 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 /// }
 /// ```
 pub fn safe_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<MutexGuard<'a, T>> {
-    mutex.lock().map_err(|_poison_err: PoisonError<MutexGuard<T>>| {
-        // Log the poison error but recover the data
-        eprintln!("Mutex poisoned for {}: recovering data", context);
-        FluxionError::lock_error(context)
-    }).or_else(|_err| {
-        // If we got a poison error, we can still recover the data
-        match mutex.lock() {
-            Ok(guard) => Ok(guard),
-            Err(poison_err) => {
-                // Recover from poison by extracting the guard
-                Ok(poison_err.into_inner())
+    mutex
+        .lock()
+        .map_err(|_poison_err: PoisonError<MutexGuard<T>>| {
+            // Log the poison error but recover the data
+            eprintln!("Mutex poisoned for {}: recovering data", context);
+            FluxionError::lock_error(context)
+        })
+        .or_else(|_err| {
+            // If we got a poison error, we can still recover the data
+            match mutex.lock() {
+                Ok(guard) => Ok(guard),
+                Err(poison_err) => {
+                    // Recover from poison by extracting the guard
+                    Ok(poison_err.into_inner())
+                }
             }
-        }
-    })
+        })
 }
 
 /// Attempt to acquire a lock with a timeout context
@@ -54,7 +57,7 @@ pub fn safe_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<Mutex
 ///
 /// # Arguments
 ///
-/// * `mutex` - The Arc<Mutex<T>> to lock  
+/// * `mutex` - The Arc<Mutex<T>> to lock
 /// * `operation` - Description of the operation being performed
 ///
 /// # Returns

@@ -7,7 +7,7 @@ use fluxion_test_utils::test_data::{
 };
 use fluxion_test_utils::{
     TestChannels,
-    helpers::{assert_no_element_emitted, expect_next_pair},
+    helpers::{assert_no_element_emitted, expect_next_pair_unchecked},
 };
 use futures::StreamExt;
 
@@ -28,19 +28,19 @@ async fn test_with_latest_from_complete() {
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
 
-    expect_next_pair(&mut combined_stream, person_alice(), animal_cat()).await;
+    expect_next_pair_unchecked(&mut combined_stream, person_alice(), animal_cat()).await;
 
     // Act
     push(animal_dog(), &animal.sender);
 
     // Assert
-    expect_next_pair(&mut combined_stream, person_alice(), animal_dog()).await;
+    expect_next_pair_unchecked(&mut combined_stream, person_alice(), animal_dog()).await;
 
     // Act
     push(person_bob(), &person.sender);
 
     // Assert
-    expect_next_pair(&mut combined_stream, person_bob(), animal_dog()).await;
+    expect_next_pair_unchecked(&mut combined_stream, person_bob(), animal_dog()).await;
 }
 
 #[tokio::test]
@@ -77,7 +77,7 @@ async fn test_with_latest_from_primary_waits_for_secondary() {
     push(person_alice(), &secondary.sender);
 
     // Assert: Now emission occurs pairing latest secondary with primary
-    expect_next_pair(&mut combined_stream, person_alice(), animal_cat()).await;
+    expect_next_pair_unchecked(&mut combined_stream, person_alice(), animal_cat()).await;
 }
 
 #[tokio::test]
@@ -100,13 +100,13 @@ async fn test_with_latest_from_secondary_completes_early() {
     push(animal_cat(), &animal.sender);
 
     // Assert
-    expect_next_pair(&mut combined_stream, person_alice(), animal_cat()).await;
+    expect_next_pair_unchecked(&mut combined_stream, person_alice(), animal_cat()).await;
 
     // Act
     push(animal_dog(), &animal.sender);
 
     // Assert
-    expect_next_pair(&mut combined_stream, person_alice(), animal_dog()).await;
+    expect_next_pair_unchecked(&mut combined_stream, person_alice(), animal_dog()).await;
 }
 
 #[tokio::test]
@@ -123,14 +123,14 @@ async fn test_with_latest_from_primary_completes_early() {
     // Assert
     let mut combined_stream = Box::pin(combined_stream);
 
-    expect_next_pair(&mut combined_stream, person_alice(), animal_cat()).await;
+    expect_next_pair_unchecked(&mut combined_stream, person_alice(), animal_cat()).await;
 
     // Act
     drop(animal.sender);
     push(person_bob(), &person.sender);
 
     // Assert
-    expect_next_pair(&mut combined_stream, person_bob(), animal_cat()).await;
+    expect_next_pair_unchecked(&mut combined_stream, person_bob(), animal_cat()).await;
 }
 
 #[tokio::test]
@@ -181,8 +181,8 @@ async fn test_with_latest_from_rapid_primary_only_updates() {
 
     // Assert: Each primary emission pairs with the same latest secondary value (Alice)
     // Note: Order is (secondary, primary) = (person, animal)
-    expect_next_pair(&mut combined_stream, person_alice(), animal_dog()).await;
-    expect_next_pair(&mut combined_stream, person_alice(), animal_cat()).await;
+    expect_next_pair_unchecked(&mut combined_stream, person_alice(), animal_dog()).await;
+    expect_next_pair_unchecked(&mut combined_stream, person_alice(), animal_cat()).await;
 
     // Act: Another rapid sequence of primary emissions (secondary still Alice)
     for i in 0..10 {
