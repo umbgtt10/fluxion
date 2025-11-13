@@ -16,8 +16,13 @@ futures = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 async-trait = { workspace = true }
+tracing = { version = "0.1", optional = true }
 
 [dev-dependencies]
 fluxion-test-utils = { workspace = true }
 tokio-stream = { workspace = true }
 thiserror = { workspace = true }
+
+[features]
+default = []
+tracing = ["dep:tracing"]

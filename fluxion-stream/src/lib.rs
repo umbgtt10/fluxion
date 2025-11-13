@@ -6,6 +6,7 @@ pub mod take_latest_when;
 pub mod take_while_with;
 pub mod util;
 pub mod with_latest_from;
+mod logging;
 
 // Re-export commonly used types
 pub use combine_latest::{CombineLatestExt, CombinedState};

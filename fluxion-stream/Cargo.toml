@@ -19,6 +19,11 @@ futures-util = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 pin-project = { workspace = true }
+tracing = { version = "0.1.41", optional = true }
+
+[features]
+default = []
+tracing = ["dep:tracing"]
 
 [dev-dependencies]
 fluxion-test-utils = { workspace = true }

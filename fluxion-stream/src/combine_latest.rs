@@ -72,7 +72,7 @@ where
                                     }
                                 }
                                 Err(e) => {
-                                    eprintln!("Failed to acquire lock in combine_latest: {}", e);
+                                    crate::error!("Failed to acquire lock in combine_latest: {}", e);
                                     None
                                 }
                             }

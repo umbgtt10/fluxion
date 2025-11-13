@@ -86,7 +86,7 @@ where
                         let state_lock = match safe_lock(&state, "take_latest_when state") {
                             Ok(lock) => lock,
                             Err(e) => {
-                                eprintln!("Failed to acquire lock in take_latest_when: {}", e);
+                                crate::error!("Failed to acquire lock in take_latest_when: {}", e);
                                 return None;
                             }
                         };
