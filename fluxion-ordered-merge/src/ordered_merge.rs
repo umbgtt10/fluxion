@@ -62,8 +62,9 @@ where
     }
 }
 
-// SAFETY: OrderedMerge only accesses streams through pinned references and doesn't
-// share mutable state across threads. The streams are polled only through &mut self.
+// SAFETY: OrderedMerge only accesses streams through &mut self (exclusive access).
+// The streams themselves are Send, and we never share mutable state across threads.
+// The BinaryHeap is Sync when T: Send + Ord.
 unsafe impl<T> Sync for OrderedMerge<T> where T: Send + Ord + 'static {}
 
 impl<T> Stream for OrderedMerge<T>

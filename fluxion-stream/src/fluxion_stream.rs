@@ -146,7 +146,3 @@ where
         FluxionStream::new(OrderedStreamSyncExt::ordered_merge_sync(inner, others))
     }
 }
-
-// Ensure Send and Sync if the inner stream is Send
-unsafe impl<S: Send> Send for FluxionStream<S> {}
-unsafe impl<S: Send + Sync> Sync for FluxionStream<S> {}
