@@ -1,10 +1,10 @@
 use fluxion_stream::take_while::TakeWhileStreamExt;
 use fluxion_test_utils::FluxionChannel;
+use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::push;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, person_alice, person_bob, person_charlie,
 };
-use fluxion_test_utils::helpers::assert_no_element_emitted;
 use futures::StreamExt;
 
 #[tokio::test]
@@ -13,11 +13,8 @@ async fn test_take_while_basic() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream = TakeWhileStreamExt::take_while(
-        source.stream,
-        filter.stream,
-        |filter_val| *filter_val,
-    );
+    let result_stream =
+        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act: Send filter value first (true)
@@ -25,21 +22,21 @@ async fn test_take_while_basic() {
 
     // Act: Send some source values
     push(animal_cat(), &source.sender);
-    
+
     // Assert: First value emitted
     let item = result_stream.next().await.expect("expected first item");
     assert_eq!(item, animal_cat());
 
     // Act: Send more source values
     push(animal_dog(), &source.sender);
-    
+
     // Assert: Second value emitted
     let item = result_stream.next().await.expect("expected second item");
     assert_eq!(item, animal_dog());
 
     // Act: Send third source value
     push(person_alice(), &source.sender);
-    
+
     // Assert: Third value emitted
     let item = result_stream.next().await.expect("expected third item");
     assert_eq!(item, person_alice());
@@ -61,11 +58,8 @@ async fn test_take_while_filter_false_immediately() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream = TakeWhileStreamExt::take_while(
-        source.stream,
-        filter.stream,
-        |filter_val| *filter_val,
-    );
+    let result_stream =
+        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act: Send filter value first (false)
@@ -85,11 +79,8 @@ async fn test_take_while_always_true() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream = TakeWhileStreamExt::take_while(
-        source.stream,
-        filter.stream,
-        |filter_val| *filter_val,
-    );
+    let result_stream =
+        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act: Send filter value (true)
@@ -115,11 +106,10 @@ async fn test_take_while_complex_predicate() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream = TakeWhileStreamExt::take_while(
-        source.stream,
-        filter.stream,
-        |filter_val: &i32| *filter_val < 10,
-    );
+    let result_stream =
+        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val: &i32| {
+            *filter_val < 10
+        });
     let mut result_stream = Box::pin(result_stream);
 
     // Act: Send initial filter value (5, which is < 10)
@@ -151,34 +141,31 @@ async fn test_take_while_interleaved_updates() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream = TakeWhileStreamExt::take_while(
-        source.stream,
-        filter.stream,
-        |filter_val| *filter_val,
-    );
+    let result_stream =
+        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert: Interleave source and filter updates
     push(true, &filter.sender);
-    
+
     push(animal_cat(), &source.sender);
     let item = result_stream.next().await.expect("expected first item");
     assert_eq!(item, animal_cat());
 
     push(true, &filter.sender);
-    
+
     push(animal_dog(), &source.sender);
     let item = result_stream.next().await.expect("expected second item");
     assert_eq!(item, animal_dog());
 
     push(true, &filter.sender);
-    
+
     push(person_alice(), &source.sender);
     let item = result_stream.next().await.expect("expected third item");
     assert_eq!(item, person_alice());
 
     push(false, &filter.sender);
-    
+
     push(person_bob(), &source.sender);
     push(person_charlie(), &source.sender);
 
@@ -192,11 +179,8 @@ async fn test_take_while_no_filter_value() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream = TakeWhileStreamExt::take_while(
-        source.stream,
-        filter.stream,
-        |filter_val| *filter_val,
-    );
+    let result_stream =
+        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act: Send source values before any filter value
@@ -225,11 +209,8 @@ async fn test_take_while_empty_source() {
     let source = FluxionChannel::<bool>::new();
     let filter = FluxionChannel::<bool>::new();
 
-    let result_stream = TakeWhileStreamExt::take_while(
-        source.stream,
-        filter.stream,
-        |filter_val| *filter_val,
-    );
+    let result_stream =
+        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act: Send filter value
@@ -248,11 +229,8 @@ async fn test_take_while_empty_filter() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::<bool>::new();
 
-    let result_stream = TakeWhileStreamExt::take_while(
-        source.stream,
-        filter.stream,
-        |filter_val| *filter_val,
-    );
+    let result_stream =
+        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act: Send source values but no filter values
@@ -269,23 +247,20 @@ async fn test_take_while_filter_changes_back_to_true() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream = TakeWhileStreamExt::take_while(
-        source.stream,
-        filter.stream,
-        |filter_val| *filter_val,
-    );
+    let result_stream =
+        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act: Start with filter true
     push(true, &filter.sender);
-    
+
     push(animal_cat(), &source.sender);
     let item = result_stream.next().await.expect("expected first item");
     assert_eq!(item, animal_cat());
 
     // Act: Change filter to false
     push(false, &filter.sender);
-    
+
     push(animal_dog(), &source.sender);
 
     // Assert: No emission after filter becomes false
@@ -293,7 +268,7 @@ async fn test_take_while_filter_changes_back_to_true() {
 
     // Act: Change filter back to true
     push(true, &filter.sender);
-    
+
     push(person_alice(), &source.sender);
 
     // Assert: Stream should still be terminated (take_while stops permanently once predicate fails)
@@ -306,11 +281,8 @@ async fn test_take_while_multiple_source_items_same_filter() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream = TakeWhileStreamExt::take_while(
-        source.stream,
-        filter.stream,
-        |filter_val| *filter_val,
-    );
+    let result_stream =
+        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act: Set filter to true
@@ -335,7 +307,7 @@ async fn test_take_while_multiple_source_items_same_filter() {
 
     // Act: Now change filter to false
     push(false, &filter.sender);
-    
+
     push(person_charlie(), &source.sender);
 
     // Assert: No more items after filter becomes false
@@ -348,11 +320,8 @@ async fn test_take_while_filter_updates_without_source() {
     let source = FluxionChannel::new();
     let filter = FluxionChannel::new();
 
-    let result_stream = TakeWhileStreamExt::take_while(
-        source.stream,
-        filter.stream,
-        |filter_val| *filter_val,
-    );
+    let result_stream =
+        TakeWhileStreamExt::take_while(source.stream, filter.stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act: Update filter multiple times before sending source
