@@ -5,7 +5,7 @@ pub mod ordered_merge;
 pub mod sequenced;
 pub mod sequenced_stream;
 pub mod take_latest_when;
-pub mod take_while;
+pub mod take_while_with;
 pub mod with_latest_from;
 
 // Re-export commonly used types
@@ -16,5 +16,5 @@ pub use ordered_merge::OrderedMergeExt;
 pub use sequenced::Sequenced;
 pub use sequenced_stream::SequencedStreamExt;
 pub use take_latest_when::TakeLatestWhenExt;
-pub use take_while::TakeWhileExt;
+pub use take_while_with::TakeWhileExt;
 pub use with_latest_from::WithLatestFromExt;

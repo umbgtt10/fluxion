@@ -30,7 +30,7 @@ Example: `take_while_with` (instance-style operator)
 
 ```rust
 use fluxion_stream::sequenced::Sequenced;
-use fluxion_stream::take_while::TakeWhileExt;
+use fluxion_stream::take_while_with::TakeWhileExt;
 
 // source_stream: Stream<Item = Sequenced<T>>
 // filter_stream: Stream<Item = Sequenced<bool>>
