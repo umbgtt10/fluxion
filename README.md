@@ -42,6 +42,11 @@ TODO
 	- Suggested list: `combine_latest`, `combine_with_previous`, `merge`, `merge_ordered`, `merge_with`, `with_latest_from`, `take_latest_when`, `take_while`, `select_all`.
 - [ ] Investigate a clean way to suppress unit-test harness noise when running `cargo bench`.
 	- Consider options: `cargo -q bench`, running the bench binary directly, per-package bench (`-p`), or a `.ci/bench.ps1` wrapper that builds then executes bench executables.
+- [ ] Rework/review ci.yml
+	- Consider options: add code coverage
+	- Improve speed
+	- Consider removing unnecessary steps
+	- Check whether new steps should be added
 
 
 Issues & contributions
