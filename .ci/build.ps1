@@ -19,25 +19,22 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Write-Color([string]$Text, [ConsoleColor]$Color) {
-    $old = $Host.UI.RawUI.ForegroundColor
-    $Host.UI.RawUI.ForegroundColor = $Color
-    Write-Host $Text
-    $Host.UI.RawUI.ForegroundColor = $old
+  Write-Output $Text
 }
 
-function Run-Step {
-    param(
-        [string]$Name,
-        [string]$Cmd
-    )
+function Invoke-StepAction {
+  param(
+    [string]$Name,
+    [ScriptBlock]$Action
+  )
 
-    Write-Color "=== $Name ===" Yellow
-    Invoke-Expression $Cmd
-    $code = $LASTEXITCODE
-    if ($code -ne 0) {
-        Write-Color "Step '$Name' failed with exit code $code" Red
-        exit $code
-    }
+  Write-Color "=== $Name ===" Yellow
+  & $Action
+  $code = $LASTEXITCODE
+  if ($code -ne 0) {
+    Write-Color "Step '$Name' failed with exit code $code" Red
+    exit $code
+  }
 }
 
 Write-Color "Starting upgrade + build + test sequence..." Cyan
@@ -45,15 +42,15 @@ Write-Color "Starting upgrade + build + test sequence..." Cyan
 # Ensure cargo-edit (cargo upgrade) is available
 if (-not (Get-Command cargo-upgrade -ErrorAction SilentlyContinue)) {
     Write-Color "cargo-upgrade not found; installing cargo-edit (provides cargo upgrade)..." Cyan
-    Invoke-Expression 'cargo install --locked cargo-edit'
+    & cargo install --locked cargo-edit
     if ($LASTEXITCODE -ne 0) {
-        Write-Color "Failed to install cargo-edit" Red
-        exit $LASTEXITCODE
+      Write-Color "Failed to install cargo-edit" Red
+      exit $LASTEXITCODE
     }
 }
 
  # Attempt workspace upgrade with fallback
-function Attempt-WorkspaceUpgrade {
+function Invoke-WorkspaceUpgrade {
   Write-Color "Checking for cargo-edit (cargo upgrade) availability..." Cyan
 
   # Try to get help output from cargo upgrade. If it fails, cargo-edit is missing.
@@ -106,7 +103,7 @@ function Attempt-WorkspaceUpgrade {
     $meta = $metaRaw | ConvertFrom-Json
   } catch {
     Write-Color "Failed to parse cargo metadata output:" Red
-    Write-Host $metaRaw
+    Write-Output $metaRaw
     exit 1
   }
 
@@ -143,12 +140,12 @@ function Attempt-WorkspaceUpgrade {
   return 0
 }
 
-Attempt-WorkspaceUpgrade
-Run-Step "Refresh lockfile" 'cargo update'
+Invoke-WorkspaceUpgrade
+Invoke-StepAction "Refresh lockfile" { cargo update }
 
-Run-Step "Format check" 'cargo fmt --all -- --check'
-Run-Step "Build (all targets & features)" 'cargo build --all-targets --all-features --verbose'
-Run-Step "Clippy (deny warnings)" 'cargo clippy --all-targets --all-features -- -D warnings'
-Run-Step "Run tests" 'cargo test --all-features --all-targets --verbose'
+Invoke-StepAction "Format check" { cargo fmt --all -- --check }
+Invoke-StepAction "Build (all targets & features)" { cargo build --all-targets --all-features --verbose }
+Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-targets --all-features -- -D warnings }
+Invoke-StepAction "Run tests" { cargo test --all-features --all-targets --verbose }
 
 Write-Color "Upgrade + build + test sequence completed successfully." Green

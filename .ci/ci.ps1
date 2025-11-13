@@ -3,7 +3,7 @@ Run the project's CI checks locally (PowerShell).
 
 Usage:
   # run in repository root
-  .\.ci\run-ci.ps1
+  .\.ci\ci.ps1
 
 This mirrors the GitHub Actions `ci.yml` steps:
   - cargo fmt --check
@@ -23,88 +23,88 @@ Notes:
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Run-Step {
+function Invoke-StepAction {
   param(
     [string]$Name,
-    [string]$Cmd
+    [ScriptBlock]$Action
   )
 
-  Write-Host "=== $Name ===" -ForegroundColor Yellow
-  Invoke-Expression $Cmd
+  Write-Output "=== $Name ==="
+  & $Action
   $code = $LASTEXITCODE
   if ($code -ne 0) {
-    Write-Host "Step '$Name' failed with exit code $code" -ForegroundColor Red
+    Write-Error "Step '$Name' failed with exit code $code"
     exit $code
   }
 }
 
-Write-Host "Starting local CI checks..." -ForegroundColor Cyan
+Write-Output "Starting local CI checks..."
 
-Run-Step "Format check" 'cargo fmt --all -- --check'
+Invoke-StepAction "Format check" { cargo fmt --all -- --check }
 
 # Run upgrade & build early to fail fast on dependency or build regressions
-Write-Host "=== Upgrade & build ===" -ForegroundColor Yellow
+Write-Output "=== Upgrade & build ==="
 & .\.ci\build.ps1
 $rc = $LASTEXITCODE
 if ($rc -ne 0) {
-  Write-Host "Upgrade & build failed (exit code $rc). Aborting CI. See .ci\\build.ps1 output for details." -ForegroundColor Red
+  Write-Error "Upgrade & build failed (exit code $rc). Aborting CI. See .ci\\build.ps1 output for details."
   exit $rc
 }
 
-Run-Step "Cargo check (all targets & features)" 'cargo check --all-targets --all-features --verbose'
-Run-Step "Clippy (deny warnings)" 'cargo clippy --all-targets --all-features -- -D warnings'
-Run-Step "Release build" 'cargo build --release --all-targets --all-features --verbose'
-Run-Step "Tests" 'cargo test --all-features --all-targets --verbose'
-Run-Step "Docs (deny doc warnings)" 'cargo doc --no-deps --all-features --verbose'
+Invoke-StepAction "Cargo check (all targets & features)" { cargo check --all-targets --all-features --verbose }
+Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-targets --all-features -- -D warnings }
+Invoke-StepAction "Release build" { cargo build --release --all-targets --all-features --verbose }
+Invoke-StepAction "Tests" { cargo test --all-features --all-targets --verbose }
+Invoke-StepAction "Docs (deny doc warnings)" { cargo doc --no-deps --all-features --verbose }
 
-Run-Step "Install nightly toolchain" 'rustup toolchain install nightly'
+Invoke-StepAction "Install nightly toolchain" { rustup toolchain install nightly }
 
 # Ensure cargo-udeps is installed (needed for workspace-wide unused-deps analysis)
 if (-not (Get-Command cargo-udeps -ErrorAction SilentlyContinue)) {
-  Write-Host "cargo-udeps not found; installing..." -ForegroundColor Cyan
-  Invoke-Expression 'cargo install --locked cargo-udeps'
+  Write-Output "cargo-udeps not found; installing..."
+  & cargo install --locked cargo-udeps
   if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to install cargo-udeps" -ForegroundColor Red
+    Write-Error "Failed to install cargo-udeps"
     exit $LASTEXITCODE
   }
 }
 
-Write-Host "=== Run cargo +nightly udeps (check for unused deps) ===" -ForegroundColor Yellow
+Write-Output "=== Run cargo +nightly udeps (check for unused deps) ==="
 $stdoutFile = [System.IO.Path]::GetTempFileName()
 $stderrFile = [System.IO.Path]::GetTempFileName()
-$args = @('+nightly','udeps','--all-targets','--all-features','--workspace')
-$proc = Start-Process -FilePath 'cargo' -ArgumentList $args -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+$cargoArgs = @('+nightly','udeps','--all-targets','--all-features','--workspace')
+$proc = Start-Process -FilePath 'cargo' -ArgumentList $cargoArgs -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
 
 $stdOut = Get-Content -Raw -Path $stdoutFile -ErrorAction SilentlyContinue
 $stdErr = Get-Content -Raw -Path $stderrFile -ErrorAction SilentlyContinue
 Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
 
 $udepsOutput = $stdOut + "`n" + $stdErr
-Write-Host $udepsOutput
+Write-Output $udepsOutput
 
 if ($proc.ExitCode -ne 0) {
-    Write-Host "cargo-udeps failed with exit code $($proc.ExitCode)" -ForegroundColor Red
+    Write-Error "cargo-udeps failed with exit code $($proc.ExitCode)"
     exit $proc.ExitCode
 }
 
 if ($udepsOutput -notmatch 'All deps seem to have been used\.') {
-  Write-Host "cargo-udeps reported unused dependencies; failing local CI." -ForegroundColor Red
+  Write-Error "cargo-udeps reported unused dependencies; failing local CI."
   exit 1
 }
 
-Write-Host "=== Install & run cargo-audit ===" -ForegroundColor Yellow
+Write-Output "=== Install & run cargo-audit ==="
 try {
   cargo audit --version | Out-Null
-  Write-Host "cargo-audit is installed" -ForegroundColor Cyan
+  Write-Output "cargo-audit is installed"
 } catch {
-  Write-Host "cargo-audit not found; installing..." -ForegroundColor Cyan
-  Invoke-Expression 'cargo install --locked cargo-audit'
+  Write-Output "cargo-audit not found; installing..."
+  & cargo install --locked cargo-audit
   if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to install cargo-audit" -ForegroundColor Red
+    Write-Error "Failed to install cargo-audit"
     exit $LASTEXITCODE
   }
 }
 
-Run-Step "cargo audit" 'cargo audit'
+Invoke-StepAction "cargo audit" { cargo audit }
 
-Write-Host "All CI checks completed." -ForegroundColor Green
+Write-Output "All CI checks completed."
