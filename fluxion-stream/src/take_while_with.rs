@@ -1,5 +1,5 @@
-use crate::Ordered;
-use crate::fluxion_stream_wrapper::FluxionStream;
+use crate::fluxion_stream::FluxionStream;
+use fluxion_core::Ordered;
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::Stream;
 use futures::stream::StreamExt;

@@ -1,5 +1,5 @@
-use fluxion_stream::ordered::OrderedWrapper;
-use fluxion_stream::{CombinedState, FluxionStream, Ordered};
+use fluxion_core::{Ordered, OrderedWrapper};
+use fluxion_stream::{CombinedState, FluxionStream};
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::test_data::{
     TestData, animal_dog, person_alice, person_bob, person_charlie, person_dave, plant_rose,

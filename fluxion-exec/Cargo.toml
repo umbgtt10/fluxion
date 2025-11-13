@@ -15,7 +15,6 @@ futures = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 async-trait = { workspace = true }
-fluxion-stream = { workspace = true }
 
 [dev-dependencies]
 fluxion-test-utils = { workspace = true }

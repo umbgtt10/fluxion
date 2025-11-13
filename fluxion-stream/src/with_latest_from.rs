@@ -2,7 +2,8 @@ use futures::{Stream, StreamExt};
 use std::fmt::Debug;
 
 use crate::Ordered;
-use crate::combine_latest::{CombineLatestExt, CombinedState, CompareByInner};
+use crate::combine_latest::{CombineLatestExt, CombinedState};
+use fluxion_core::CompareByInner;
 
 pub trait WithLatestFromExt<T, S2>: Stream<Item = T> + Sized
 where

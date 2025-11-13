@@ -49,6 +49,25 @@ impl<T> Default for FluxionChannel<T> {
     }
 }
 
+/// Helper to create multiple test channels at once.
+pub struct TestChannels;
+
+impl TestChannels {
+    /// Creates three test channels.
+    pub fn three<T>() -> (FluxionChannel<T>, FluxionChannel<T>, FluxionChannel<T>) {
+        (
+            FluxionChannel::new(),
+            FluxionChannel::new(),
+            FluxionChannel::new(),
+        )
+    }
+
+    /// Creates two test channels.
+    pub fn two<T>() -> (FluxionChannel<T>, FluxionChannel<T>) {
+        (FluxionChannel::new(), FluxionChannel::new())
+    }
+}
+
 /// Low-level sequenced channel primitives.
 ///
 /// For most testing scenarios, use `FluxionChannel` instead. This submodule

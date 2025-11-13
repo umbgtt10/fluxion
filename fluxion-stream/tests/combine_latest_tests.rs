@@ -1,15 +1,26 @@
-use fluxion_stream::Ordered;
+use fluxion_core::Ordered;
 use fluxion_stream::combine_latest::{CombineLatestExt, CombinedState};
 use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::{
     TestChannels,
-    helpers::{assert_no_element_emitted, expect_next_combined_equals},
+    helpers::assert_no_element_emitted,
     test_data::{
         DataVariant, TestData, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
         person_diane, plant_rose, plant_sunflower, push, send_variant,
     },
 };
-use futures::StreamExt;
+use futures::{Stream, StreamExt};
+
+async fn expect_next_combined_equals<S, T>(stream: &mut S, expected: &[TestData])
+where
+    S: Stream<Item = T> + Unpin,
+    T: Ordered<Inner = CombinedState<TestData>>,
+{
+    let state = stream.next().await.expect("expected next combined state");
+    let actual: Vec<TestData> = state.get().get_state().to_vec();
+    assert_eq!(actual, expected);
+}
+
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 

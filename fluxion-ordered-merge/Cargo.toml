@@ -14,5 +14,10 @@ categories = ["asynchronous", "concurrency"]
 normal = ["pin-project"]
 
 [dependencies]
+fluxion-core = { workspace = true }
 futures = { workspace = true }
 pin-project = { workspace = true }
+
+[dev-dependencies]
+fluxion-test-utils = { path = "../fluxion-test-utils" }
+tokio = { workspace = true }

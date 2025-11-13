@@ -9,7 +9,7 @@
 /// # Examples
 ///
 /// ```
-/// use fluxion_stream::ordered::Ordered;
+/// use fluxion_core::Ordered;
 ///
 /// #[derive(Clone, Debug)]
 /// struct Timestamped<T> {
@@ -19,15 +19,15 @@
 ///
 /// impl<T: Clone> Ordered for Timestamped<T> {
 ///     type Inner = T;
-///     
+///
 ///     fn order(&self) -> u64 {
 ///         self.timestamp
 ///     }
-///     
+///
 ///     fn get(&self) -> &T {
 ///         &self.value
 ///     }
-///     
+///
 ///     fn with_order(value: T, order: u64) -> Self {
 ///         Timestamped { value, timestamp: order }
 ///     }

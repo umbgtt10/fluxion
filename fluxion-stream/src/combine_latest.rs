@@ -4,14 +4,8 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-use crate::ordered::{Ordered, OrderedWrapper};
+use fluxion_core::{CompareByInner, Ordered, OrderedWrapper};
 use fluxion_ordered_merge::OrderedMergeExt;
-
-/// Trait for comparing ordered types by their inner values.
-/// This is used by combine_latest to establish a stable ordering of streams.
-pub trait CompareByInner {
-    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering;
-}
 
 pub trait CombineLatestExt<T>: Stream<Item = T> + Sized
 where
@@ -85,7 +79,7 @@ where
                         .map(|ordered_val| ordered_val.get().clone())
                         .collect();
                     let combined = CombinedState::new(inner_values);
-                    crate::ordered::OrderedWrapper::with_order(combined, order)
+                    OrderedWrapper::with_order(combined, order)
                 })
                 .filter(move |ordered_combined| {
                     let combined_state = ordered_combined.get();

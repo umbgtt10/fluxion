@@ -1,6 +1,5 @@
 use crate::sequenced::Sequenced;
 use crate::test_data::TestData;
-use fluxion_stream::combine_latest::CombinedState;
 use futures::Stream;
 use futures::stream::StreamExt;
 use std::time::Duration;
@@ -44,14 +43,4 @@ where
 {
     let (left, right) = stream.next().await.expect("expected next pair");
     assert_eq!((left.value, right.value), (expected_left, expected_right));
-}
-
-pub async fn expect_next_combined_equals<S, T>(stream: &mut S, expected: &[TestData])
-where
-    S: Stream<Item = T> + Unpin,
-    T: fluxion_stream::Ordered<Inner = CombinedState<TestData>>,
-{
-    let state = stream.next().await.expect("expected next combined state");
-    let actual: Vec<TestData> = state.get().get_state().to_vec();
-    assert_eq!(actual, expected);
 }

@@ -1,5 +1,5 @@
-use crate::Ordered;
-use crate::fluxion_stream_wrapper::FluxionStream;
+use crate::fluxion_stream::FluxionStream;
+use fluxion_core::Ordered;
 use futures::{Stream, StreamExt, future};
 
 pub trait CombineWithPreviousExt<T>: Stream<Item = T> + Sized

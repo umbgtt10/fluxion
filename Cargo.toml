@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "fluxion-core",
     "fluxion-ordered-merge",
     "fluxion-stream",
     "fluxion-exec",
@@ -27,6 +28,7 @@ async-trait = "0.1.89"
 async-stream = "0.3.6"
 
 # Internal workspace dependencies
+fluxion-core = { path = "fluxion-core" }
 fluxion-ordered-merge = { path = "fluxion-ordered-merge" }
 fluxion-stream = { path = "fluxion-stream" }
 fluxion-exec = { path = "fluxion-exec" }

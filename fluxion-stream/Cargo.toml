@@ -11,6 +11,7 @@ keywords = ["async", "stream", "reactive", "combinators", "futures"]
 categories = ["asynchronous", "concurrency"]
 
 [dependencies]
+fluxion-core = { workspace = true }
 fluxion-ordered-merge = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }

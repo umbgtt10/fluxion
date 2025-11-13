@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use fluxion_stream::Ordered;
+use fluxion_core::Ordered;
 
 static GLOBAL_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
@@ -108,7 +108,7 @@ impl<T: Clone> Ordered for Sequenced<T> {
     }
 }
 
-impl<T: Ord> fluxion_stream::CompareByInner for Sequenced<T> {
+impl<T: Ord> fluxion_core::CompareByInner for Sequenced<T> {
     fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
         self.value.cmp(&other.value)
     }

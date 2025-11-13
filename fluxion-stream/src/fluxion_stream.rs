@@ -1,10 +1,11 @@
 use crate::Ordered;
-use crate::combine_latest::{CombineLatestExt, CombinedState, CompareByInner};
+use crate::combine_latest::{CombineLatestExt, CombinedState};
 use crate::combine_with_previous::CombineWithPreviousExt;
 use crate::ordered_merge::OrderedStreamSyncExt;
 use crate::take_latest_when::TakeLatestWhenExt;
 use crate::take_while_with::TakeWhileExt;
 use crate::with_latest_from::WithLatestFromExt;
+use fluxion_core::CompareByInner;
 use futures::Stream;
 use pin_project::pin_project;
 use std::fmt::Debug;
@@ -119,7 +120,7 @@ where
         others: Vec<S2>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
     ) -> FluxionStream<
-        impl Stream<Item = crate::ordered::OrderedWrapper<CombinedState<T::Inner>>> + Send,
+        impl Stream<Item = fluxion_core::OrderedWrapper<CombinedState<T::Inner>>> + Send,
     >
     where
         S: Stream<Item = T> + Send + Sync + 'static,

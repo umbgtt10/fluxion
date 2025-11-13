@@ -14,5 +14,5 @@ categories = ["development-tools::testing"]
 futures = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
-fluxion-stream = { workspace = true }
+fluxion-core = { workspace = true }
 

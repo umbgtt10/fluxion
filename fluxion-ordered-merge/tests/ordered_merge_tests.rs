@@ -1,4 +1,4 @@
-use fluxion_stream::ordered_merge::OrderedMergeExt;
+use fluxion_ordered_merge::OrderedMergeExt;
 use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::test_data::{
     DataVariant, TestData, animal_dog, animal_spider, expect_variant, person_alice, person_bob,
