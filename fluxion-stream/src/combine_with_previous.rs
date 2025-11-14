@@ -5,12 +5,61 @@
 use crate::fluxion_stream::FluxionStream;
 use fluxion_core::Ordered;
 use futures::{Stream, StreamExt, future};
+use std::fmt::Debug;
+
+/// Represents a value paired with its previous value in the stream.
+/// Used by `combine_with_previous` to provide both current and previous values.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct WithPrevious<T> {
+    pub previous: Option<T>,
+    pub current: T,
+}
+
+impl<T> WithPrevious<T> {
+    /// Creates a new WithPrevious with the given previous and current values.
+    pub fn new(previous: Option<T>, current: T) -> Self {
+        Self { previous, current }
+    }
+
+    /// Returns true if there is a previous value.
+    pub fn has_previous(&self) -> bool {
+        self.previous.is_some()
+    }
+
+    /// Returns a tuple of references to both values if previous exists.
+    pub fn both(&self) -> Option<(&T, &T)> {
+        self.previous.as_ref().map(|prev| (prev, &self.current))
+    }
+}
+
+impl<T: Ordered> Ordered for WithPrevious<T> {
+    type Inner = T::Inner;
+
+    fn order(&self) -> u64 {
+        self.current.order()
+    }
+
+    fn get(&self) -> &Self::Inner {
+        self.current.get()
+    }
+
+    fn with_order(value: Self::Inner, order: u64) -> Self {
+        Self {
+            previous: None,
+            current: T::with_order(value, order),
+        }
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self.current.into_inner()
+    }
+}
 
 pub trait CombineWithPreviousExt<T>: Stream<Item = T> + Sized
 where
     T: Ordered + Clone + Send + Sync + 'static,
 {
-    fn combine_with_previous(self) -> FluxionStream<impl Stream<Item = (Option<T>, T)>>;
+    fn combine_with_previous(self) -> FluxionStream<impl Stream<Item = WithPrevious<T>>>;
 }
 
 impl<T, S> CombineWithPreviousExt<T> for S
@@ -18,11 +67,11 @@ where
     S: Stream<Item = T> + Send + Sized + 'static,
     T: Ordered + Clone + Send + Sync + 'static,
 {
-    fn combine_with_previous(self) -> FluxionStream<impl Stream<Item = (Option<T>, T)>> {
+    fn combine_with_previous(self) -> FluxionStream<impl Stream<Item = WithPrevious<T>>> {
         let result = self.scan(None, |state: &mut Option<T>, current: T| {
             let previous = state.take();
             *state = Some(current.clone());
-            future::ready(Some((previous, current)))
+            future::ready(Some(WithPrevious::new(previous, current)))
         });
         FluxionStream::new(result)
     }

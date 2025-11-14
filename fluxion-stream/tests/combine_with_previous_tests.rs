@@ -22,7 +22,7 @@ async fn test_combine_with_previous_no_previous_value_emits() {
     // Assert
     let result = stream.next().await.unwrap();
     assert_eq!(
-        (result.0.map(|s| s.value), result.1.value),
+        (result.previous.map(|s| s.value), result.current.value),
         (None, person_alice())
     );
 }
@@ -40,7 +40,7 @@ async fn test_combine_with_previous_single_previous_value() {
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
-        (first_result.0.map(|s| s.value), first_result.1.value),
+        (first_result.previous.map(|s| s.value), first_result.current.value),
         (None, person_alice())
     );
 
@@ -50,7 +50,7 @@ async fn test_combine_with_previous_single_previous_value() {
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
-        (second_result.0.map(|s| s.value), second_result.1.value),
+        (second_result.previous.map(|s| s.value), second_result.current.value),
         (Some(person_alice()), person_bob())
     );
 }
@@ -68,7 +68,7 @@ async fn test_combine_with_previous_multiple_values() {
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
-        (first_result.0.map(|s| s.value), first_result.1.value),
+        (first_result.previous.map(|s| s.value), first_result.current.value),
         (None, person_alice())
     );
 
@@ -78,7 +78,7 @@ async fn test_combine_with_previous_multiple_values() {
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
-        (second_result.0.map(|s| s.value), second_result.1.value),
+        (second_result.previous.map(|s| s.value), second_result.current.value),
         (Some(person_alice()), person_bob())
     );
 
@@ -88,7 +88,7 @@ async fn test_combine_with_previous_multiple_values() {
     // Assert
     let third_result = stream.next().await.unwrap();
     assert_eq!(
-        (third_result.0.map(|s| s.value), third_result.1.value),
+        (third_result.previous.map(|s| s.value), third_result.current.value),
         (Some(person_bob()), person_charlie())
     );
 }
@@ -106,7 +106,7 @@ async fn test_combine_with_previous_stream_ends() {
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
-        (first_result.0.map(|s| s.value), first_result.1.value),
+        (first_result.previous.map(|s| s.value), first_result.current.value),
         (None, person_alice())
     );
 
@@ -116,7 +116,7 @@ async fn test_combine_with_previous_stream_ends() {
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
-        (second_result.0.map(|s| s.value), second_result.1.value),
+        (second_result.previous.map(|s| s.value), second_result.current.value),
         (Some(person_alice()), person_bob())
     );
 
@@ -141,7 +141,7 @@ async fn test_combine_with_previous_for_types() {
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
-        (first_result.0.map(|s| s.value), first_result.1.value),
+        (first_result.previous.map(|s| s.value), first_result.current.value),
         (None, person_alice())
     );
 
@@ -151,7 +151,7 @@ async fn test_combine_with_previous_for_types() {
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
-        (second_result.0.map(|s| s.value), second_result.1.value),
+        (second_result.previous.map(|s| s.value), second_result.current.value),
         (Some(person_alice()), person_bob())
     );
 }
@@ -177,14 +177,14 @@ async fn test_combine_with_previous_high_volume_sequential() {
     // Assert: first has no previous
     let first = stream.next().await.unwrap();
     assert_eq!(
-        (first.0.map(|s| s.value), first.1.value),
+        (first.previous.map(|s| s.value), first.current.value),
         (None, person_alice())
     );
 
     // Then verify a few samples and the last pair to ensure previous tracking holds
     let second = stream.next().await.unwrap();
     assert_eq!(
-        (second.0.map(|s| s.value), second.1.value),
+        (second.previous.map(|s| s.value), second.current.value),
         (Some(person_alice()), person_bob())
     );
 
@@ -192,9 +192,9 @@ async fn test_combine_with_previous_high_volume_sequential() {
     let mut last_prev = None;
     let mut last_curr = None;
     for _ in 0..198 {
-        let (prev, curr) = stream.next().await.unwrap();
-        last_prev = prev.map(|s| s.value);
-        last_curr = Some(curr.value);
+        let item = stream.next().await.unwrap();
+        last_prev = item.previous.map(|s| s.value);
+        last_curr = Some(item.current.value);
     }
     // Stream should now be ended
     assert!(stream.next().await.is_none());
@@ -216,7 +216,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() {
     // Assert: First emission has no previous
     let result = stream.next().await.unwrap();
     assert_eq!(
-        (result.0.map(|s| s.value), result.1.value),
+        (result.previous.map(|s| s.value), result.current.value),
         (None, person(String::new(), 0))
     );
 
@@ -226,7 +226,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() {
     // Assert: Second emission has previous with boundary value
     let result2 = stream.next().await.unwrap();
     assert_eq!(
-        (result2.0.map(|s| s.value), result2.1.value),
+        (result2.previous.map(|s| s.value), result2.current.value),
         (Some(person(String::new(), 0)), person(String::new(), 0))
     );
 
@@ -236,7 +236,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() {
     // Assert: Should track boundary as previous
     let result3 = stream.next().await.unwrap();
     assert_eq!(
-        (result3.0.map(|s| s.value), result3.1.value),
+        (result3.previous.map(|s| s.value), result3.current.value),
         (Some(person(String::new(), 0)), person_alice())
     );
 }
@@ -260,7 +260,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
             // Assert: No previous
             let result = stream.next().await.unwrap();
             assert_eq!(
-                (result.0.map(|s| s.value), result.1.value),
+                (result.previous.map(|s| s.value), result.current.value),
                 (None, person(format!("Person{i}"), i))
             );
 
@@ -270,7 +270,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
             // Assert: Has previous
             let result2 = stream.next().await.unwrap();
             assert_eq!(
-                (result2.0.map(|s| s.value), result2.1.value),
+                (result2.previous.map(|s| s.value), result2.current.value),
                 (Some(person(format!("Person{i}"), i)), person_alice())
             );
 
@@ -280,7 +280,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
             // Assert: Previous is Alice
             let result3 = stream.next().await.unwrap();
             assert_eq!(
-                (result3.0.map(|s| s.value), result3.1.value),
+                (result3.previous.map(|s| s.value), result3.current.value),
                 (Some(person_alice()), person_bob())
             );
         });
@@ -310,7 +310,7 @@ async fn test_combine_with_previous_single_value_stream() {
     // Assert: Should emit with no previous
     let result = stream.next().await.unwrap();
     assert_eq!(
-        (result.0.map(|s| s.value), result.1.value),
+        (result.previous.map(|s| s.value), result.current.value),
         (None, person_alice())
     );
 

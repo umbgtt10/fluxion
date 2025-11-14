@@ -52,17 +52,17 @@ async fn test_functional_combine_with_previous() {
     sender.send(person_charlie()).unwrap();
 
     // Assert
-    let (prev, curr) = with_previous.next().await.unwrap();
-    assert!(prev.is_none());
-    assert_eq!(curr.get(), &person_alice());
+    let item = with_previous.next().await.unwrap();
+    assert!(item.previous.is_none());
+    assert_eq!(item.current.get(), &person_alice());
 
-    let (prev, curr) = with_previous.next().await.unwrap();
-    assert_eq!(prev.unwrap().get(), &person_alice());
-    assert_eq!(curr.get(), &person_bob());
+    let item = with_previous.next().await.unwrap();
+    assert_eq!(item.previous.unwrap().get(), &person_alice());
+    assert_eq!(item.current.get(), &person_bob());
 
-    let (prev, curr) = with_previous.next().await.unwrap();
-    assert_eq!(prev.unwrap().get(), &person_bob());
-    assert_eq!(curr.get(), &person_charlie());
+    let item = with_previous.next().await.unwrap();
+    assert_eq!(item.previous.unwrap().get(), &person_bob());
+    assert_eq!(item.current.get(), &person_charlie());
 }
 
 #[tokio::test]
@@ -194,9 +194,9 @@ async fn test_functional_chained_operations() {
     filter_sender.send(person_alice()).unwrap();
 
     // Assert
-    let (prev, curr) = composed.next().await.unwrap();
-    assert!(prev.is_none());
-    assert_eq!(curr.get(), &person_charlie());
+    let item = composed.next().await.unwrap();
+    assert!(item.previous.is_none());
+    assert_eq!(item.current.get(), &person_charlie());
 }
 
 #[tokio::test]

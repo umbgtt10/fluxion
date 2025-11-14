@@ -3,9 +3,11 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion::{CombinedState, FluxionStream, Ordered, OrderedWrapper};
+use fluxion_stream::combine_with_previous::WithPrevious;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::test_data::{
-    animal_dog, person_alice, person_bob, person_charlie, person_dave, plant_rose, TestData,
+    animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane, plant_rose,
+    TestData,
 };
 use fluxion_test_utils::{FluxionChannel, TestChannels};
 use futures::StreamExt;
@@ -21,7 +23,6 @@ async fn test_fluxion_stream_composition() {
     // Arrange
     let (source, filter, _secondary) = TestChannels::three::<TestData>();
 
-    // Compose multiple operations using FluxionStream
     let composed = FluxionStream::new(source.stream)
         .take_latest_when(filter.stream, FILTER)
         .combine_with_previous();
@@ -31,25 +32,25 @@ async fn test_fluxion_stream_composition() {
     source.sender.send(person_alice()).unwrap();
 
     let mut composed = Box::pin(composed);
-    let (prev, curr) = composed.next().await.unwrap();
-    assert!(prev.is_none(), "First emission should have no previous");
-    assert_eq!(curr.get(), &person_alice());
+    let item = composed.next().await.unwrap();
+    assert!(item.previous.is_none(), "First emission should have no previous");
+    assert_eq!(item.current.get(), &person_alice());
 
     source.sender.send(person_bob()).unwrap();
-    let (prev, curr) = composed.next().await.unwrap();
-    assert_eq!(prev.unwrap().get(), &person_alice());
-    assert_eq!(curr.get(), &person_bob());
+    let item = composed.next().await.unwrap();
+    assert_eq!(item.previous.unwrap().get(), &person_alice());
+    assert_eq!(item.current.get(), &person_bob());
 
     source.sender.send(person_charlie()).unwrap();
-    let (prev, curr) = composed.next().await.unwrap();
-    assert_eq!(prev.unwrap().get(), &person_bob());
-    assert_eq!(curr.get(), &person_charlie());
+    let item = composed.next().await.unwrap();
+    assert_eq!(item.previous.unwrap().get(), &person_bob());
+    assert_eq!(item.current.get(), &person_charlie());
 
     drop(filter.sender);
     source.sender.send(person_dave()).unwrap();
-    let (prev, curr) = composed.next().await.unwrap();
-    assert_eq!(prev.unwrap().get(), &person_charlie());
-    assert_eq!(curr.get(), &person_dave());
+    let item = composed.next().await.unwrap();
+    assert_eq!(item.previous.unwrap().get(), &person_charlie());
+    assert_eq!(item.current.get(), &person_dave());
 }
 
 #[tokio::test]
@@ -112,14 +113,14 @@ async fn test_fluxion_stream_combine_with_previous() {
     channel.sender.send(person_alice()).unwrap();
 
     let mut stream = Box::pin(stream);
-    let (prev, curr) = stream.next().await.unwrap();
-    assert!(prev.is_none());
-    assert_eq!(curr.get(), &person_alice());
+    let item = stream.next().await.unwrap();
+    assert!(item.previous.is_none());
+    assert_eq!(item.current.get(), &person_alice());
 
     channel.sender.send(person_bob()).unwrap();
-    let (prev, curr) = stream.next().await.unwrap();
-    assert_eq!(prev.unwrap().get(), &person_alice());
-    assert_eq!(curr.get(), &person_bob());
+    let item = stream.next().await.unwrap();
+    assert_eq!(item.previous.unwrap().get(), &person_alice());
+    assert_eq!(item.current.get(), &person_bob());
 }
 
 #[tokio::test]
@@ -253,19 +254,19 @@ async fn test_ordered_merge_then_combine_with_previous() {
 
     // Act & Assert
     person.sender.send(person_alice()).unwrap();
-    let (prev, curr) = composed.next().await.unwrap();
-    assert!(prev.is_none());
-    assert_eq!(curr.get(), &person_alice());
+    let item = composed.next().await.unwrap();
+    assert!(item.previous.is_none());
+    assert_eq!(item.current.get(), &person_alice());
 
     animal.sender.send(animal_dog()).unwrap();
-    let (prev, curr) = composed.next().await.unwrap();
-    assert_eq!(prev.unwrap().get(), &person_alice());
-    assert_eq!(curr.get(), &animal_dog());
+    let item = composed.next().await.unwrap();
+    assert_eq!(item.previous.unwrap().get(), &person_alice());
+    assert_eq!(item.current.get(), &animal_dog());
 
     person.sender.send(person_bob()).unwrap();
-    let (prev, curr) = composed.next().await.unwrap();
-    assert_eq!(prev.unwrap().get(), &animal_dog());
-    assert_eq!(curr.get(), &person_bob());
+    let item = composed.next().await.unwrap();
+    assert_eq!(item.previous.unwrap().get(), &animal_dog());
+    assert_eq!(item.current.get(), &person_bob());
 }
 
 #[tokio::test]
@@ -283,19 +284,19 @@ async fn test_combine_latest_then_combine_with_previous() {
     animal.sender.send(animal_dog()).unwrap();
 
     let mut composed = Box::pin(composed);
-    let (prev, curr) = composed.next().await.unwrap();
-    assert!(prev.is_none());
-    let curr_state = curr.get().get_state();
+    let item = composed.next().await.unwrap();
+    assert!(item.previous.is_none());
+    let curr_state = item.current.get().get_state();
     assert_eq!(curr_state[0], person_alice());
     assert_eq!(curr_state[1], animal_dog());
 
     person.sender.send(person_bob()).unwrap();
-    let (prev, curr) = composed.next().await.unwrap();
-    let prev_seq = prev.unwrap();
+    let item = composed.next().await.unwrap();
+    let prev_seq = item.previous.unwrap();
     let prev_state = prev_seq.get().get_state();
     assert_eq!(prev_state[0], person_alice());
     assert_eq!(prev_state[1], animal_dog());
-    let curr_state = curr.get().get_state();
+    let curr_state = item.current.get().get_state();
     assert_eq!(curr_state[0], person_bob());
     assert_eq!(curr_state[1], animal_dog());
 }
@@ -460,4 +461,98 @@ async fn test_take_latest_when_then_ordered_merge() {
     source.sender.send(person_charlie()).unwrap();
     let result = composed.next().await.unwrap();
     assert_eq!(result.get(), &person_charlie());
+}
+
+#[tokio::test]
+async fn test_emit_when_composite_with_ordered_merge_and_combine_with_previous() {
+    // Arrange:
+    let (person1, person2) = TestChannels::two::<TestData>();
+    let threshold: FluxionChannel<TestData> = FluxionChannel::new();
+
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
+        let values = state.get_state();
+        // Extract the current person's age - note that emit_when unwraps to Inner type (TestData)
+        let current_age = match &values[0] {
+            TestData::Person(p) => p.age,
+            _ => return false,
+        };
+        // Extract the threshold age
+        let threshold_age = match &values[1] {
+            TestData::Person(p) => p.age,
+            _ => return false,
+        };
+        current_age >= threshold_age
+    };
+
+    // Map the threshold stream to match the WithPrevious type
+    let threshold_mapped = threshold.stream.map(|seq| {
+        WithPrevious::new(None, seq)
+    });
+
+    // Chained composition: merge -> combine_with_previous -> emit_when
+    let mut output_stream = Box::pin(
+        FluxionStream::new(person1.stream)
+            .ordered_merge(vec![FluxionStream::new(person2.stream)])
+            .combine_with_previous()
+            .emit_when(threshold_mapped, filter_fn)
+    );
+
+    // Act: Set threshold to Bob (age 30)
+    threshold.sender.send(person_bob()).unwrap();
+
+    // Act: Send Alice (25) from stream 1 - below threshold
+    person1.sender.send(person_alice()).unwrap();
+
+    // Assert: Should not emit (25 < 30)
+    assert_no_element_emitted(&mut output_stream, 100).await;
+
+    // Act: Send Charlie (35) from stream 2 - above threshold
+    person2.sender.send(person_charlie()).unwrap();
+
+    // Assert: Should emit (35 >= 30)
+    let emitted = output_stream.next().await.unwrap();
+    assert_eq!(
+        emitted.current.get(),
+        &person_charlie(),
+        "Expected Charlie (35) to be emitted when >= threshold (30)"
+    );
+
+    // Act: Send Dave (28) from stream 1 - below threshold
+    person1.sender.send(person_dave()).unwrap();
+
+    // Assert: Should not emit (28 < 30)
+    assert_no_element_emitted(&mut output_stream, 100).await;
+
+    // Act: Send Diane (40) from stream 2 - above threshold
+    person2.sender.send(person_diane()).unwrap();
+
+    // Assert: Should emit (40 >= 30)
+    let emitted = output_stream.next().await.unwrap();
+    assert_eq!(
+        emitted.current.get(),
+        &person_diane(),
+        "Expected Diane (40) to be emitted when >= threshold (30)"
+    );
+
+    // Act: Lower threshold to Alice (25)
+    threshold.sender.send(person_alice()).unwrap();
+
+    // Assert: Should re-emit Diane since she still meets the new threshold
+    let emitted = output_stream.next().await.unwrap();
+    assert_eq!(
+        emitted.current.get(),
+        &person_diane(),
+        "Expected Diane (40) to be re-emitted when threshold changes to 25"
+    );
+
+    // Act: Send Bob (30) from stream 1 - meets new threshold
+    person1.sender.send(person_bob()).unwrap();
+
+    // Assert: Should emit (30 >= 25)
+    let emitted = output_stream.next().await.unwrap();
+    assert_eq!(
+        emitted.current.get(),
+        &person_bob(),
+        "Expected Bob (30) to be emitted when >= threshold (25)"
+    );
 }

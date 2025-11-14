@@ -12,6 +12,7 @@ use crate::take_while_with::TakeWhileExt;
 use crate::with_latest_from::WithLatestFromExt;
 use fluxion_core::CompareByInner;
 use futures::Stream;
+use futures::StreamExt;
 use pin_project::pin_project;
 use std::fmt::Debug;
 use std::pin::Pin;
@@ -112,15 +113,26 @@ where
     }
 }
 
-// Extension methods directly on FluxionStream
 impl<S, T> FluxionStream<S>
 where
     S: Stream<Item = T>,
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
-    /// Combines each element with the previous element, tracking state changes
-    pub fn combine_with_previous(self) -> FluxionStream<impl Stream<Item = (Option<T>, T)>>
+    /// Maps each element using the provided closure, maintaining the stream wrapper.
+    /// This allows continued chaining of FluxionStream methods.
+    /// Named `map_ordered` to avoid conflict with `futures::StreamExt::map`.
+    pub fn map_ordered<U, F>(self, f: F) -> FluxionStream<impl Stream<Item = U> + Send + Sync>
+    where
+        S: Send + Sync + Unpin + 'static,
+        U: Send + 'static,
+        F: FnMut(T) -> U + Send + Sync + 'static,
+    {
+        let inner = self.into_inner();
+        FluxionStream::new(inner.map(f))
+    }
+
+    pub fn combine_with_previous(self) -> FluxionStream<impl Stream<Item = crate::combine_with_previous::WithPrevious<T>> + Send + Sync>
     where
         S: Send + Sync + Unpin + 'static,
     {
@@ -128,7 +140,6 @@ where
         FluxionStream::new(CombineWithPreviousExt::combine_with_previous(inner))
     }
 
-    /// Takes elements while a condition on the filter stream is satisfied
     pub fn take_while_with<TFilter, SF>(
         self,
         filter_stream: SF,
