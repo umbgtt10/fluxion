@@ -4,7 +4,7 @@
 
 use crate::Ordered;
 use crate::combine_latest::{CombineLatestExt, CombinedState};
-use crate::combine_with_previous::CombineWithPreviousExt;
+use crate::combine_with_previous::{CombineWithPreviousExt, WithPrevious};
 use crate::emit_when::EmitWhenExt;
 use crate::ordered_merge::OrderedStreamExt;
 use crate::take_latest_when::TakeLatestWhenExt;
@@ -155,9 +155,7 @@ where
 
     pub fn combine_with_previous(
         self,
-    ) -> FluxionStream<
-        impl Stream<Item = crate::combine_with_previous::WithPrevious<T>> + Send + Sync,
-    >
+    ) -> FluxionStream<impl Stream<Item = WithPrevious<T>> + Send + Sync>
     where
         S: Send + Sync + Unpin + 'static,
     {
@@ -169,7 +167,7 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = T::Inner>>
+    ) -> FluxionStream<impl Stream<Item = T::Inner> + Send + Sync>
     where
         S: Stream<Item = T> + Send + Sync + Unpin + 'static,
         TFilter: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
@@ -177,7 +175,7 @@ where
         SF: Stream<Item = TFilter> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
-        TakeWhileExt::take_while_with(inner, filter_stream, filter)
+        FluxionStream::new(TakeWhileExt::take_while_with(inner, filter_stream, filter))
     }
 
     pub fn take_latest_when<SF>(
@@ -214,7 +212,7 @@ where
         self,
         other: S2,
         result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
-    ) -> impl Stream<Item = OrderedWrapper<R>> + Send
+    ) -> FluxionStream<impl Stream<Item = OrderedWrapper<R>> + Send + Sync>
     where
         S: Stream<Item = T> + Send + Sync + Unpin + 'static,
         S2: Stream<Item = T> + Send + Sync + 'static,
@@ -222,16 +220,18 @@ where
         R: Clone + Debug + Ord + Send + Sync + 'static,
     {
         let inner = self.into_inner();
-        WithLatestFromExt::with_latest_from(inner, other, result_selector)
+        FluxionStream::new(WithLatestFromExt::with_latest_from(
+            inner,
+            other,
+            result_selector,
+        ))
     }
 
     pub fn combine_latest<S2>(
         self,
         others: Vec<S2>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<
-        impl Stream<Item = fluxion_core::OrderedWrapper<CombinedState<T::Inner>>> + Send,
-    >
+    ) -> FluxionStream<impl Stream<Item = OrderedWrapper<CombinedState<T::Inner>>> + Send>
     where
         S: Stream<Item = T> + Send + Sync + 'static,
         S2: Stream<Item = T> + Send + Sync + 'static,

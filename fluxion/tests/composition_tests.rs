@@ -16,8 +16,6 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 static FILTER: fn(&TestData) -> bool = |_| true;
 static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
-static RESULT_SELECTOR: fn(&CombinedState<TestData>) -> CombinedState<TestData> =
-    |state: &CombinedState<TestData>| state.clone();
 static LATEST_FILTER: fn(&TestData) -> bool = |_| true;
 static LATEST_FILTER_COMBINED: fn(&CombinedState<TestData>) -> bool = |_| true;
 
@@ -95,15 +93,22 @@ async fn test_fluxion_stream_combine_latest_composition() {
 
 #[tokio::test]
 async fn test_fluxion_stream_with_latest_from() {
-    // Arrange
+    // Arrange - Use a custom selector that creates a formatted summary
     let (primary_tx, primary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (secondary_tx, secondary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let primary_stream = UnboundedReceiverStream::new(primary_rx);
     let secondary_stream = UnboundedReceiverStream::new(secondary_rx);
 
+    // Custom selector: create a descriptive string combining both values
+    let summary_selector = |state: &CombinedState<TestData>| -> String {
+        let primary = &state.get_state()[0];
+        let secondary = &state.get_state()[1];
+        format!("Primary: {:?}, Latest Secondary: {:?}", primary, secondary)
+    };
+
     let combined =
-        FluxionStream::new(primary_stream).with_latest_from(secondary_stream, RESULT_SELECTOR);
+        FluxionStream::new(primary_stream).with_latest_from(secondary_stream, summary_selector);
 
     // Act
     secondary_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -112,16 +117,15 @@ async fn test_fluxion_stream_with_latest_from() {
     // Assert
     let mut combined = Box::pin(combined);
     let result = combined.next().await.unwrap();
-    let state = result.get();
-    // CombinedState: [primary (index 0), secondary (index 1)]
-    assert_eq!(state.get_state()[0], person_bob());
-    assert_eq!(state.get_state()[1], person_alice());
+    let summary = result.get();
+    assert!(summary.contains("Bob"));
+    assert!(summary.contains("Alice"));
 
     primary_tx.send(Sequenced::new(person_charlie())).unwrap();
     let result = combined.next().await.unwrap();
-    let state = result.get();
-    assert_eq!(state.get_state()[0], person_charlie());
-    assert_eq!(state.get_state()[1], person_alice());
+    let summary = result.get();
+    assert!(summary.contains("Charlie"));
+    assert!(summary.contains("Alice"));
 }
 
 #[tokio::test]
@@ -990,31 +994,47 @@ async fn test_triple_ordered_merge_then_map_ordered() {
 
 #[tokio::test]
 async fn test_with_latest_from_then_map_ordered() {
-    // Arrange
+    // Arrange - demonstrate computing a derived metric from combined streams
     let (primary_tx, primary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (_secondary_tx, _secondary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (secondary_tx, secondary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let primary_stream = UnboundedReceiverStream::new(primary_rx);
+    let secondary_stream = UnboundedReceiverStream::new(secondary_rx);
 
-    let stream = FluxionStream::new(primary_stream)
-        .combine_with_previous()
-        .map_ordered(|item: WithPrevious<Sequenced<TestData>>| async move {
-            match item.current.get() {
-                TestData::Person(p) => p.name.clone(),
-                _ => String::from("Unknown"),
-            }
-        });
+    // Custom selector: compute age difference between two people
+    let age_difference_selector = |state: &CombinedState<TestData>| -> String {
+        let primary_age = match &state.get_state()[0] {
+            TestData::Person(p) => p.age as i32,
+            _ => 0,
+        };
+        let secondary_age = match &state.get_state()[1] {
+            TestData::Person(p) => p.age as i32,
+            _ => 0,
+        };
+        let diff = primary_age - secondary_age;
+        format!("Age difference: {}", diff)
+    };
+
+    let mut stream = FluxionStream::new(primary_stream)
+        .with_latest_from(secondary_stream, age_difference_selector);
 
     // Act & Assert
-    primary_tx.send(Sequenced::new(person_bob())).unwrap();
+    secondary_tx.send(Sequenced::new(person_alice())).unwrap(); // 25
+    primary_tx.send(Sequenced::new(person_bob())).unwrap(); // 30
 
-    let mut stream = Box::pin(stream);
-    let result = stream.next().await.unwrap().await;
-    assert_eq!(result, "Bob");
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.get(), "Age difference: 5"); // 30 - 25
 
-    primary_tx.send(Sequenced::new(person_charlie())).unwrap();
-    let result = stream.next().await.unwrap().await;
-    assert_eq!(result, "Charlie");
+    primary_tx.send(Sequenced::new(person_charlie())).unwrap(); // 35
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.get(), "Age difference: 10"); // 35 - 25
+
+    // Update secondary
+    secondary_tx.send(Sequenced::new(person_diane())).unwrap(); // 40
+    primary_tx.send(Sequenced::new(person_dave())).unwrap(); // 28
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.get(), "Age difference: -12"); // 28 - 40
 }
 
 #[tokio::test]
@@ -1409,28 +1429,48 @@ async fn test_combine_latest_with_filter_ordered() {
 
 #[tokio::test]
 async fn test_filter_ordered_with_latest_from() {
-    // Arrange - filter primary stream, then combine with latest from secondary
+    // Arrange - filter primary stream, then combine with custom selector
     let (primary_tx, primary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (secondary_tx, secondary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let primary_stream = UnboundedReceiverStream::new(primary_rx);
     let secondary_stream = UnboundedReceiverStream::new(secondary_rx);
 
+    // Custom selector: extract name from person and combine with secondary info
+    let name_combiner = |state: &CombinedState<TestData>| -> String {
+        let person_name = match &state.get_state()[0] {
+            TestData::Person(p) => p.name.clone(),
+            _ => String::from("Unknown"),
+        };
+        let secondary_info = match &state.get_state()[1] {
+            TestData::Animal(a) => format!("with animal {} ({} legs)", a.name, a.legs),
+            TestData::Person(p) => format!("with person {} (age {})", p.name, p.age),
+            TestData::Plant(p) => format!("with plant {} (height {})", p.species, p.height),
+        };
+        format!("{} {}", person_name, secondary_info)
+    };
+
     let stream = FluxionStream::new(primary_stream)
         .filter_ordered(|data| matches!(data, TestData::Person(_)))
-        .with_latest_from(secondary_stream, RESULT_SELECTOR);
+        .with_latest_from(secondary_stream, name_combiner);
 
-    // Act & Assert - Simpler test: just verify filtering works
+    // Act & Assert
     secondary_tx.send(Sequenced::new(animal_dog())).unwrap();
     primary_tx.send(Sequenced::new(plant_rose())).unwrap(); // Filtered
     primary_tx.send(Sequenced::new(person_alice())).unwrap(); // Kept
 
     let mut stream = Box::pin(stream);
     let result = stream.next().await.unwrap();
-    let state = result.get();
-    // CombinedState: [primary (filtered person_alice), secondary (animal_dog)]
-    assert_eq!(state.get_state()[0], person_alice());
-    assert_eq!(state.get_state()[1], animal_dog());
+    let combined_name = result.get();
+    assert_eq!(combined_name, "Alice with animal Dog (4 legs)");
+
+    // Update secondary to a person
+    secondary_tx.send(Sequenced::new(person_bob())).unwrap();
+    primary_tx.send(Sequenced::new(person_charlie())).unwrap();
+
+    let result = stream.next().await.unwrap();
+    let combined_name = result.get();
+    assert_eq!(combined_name, "Charlie with person Bob (age 30)");
 
     // Send animal (filtered) and plant (filtered)
     primary_tx.send(Sequenced::new(animal_dog())).unwrap(); // Filtered
@@ -1438,4 +1478,90 @@ async fn test_filter_ordered_with_latest_from() {
 
     // Verify no emission yet by checking with a timeout
     assert_no_element_emitted(&mut stream, 100).await;
+}
+
+#[tokio::test]
+async fn test_with_latest_from_in_middle_of_chain() {
+    // Arrange - Demonstrate with_latest_from in the middle of a chain
+    // Pattern: filter_ordered -> with_latest_from -> map_ordered
+    let (primary_tx, primary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (secondary_tx, secondary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let primary_stream = UnboundedReceiverStream::new(primary_rx);
+    let secondary_stream = UnboundedReceiverStream::new(secondary_rx);
+
+    // Custom selector: combine ages
+    let age_combiner = |state: &CombinedState<TestData>| -> u32 {
+        let primary_age = match &state.get_state()[0] {
+            TestData::Person(p) => p.age,
+            _ => 0,
+        };
+        let secondary_age = match &state.get_state()[1] {
+            TestData::Person(p) => p.age,
+            _ => 0,
+        };
+        primary_age + secondary_age
+    };
+
+    let stream = FluxionStream::new(primary_stream)
+        .filter_ordered(|data| matches!(data, TestData::Person(_)))
+        .with_latest_from(secondary_stream, age_combiner)
+        .map_ordered(|age_sum: OrderedWrapper<u32>| async move {
+            format!("Combined age: {}", age_sum.get())
+        });
+
+    // Act & Assert
+    secondary_tx.send(Sequenced::new(person_alice())).unwrap(); // 25
+    primary_tx.send(Sequenced::new(animal_dog())).unwrap(); // Filtered
+    primary_tx.send(Sequenced::new(person_bob())).unwrap(); // 30
+
+    let mut stream = Box::pin(stream);
+    let result = stream.next().await.unwrap().await;
+    assert_eq!(result, "Combined age: 55"); // 30 + 25
+
+    primary_tx.send(Sequenced::new(person_charlie())).unwrap(); // 35
+    let result = stream.next().await.unwrap().await;
+    assert_eq!(result, "Combined age: 60"); // 35 + 25
+
+    // Update secondary
+    secondary_tx.send(Sequenced::new(person_diane())).unwrap(); // 40
+    primary_tx.send(Sequenced::new(person_dave())).unwrap(); // 28
+
+    let result = stream.next().await.unwrap().await;
+    assert_eq!(result, "Combined age: 68"); // 28 + 40
+}
+
+#[tokio::test]
+async fn test_take_while_with_in_middle_of_chain() {
+    // Arrange - Demonstrate take_while_with returns FluxionStream for chaining
+    // Pattern: ordered_merge -> filter_ordered -> take_while_with -> (returns inner values)
+    // Note: take_while_with returns the inner values (TestData), so we can't chain
+    // ordered operations after it, but we CAN chain before it
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (other_tx, other_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (predicate_tx, predicate_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let other_stream = UnboundedReceiverStream::new(other_rx);
+    let predicate_stream = UnboundedReceiverStream::new(predicate_rx);
+
+    // Chain ordered operations, then take_while_with at the end
+    let stream = FluxionStream::new(source_stream)
+        .ordered_merge(vec![FluxionStream::new(other_stream)])
+        .filter_ordered(|data| matches!(data, TestData::Person(_)))
+        .take_while_with(predicate_stream, |_| true);
+
+    // Act & Assert
+    predicate_tx.send(Sequenced::new(person_alice())).unwrap();
+    source_tx.send(Sequenced::new(animal_dog())).unwrap(); // Filtered by filter_ordered
+    source_tx.send(Sequenced::new(person_bob())).unwrap(); // Kept
+    other_tx.send(Sequenced::new(person_charlie())).unwrap(); // Kept
+
+    let mut stream = Box::pin(stream);
+    let result1 = stream.next().await.unwrap();
+    let result2 = stream.next().await.unwrap();
+
+    // ordered_merge preserves order based on sequence numbers
+    assert_eq!(result1, person_bob());
+    assert_eq!(result2, person_charlie());
 }
