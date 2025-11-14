@@ -60,8 +60,8 @@ impl<S> FluxionStream<S> {
     ///
     /// # Example
     ///
-    /// ```rust,ignore
-    /// use fluxion::FluxionStream;
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
     /// use futures::stream;
     ///
     /// let existing_stream = stream::iter(vec![1, 2, 3]);
@@ -81,11 +81,11 @@ impl FluxionStream<()> {
     ///
     /// # Example
     ///
-    /// ```rust,ignore
-    /// use fluxion::FluxionStream;
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
     /// use tokio::sync::mpsc;
     ///
-    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let (tx, rx) = mpsc::unbounded_channel::<i32>();
     /// let stream = FluxionStream::from_unbounded_receiver(rx);
     /// ```
     pub fn from_unbounded_receiver<T>(

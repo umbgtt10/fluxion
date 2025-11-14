@@ -30,7 +30,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```rust
 /// use fluxion_test_utils::TestChannel;
 /// use fluxion::FluxionStream;
 ///

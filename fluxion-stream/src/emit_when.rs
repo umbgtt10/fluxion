@@ -27,39 +27,6 @@ where
         IS::Stream: Send + Sync + 'static;
 }
 
-#[derive(Clone, Debug)]
-struct EmitWhenState<T>
-where
-    T: Clone,
-{
-    source_value: Option<T>,
-    filter_value: Option<T>,
-}
-
-impl<T> EmitWhenState<T>
-where
-    T: Clone,
-{
-    const fn new() -> Self {
-        Self {
-            source_value: None,
-            filter_value: None,
-        }
-    }
-
-    const fn is_complete(&self) -> bool {
-        self.source_value.is_some() && self.filter_value.is_some()
-    }
-
-    fn get_values(&self) -> Option<Vec<T>> {
-        if let (Some(source), Some(filter)) = (&self.source_value, &self.filter_value) {
-            Some(vec![source.clone(), filter.clone()])
-        } else {
-            None
-        }
-    }
-}
-
 type IndexedStream<T> = Pin<Box<dyn Stream<Item = (T, usize)> + Send + Sync>>;
 impl<T, S> EmitWhenExt<T> for S
 where
@@ -81,28 +48,40 @@ where
 
         let streams: Vec<IndexedStream<T>> = vec![source_stream, filter_stream];
 
-        let state = Arc::new(Mutex::new(EmitWhenState::new()));
+        let source_value = Arc::new(Mutex::new(None));
+        let filter_value = Arc::new(Mutex::new(None));
         let filter = Arc::new(filter);
 
         Box::pin(
             streams
                 .ordered_merge()
                 .filter_map(move |(ordered_value, index)| {
-                    let state = Arc::clone(&state);
+                    let source_value = Arc::clone(&source_value);
+                    let filter_value = Arc::clone(&filter_value);
                     let filter = Arc::clone(&filter);
                     let order = ordered_value.order();
                     async move {
-                        let mut state = match safe_lock(&state, "emit_when state") {
-                            Ok(lock) => lock,
-                            Err(e) => {
-                                error!("Failed to acquire lock in emit_when: {}", e);
-                                return None;
-                            }
-                        };
-
                         match index {
-                            0 => state.source_value = Some(ordered_value.get().clone()),
-                            1 => state.filter_value = Some(ordered_value.get().clone()),
+                            0 => {
+                                let mut source = match safe_lock(&source_value, "emit_when source") {
+                                    Ok(lock) => lock,
+                                    Err(e) => {
+                                        error!("Failed to acquire lock in emit_when: {}", e);
+                                        return None;
+                                    }
+                                };
+                                *source = Some(ordered_value.get().clone());
+                            }
+                            1 => {
+                                let mut filter_val = match safe_lock(&filter_value, "emit_when filter") {
+                                    Ok(lock) => lock,
+                                    Err(e) => {
+                                        error!("Failed to acquire lock in emit_when: {}", e);
+                                        return None;
+                                    }
+                                };
+                                *filter_val = Some(ordered_value.get().clone());
+                            }
                             _ => {
                                 warn!(
                                     "emit_when: unexpected stream index {} – ignoring",
@@ -111,15 +90,25 @@ where
                             }
                         }
 
-                        if state.is_complete() {
-                            let values = state.get_values()?;
-                            let combined_state = CombinedState::new(values);
+                        let source = match safe_lock(&source_value, "emit_when source") {
+                            Ok(lock) => lock,
+                            Err(e) => {
+                                error!("Failed to acquire lock in emit_when: {}", e);
+                                return None;
+                            }
+                        };
+                        let filter_val = match safe_lock(&filter_value, "emit_when filter") {
+                            Ok(lock) => lock,
+                            Err(e) => {
+                                error!("Failed to acquire lock in emit_when: {}", e);
+                                return None;
+                            }
+                        };
 
+                        if let (Some(src), Some(filt)) = (source.as_ref(), filter_val.as_ref()) {
+                            let combined_state = CombinedState::new(vec![src.clone(), filt.clone()]);
                             if filter(&combined_state) {
-                                state
-                                    .source_value
-                                    .clone()
-                                    .map(|source| T::with_order(source, order))
+                                Some(T::with_order(src.clone(), order))
                             } else {
                                 None
                             }
