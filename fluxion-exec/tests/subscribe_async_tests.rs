@@ -132,9 +132,9 @@ async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() {
                 // Error on every animal
                 if matches!(&item, TestData::Animal(_)) {
                     let _ = notify_tx.send(()); // Signal completion (error case)
-                    return Err(TestError::new(format!(
-                        "Error processing animal: {item:?}",
-                    )));
+                    return Err(TestError::new(
+                        format!("Error processing animal: {item:?}",),
+                    ));
                 }
                 results.lock().await.push(item);
                 let _ = notify_tx.send(()); // Signal completion
@@ -261,8 +261,6 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
     let cancellation_token = CancellationToken::new();
     let cancellation_token_clone = cancellation_token.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
-
-    
 
     let func = {
         let results = results.clone();
@@ -486,7 +484,10 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() {
         drop(processed);
     }
     let max = max_active.load(std::sync::atomic::Ordering::SeqCst);
-    assert!(max >= 2, "Expected parallelism (max_active >= 2), got {max}");
+    assert!(
+        max >= 2,
+        "Expected parallelism (max_active >= 2), got {max}"
+    );
 
     // Cleanup
     drop(channel.sender);

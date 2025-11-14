@@ -1,0 +1,9 @@
+[alias]
+# Run `cargo clippy-allow` to run Clippy while allowing a couple of noisy
+# workspace-level lints. We avoid using the name `clippy` here because an alias
+# with that name would recursively call itself and also shadow the external
+# `cargo-clippy` subcommand; recent Cargo versions treat that as an error.
+clippy-allow = "clippy -- -A clippy::multiple_crate_versions -A clippy::doc_markdown"
+
+# Example: add more allowed lints if desired
+# clippy-allow = "clippy -- -A clippy::multiple_crate_versions -A clippy::doc_markdown -A clippy::manual_string_new"

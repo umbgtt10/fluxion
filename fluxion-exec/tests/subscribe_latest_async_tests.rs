@@ -95,7 +95,10 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
     notify_rx.recv().await.expect("Rose processed");
 
     // Assert
-    let processed = { let g = collected_items.lock().await; g.clone() };
+    let processed = {
+        let g = collected_items.lock().await;
+        g.clone()
+    };
     assert_eq!(processed.len(), 10,);
     assert_eq!(processed[0], person_alice());
     assert_eq!(processed[1], person_bob());
@@ -194,7 +197,10 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
         .expect("Latest (Dave) should be processed next");
 
     // Assert
-    let processed = { let g = collected_items.lock().await; g.clone() };
+    let processed = {
+        let g = collected_items.lock().await;
+        g.clone()
+    };
     assert_eq!(processed.len(), 2,);
     assert_eq!(processed[0], person_alice(),);
     assert_eq!(processed[1], person_dave(),);
@@ -262,7 +268,10 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
     notify_rx.recv().await.expect("Dog processed");
 
     // Assert
-    let processed = { let g = collected_items.lock().await; g.clone() };
+    let processed = {
+        let g = collected_items.lock().await;
+        g.clone()
+    };
     assert_eq!(processed.len(), 3);
     assert!(processed.contains(&person_alice()),);
     assert!(processed.contains(&person_charlie()),);
@@ -332,7 +341,10 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
     push(animal_dog(), &channel.sender);
 
     // Assert
-    let processed = { let g = collected_items.lock().await; g.clone() };
+    let processed = {
+        let g = collected_items.lock().await;
+        g.clone()
+    };
     assert_eq!(processed.len(), 3,);
     assert_eq!(processed[0], person_alice());
     assert_eq!(processed[1], person_bob());
@@ -403,7 +415,10 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
     push(animal_cat(), &channel.sender);
 
     // Assert
-    let processed = { let g = collected_items.lock().await; g.clone() };
+    let processed = {
+        let g = collected_items.lock().await;
+        g.clone()
+    };
     assert_eq!(processed.len(), 2);
     assert!(processed.contains(&person_alice()),);
     assert!(processed.contains(&person_bob()));
@@ -688,7 +703,10 @@ async fn test_subscribe_latest_async_single_item() {
     notify_rx.recv().await.unwrap();
 
     // Assert
-    let processed = { let g = collected_items.lock().await; g.clone() };
+    let processed = {
+        let g = collected_items.lock().await;
+        g.clone()
+    };
     assert_eq!(processed.len(), 1, "Exactly 1 item should be processed");
     assert_eq!(processed[0], person_alice(), "Should be Alice");
 

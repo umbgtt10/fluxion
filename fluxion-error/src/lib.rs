@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-#![allow(clippy::multiple_crate_versions)]
+#![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 //! Error types for Fluxion reactive streaming library
 //!
 //! This crate provides a comprehensive error handling system for all Fluxion operations.

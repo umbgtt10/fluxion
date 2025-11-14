@@ -42,9 +42,12 @@ Development notes
 - Clippy, formatting and documentation warnings are treated as errors in CI.
 - Local scripts live in `.ci/` (use `coverage.ps1` to collect coverage locally with `cargo-llvm-cov`).
 
-TODO
-- [ ] Bench all remaining stream extensions and record results in `target/criterion`.
-	- Suggested list: `combine_latest`, `combine_with_previous`, `merge`, `merge_ordered`, `merge_with`, `with_latest_from`, `take_latest_when`, `take_while`, `select_all`.
+TODOs:
+- [ ] Review all performance benches:
+    - Ensure consistency
+	- Double-check sample sizes and test duration
+	- Ensure reasonable complexity of the benches
+	- Consider adding additional cases
 - [ ] Investigate a clean way to suppress unit-test harness noise when running `cargo bench`.
 	- Consider options: `cargo -q bench`, running the bench binary directly, per-package bench (`-p`), or a `.ci/bench.ps1` wrapper that builds then executes bench executables.
 - [ ] Rework/review ci.yml
@@ -52,6 +55,25 @@ TODO
 	- Improve speed
 	- Consider removing unnecessary steps
 	- Check whether new steps should be added
+- [ ] Windows double-versioning issue:
+    - Resolve `windows-sys` multiple-version issue on Windows
+	- Symptom: both `windows-sys 0.60.x` and `0.61.x` appear in `Cargo.lock` (clippy flags `multiple_crate_versions`).
+	- Options:
+	   - bump workspace `tokio`/transitive crates so they align [DONE]
+	   - pin `socket2`/`mio` to compatible versions [NOT DONE]
+	   - or accept both and suppress the clippy lint in CI. [DONE]
+	- Fix / workaround:
+       - suppress Clippy at crate level with #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)] [DONE]
+       - or add a [patch.crates-io] override for the transitive crate (preferred over forcing windows-sys directly) [NOT DONE]
+	- Note: attempting to force windows-sys = "0.61.2" may fail if an upstream crate requires ^0.60; use cargo tree -i to inspect dependency paths before attempting a pin/patch
+	- Optimal solution: update tokio / related transitive crates to versions that align their windows-sys reqs, remove any suppressions/pins and re-run cargo update (may require coordinated upgrades).
+	- Quick checks:
+		```
+		cargo tree -i windows-sys@0.60.2 --workspace
+		cargo tree -i windows-sys@0.61.2 --workspace
+		cargo tree -i windows-sys --workspace
+		```
+		Use `cargo update` after edits to `Cargo.toml` to refresh `Cargo.lock`.
 
 
 Issues & contributions
