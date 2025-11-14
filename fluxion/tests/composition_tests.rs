@@ -791,3 +791,411 @@ async fn test_map_ordered_extract_age_difference() {
     let result = stream.next().await.unwrap();
     assert_eq!(result, 7); // 35 - 28 = 7
 }
+
+#[tokio::test]
+async fn test_map_ordered_with_ordered_merge() {
+    // Arrange
+    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let person_stream = UnboundedReceiverStream::new(person_rx);
+    let animal_stream = UnboundedReceiverStream::new(animal_rx);
+
+    let stream = FluxionStream::new(person_stream)
+        .ordered_merge(vec![FluxionStream::new(animal_stream)])
+        .combine_with_previous()
+        .map_ordered(|item| {
+            let curr_str = item.current.get().to_string();
+            let prev_str = item.previous.map(|p| p.get().to_string());
+            format!("Current: {}, Previous: {:?}", curr_str, prev_str)
+        });
+
+    // Act & Assert
+    person_tx.send(Sequenced::new(person_alice())).unwrap();
+    let mut stream = Box::pin(stream);
+    let result = stream.next().await.unwrap();
+    assert!(result.contains("Alice"));
+    assert!(result.contains("Previous: None"));
+
+    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
+    let result = stream.next().await.unwrap();
+    assert!(result.contains("Dog"));
+    assert!(result.contains("Alice"));
+
+    person_tx.send(Sequenced::new(person_bob())).unwrap();
+    let result = stream.next().await.unwrap();
+    assert!(result.contains("Bob"));
+    assert!(result.contains("Dog"));
+}
+
+#[tokio::test]
+async fn test_map_ordered_with_combine_latest() {
+    // Arrange
+    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let person_stream = UnboundedReceiverStream::new(person_rx);
+    let animal_stream = UnboundedReceiverStream::new(animal_rx);
+
+    let stream = FluxionStream::new(person_stream)
+        .combine_latest(vec![animal_stream], COMBINE_FILTER)
+        .combine_with_previous()
+        .map_ordered(|item| {
+            let curr_state = item.current.get().get_state();
+            let count = curr_state.len();
+            format!("Combined {} streams", count)
+        });
+
+    // Act & Assert
+    person_tx.send(Sequenced::new(person_alice())).unwrap();
+    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
+
+    let mut stream = Box::pin(stream);
+    let result = stream.next().await.unwrap();
+    assert_eq!(result, "Combined 2 streams");
+
+    person_tx.send(Sequenced::new(person_bob())).unwrap();
+    let result = stream.next().await.unwrap();
+    assert_eq!(result, "Combined 2 streams");
+}
+
+#[tokio::test]
+async fn test_map_ordered_filter_by_age_change() {
+    // Arrange
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = UnboundedReceiverStream::new(rx);
+
+    let stream = FluxionStream::new(stream)
+        .combine_with_previous()
+        .map_ordered(|item| -> Option<String> {
+            let current_age = match item.current.get() {
+                TestData::Person(p) => p.age,
+                _ => return None,
+            };
+            let previous_age = item.previous.and_then(|prev| match prev.get() {
+                TestData::Person(p) => Some(p.age),
+                _ => None,
+            });
+
+            match previous_age {
+                Some(prev) if current_age != prev => {
+                    Some(format!("Age changed from {} to {}", prev, current_age))
+                }
+                _ => None,
+            }
+        });
+
+    // Act & Assert
+    tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
+    let mut stream = Box::pin(stream);
+    let result = stream.next().await.unwrap();
+    assert_eq!(result, None); // No previous
+
+    tx.send(Sequenced::new(person_bob())).unwrap(); // Age 30
+    let result = stream.next().await.unwrap();
+    assert_eq!(result, Some(String::from("Age changed from 25 to 30")));
+
+    tx.send(Sequenced::new(person_charlie())).unwrap(); // Age 35
+    let result = stream.next().await.unwrap();
+    assert_eq!(result, Some(String::from("Age changed from 30 to 35")));
+}
+
+#[tokio::test]
+async fn test_emit_when_with_map_ordered() {
+    // Arrange
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (threshold_tx, threshold_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let threshold_stream = UnboundedReceiverStream::new(threshold_rx);
+
+    let threshold_mapped = threshold_stream.map(|seq| WithPrevious::new(None, seq));
+
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
+        let values = state.get_state();
+        let current_age = match &values[0] {
+            TestData::Person(p) => p.age,
+            _ => return false,
+        };
+        let threshold_age = match &values[1] {
+            TestData::Person(p) => p.age,
+            _ => return false,
+        };
+        current_age >= threshold_age
+    };
+
+    let stream = FluxionStream::new(source_stream)
+        .combine_with_previous()
+        .emit_when(threshold_mapped, filter_fn)
+        .map_ordered(|item| format!("Passed filter: {}", item.current.get()));
+
+    // Act & Assert
+    threshold_tx.send(Sequenced::new(person_bob())).unwrap(); // Threshold 30
+
+    source_tx.send(Sequenced::new(person_alice())).unwrap(); // 25 - below threshold
+    let mut stream = Box::pin(stream);
+    assert_no_element_emitted(&mut stream, 100).await;
+
+    source_tx.send(Sequenced::new(person_charlie())).unwrap(); // 35 - above threshold
+    let result = stream.next().await.unwrap();
+    assert!(result.contains("Charlie"));
+    assert!(result.contains("Passed filter"));
+}
+
+#[tokio::test]
+async fn test_triple_ordered_merge_then_map_ordered() {
+    // Arrange
+    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let person_stream = UnboundedReceiverStream::new(person_rx);
+    let animal_stream = UnboundedReceiverStream::new(animal_rx);
+    let plant_stream = UnboundedReceiverStream::new(plant_rx);
+
+    let stream = FluxionStream::new(person_stream)
+        .ordered_merge(vec![
+            FluxionStream::new(animal_stream),
+            FluxionStream::new(plant_stream),
+        ])
+        .combine_with_previous()
+        .map_ordered(|item| {
+            let variant = match item.current.get() {
+                TestData::Person(_) => "Person",
+                TestData::Animal(_) => "Animal",
+                TestData::Plant(_) => "Plant",
+            };
+            variant.to_string()
+        });
+
+    // Act & Assert
+    person_tx.send(Sequenced::new(person_alice())).unwrap();
+    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
+    plant_tx.send(Sequenced::new(plant_rose())).unwrap();
+
+    let mut stream = Box::pin(stream);
+    let result1 = stream.next().await.unwrap();
+    let result2 = stream.next().await.unwrap();
+    let result3 = stream.next().await.unwrap();
+
+    let results = [result1, result2, result3];
+    assert!(results.contains(&String::from("Person")));
+    assert!(results.contains(&String::from("Animal")));
+    assert!(results.contains(&String::from("Plant")));
+}
+
+#[tokio::test]
+async fn test_with_latest_from_then_map_ordered() {
+    // Arrange
+    let (primary_tx, primary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (_secondary_tx, _secondary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let primary_stream = UnboundedReceiverStream::new(primary_rx);
+
+    let stream = FluxionStream::new(primary_stream)
+        .combine_with_previous()
+        .map_ordered(|item: WithPrevious<Sequenced<TestData>>| async move {
+            match item.current.get() {
+                TestData::Person(p) => p.name.clone(),
+                _ => String::from("Unknown"),
+            }
+        });
+
+    // Act & Assert
+    primary_tx.send(Sequenced::new(person_bob())).unwrap();
+
+    let mut stream = Box::pin(stream);
+    let result = stream.next().await.unwrap().await;
+    assert_eq!(result, "Bob");
+
+    primary_tx.send(Sequenced::new(person_charlie())).unwrap();
+    let result = stream.next().await.unwrap().await;
+    assert_eq!(result, "Charlie");
+}
+
+#[tokio::test]
+async fn test_complex_composition_ordered_merge_and_combine_with_previous() {
+    // Arrange: ordered_merge -> combine_with_previous
+    let (person1_tx, person1_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (person2_tx, person2_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let person1_stream = UnboundedReceiverStream::new(person1_rx);
+    let person2_stream = UnboundedReceiverStream::new(person2_rx);
+
+    let stream = FluxionStream::new(person1_stream)
+        .ordered_merge(vec![FluxionStream::new(person2_stream)])
+        .combine_with_previous();
+
+    // Act & Assert
+    person1_tx.send(Sequenced::new(person_alice())).unwrap(); // 25
+
+    let mut stream = Box::pin(stream);
+    let result = stream.next().await.unwrap();
+    assert!(result.previous.is_none());
+    assert_eq!(result.current.get(), &person_alice());
+
+    person2_tx.send(Sequenced::new(person_bob())).unwrap(); // 30
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.previous.unwrap().get(), &person_alice());
+    assert_eq!(result.current.get(), &person_bob());
+
+    person1_tx.send(Sequenced::new(person_charlie())).unwrap(); // 35
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.previous.unwrap().get(), &person_bob());
+    assert_eq!(result.current.get(), &person_charlie());
+}
+
+#[tokio::test]
+async fn test_ordered_merge_with_previous_and_map_ordered_name_change() {
+    // Arrange - track when name changes between consecutive items
+    let (s1_tx, s1_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (s2_tx, s2_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let s1_stream = UnboundedReceiverStream::new(s1_rx);
+    let s2_stream = UnboundedReceiverStream::new(s2_rx);
+
+    let stream = FluxionStream::new(s1_stream)
+        .ordered_merge(vec![FluxionStream::new(s2_stream)])
+        .combine_with_previous()
+        .map_ordered(|item: WithPrevious<Sequenced<TestData>>| async move {
+            let current_name = match item.current.get() {
+                TestData::Person(p) => p.name.as_str(),
+                _ => "Unknown",
+            };
+            let prev_name = item.previous.as_ref().map(|p| match p.get() {
+                TestData::Person(p) => p.name.as_str(),
+                _ => "Unknown",
+            });
+
+            match prev_name {
+                Some(prev) if prev != current_name => {
+                    format!("Name changed from {} to {}", prev, current_name)
+                }
+                Some(_) => format!("Same name: {}", current_name),
+                None => format!("First entry: {}", current_name),
+            }
+        });
+
+    // Act & Assert
+    s1_tx.send(Sequenced::new(person_alice())).unwrap();
+    let mut stream = Box::pin(stream);
+    assert_eq!(stream.next().await.unwrap().await, "First entry: Alice");
+
+    s2_tx.send(Sequenced::new(person_alice())).unwrap();
+    assert_eq!(stream.next().await.unwrap().await, "Same name: Alice");
+
+    s1_tx.send(Sequenced::new(person_bob())).unwrap();
+    assert_eq!(
+        stream.next().await.unwrap().await,
+        "Name changed from Alice to Bob"
+    );
+}
+
+#[tokio::test]
+async fn test_combine_latest_with_previous_map_ordered_type_count() {
+    // Arrange - count different types across combined streams
+    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let person_stream = UnboundedReceiverStream::new(person_rx);
+    let animal_stream = UnboundedReceiverStream::new(animal_rx);
+
+    let stream = FluxionStream::new(person_stream)
+        .combine_latest(vec![animal_stream], COMBINE_FILTER)
+        .combine_with_previous()
+        .map_ordered(
+            |item: WithPrevious<OrderedWrapper<CombinedState<TestData>>>| async move {
+                let state = item.current.get().get_state();
+                let person_count = state
+                    .iter()
+                    .filter(|d| matches!(d, TestData::Person(_)))
+                    .count();
+                let animal_count = state
+                    .iter()
+                    .filter(|d| matches!(d, TestData::Animal(_)))
+                    .count();
+                format!("Persons: {}, Animals: {}", person_count, animal_count)
+            },
+        );
+
+    // Act & Assert
+    person_tx.send(Sequenced::new(person_alice())).unwrap();
+    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
+
+    let mut stream = Box::pin(stream);
+    let result = stream.next().await.unwrap().await;
+    assert_eq!(result, "Persons: 1, Animals: 1");
+
+    person_tx.send(Sequenced::new(person_bob())).unwrap();
+    let result = stream.next().await.unwrap().await;
+    assert_eq!(result, "Persons: 1, Animals: 1");
+}
+
+#[tokio::test]
+async fn test_double_ordered_merge_map_ordered() {
+    // Arrange - merge two pairs of streams, then merge results
+    let (s1_tx, s1_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (s2_tx, s2_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let s1_stream = UnboundedReceiverStream::new(s1_rx);
+    let s2_stream = UnboundedReceiverStream::new(s2_rx);
+
+    let stream = FluxionStream::new(s1_stream)
+        .ordered_merge(vec![FluxionStream::new(s2_stream)])
+        .combine_with_previous()
+        .map_ordered(|item: WithPrevious<Sequenced<TestData>>| async move {
+            let type_name = match item.current.get() {
+                TestData::Person(_) => "Person",
+                TestData::Animal(_) => "Animal",
+                TestData::Plant(_) => "Plant",
+            };
+            let count = if item.previous.is_some() { 2 } else { 1 };
+            format!("{} (item #{})", type_name, count)
+        });
+
+    // Act & Assert
+    s1_tx.send(Sequenced::new(person_alice())).unwrap();
+    let mut stream = Box::pin(stream);
+    assert_eq!(stream.next().await.unwrap().await, "Person (item #1)");
+
+    s2_tx.send(Sequenced::new(animal_dog())).unwrap();
+    assert_eq!(stream.next().await.unwrap().await, "Animal (item #2)");
+
+    s1_tx.send(Sequenced::new(plant_rose())).unwrap();
+    assert_eq!(stream.next().await.unwrap().await, "Plant (item #2)");
+}
+
+#[tokio::test]
+async fn test_ordered_merge_map_ordered_data_extraction() {
+    // Arrange - extract specific fields from merged data
+    let (s1_tx, s1_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (s2_tx, s2_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let s1_stream = UnboundedReceiverStream::new(s1_rx);
+    let s2_stream = UnboundedReceiverStream::new(s2_rx);
+
+    let stream = FluxionStream::new(s1_stream)
+        .ordered_merge(vec![FluxionStream::new(s2_stream)])
+        .combine_with_previous()
+        .map_ordered(|item: WithPrevious<Sequenced<TestData>>| async move {
+            match item.current.get() {
+                TestData::Person(p) => format!("Person: {}, Age: {}", p.name, p.age),
+                TestData::Animal(a) => format!("Animal: {}, Legs: {}", a.name, a.legs),
+                TestData::Plant(p) => format!("Plant: {}, Height: {}", p.species, p.height),
+            }
+        });
+
+    // Act & Assert
+    s1_tx.send(Sequenced::new(person_alice())).unwrap();
+    let mut stream = Box::pin(stream);
+    assert_eq!(stream.next().await.unwrap().await, "Person: Alice, Age: 25");
+
+    s2_tx.send(Sequenced::new(animal_dog())).unwrap();
+    assert_eq!(stream.next().await.unwrap().await, "Animal: Dog, Legs: 4");
+
+    s1_tx.send(Sequenced::new(plant_rose())).unwrap();
+    assert_eq!(
+        stream.next().await.unwrap().await,
+        "Plant: Rose, Height: 15"
+    );
+}
