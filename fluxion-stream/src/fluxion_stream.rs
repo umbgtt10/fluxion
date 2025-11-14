@@ -98,6 +98,14 @@ impl FluxionStream<()> {
     }
 }
 
+impl<T> From<tokio_stream::wrappers::UnboundedReceiverStream<T>>
+    for FluxionStream<tokio_stream::wrappers::UnboundedReceiverStream<T>>
+{
+    fn from(stream: tokio_stream::wrappers::UnboundedReceiverStream<T>) -> Self {
+        FluxionStream::new(stream)
+    }
+}
+
 impl<S> Stream for FluxionStream<S>
 where
     S: Stream,
@@ -119,9 +127,6 @@ where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
-    /// Maps each element using the provided closure, maintaining the stream wrapper.
-    /// This allows continued chaining of FluxionStream methods.
-    /// Named `map_ordered` to avoid conflict with `futures::StreamExt::map`.
     pub fn map_ordered<U, F>(self, f: F) -> FluxionStream<impl Stream<Item = U> + Send + Sync>
     where
         S: Send + Sync + Unpin + 'static,
@@ -132,7 +137,11 @@ where
         FluxionStream::new(inner.map(f))
     }
 
-    pub fn combine_with_previous(self) -> FluxionStream<impl Stream<Item = crate::combine_with_previous::WithPrevious<T>> + Send + Sync>
+    pub fn combine_with_previous(
+        self,
+    ) -> FluxionStream<
+        impl Stream<Item = crate::combine_with_previous::WithPrevious<T>> + Send + Sync,
+    >
     where
         S: Send + Sync + Unpin + 'static,
     {
@@ -155,7 +164,6 @@ where
         TakeWhileExt::take_while_with(inner, filter_stream, filter)
     }
 
-    /// Takes the latest value from source when filter predicate is satisfied
     pub fn take_latest_when<SF>(
         self,
         filter_stream: SF,
@@ -173,7 +181,6 @@ where
         ))
     }
 
-    /// Emits the latest value from source when filter predicate is satisfied (original behavior)
     pub fn emit_when<SF>(
         self,
         filter_stream: SF,
@@ -184,14 +191,9 @@ where
         SF: Stream<Item = T> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
-        FluxionStream::new(EmitWhenExt::emit_when(
-            inner,
-            filter_stream,
-            filter,
-        ))
+        FluxionStream::new(EmitWhenExt::emit_when(inner, filter_stream, filter))
     }
 
-    /// Combines this stream with another, emitting when the primary stream emits
     pub fn with_latest_from<S2>(
         self,
         other: S2,
@@ -206,7 +208,6 @@ where
         WithLatestFromExt::with_latest_from(inner, other, filter)
     }
 
-    /// Combines this stream with multiple others using `combine_latest` semantics
     pub fn combine_latest<S2>(
         self,
         others: Vec<S2>,
@@ -223,18 +224,16 @@ where
         FluxionStream::new(CombineLatestExt::combine_latest(inner, others, filter))
     }
 
-    /// Merges this stream with multiple others, emitting all values in order.
-    /// Unlike `combine_latest`, this doesn't wait for all streams - it emits every value
-    /// from all streams individually in order.
     pub fn ordered_merge<S2>(
         self,
-        others: Vec<S2>,
+        others: Vec<FluxionStream<S2>>,
     ) -> FluxionStream<impl Stream<Item = T> + Send + Sync>
     where
         S: Stream<Item = T> + Send + Sync + 'static,
         S2: Stream<Item = T> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
-        FluxionStream::new(OrderedStreamExt::ordered_merge(inner, others))
+        let other_streams: Vec<S2> = others.into_iter().map(|fs| fs.into_inner()).collect();
+        FluxionStream::new(OrderedStreamExt::ordered_merge(inner, other_streams))
     }
 }

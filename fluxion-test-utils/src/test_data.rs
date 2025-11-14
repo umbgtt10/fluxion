@@ -2,11 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::fluxion_channel::sequenced_channel::UnboundedSender;
-use crate::sequenced::Sequenced;
 use crate::{animal::Animal, person::Person, plant::Plant};
-use futures::Stream;
-use futures::StreamExt;
 use std::fmt::{self, Display};
 
 #[derive(Debug, Clone)]
@@ -21,14 +17,6 @@ pub enum TestData {
     Person(Person),
     Animal(Animal),
     Plant(Plant),
-}
-
-/// Push a value to the test sender.
-///
-/// # Panics
-/// Panics if the receiver has been dropped.
-pub fn push<T>(value: T, sender: &UnboundedSender<T>) {
-    sender.send(value).unwrap();
 }
 
 #[must_use]
@@ -114,52 +102,6 @@ pub fn plant_fern() -> TestData {
 #[must_use]
 pub fn plant_oak() -> TestData {
     TestData::Plant(Plant::new("Oak".to_string(), 1000))
-}
-
-pub fn send_variant(variant: &DataVariant, senders: &[UnboundedSender<TestData>]) {
-    match variant {
-        DataVariant::Person => push(person_alice(), &senders[0]),
-        DataVariant::Animal => push(animal_dog(), &senders[1]),
-        DataVariant::Plant => push(plant_rose(), &senders[2]),
-    }
-}
-
-pub async fn expect_variant(
-    variant: &DataVariant,
-    results: impl futures::Stream<Item = Sequenced<TestData>> + Send,
-) {
-    match variant {
-        DataVariant::Animal => expect_animal(results).await,
-        DataVariant::Person => expect_person(results).await,
-        DataVariant::Plant => expect_plant(results).await,
-    }
-}
-
-/// Expect a person variant; panics if none or mismatch.
-///
-/// # Panics
-/// Panics if the stream ends before yielding the next item.
-pub async fn expect_person(results: impl Stream<Item = Sequenced<TestData>> + Send) {
-    let state = Box::pin(results).next().await.unwrap();
-    assert_eq!(state.value, person_alice());
-}
-
-/// Expect an animal variant; panics if none or mismatch.
-///
-/// # Panics
-/// Panics if the stream ends before yielding the next item.
-pub async fn expect_animal(results: impl Stream<Item = Sequenced<TestData>> + Send) {
-    let state = Box::pin(results).next().await.unwrap();
-    assert_eq!(state.value, animal_dog());
-}
-
-/// Expect a plant variant; panics if none or mismatch.
-///
-/// # Panics
-/// Panics if the stream ends before yielding the next item.
-pub async fn expect_plant(results: impl Stream<Item = Sequenced<TestData>> + Send) {
-    let state = Box::pin(results).next().await.unwrap();
-    assert_eq!(state.value, plant_rose());
 }
 
 impl Display for TestData {

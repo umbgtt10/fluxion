@@ -43,6 +43,10 @@ Development notes
 - Local scripts live in `.ci/` (use `coverage.ps1` to collect coverage locally with `cargo-llvm-cov`).
 
 TODOs:
+- [ ] Enable direct usage of TestChannel/FluxionChannel in FluxionStream methods:
+    - Currently: `FluxionStream::from(person1.stream).ordered_merge(vec![FluxionStream::from(person2.stream)])`
+    - Goal: `person1.ordered_merge(vec![person2])`
+    - Blocker: Avoid circular dependencies between fluxion-stream and fluxion-test-utils
 - [ ] Review all performance benches:
     - Ensure consistency
 	- Double-check sample sizes and test duration

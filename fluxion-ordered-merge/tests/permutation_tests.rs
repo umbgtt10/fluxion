@@ -3,13 +3,15 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_ordered_merge::OrderedMergeExt;
-use fluxion_test_utils::FluxionChannel;
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
-    animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_fern,
-    plant_rose, plant_sunflower, push,
+    TestData, animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
+    plant_fern, plant_rose, plant_sunflower,
 };
 use futures::StreamExt;
 use rstest::rstest;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////// IF YOU ARE WONDERING WHY I AM LISTING 1296 TESTS HERE IT IS BECAUSE I WANT TO SHOW OFF //////////////////////////////////////////////////////////////
@@ -1321,18 +1323,22 @@ async fn test_ordered_merge_permutations(
     // regardless of channel order or send pattern
 
     // Arrange - create three channels
-    let person = FluxionChannel::new();
-    let animal = FluxionChannel::new();
-    let plant = FluxionChannel::new();
+    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+
+    let person_stream = UnboundedReceiverStream::new(person_rx);
+    let animal_stream = UnboundedReceiverStream::new(animal_rx);
+    let plant_stream = UnboundedReceiverStream::new(plant_rx);
 
     // Build streams vec based on permutation order
     let streams = match channel_order {
-        [0, 1, 2] => vec![person.stream, animal.stream, plant.stream],
-        [0, 2, 1] => vec![person.stream, plant.stream, animal.stream],
-        [1, 0, 2] => vec![animal.stream, person.stream, plant.stream],
-        [1, 2, 0] => vec![animal.stream, plant.stream, person.stream],
-        [2, 0, 1] => vec![plant.stream, person.stream, animal.stream],
-        [2, 1, 0] => vec![plant.stream, animal.stream, person.stream],
+        [0, 1, 2] => vec![person_stream, animal_stream, plant_stream],
+        [0, 2, 1] => vec![person_stream, plant_stream, animal_stream],
+        [1, 0, 2] => vec![animal_stream, person_stream, plant_stream],
+        [1, 2, 0] => vec![animal_stream, plant_stream, person_stream],
+        [2, 0, 1] => vec![plant_stream, person_stream, animal_stream],
+        [2, 1, 0] => vec![plant_stream, animal_stream, person_stream],
         _ => panic!("Invalid permutation"),
     };
 
@@ -1355,7 +1361,7 @@ async fn test_ordered_merge_permutations(
                     2 => person_charlie(),
                     _ => panic!("Too many person values"),
                 };
-                push(value.clone(), &person.sender);
+                person_tx.send(Sequenced::new(value.clone())).unwrap();
                 expected_order.push(value);
                 person_idx += 1;
             }
@@ -1366,7 +1372,7 @@ async fn test_ordered_merge_permutations(
                     2 => animal_cat(),
                     _ => panic!("Too many animal values"),
                 };
-                push(value.clone(), &animal.sender);
+                animal_tx.send(Sequenced::new(value.clone())).unwrap();
                 expected_order.push(value);
                 animal_idx += 1;
             }
@@ -1377,7 +1383,7 @@ async fn test_ordered_merge_permutations(
                     2 => plant_fern(),
                     _ => panic!("Too many plant values"),
                 };
-                push(value.clone(), &plant.sender);
+                plant_tx.send(Sequenced::new(value.clone())).unwrap();
                 expected_order.push(value);
                 plant_idx += 1;
             }
