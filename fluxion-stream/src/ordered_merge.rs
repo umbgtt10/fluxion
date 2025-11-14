@@ -7,16 +7,16 @@ use std::fmt::Debug;
 use std::pin::Pin;
 
 use crate::Ordered;
+use fluxion_core::into_stream::IntoStream;
 
 // Re-export low-level types from fluxion-ordered-merge
 pub use fluxion_ordered_merge::{OrderedMerge, OrderedMergeExt};
 
 /// High-level ordered merge for Ordered streams
 /// This trait merges multiple Ordered streams and emits all values in order
-pub trait OrderedStreamExt<T, S2>: Stream<Item = T> + Sized
+pub trait OrderedStreamExt<T>: Stream<Item = T> + Sized
 where
     T: Clone + Debug + Ordered + Ord + Send + Sync + Unpin + 'static,
-    S2: Stream<Item = T> + Send + Sync + 'static,
 {
     /// Merges multiple Ordered streams, emitting all values in order.
     /// Unlike `combine_latest`, this doesn't wait for all streams - it emits every value
@@ -27,18 +27,25 @@ where
     ///
     /// # Returns
     /// Stream of `T` where values are emitted in order
-    fn ordered_merge(self, others: Vec<S2>) -> impl Stream<Item = T> + Send + Sync;
+    fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = T> + Send + Sync
+    where
+        IS: IntoStream<Item = T>,
+        IS::Stream: Send + Sync + 'static;
 }
 
-impl<T, S, S2> OrderedStreamExt<T, S2> for S
+impl<T, S> OrderedStreamExt<T> for S
 where
     T: Clone + Debug + Ordered + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = T> + Send + Sync + 'static,
-    S2: Stream<Item = T> + Send + Sync + 'static,
 {
-    fn ordered_merge(self, others: Vec<S2>) -> impl Stream<Item = T> + Send + Sync {
+    fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = T> + Send + Sync
+    where
+        IS: IntoStream<Item = T>,
+        IS::Stream: Send + Sync + 'static,
+    {
         let mut all_streams = vec![Box::pin(self) as Pin<Box<dyn Stream<Item = T> + Send + Sync>>];
-        for stream in others {
+        for into_stream in others {
+            let stream = into_stream.into_stream();
             all_streams.push(Box::pin(stream));
         }
 

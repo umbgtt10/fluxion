@@ -3,13 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
+pub mod compare_by_inner;
+pub mod into_stream;
 pub mod ordered;
 
-// Re-export commonly used types
-pub use ordered::{Ordered, OrderedWrapper};
-
-/// Trait for comparing ordered types by their inner values.
-/// This is used by stream operators to establish a stable ordering.
-pub trait CompareByInner {
-    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering;
-}
+pub use self::compare_by_inner::CompareByInner;
+pub use self::ordered::{Ordered, OrderedWrapper};

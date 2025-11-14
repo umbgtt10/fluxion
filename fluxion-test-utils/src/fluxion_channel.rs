@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::sequenced::Sequenced;
+use fluxion_core::into_stream::IntoStream;
 use fluxion_error::{FluxionError, Result};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -60,6 +61,15 @@ impl<T> FluxionChannel<T> {
 impl<T> Default for FluxionChannel<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<T> IntoStream for FluxionChannel<T> {
+    type Item = Sequenced<T>;
+    type Stream = UnboundedReceiverStream<Sequenced<T>>;
+
+    fn into_stream(self) -> Self::Stream {
+        self.stream
     }
 }
 

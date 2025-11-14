@@ -12,3 +12,4 @@ categories = ["asynchronous", "concurrency"]
 readme = "../README.md"
 
 [dependencies]
+futures = { workspace = true }
