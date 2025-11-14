@@ -2,12 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Tests demonstrating the functional interface pattern for FluxionStream.
-//!
-//! These tests showcase the clean separation between:
-//! - Imperative setup with TestChannel (mutation)
-//! - Functional stream operations with FluxionStream (consumption)
-
 use fluxion::{CombinedState, FluxionStream, Ordered};
 use fluxion_test_utils::test_data::{
     animal_dog, person_alice, person_bob, person_charlie, plant_rose, TestData,
