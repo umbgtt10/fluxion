@@ -62,23 +62,31 @@ where
                     async move {
                         match index {
                             0 => {
-                                let mut source = match safe_lock(&source_value, "take_latest_when source") {
-                                    Ok(lock) => lock,
-                                    Err(e) => {
-                                        error!("Failed to acquire lock in take_latest_when: {}", e);
-                                        return None;
-                                    }
-                                };
+                                let mut source =
+                                    match safe_lock(&source_value, "take_latest_when source") {
+                                        Ok(lock) => lock,
+                                        Err(e) => {
+                                            error!(
+                                                "Failed to acquire lock in take_latest_when: {}",
+                                                e
+                                            );
+                                            return None;
+                                        }
+                                    };
                                 *source = Some(ordered_value.get().clone());
                             }
                             1 => {
-                                let mut filter_val = match safe_lock(&filter_value, "take_latest_when filter") {
-                                    Ok(lock) => lock,
-                                    Err(e) => {
-                                        error!("Failed to acquire lock in take_latest_when: {}", e);
-                                        return None;
-                                    }
-                                };
+                                let mut filter_val =
+                                    match safe_lock(&filter_value, "take_latest_when filter") {
+                                        Ok(lock) => lock,
+                                        Err(e) => {
+                                            error!(
+                                                "Failed to acquire lock in take_latest_when: {}",
+                                                e
+                                            );
+                                            return None;
+                                        }
+                                    };
                                 *filter_val = Some(ordered_value.get().clone());
                             }
                             _ => {

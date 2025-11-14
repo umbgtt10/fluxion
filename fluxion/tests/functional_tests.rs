@@ -13,6 +13,8 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 static ALWAYS_TRUE: fn(&TestData) -> bool = |_| true;
 static ALWAYS_TRUE_COMBINED: fn(&CombinedState<TestData>) -> bool = |_| true;
+static RESULT_SELECTOR: fn(&CombinedState<TestData>) -> CombinedState<TestData> =
+    |state: &CombinedState<TestData>| state.clone();
 
 #[tokio::test]
 async fn test_functional_combine_latest() {
@@ -157,7 +159,7 @@ async fn test_functional_with_latest_from() {
 
     let primary_stream = FluxionStream::new(primary_stream);
 
-    let mut combined = primary_stream.with_latest_from(secondary_stream, ALWAYS_TRUE_COMBINED);
+    let mut combined = primary_stream.with_latest_from(secondary_stream, RESULT_SELECTOR);
 
     // Act
     secondary_tx.send(Sequenced::new(animal_dog())).unwrap();
@@ -165,13 +167,13 @@ async fn test_functional_with_latest_from() {
     primary_tx.send(Sequenced::new(person_bob())).unwrap();
 
     // Assert - primary drives emissions, secondary provides latest value
-    let (primary_val, secondary_val) = combined.next().await.unwrap();
-    assert_eq!(primary_val.get(), &person_alice());
-    assert_eq!(secondary_val.get(), &animal_dog());
+    let result = combined.next().await.unwrap();
+    assert_eq!(result.get().get_state()[0], person_alice());
+    assert_eq!(result.get().get_state()[1], animal_dog());
 
-    let (primary_val, secondary_val) = combined.next().await.unwrap();
-    assert_eq!(primary_val.get(), &person_bob());
-    assert_eq!(secondary_val.get(), &animal_dog());
+    let result = combined.next().await.unwrap();
+    assert_eq!(result.get().get_state()[0], person_bob());
+    assert_eq!(result.get().get_state()[1], animal_dog());
 }
 
 #[tokio::test]

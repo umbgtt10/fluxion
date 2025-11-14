@@ -3,19 +3,19 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
+use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::test_data::{
     TestData, animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
     person_charlie, person_dave, person_diane, plant_rose,
 };
-use fluxion_test_utils::Sequenced;
 use std::sync::Arc;
 use tokio::{
     sync::Mutex,
     sync::mpsc,
     time::{Duration, sleep},
 };
-use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_stream::StreamExt as _;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, thiserror::Error)]

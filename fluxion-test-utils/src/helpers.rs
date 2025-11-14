@@ -146,3 +146,13 @@ pub async fn expect_next_pair_unchecked<S>(
     let (left, right) = stream.next().await.expect("expected next pair");
     assert_eq!((left.value, right.value), (expected_left, expected_right));
 }
+
+/// Macro to wrap test bodies with timeout to prevent hanging tests
+#[macro_export]
+macro_rules! with_timeout {
+    ($test_body:expr) => {
+        tokio::time::timeout(std::time::Duration::from_secs(5), async { $test_body })
+            .await
+            .expect("Test timed out after 5 seconds")
+    };
+}

@@ -63,7 +63,8 @@ where
                     async move {
                         match index {
                             0 => {
-                                let mut source = match safe_lock(&source_value, "emit_when source") {
+                                let mut source = match safe_lock(&source_value, "emit_when source")
+                                {
                                     Ok(lock) => lock,
                                     Err(e) => {
                                         error!("Failed to acquire lock in emit_when: {}", e);
@@ -73,20 +74,18 @@ where
                                 *source = Some(ordered_value.get().clone());
                             }
                             1 => {
-                                let mut filter_val = match safe_lock(&filter_value, "emit_when filter") {
-                                    Ok(lock) => lock,
-                                    Err(e) => {
-                                        error!("Failed to acquire lock in emit_when: {}", e);
-                                        return None;
-                                    }
-                                };
+                                let mut filter_val =
+                                    match safe_lock(&filter_value, "emit_when filter") {
+                                        Ok(lock) => lock,
+                                        Err(e) => {
+                                            error!("Failed to acquire lock in emit_when: {}", e);
+                                            return None;
+                                        }
+                                    };
                                 *filter_val = Some(ordered_value.get().clone());
                             }
                             _ => {
-                                warn!(
-                                    "emit_when: unexpected stream index {} – ignoring",
-                                    index
-                                );
+                                warn!("emit_when: unexpected stream index {} – ignoring", index);
                             }
                         }
 
@@ -106,7 +105,8 @@ where
                         };
 
                         if let (Some(src), Some(filt)) = (source.as_ref(), filter_val.as_ref()) {
-                            let combined_state = CombinedState::new(vec![src.clone(), filt.clone()]);
+                            let combined_state =
+                                CombinedState::new(vec![src.clone(), filt.clone()]);
                             if filter(&combined_state) {
                                 Some(T::with_order(src.clone(), order))
                             } else {

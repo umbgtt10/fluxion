@@ -8,8 +8,8 @@ use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     test_data::{
-        animal_ant, animal_bird, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
-        person_charlie, person_dave, person_diane, plant_rose, plant_sunflower, TestData,
+        TestData, animal_ant, animal_bird, animal_cat, animal_dog, animal_spider, person_alice,
+        person_bob, person_charlie, person_dave, person_diane, plant_rose, plant_sunflower,
     },
 };
 use futures::StreamExt;
@@ -600,7 +600,8 @@ async fn test_emit_when_filter_panics() {
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
-    let filter_fn = |_: &CombinedState<TestData>| -> bool { panic!("Filter function must not panic!") };
+    let filter_fn =
+        |_: &CombinedState<TestData>| -> bool { panic!("Filter function must not panic!") };
 
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);

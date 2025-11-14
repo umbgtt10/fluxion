@@ -4,52 +4,136 @@
 
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
+use std::sync::{Arc, Mutex};
 
 use crate::Ordered;
-use crate::combine_latest::{CombineLatestExt, CombinedState};
-use fluxion_core::CompareByInner;
+use crate::combine_latest::CombinedState;
+use crate::ordered_merge::OrderedMergeExt;
 use fluxion_core::into_stream::IntoStream;
+use fluxion_core::lock_utilities::safe_lock;
+use fluxion_core::{CompareByInner, OrderedWrapper};
 
 pub trait WithLatestFromExt<T>: Stream<Item = T> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
 {
-    fn with_latest_from<IS>(
+    /// Combines elements from the primary stream (self) with the latest element from the secondary stream (other).
+    /// Only emits when the primary stream emits.
+    ///
+    /// The result_selector transforms the CombinedState into the result type R.
+    fn with_latest_from<IS, R>(
         self,
         other: IS,
-        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = (T, T)> + Send
+        result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
+    ) -> impl Stream<Item = OrderedWrapper<R>> + Send
     where
         IS: IntoStream<Item = T>,
-        IS::Stream: Send + Sync + 'static;
+        IS::Stream: Send + Sync + 'static,
+        R: Clone + Debug + Ord + Send + Sync + 'static;
 }
 
 impl<T, P> WithLatestFromExt<T> for P
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
-    P: Stream<Item = T> + CombineLatestExt<T> + Sized + Unpin + Send + Sync + 'static,
+    P: Stream<Item = T> + Sized + Unpin + Send + Sync + 'static,
 {
-    fn with_latest_from<IS>(
+    fn with_latest_from<IS, R>(
         self,
         other: IS,
-        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = (T, T)> + Send
+        result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
+    ) -> impl Stream<Item = OrderedWrapper<R>> + Send
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static,
+        R: Clone + Debug + Ord + Send + Sync + 'static,
     {
-        self.combine_latest(vec![other], filter)
-            .map(|ordered_combined| {
-                let combined_state = ordered_combined.get();
-                let state = combined_state.get_state();
-                // Create new Ordered values from the inner values
-                let order = ordered_combined.order();
-                (
-                    T::with_order(state[0].clone(), order),
-                    T::with_order(state[1].clone(), order),
-                )
-            })
+        type PinnedStream<T> = std::pin::Pin<Box<dyn Stream<Item = (T, usize)> + Send + Sync>>;
+        let streams: Vec<PinnedStream<T>> = vec![
+            Box::pin(self.map(move |value| (value, 0))),
+            Box::pin(other.into_stream().map(move |value| (value, 1))),
+        ];
+
+        let num_streams = streams.len();
+        let state = Arc::new(Mutex::new(IntermediateState::new(num_streams)));
+        let selector = Arc::new(result_selector);
+
+        Box::pin(streams.ordered_merge().filter_map({
+            let state = Arc::clone(&state);
+            let selector = Arc::clone(&selector);
+
+            move |(value, stream_index)| {
+                let state = Arc::clone(&state);
+                let selector = Arc::clone(&selector);
+                let order = value.order();
+
+                async move {
+                    // Update state with new value
+                    match safe_lock(&state, "with_latest_from state") {
+                        Ok(mut guard) => {
+                            guard.insert(stream_index, value);
+
+                            // Only emit if:
+                            // 1. Both streams have emitted at least once (is_complete)
+                            // 2. The PRIMARY stream (index 0) triggered this emission
+                            if guard.is_complete() && stream_index == 0 {
+                                let values = guard.get_values();
+
+                                // values[0] = primary, values[1] = secondary
+                                let combined_state = CombinedState::new(vec![
+                                    values[0].get().clone(),
+                                    values[1].get().clone(),
+                                ]);
+
+                                // Apply the result selector to transform the combined state
+                                let result = selector(&combined_state);
+
+                                // Wrap result with the primary's order
+                                Some(OrderedWrapper::with_order(result, order))
+                            } else {
+                                // Secondary stream emitted, just update state but don't emit
+                                None
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to acquire lock in with_latest_from: {}", e);
+                            None
+                        }
+                    }
+                }
+            }
+        }))
+    }
+}
+
+#[derive(Clone)]
+struct IntermediateState<T> {
+    values: Vec<Option<T>>,
+}
+
+impl<T: Clone> IntermediateState<T> {
+    fn new(size: usize) -> Self {
+        Self {
+            values: vec![None; size],
+        }
+    }
+
+    fn insert(&mut self, index: usize, value: T) {
+        if index < self.values.len() {
+            self.values[index] = Some(value);
+        }
+    }
+
+    fn is_complete(&self) -> bool {
+        self.values.iter().all(|v| v.is_some())
+    }
+
+    fn get_values(&self) -> Vec<T> {
+        self.values
+            .iter()
+            .filter_map(|v| v.as_ref())
+            .cloned()
+            .collect()
     }
 }

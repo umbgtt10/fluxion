@@ -40,7 +40,10 @@ async fn test_combine_with_previous_single_previous_value() {
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
-        (first_result.previous.map(|s| s.value), first_result.current.value),
+        (
+            first_result.previous.map(|s| s.value),
+            first_result.current.value
+        ),
         (None, person_alice())
     );
 
@@ -50,7 +53,10 @@ async fn test_combine_with_previous_single_previous_value() {
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
-        (second_result.previous.map(|s| s.value), second_result.current.value),
+        (
+            second_result.previous.map(|s| s.value),
+            second_result.current.value
+        ),
         (Some(person_alice()), person_bob())
     );
 }
@@ -68,7 +74,10 @@ async fn test_combine_with_previous_multiple_values() {
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
-        (first_result.previous.map(|s| s.value), first_result.current.value),
+        (
+            first_result.previous.map(|s| s.value),
+            first_result.current.value
+        ),
         (None, person_alice())
     );
 
@@ -78,7 +87,10 @@ async fn test_combine_with_previous_multiple_values() {
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
-        (second_result.previous.map(|s| s.value), second_result.current.value),
+        (
+            second_result.previous.map(|s| s.value),
+            second_result.current.value
+        ),
         (Some(person_alice()), person_bob())
     );
 
@@ -88,7 +100,10 @@ async fn test_combine_with_previous_multiple_values() {
     // Assert
     let third_result = stream.next().await.unwrap();
     assert_eq!(
-        (third_result.previous.map(|s| s.value), third_result.current.value),
+        (
+            third_result.previous.map(|s| s.value),
+            third_result.current.value
+        ),
         (Some(person_bob()), person_charlie())
     );
 }
@@ -106,7 +121,10 @@ async fn test_combine_with_previous_stream_ends() {
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
-        (first_result.previous.map(|s| s.value), first_result.current.value),
+        (
+            first_result.previous.map(|s| s.value),
+            first_result.current.value
+        ),
         (None, person_alice())
     );
 
@@ -116,7 +134,10 @@ async fn test_combine_with_previous_stream_ends() {
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
-        (second_result.previous.map(|s| s.value), second_result.current.value),
+        (
+            second_result.previous.map(|s| s.value),
+            second_result.current.value
+        ),
         (Some(person_alice()), person_bob())
     );
 
@@ -141,7 +162,10 @@ async fn test_combine_with_previous_for_types() {
     // Assert
     let first_result = stream.next().await.unwrap();
     assert_eq!(
-        (first_result.previous.map(|s| s.value), first_result.current.value),
+        (
+            first_result.previous.map(|s| s.value),
+            first_result.current.value
+        ),
         (None, person_alice())
     );
 
@@ -151,7 +175,10 @@ async fn test_combine_with_previous_for_types() {
     // Assert
     let second_result = stream.next().await.unwrap();
     assert_eq!(
-        (second_result.previous.map(|s| s.value), second_result.current.value),
+        (
+            second_result.previous.map(|s| s.value),
+            second_result.current.value
+        ),
         (Some(person_alice()), person_bob())
     );
 }

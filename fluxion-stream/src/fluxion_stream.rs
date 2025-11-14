@@ -10,7 +10,7 @@ use crate::ordered_merge::OrderedStreamExt;
 use crate::take_latest_when::TakeLatestWhenExt;
 use crate::take_while_with::TakeWhileExt;
 use crate::with_latest_from::WithLatestFromExt;
-use fluxion_core::CompareByInner;
+use fluxion_core::{CompareByInner, OrderedWrapper};
 use futures::Stream;
 use futures::StreamExt;
 use pin_project::pin_project;
@@ -210,18 +210,19 @@ where
         FluxionStream::new(EmitWhenExt::emit_when(inner, filter_stream, filter))
     }
 
-    pub fn with_latest_from<S2>(
+    pub fn with_latest_from<S2, R>(
         self,
         other: S2,
-        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = (T, T)> + Send
+        result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
+    ) -> impl Stream<Item = OrderedWrapper<R>> + Send
     where
         S: Stream<Item = T> + Send + Sync + Unpin + 'static,
         S2: Stream<Item = T> + Send + Sync + 'static,
         T: CompareByInner,
+        R: Clone + Debug + Ord + Send + Sync + 'static,
     {
         let inner = self.into_inner();
-        WithLatestFromExt::with_latest_from(inner, other, filter)
+        WithLatestFromExt::with_latest_from(inner, other, result_selector)
     }
 
     pub fn combine_latest<S2>(

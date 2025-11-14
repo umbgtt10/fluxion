@@ -17,7 +17,8 @@ async fn test_filter_ordered_basic_predicate() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
-    let mut stream = FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Person(_)));
+    let mut stream =
+        FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Person(_)));
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap();
@@ -142,7 +143,8 @@ async fn test_filter_ordered_multiple_types() {
     // Arrange - keep only animals
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
-    let mut stream = FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Animal(_)));
+    let mut stream =
+        FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Animal(_)));
 
     // Act
     tx.send(Sequenced::new(person_alice())).unwrap();
@@ -188,7 +190,8 @@ async fn test_filter_ordered_single_item() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
-    let mut stream = FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Person(_)));
+    let mut stream =
+        FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Person(_)));
 
     // Act
     tx.send(Sequenced::new(person_alice())).unwrap();
