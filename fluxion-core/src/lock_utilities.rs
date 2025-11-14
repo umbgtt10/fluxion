@@ -28,7 +28,7 @@ macro_rules! warn {
 ///
 /// # Arguments
 ///
-/// * `mutex` - The Arc<Mutex<T>> to lock
+/// * `mutex` - The `Arc<Mutex<T>>` to lock
 /// * `context` - A description of what lock is being acquired (for error messages)
 ///
 /// # Returns
@@ -76,7 +76,7 @@ pub fn safe_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<Mutex
 ///
 /// # Arguments
 ///
-/// * `mutex` - The Arc<Mutex<T>> to lock
+/// * `mutex` - The `Arc<Mutex<T>>` to lock
 /// * `operation` - Description of the operation being performed
 ///
 /// # Errors
