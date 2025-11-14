@@ -3,17 +3,18 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
-use fluxion_test_utils::FluxionChannel;
 use fluxion_test_utils::test_data::{
     TestData, animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
-    person_charlie, person_dave, person_diane, plant_rose, push,
+    person_charlie, person_dave, person_diane, plant_rose,
 };
+use fluxion_test_utils::Sequenced;
 use std::sync::Arc;
 use tokio::{
     sync::Mutex,
     sync::mpsc,
     time::{Duration, sleep},
 };
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_stream::StreamExt as _;
 use tokio_util::sync::CancellationToken;
 
@@ -34,8 +35,9 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
-    let channel = FluxionChannel::new();
-    let stream = channel.stream.map(|timestamped| timestamped.value);
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = UnboundedReceiverStream::new(rx);
+    let stream = stream.map(|timestamped| timestamped.value);
 
     let func = {
         let collected_items = collected_items_clone.clone();
@@ -64,34 +66,34 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
     });
 
     // Act - emit items one at a time, waiting for each to be processed
-    push(person_alice(), &channel.sender);
+    tx.send(Sequenced::new(person_alice())).unwrap();
     notify_rx.recv().await.expect("Alice processed");
 
-    push(person_bob(), &channel.sender);
+    tx.send(Sequenced::new(person_bob())).unwrap();
     notify_rx.recv().await.expect("Bob processed");
 
-    push(person_charlie(), &channel.sender);
+    tx.send(Sequenced::new(person_charlie())).unwrap();
     notify_rx.recv().await.expect("Charlie processed");
 
-    push(person_diane(), &channel.sender);
+    tx.send(Sequenced::new(person_diane())).unwrap();
     notify_rx.recv().await.expect("Diane processed");
 
-    push(person_dave(), &channel.sender);
+    tx.send(Sequenced::new(person_dave())).unwrap();
     notify_rx.recv().await.expect("Dave processed");
 
-    push(animal_dog(), &channel.sender);
+    tx.send(Sequenced::new(animal_dog())).unwrap();
     notify_rx.recv().await.expect("Dog processed");
 
-    push(animal_cat(), &channel.sender);
+    tx.send(Sequenced::new(animal_cat())).unwrap();
     notify_rx.recv().await.expect("Cat processed");
 
-    push(animal_ant(), &channel.sender);
+    tx.send(Sequenced::new(animal_ant())).unwrap();
     notify_rx.recv().await.expect("Ant processed");
 
-    push(animal_spider(), &channel.sender);
+    tx.send(Sequenced::new(animal_spider())).unwrap();
     notify_rx.recv().await.expect("Spider processed");
 
-    push(plant_rose(), &channel.sender);
+    tx.send(Sequenced::new(plant_rose())).unwrap();
     notify_rx.recv().await.expect("Rose processed");
 
     // Assert
@@ -128,8 +130,9 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
     let (start_tx, mut start_rx) = mpsc::unbounded_channel::<()>();
     let start_tx_shared = Arc::new(Mutex::new(Some(start_tx)));
 
-    let channel = FluxionChannel::new();
-    let stream = channel.stream.map(|timestamped| timestamped.value);
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = UnboundedReceiverStream::new(rx);
+    let stream = stream.map(|timestamped| timestamped.value);
 
     let func = {
         let collected_items = collected_items_clone.clone();
@@ -174,14 +177,14 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
     });
 
     // Act
-    push(person_alice(), &channel.sender);
+    tx.send(Sequenced::new(person_alice())).unwrap();
     start_rx.recv().await.expect("first processing started");
 
     // While the first item is blocked, send 4 more items rapidly
-    push(person_bob(), &channel.sender);
-    push(person_charlie(), &channel.sender);
-    push(person_diane(), &channel.sender);
-    push(person_dave(), &channel.sender); // latest
+    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_charlie())).unwrap();
+    tx.send(Sequenced::new(person_diane())).unwrap();
+    tx.send(Sequenced::new(person_dave())).unwrap(); // latest
 
     // Unblock the first processing, allowing it to complete
     let _ = gate_tx.send(());
@@ -216,8 +219,9 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
-    let channel = FluxionChannel::new();
-    let stream = channel.stream.map(|timestamped| timestamped.value);
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = UnboundedReceiverStream::new(rx);
+    let stream = stream.map(|timestamped| timestamped.value);
 
     let func = {
         let collected_items = collected_items_clone.clone();
@@ -252,19 +256,19 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
     });
 
     // Act
-    push(person_alice(), &channel.sender);
+    tx.send(Sequenced::new(person_alice())).unwrap();
     notify_rx.recv().await.expect("Alice processed");
 
-    push(person_bob(), &channel.sender); // Error
+    tx.send(Sequenced::new(person_bob())).unwrap(); // Error
     notify_rx.recv().await.expect("Bob handled (error)");
 
-    push(person_charlie(), &channel.sender);
+    tx.send(Sequenced::new(person_charlie())).unwrap();
     notify_rx.recv().await.expect("Charlie processed");
 
-    push(person_dave(), &channel.sender); // Error
+    tx.send(Sequenced::new(person_dave())).unwrap(); // Error
     notify_rx.recv().await.expect("Dave handled (error)");
 
-    push(animal_dog(), &channel.sender);
+    tx.send(Sequenced::new(animal_dog())).unwrap();
     notify_rx.recv().await.expect("Dog processed");
 
     // Assert
@@ -286,8 +290,9 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
-    let channel = FluxionChannel::new();
-    let stream = channel.stream.map(|timestamped| timestamped.value);
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = UnboundedReceiverStream::new(rx);
+    let stream = stream.map(|timestamped| timestamped.value);
 
     let func = {
         let collected_items = collected_items_clone.clone();
@@ -325,20 +330,20 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
     });
 
     // Act
-    push(person_alice(), &channel.sender);
+    tx.send(Sequenced::new(person_alice())).unwrap();
     notify_rx.recv().await.expect("Alice processed");
 
-    push(person_bob(), &channel.sender);
+    tx.send(Sequenced::new(person_bob())).unwrap();
     notify_rx.recv().await.expect("Bob processed");
 
-    push(person_charlie(), &channel.sender);
+    tx.send(Sequenced::new(person_charlie())).unwrap();
     notify_rx.recv().await.expect("Charlie processed");
 
     // Cancel further processing
     cancellation_token.cancel();
 
-    push(person_dave(), &channel.sender);
-    push(animal_dog(), &channel.sender);
+    tx.send(Sequenced::new(person_dave())).unwrap();
+    tx.send(Sequenced::new(animal_dog())).unwrap();
 
     // Assert
     let processed = {
@@ -360,8 +365,9 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
-    let channel = FluxionChannel::new();
-    let stream = channel.stream.map(|timestamped| timestamped.value);
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = UnboundedReceiverStream::new(rx);
+    let stream = stream.map(|timestamped| timestamped.value);
 
     let func = {
         let collected_items = collected_items_clone.clone();
@@ -400,19 +406,19 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
     });
 
     // Act
-    push(person_alice(), &channel.sender);
+    tx.send(Sequenced::new(person_alice())).unwrap();
     notify_rx.recv().await.expect("Alice processed");
 
-    push(animal_dog(), &channel.sender); // Error
+    tx.send(Sequenced::new(animal_dog())).unwrap(); // Error
     notify_rx.recv().await.expect("Dog handled (error)");
 
-    push(person_bob(), &channel.sender);
+    tx.send(Sequenced::new(person_bob())).unwrap();
     notify_rx.recv().await.expect("Bob processed");
 
     cancellation_token.cancel();
 
-    push(person_diane(), &channel.sender);
-    push(animal_cat(), &channel.sender);
+    tx.send(Sequenced::new(person_diane())).unwrap();
+    tx.send(Sequenced::new(animal_cat())).unwrap();
 
     // Assert
     let processed = {
@@ -441,8 +447,9 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
     let (finish_tx, finish_rx) = mpsc::unbounded_channel::<()>();
     let finish_rx_shared = Arc::new(Mutex::new(finish_rx));
 
-    let channel = FluxionChannel::new();
-    let stream = channel.stream.map(|timestamped| timestamped.value);
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = UnboundedReceiverStream::new(rx);
+    let stream = stream.map(|timestamped| timestamped.value);
 
     let func = {
         let active_count = active_count.clone();
@@ -494,7 +501,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
     // Act - Drive N sequential processings while always having the next item queued
     let n = 10;
 
-    push(person_alice(), &channel.sender);
+    tx.send(Sequenced::new(person_alice())).unwrap();
 
     for i in 0..n {
         // Wait until current processing has started
@@ -502,7 +509,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
 
         // Queue next item before finishing current to try to induce overlap
         if i + 1 < n {
-            push(person_alice(), &channel.sender);
+            tx.send(Sequenced::new(person_alice())).unwrap();
         }
 
         // Now allow current processing to complete and wait for completion notification
@@ -527,8 +534,9 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_
     let collected_items = Arc::new(Mutex::new(Vec::<TestData>::new()));
     let collected_items_clone = collected_items.clone();
 
-    let channel = FluxionChannel::new();
-    let stream = channel.stream.map(|timestamped| timestamped.value);
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = UnboundedReceiverStream::new(rx);
+    let stream = stream.map(|timestamped| timestamped.value);
 
     let func = move |item, _| {
         let collected_items = collected_items_clone.clone();
@@ -551,7 +559,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_
     });
 
     // Act - Close stream without sending any items
-    drop(channel.sender);
+    drop(tx);
     task_handle.await.unwrap();
 
     // Assert
@@ -575,8 +583,9 @@ async fn test_subscribe_latest_async_high_volume() {
     let (flood_done_tx, flood_done_rx) = mpsc::unbounded_channel::<()>();
     let flood_done_rx_shared = Arc::new(Mutex::new(Some(flood_done_rx)));
 
-    let channel = FluxionChannel::new();
-    let stream = channel.stream.map(|timestamped| timestamped.value);
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = UnboundedReceiverStream::new(rx);
+    let stream = stream.map(|timestamped| timestamped.value);
 
     let func = {
         let collected_items = collected_items_clone.clone();
@@ -627,14 +636,14 @@ async fn test_subscribe_latest_async_high_volume() {
     });
 
     // Act - Block first, flood many, ensure flood is done, then release gate
-    push(person_alice(), &channel.sender);
+    tx.send(Sequenced::new(person_alice())).unwrap();
     start_rx.recv().await.expect("first processing started");
 
     // Flood with many identical items, then a distinct last item
     for _ in 0..500 {
-        push(person_alice(), &channel.sender);
+        tx.send(Sequenced::new(person_alice())).unwrap();
     }
-    push(person_bob(), &channel.sender); // sentinel latest
+    tx.send(Sequenced::new(person_bob())).unwrap(); // sentinel latest
 
     // Signal that flooding (including Bob) is complete
     let _ = flood_done_tx.send(());
@@ -666,8 +675,9 @@ async fn test_subscribe_latest_async_single_item() {
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
-    let channel = FluxionChannel::new();
-    let stream = channel.stream.map(|timestamped| timestamped.value);
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = UnboundedReceiverStream::new(rx);
+    let stream = stream.map(|timestamped| timestamped.value);
 
     let func = {
         let collected_items = collected_items_clone.clone();
@@ -697,7 +707,7 @@ async fn test_subscribe_latest_async_single_item() {
     });
 
     // Act - Send only one item
-    push(person_alice(), &channel.sender);
+    tx.send(Sequenced::new(person_alice())).unwrap();
 
     // Wait for item to complete
     notify_rx.recv().await.unwrap();
@@ -711,6 +721,6 @@ async fn test_subscribe_latest_async_single_item() {
     assert_eq!(processed[0], person_alice(), "Should be Alice");
 
     // Cleanup
-    drop(channel.sender);
+    drop(tx);
     task_handle.await.unwrap();
 }
