@@ -4,7 +4,7 @@
 
 //! # Fluxion
 //!
-//! A reactive stream processing library with ordered semantics.
+//! A reactive stream processing library with ordered semantics, friendly interface, and bullet-proof, state-of-the art test coverage and examples.
 //!
 //! ## Overview
 //!

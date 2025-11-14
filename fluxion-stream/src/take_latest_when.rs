@@ -4,8 +4,8 @@
 
 use crate::Ordered;
 use crate::combine_latest::CombinedState;
-use crate::util::safe_lock;
 use fluxion_core::into_stream::IntoStream;
+use fluxion_core::lock_utilities::safe_lock;
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;

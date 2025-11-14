@@ -2,9 +2,16 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::util::safe_lock;
-use fluxion_stream::util::try_lock;
+use fluxion_core::lock_utilities::{safe_lock, try_lock};
 use std::sync::{Arc, Mutex};
+
+#[test]
+fn test_safe_lock_success() {
+    let mutex = Arc::new(Mutex::new(42));
+    let guard = safe_lock(&mutex, "test").unwrap();
+    assert_eq!(*guard, 42);
+    drop(guard);
+}
 
 #[test]
 fn test_safe_lock_normal_operation() {
@@ -78,6 +85,14 @@ fn test_safe_lock_with_complex_type() {
     let guard = safe_lock(&mutex, "verify update").unwrap();
     assert_eq!(guard.id, 2);
     assert_eq!(guard.name, "updated");
+    drop(guard);
+}
+
+#[test]
+fn test_try_lock() {
+    let mutex = Arc::new(Mutex::new("test data"));
+    let guard = try_lock(&mutex, "reading test data").unwrap();
+    assert_eq!(*guard, "test data");
     drop(guard);
 }
 

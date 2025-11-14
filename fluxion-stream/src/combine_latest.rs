@@ -12,7 +12,7 @@ use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{CompareByInner, Ordered, OrderedWrapper};
 use fluxion_ordered_merge::OrderedMergeExt;
 
-use crate::util::safe_lock;
+use fluxion_core::lock_utilities::safe_lock;
 
 pub trait CombineLatestExt<T>: Stream<Item = T> + Sized
 where

@@ -3,8 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::fluxion_stream::FluxionStream;
-use crate::util::safe_lock;
 use fluxion_core::Ordered;
+use fluxion_core::lock_utilities::safe_lock;
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::Stream;
 use futures::stream::StreamExt;

@@ -5,6 +5,7 @@
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 pub mod compare_by_inner;
 pub mod into_stream;
+pub mod lock_utilities;
 pub mod ordered;
 
 pub use self::compare_by_inner::CompareByInner;

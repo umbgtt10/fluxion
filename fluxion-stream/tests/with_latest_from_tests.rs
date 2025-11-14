@@ -4,14 +4,14 @@
 
 use fluxion_stream::combine_latest::CombinedState;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
+use fluxion_test_utils::helpers::{assert_no_element_emitted, expect_next_pair_unchecked};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     TestData, animal, animal_cat, animal_dog, person, person_alice, person_bob, person_charlie,
 };
-use fluxion_test_utils::helpers::{assert_no_element_emitted, expect_next_pair_unchecked};
-use fluxion_test_utils::sequenced::Sequenced;
+use futures::StreamExt;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use futures::StreamExt;
 
 static FILTER: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
 
@@ -168,7 +168,9 @@ async fn test_large_number_of_emissions() {
     person_tx.send(Sequenced::new(person_alice())).unwrap();
 
     for i in 0..1000 {
-        animal_tx.send(Sequenced::new(animal(format!("Animal{i}"), 4))).unwrap();
+        animal_tx
+            .send(Sequenced::new(animal(format!("Animal{i}"), 4)))
+            .unwrap();
     }
 
     // Assert
@@ -209,7 +211,9 @@ async fn test_with_latest_from_rapid_primary_only_updates() {
 
     // Act: Another rapid sequence of primary emissions (secondary still Alice)
     for i in 0..10 {
-        primary_tx.send(Sequenced::new(animal(format!("Animal{i}"), 4))).unwrap();
+        primary_tx
+            .send(Sequenced::new(animal(format!("Animal{i}"), 4)))
+            .unwrap();
     }
 
     // Assert: All primary emissions pair with Alice
@@ -269,11 +273,15 @@ async fn test_with_latest_from_boundary_empty_string_zero_values() {
     let mut combined_stream = Box::pin(combined_stream);
 
     // Act: Send empty string person to secondary (boundary: empty string, zero age)
-    secondary_tx.send(Sequenced::new(person(String::new(), 0))).unwrap();
+    secondary_tx
+        .send(Sequenced::new(person(String::new(), 0)))
+        .unwrap();
 
     // Act: Send zero-leg animal to primary (boundary: empty string, zero legs)
     // This triggers first emission with both boundary values
-    primary_tx.send(Sequenced::new(animal(String::new(), 0))).unwrap();
+    primary_tx
+        .send(Sequenced::new(animal(String::new(), 0)))
+        .unwrap();
 
     // Assert: System handles empty/zero values correctly
     let (sec, prim) = combined_stream.next().await.unwrap();
@@ -289,7 +297,9 @@ async fn test_with_latest_from_boundary_empty_string_zero_values() {
     );
 
     // Act: Send normal non-boundary values
-    secondary_tx.send(Sequenced::new(person(String::from("Valid"), 1))).unwrap();
+    secondary_tx
+        .send(Sequenced::new(person(String::from("Valid"), 1)))
+        .unwrap();
 
     // Assert: Updating secondary causes emission (with_latest_from uses combine_latest)
     let (sec2, prim2) = combined_stream.next().await.unwrap();
@@ -305,7 +315,9 @@ async fn test_with_latest_from_boundary_empty_string_zero_values() {
     );
 
     // Act: Now update primary to normal value
-    primary_tx.send(Sequenced::new(animal(String::from("ValidAnimal"), 1))).unwrap();
+    primary_tx
+        .send(Sequenced::new(animal(String::from("ValidAnimal"), 1)))
+        .unwrap();
 
     // Assert: Both are now non-boundary values
     let (sec3, prim3) = combined_stream.next().await.unwrap();

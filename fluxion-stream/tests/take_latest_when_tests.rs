@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream::{combine_latest::CombinedState, take_latest_when::TakeLatestWhenExt};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     test_data::{
@@ -10,11 +11,9 @@ use fluxion_test_utils::{
         person_charlie, person_dave,
     },
 };
-use fluxion_test_utils::sequenced::Sequenced;
+use futures::StreamExt;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use futures::StreamExt;
-
 
 #[tokio::test]
 async fn test_take_latest_when_empty_streams() {
@@ -445,7 +444,9 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
 
     // Act: Publish a large number of source events while filter is false
     for i in 0u32..10000u32 {
-        source_tx.send(Sequenced::new(person(format!("Person{i}"), i))).unwrap();
+        source_tx
+            .send(Sequenced::new(person(format!("Person{i}"), i)))
+            .unwrap();
     }
 
     // Assert: No emissions yet
@@ -464,7 +465,9 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     // Act: Toggle filter false and publish more
     filter_tx.send(Sequenced::new(animal_dog())).unwrap(); // legs 4 -> false
     for i in 10000u32..20000u32 {
-        source_tx.send(Sequenced::new(person(format!("Person{i}"), i))).unwrap();
+        source_tx
+            .send(Sequenced::new(person(format!("Person{i}"), i)))
+            .unwrap();
     }
 
     // Assert: Still no emissions
@@ -496,10 +499,14 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() {
     let mut output_stream = Box::pin(output_stream);
 
     // Act: Send empty string with zero value to source
-    source_tx.send(Sequenced::new(person(String::new(), 0))).unwrap();
+    source_tx
+        .send(Sequenced::new(person(String::new(), 0)))
+        .unwrap();
 
     // Act: Send filter trigger with empty/zero
-    filter_tx.send(Sequenced::new(animal(String::new(), 0))).unwrap();
+    filter_tx
+        .send(Sequenced::new(animal(String::new(), 0)))
+        .unwrap();
 
     // Assert: Should emit the boundary value
     let result = output_stream.next().await.unwrap();
@@ -536,8 +543,12 @@ async fn test_take_latest_when_boundary_maximum_concurrent_streams() {
             let mut output_stream = Box::pin(output_stream);
 
             // Act: Send test values
-            source_tx.send(Sequenced::new(person(format!("Person{i}"), i))).unwrap();
-            filter_tx.send(Sequenced::new(animal(format!("Animal{i}"), i))).unwrap();
+            source_tx
+                .send(Sequenced::new(person(format!("Person{i}"), i)))
+                .unwrap();
+            filter_tx
+                .send(Sequenced::new(animal(format!("Animal{i}"), i)))
+                .unwrap();
 
             // Assert: Should emit
             let result = output_stream.next().await.unwrap();

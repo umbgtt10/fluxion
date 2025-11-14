@@ -99,7 +99,8 @@ async fn test_take_while_complex_predicate() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let result_stream = source_stream.take_while_with(filter_stream, |filter_val: &i32| *filter_val < 10);
+    let result_stream =
+        source_stream.take_while_with(filter_stream, |filter_val: &i32| *filter_val < 10);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert

@@ -254,7 +254,8 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
             let mut stream = stream.combine_with_previous();
 
             // Act: Send first value
-            tx.send(Sequenced::new(person(format!("Person{i}"), i))).unwrap();
+            tx.send(Sequenced::new(person(format!("Person{i}"), i)))
+                .unwrap();
 
             // Assert: No previous
             let result = stream.next().await.unwrap();
