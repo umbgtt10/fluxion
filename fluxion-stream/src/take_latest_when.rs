@@ -4,24 +4,27 @@
 
 use crate::Ordered;
 use crate::combine_latest::CombinedState;
-use crate::util::safe_lock;
+use fluxion_core::into_stream::IntoStream;
+use fluxion_core::lock_utilities::safe_lock;
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-pub trait TakeLatestWhenExt<T, SF>: Stream<Item = T> + Sized
+pub trait TakeLatestWhenExt<T>: Stream<Item = T> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    SF: Stream<Item = T> + Send + Sync + 'static,
 {
-    fn take_latest_when(
+    fn take_latest_when<IS>(
         self,
-        filter_stream: SF,
+        filter_stream: IS,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = T> + Send + Sync>>;
+    ) -> Pin<Box<dyn Stream<Item = T> + Send + Sync>>
+    where
+        IS: IntoStream<Item = T>,
+        IS::Stream: Send + Sync + 'static;
 }
 
 #[derive(Clone, Debug)]
@@ -58,20 +61,23 @@ where
 }
 
 type IndexedStream<T> = Pin<Box<dyn Stream<Item = (T, usize)> + Send + Sync>>;
-impl<T, S, SF> TakeLatestWhenExt<T, SF> for S
+impl<T, S> TakeLatestWhenExt<T> for S
 where
     S: Stream<Item = T> + Send + Sync + 'static,
-    SF: Stream<Item = T> + Send + Sync + 'static,
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
-    fn take_latest_when(
+    fn take_latest_when<IS>(
         self,
-        filter_stream: SF,
+        filter_stream: IS,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = T> + Send + Sync>> {
+    ) -> Pin<Box<dyn Stream<Item = T> + Send + Sync>>
+    where
+        IS: IntoStream<Item = T>,
+        IS::Stream: Send + Sync + 'static,
+    {
         let source_stream = Box::pin(self.map(|value| (value, 0)));
-        let filter_stream = Box::pin(filter_stream.map(|value| (value, 1)));
+        let filter_stream = Box::pin(filter_stream.into_stream().map(|value| (value, 1)));
 
         let streams: Vec<IndexedStream<T>> = vec![source_stream, filter_stream];
 

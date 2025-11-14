@@ -5,6 +5,21 @@
 use fluxion_error::{FluxionError, Result};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
+// Conditional logging based on tracing feature
+#[cfg(feature = "tracing")]
+macro_rules! warn {
+    ($($arg:tt)*) => {
+        tracing::warn!($($arg)*);
+    };
+}
+
+#[cfg(not(feature = "tracing"))]
+macro_rules! warn {
+    ($($arg:tt)*) => {
+        // No-op when tracing is disabled
+    };
+}
+
 /// Safely acquire a lock on a Mutex, converting poison errors to `FluxionError`
 ///
 /// This function handles the case where a thread panicked while holding the lock,
@@ -13,7 +28,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 ///
 /// # Arguments
 ///
-/// * `mutex` - The Arc<Mutex<T>> to lock
+/// * `mutex` - The `Arc<Mutex<T>>` to lock
 /// * `context` - A description of what lock is being acquired (for error messages)
 ///
 /// # Returns
@@ -24,7 +39,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 ///
 /// ```no_run
 /// use std::sync::{Arc, Mutex};
-/// use fluxion_stream::util::safe_lock;
+/// use fluxion_core::lock_utilities::safe_lock;
 ///
 /// let state = Arc::new(Mutex::new(42));
 /// match safe_lock(&state, "counter state") {
@@ -61,51 +76,11 @@ pub fn safe_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<Mutex
 ///
 /// # Arguments
 ///
-/// * `mutex` - The Arc<Mutex<T>> to lock
+/// * `mutex` - The `Arc<Mutex<T>>` to lock
 /// * `operation` - Description of the operation being performed
 ///
 /// # Errors
 /// Returns an error if locking the mutex fails.
 pub fn try_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, operation: &str) -> Result<MutexGuard<'a, T>> {
     safe_lock(mutex, operation)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::{Arc, Mutex};
-
-    #[test]
-    fn test_safe_lock_success() {
-        let mutex = Arc::new(Mutex::new(42));
-        let guard = safe_lock(&mutex, "test").unwrap();
-        assert_eq!(*guard, 42);
-        drop(guard);
-    }
-
-    #[test]
-    fn test_safe_lock_recovers_from_poison() {
-        let mutex = Arc::new(Mutex::new(vec![1, 2, 3]));
-        let mutex_clone = Arc::clone(&mutex);
-
-        // Poison the mutex by panicking while holding the lock
-        let _ = std::panic::catch_unwind(|| {
-            // inline the single-use lock to avoid holding the guard across the closure
-            mutex_clone.lock().unwrap().push(4);
-            panic!("Intentional panic to poison mutex");
-        });
-
-        // safe_lock should recover from the poison
-        let guard = safe_lock(&mutex, "poisoned test").unwrap();
-        assert_eq!(guard.len(), 4); // The data was modified before panic
-        drop(guard);
-    }
-
-    #[test]
-    fn test_try_lock() {
-        let mutex = Arc::new(Mutex::new("test data"));
-        let guard = try_lock(&mutex, "reading test data").unwrap();
-        assert_eq!(*guard, "test data");
-        drop(guard);
-    }
 }

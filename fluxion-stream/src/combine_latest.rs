@@ -8,23 +8,25 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
+use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{CompareByInner, Ordered, OrderedWrapper};
 use fluxion_ordered_merge::OrderedMergeExt;
 
-use crate::util::safe_lock;
+use fluxion_core::lock_utilities::safe_lock;
 
 pub trait CombineLatestExt<T>: Stream<Item = T> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
 {
-    fn combine_latest<S2>(
+    fn combine_latest<IS>(
         self,
-        others: Vec<S2>,
+        others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = OrderedWrapper<CombinedState<T::Inner>>> + Send + Unpin
     where
-        S2: Stream<Item = T> + Send + Sync + 'static;
+        IS: IntoStream<Item = T>,
+        IS::Stream: Send + Sync + 'static;
 }
 
 type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (T, usize)> + Send + Sync>>>;
@@ -35,19 +37,21 @@ where
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
     S: Stream<Item = T> + Send + Sync + 'static,
 {
-    fn combine_latest<S2>(
+    fn combine_latest<IS>(
         self,
-        others: Vec<S2>,
+        others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = OrderedWrapper<CombinedState<T::Inner>>> + Send + Unpin
     where
-        S2: Stream<Item = T> + Send + Sync + 'static,
+        IS: IntoStream<Item = T>,
+        IS::Stream: Send + Sync + 'static,
     {
         let mut streams: PinnedStreams<T> = vec![];
 
         streams.push(Box::pin(self.map(move |value| (value, 0))));
-        for (index, stream) in others.into_iter().enumerate() {
+        for (index, into_stream) in others.into_iter().enumerate() {
             let idx = index + 1;
+            let stream = into_stream.into_stream();
             streams.push(Box::pin(stream.map(move |value| (value, idx))));
         }
 

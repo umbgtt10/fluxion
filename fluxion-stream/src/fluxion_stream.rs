@@ -20,6 +20,19 @@ use std::task::{Context, Poll};
 ///
 /// This type wraps any stream of ordered items and provides all the fluxion
 /// extension methods directly, allowing easy chaining and composition.
+///
+/// `FluxionStream` is designed for **pure, functional stream operations** with no
+/// mutation. For testing scenarios where you need to push values into a stream,
+/// use `TestChannel` from the `fluxion-test-utils` crate instead.
+///
+/// # Design Philosophy
+///
+/// - **Production code**: Uses `FluxionStream` for composable, immutable stream transformations
+/// - **Test code**: Uses `TestChannel` which wraps this and adds push capabilities
+///
+/// This separation solves the fundamental conflict between:
+/// - Consuming operations (stream extensions that take `self`)
+/// - Mutation operations (push that needs `&self`)
 #[pin_project]
 pub struct FluxionStream<S> {
     #[pin]
@@ -35,6 +48,51 @@ impl<S> FluxionStream<S> {
     /// Unwrap to get the inner stream
     pub fn into_inner(self) -> S {
         self.inner
+    }
+
+    /// Creates a `FluxionStream` from any existing stream.
+    ///
+    /// Use this when you have a stream from another library or source and want
+    /// to apply fluxion's extension methods.
+    ///
+    /// This is just an alias for `FluxionStream::new()` but may be more discoverable.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use fluxion::FluxionStream;
+    /// use futures::stream;
+    ///
+    /// let existing_stream = stream::iter(vec![1, 2, 3]);
+    /// let stream = FluxionStream::from_stream(existing_stream);
+    /// ```
+    pub fn from_stream(stream: S) -> Self {
+        FluxionStream::new(stream)
+    }
+}
+
+// Separate impl for the constructor that changes the type parameter
+impl FluxionStream<()> {
+    /// Creates a `FluxionStream` from a tokio unbounded receiver.
+    ///
+    /// This is the most common constructor for production code that receives
+    /// values from other async tasks or components.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use fluxion::FluxionStream;
+    /// use tokio::sync::mpsc;
+    ///
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let stream = FluxionStream::from_unbounded_receiver(rx);
+    /// ```
+    pub fn from_unbounded_receiver<T>(
+        receiver: tokio::sync::mpsc::UnboundedReceiver<T>,
+    ) -> FluxionStream<tokio_stream::wrappers::UnboundedReceiverStream<T>> {
+        FluxionStream::new(tokio_stream::wrappers::UnboundedReceiverStream::new(
+            receiver,
+        ))
     }
 }
 
