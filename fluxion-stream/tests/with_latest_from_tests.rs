@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -253,24 +253,48 @@ async fn test_with_latest_from_boundary_empty_string_zero_values() {
 
     // Assert: System handles empty/zero values correctly
     let (sec, prim) = combined_stream.next().await.unwrap();
-    assert_eq!(sec.value, person(String::new(), 0), "Secondary should have empty name and zero age");
-    assert_eq!(prim.value, animal(String::new(), 0), "Primary should have empty name and zero legs");
+    assert_eq!(
+        sec.value,
+        person(String::new(), 0),
+        "Secondary should have empty name and zero age"
+    );
+    assert_eq!(
+        prim.value,
+        animal(String::new(), 0),
+        "Primary should have empty name and zero legs"
+    );
 
     // Act: Send normal non-boundary values
     push(person(String::from("Valid"), 1), &secondary.sender);
 
     // Assert: Updating secondary causes emission (with_latest_from uses combine_latest)
     let (sec2, prim2) = combined_stream.next().await.unwrap();
-    assert_eq!(sec2.value, person(String::from("Valid"), 1), "Secondary should update to valid person");
-    assert_eq!(prim2.value, animal(String::new(), 0), "Primary should still be boundary animal");
+    assert_eq!(
+        sec2.value,
+        person(String::from("Valid"), 1),
+        "Secondary should update to valid person"
+    );
+    assert_eq!(
+        prim2.value,
+        animal(String::new(), 0),
+        "Primary should still be boundary animal"
+    );
 
     // Act: Now update primary to normal value
     push(animal(String::from("ValidAnimal"), 1), &primary.sender);
 
     // Assert: Both are now non-boundary values
     let (sec3, prim3) = combined_stream.next().await.unwrap();
-    assert_eq!(sec3.value, person(String::from("Valid"), 1), "Secondary should remain valid person");
-    assert_eq!(prim3.value, animal(String::from("ValidAnimal"), 1), "Primary should update to valid animal");
+    assert_eq!(
+        sec3.value,
+        person(String::from("Valid"), 1),
+        "Secondary should remain valid person"
+    );
+    assert_eq!(
+        prim3.value,
+        animal(String::from("ValidAnimal"), 1),
+        "Primary should update to valid animal"
+    );
 }
 
 #[tokio::test]
@@ -445,7 +469,10 @@ async fn test_with_latest_from_timestamp_ordering() {
     // Assert: Second emission should have later timestamp
     let (_sec2, prim2) = stream.next().await.unwrap();
     let ts2 = prim2.sequence();
-    assert!(ts2 > ts1, "Timestamps should be monotonically increasing: {ts2:?} should be > {ts1:?}");
+    assert!(
+        ts2 > ts1,
+        "Timestamps should be monotonically increasing: {ts2:?} should be > {ts1:?}"
+    );
 
     // Act: Update secondary
     push(person_bob(), &secondary.sender);
@@ -453,7 +480,10 @@ async fn test_with_latest_from_timestamp_ordering() {
     // Assert: Third emission should have later timestamp
     let (sec3, _prim3) = stream.next().await.unwrap();
     let ts3 = sec3.sequence();
-    assert!(ts3 > ts2, "Timestamps should be monotonically increasing: {ts3:?} should be > {ts2:?}");
+    assert!(
+        ts3 > ts2,
+        "Timestamps should be monotonically increasing: {ts3:?} should be > {ts2:?}"
+    );
 }
 
 #[tokio::test]

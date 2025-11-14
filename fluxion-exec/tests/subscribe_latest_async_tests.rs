@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -52,7 +52,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
     };
 
     let error_callback = |err: TestError| {
-        eprintln!("Error occurred: {:?}", err);
+        eprintln!("Error occurred: {err:?}");
     };
 
     tokio::spawn({
@@ -95,7 +95,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
     notify_rx.recv().await.expect("Rose processed");
 
     // Assert
-    let processed = collected_items.lock().await;
+    let processed = { let g = collected_items.lock().await; g.clone() };
     assert_eq!(processed.len(), 10,);
     assert_eq!(processed[0], person_alice());
     assert_eq!(processed[1], person_bob());
@@ -107,6 +107,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
     assert_eq!(processed[7], animal_ant());
     assert_eq!(processed[8], animal_spider());
     assert_eq!(processed[9], plant_rose());
+    drop(processed);
 }
 
 #[tokio::test]
@@ -139,11 +140,13 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
             let start_tx_shared = start_tx_shared.clone();
             async move {
                 // Signal that the first processing has started (only once)
-                if let Some(tx) = start_tx_shared.lock().await.take() {
+                let value = start_tx_shared.lock().await.take();
+                if let Some(tx) = value {
                     let _ = tx.send(());
                 }
                 // Only the first processing waits for the gate signal
-                if let Some(mut rx) = gate_rx_shared.lock().await.take() {
+                let value = gate_rx_shared.lock().await.take();
+                if let Some(mut rx) = value {
                     // Wait for external signal to unblock the first item
                     let _ = rx.recv().await;
                 }
@@ -156,7 +159,7 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
     };
 
     let error_callback = |err: TestError| {
-        eprintln!("Error occurred: {:?}", err);
+        eprintln!("Error occurred: {err:?}");
     };
 
     tokio::spawn({
@@ -191,7 +194,7 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
         .expect("Latest (Dave) should be processed next");
 
     // Assert
-    let processed = collected_items.lock().await;
+    let processed = { let g = collected_items.lock().await; g.clone() };
     assert_eq!(processed.len(), 2,);
     assert_eq!(processed[0], person_alice(),);
     assert_eq!(processed[1], person_dave(),);
@@ -219,11 +222,10 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
             async move {
                 if matches!(&item, TestData::Person(p) if p.name == "Bob" || p.name == "Dave") {
                     let _ = notify_tx.send(());
-                    return Err(TestError::new(format!("Failed to process {:?}", item)));
+                    return Err(TestError::new(format!("Failed to process {item:?}")));
                 }
 
-                let mut items = collected_items.lock().await;
-                items.push(item);
+                collected_items.lock().await.push(item);
                 let _ = notify_tx.send(());
 
                 Ok::<(), TestError>(())
@@ -232,7 +234,7 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
     };
 
     let error_callback = |err: TestError| {
-        eprintln!("Error occurred: {:?}", err);
+        eprintln!("Error occurred: {err:?}");
     };
 
     tokio::spawn({
@@ -260,7 +262,7 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
     notify_rx.recv().await.expect("Dog processed");
 
     // Assert
-    let processed = collected_items.lock().await;
+    let processed = { let g = collected_items.lock().await; g.clone() };
     assert_eq!(processed.len(), 3);
     assert!(processed.contains(&person_alice()),);
     assert!(processed.contains(&person_charlie()),);
@@ -290,8 +292,7 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
                     return Ok(());
                 }
 
-                let mut items = collected_items.lock().await;
-                items.push(item);
+                collected_items.lock().await.push(item);
                 let _ = notify_tx.send(());
 
                 Ok::<(), TestError>(())
@@ -331,7 +332,7 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
     push(animal_dog(), &channel.sender);
 
     // Assert
-    let processed = collected_items.lock().await;
+    let processed = { let g = collected_items.lock().await; g.clone() };
     assert_eq!(processed.len(), 3,);
     assert_eq!(processed[0], person_alice());
     assert_eq!(processed[1], person_bob());
@@ -363,8 +364,7 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
                     return Err(TestError::new("Animal processing error"));
                 }
 
-                let mut items = collected_items.lock().await;
-                items.push(item);
+                collected_items.lock().await.push(item);
                 let _ = notify_tx.send(());
 
                 Ok::<(), TestError>(())
@@ -373,7 +373,7 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
     };
 
     let error_callback = |err: TestError| {
-        eprintln!("Error occurred: {:?}", err);
+        eprintln!("Error occurred: {err:?}");
     };
 
     let cancellation_token = CancellationToken::new();
@@ -403,7 +403,7 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
     push(animal_cat(), &channel.sender);
 
     // Assert
-    let processed = collected_items.lock().await;
+    let processed = { let g = collected_items.lock().await; g.clone() };
     assert_eq!(processed.len(), 2);
     assert!(processed.contains(&person_alice()),);
     assert!(processed.contains(&person_bob()));
@@ -688,7 +688,7 @@ async fn test_subscribe_latest_async_single_item() {
     notify_rx.recv().await.unwrap();
 
     // Assert
-    let processed = collected_items.lock().await;
+    let processed = { let g = collected_items.lock().await; g.clone() };
     assert_eq!(processed.len(), 1, "Exactly 1 item should be processed");
     assert_eq!(processed[0], person_alice(), "Should be Alice");
 

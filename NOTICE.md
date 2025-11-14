@@ -1,4 +1,4 @@
-Copyright 2025 Umberto Gotti
+Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 
 This product includes software developed by Umberto Gotti.
 Licensed under the Apache License, Version 2.0 (the "License");

@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -68,9 +68,11 @@ async fn test_take_latest_when_filter_satisfied_emits() {
 
         match filter_value {
             TestData::Animal(animal) => animal.legs > 5,
-                _ => {
-                    panic!("Expected the filter stream to emit an Animal value. But it emitted: {filter_value:?} instead!");
-                }
+            _ => {
+                panic!(
+                    "Expected the filter stream to emit an Animal value. But it emitted: {filter_value:?} instead!"
+                );
+            }
         }
     };
 
@@ -401,10 +403,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
 
     // Act: Publish a large number of source events while filter is false
     for i in 0u32..10000u32 {
-        source
-            .sender
-            .send(person(format!("Person{i}"), i))
-            .unwrap();
+        source.sender.send(person(format!("Person{i}"), i)).unwrap();
     }
 
     // Assert: No emissions yet
@@ -423,10 +422,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     // Act: Toggle filter false and publish more
     push(animal_dog(), &filter.sender); // legs 4 -> false
     for i in 10000u32..20000u32 {
-        source
-            .sender
-            .send(person(format!("Person{i}"), i))
-            .unwrap();
+        source.sender.send(person(format!("Person{i}"), i)).unwrap();
     }
 
     // Assert: Still no emissions
@@ -463,7 +459,7 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() {
     let result = output_stream.next().await.unwrap();
     assert_eq!(
         result.get(),
-        &person("".to_string(), 0),
+        &person(String::new(), 0),
         "Should handle empty string and zero age"
     );
 

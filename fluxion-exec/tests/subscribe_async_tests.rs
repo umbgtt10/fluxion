@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -21,6 +21,14 @@ impl TestError {
     fn new(msg: impl Into<String>) -> Self {
         Self(msg.into())
     }
+}
+
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+enum ProcessingError {
+    #[error("Cancelled: {0}")]
+    Cancelled(String),
+    #[error("Other error: {0}")]
+    Other(String),
 }
 
 #[tokio::test]
@@ -254,13 +262,7 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
     let cancellation_token_clone = cancellation_token.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
-    #[derive(Debug, PartialEq, Eq, thiserror::Error)]
-    enum ProcessingError {
-        #[error("Cancelled: {0}")]
-        Cancelled(String),
-        #[error("Other error: {0}")]
-        Other(String),
-    }
+    
 
     let func = {
         let results = results.clone();
@@ -272,8 +274,7 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
                 if ctx.is_cancelled() {
                     let _ = notify_tx.send(());
                     return Err(ProcessingError::Cancelled(format!(
-                        "Cancelled during processing of item: {:?}",
-                        item
+                        "Cancelled during processing of item: {item:?}"
                     )));
                 }
 
@@ -482,6 +483,7 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() {
     {
         let processed = results.lock().await;
         assert_eq!(processed.len(), 3, "All 3 items should be processed");
+        drop(processed);
     }
     let max = max_active.load(std::sync::atomic::Ordering::SeqCst);
     assert!(max >= 2, "Expected parallelism (max_active >= 2), got {max}");
@@ -541,6 +543,7 @@ async fn test_subscribe_async_high_volume_processes_all() {
     {
         let processed = results.lock().await;
         assert_eq!(processed.len(), 100, "All 100 items should be processed");
+        drop(processed);
     }
 
     // Cleanup
@@ -580,7 +583,7 @@ async fn test_subscribe_async_precancelled_token_processes_nothing() {
         async move {
             stream
                 .subscribe_async(func, Some(cancellation_token), Some(error_callback))
-                .await
+                .await;
         }
     });
 

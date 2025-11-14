@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -13,6 +13,7 @@ fn test_safe_lock_normal_operation() {
     {
         let guard = safe_lock(&mutex, "normal operation").unwrap();
         assert_eq!(*guard, vec![1, 2, 3]);
+        drop(guard);
     }
 
     let mut guard = safe_lock(&mutex, "second lock").unwrap();

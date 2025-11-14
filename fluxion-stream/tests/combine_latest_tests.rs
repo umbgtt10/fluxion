@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -275,7 +275,7 @@ async fn combine_latest_stream_order_test(
     let animal = FluxionChannel::new();
     let plant = FluxionChannel::new();
 
-    let mut streams = vec![
+    let mut registered_streams = vec![
         (DataVariant::Person, person.stream),
         (DataVariant::Animal, animal.stream),
         (DataVariant::Plant, plant.stream),
@@ -284,7 +284,7 @@ async fn combine_latest_stream_order_test(
     let ordered_streams: Vec<_> = vec![&stream1, &stream2, &stream3]
         .into_iter()
         .map(|variant| {
-            let idx = streams
+            let idx = registered_streams
                 .iter()
                 .position(|(o, _)| {
                     matches!(
@@ -295,7 +295,7 @@ async fn combine_latest_stream_order_test(
                     )
                 })
                 .unwrap();
-            streams.remove(idx).1
+            registered_streams.remove(idx).1
         })
         .collect();
 

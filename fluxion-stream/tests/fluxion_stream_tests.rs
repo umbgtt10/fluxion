@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -12,6 +12,13 @@ use fluxion_test_utils::{FluxionChannel, TestChannels, push};
 use futures::StreamExt;
 
 static FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+
+// Module-level convenience filters to avoid defining items after statements in tests
+static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+static WITH_LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+static LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+// The nested combined filter is used below in a test that expects a CombinedState<CombinedState<TestData>>
+static LATEST_FILTER_COMBINED: fn(&CombinedState<CombinedState<TestData>>) -> bool = |_| true;
 
 #[tokio::test]
 async fn test_fluxion_stream_composition() {
@@ -54,7 +61,7 @@ async fn test_fluxion_stream_composition() {
     assert_eq!(curr.get(), &person_dave());
 }
 
-/// Test FluxionStream with combine_latest composition
+/// Test `FluxionStream` with `combine_latest` composition
 #[tokio::test]
 async fn test_fluxion_stream_combine_latest_composition() {
     // Arrange
@@ -62,7 +69,7 @@ async fn test_fluxion_stream_combine_latest_composition() {
     let animal = FluxionChannel::new();
     let plant = FluxionChannel::new();
 
-    static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+    // Use module-level `COMBINE_FILTER`
 
     // Use FluxionStream for combine_latest
     let combined = FluxionStream::new(person.stream)
@@ -84,13 +91,13 @@ async fn test_fluxion_stream_combine_latest_composition() {
     assert_eq!(state[2], plant_rose());
 }
 
-/// Test FluxionStream with with_latest_from
+/// Test `FluxionStream` with `with_latest_from`
 #[tokio::test]
 async fn test_fluxion_stream_with_latest_from() {
     // Arrange
     let (primary, secondary) = TestChannels::two::<TestData>();
 
-    static WITH_LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+    // Use module-level `WITH_LATEST_FILTER`
 
     // Use FluxionStream for with_latest_from
     let combined =
@@ -114,7 +121,7 @@ async fn test_fluxion_stream_with_latest_from() {
     assert_eq!(sec.get(), &person_alice()); // Still has alice from secondary
 }
 
-/// Test FluxionStream basic wrapper functionality
+/// Test `FluxionStream` basic wrapper functionality
 #[tokio::test]
 async fn test_fluxion_stream_combine_with_previous() {
     // Arrange
@@ -136,7 +143,7 @@ async fn test_fluxion_stream_combine_with_previous() {
     assert_eq!(curr.get(), &person_bob());
 }
 
-/// Test FluxionStream with take_while_with
+/// Test `FluxionStream` with `take_while_with`
 #[tokio::test]
 async fn test_fluxion_stream_take_while_with() {
     // Arrange
@@ -163,7 +170,7 @@ async fn test_fluxion_stream_take_while_with() {
     assert_no_element_emitted(&mut composed, 100).await;
 }
 
-/// Test FluxionStream composition chaining take_latest_when with take_while_with
+/// Test `FluxionStream` composition chaining `take_latest_when` with `take_while_with`
 /// This demonstrates filtering emissions with two different criteria
 #[tokio::test]
 async fn test_fluxion_stream_take_latest_when_take_while() {
@@ -172,7 +179,7 @@ async fn test_fluxion_stream_take_latest_when_take_while() {
     let latest_filter = FluxionChannel::new();
     let while_filter: FluxionChannel<bool> = FluxionChannel::new();
 
-    static LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+    // Use module-level `LATEST_FILTER`
 
     // Compose: take_latest_when -> take_while_with
     // First operator filters when to emit, second stops emitting when condition is false
@@ -204,7 +211,7 @@ async fn test_fluxion_stream_take_latest_when_take_while() {
     assert_no_element_emitted(&mut composed, 100).await;
 }
 
-/// Test chaining combine_latest with take_while_with
+/// Test chaining `combine_latest` with `take_while_with`
 #[tokio::test]
 async fn test_fluxion_stream_combine_latest_and_take_while() {
     // Arrange
@@ -213,7 +220,7 @@ async fn test_fluxion_stream_combine_latest_and_take_while() {
     let plant: FluxionChannel<TestData> = FluxionChannel::new();
     let filter: FluxionChannel<bool> = FluxionChannel::new();
 
-    static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+    // Use module-level `COMBINE_FILTER`
 
     // Compose: combine_latest -> take_while_with
     let composed = FluxionStream::new(person.stream)
@@ -252,7 +259,7 @@ async fn test_fluxion_stream_combine_latest_and_take_while() {
     assert_no_element_emitted(&mut composed, 100).await;
 }
 
-/// Test FluxionStream ordered_merge - merges multiple streams and emits all values per sequence
+/// Test `FluxionStream` `ordered_merge` - merges multiple streams and emits all values per sequence
 #[tokio::test]
 async fn test_fluxion_stream_ordered_merge() {
     // Arrange
@@ -284,7 +291,7 @@ async fn test_fluxion_stream_ordered_merge() {
     assert_eq!(result3.get(), &plant_rose());
 }
 
-/// Test ordered_merge -> combine_with_previous composition
+/// Test `ordered_merge` -> `combine_with_previous` composition
 /// Merges multiple streams and tracks deltas between consecutive values
 #[tokio::test]
 async fn test_ordered_merge_then_combine_with_previous() {
@@ -316,7 +323,7 @@ async fn test_ordered_merge_then_combine_with_previous() {
     assert_eq!(curr.get(), &person_bob());
 }
 
-/// Test combine_latest -> combine_with_previous composition
+/// Test `combine_latest` -> `combine_with_previous` composition
 /// Creates combined state, then tracks how it changes over time
 #[tokio::test]
 async fn test_combine_latest_then_combine_with_previous() {
@@ -324,7 +331,7 @@ async fn test_combine_latest_then_combine_with_previous() {
     let person: FluxionChannel<TestData> = FluxionChannel::new();
     let animal: FluxionChannel<TestData> = FluxionChannel::new();
 
-    static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+    // Use module-level `COMBINE_FILTER`
 
     // Chain: combine_latest -> combine_with_previous
     let composed = FluxionStream::new(person.stream)
@@ -354,7 +361,7 @@ async fn test_combine_latest_then_combine_with_previous() {
     assert_eq!(curr_state[1], animal_dog());
 }
 
-/// Test combine_latest -> take_latest_when composition
+/// Test `combine_latest` -> `take_latest_when` composition
 /// Creates combined state, then conditionally emits based on another filter stream
 #[tokio::test]
 async fn test_combine_latest_then_take_latest_when() {
@@ -363,8 +370,7 @@ async fn test_combine_latest_then_take_latest_when() {
     let animal: FluxionChannel<TestData> = FluxionChannel::new();
     let filter: FluxionChannel<CombinedState<TestData>> = FluxionChannel::new();
 
-    static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
-    static LATEST_FILTER: fn(&CombinedState<CombinedState<TestData>>) -> bool = |_| true;
+    // Use module-level `COMBINE_FILTER` and `LATEST_FILTER_COMBINED`
 
     // Chain: combine_latest -> take_latest_when
     // Note: filter stream needs to be mapped to OrderedWrapper to match combine_latest output
@@ -375,7 +381,7 @@ async fn test_combine_latest_then_take_latest_when() {
 
     let composed = FluxionStream::new(person.stream)
         .combine_latest(vec![animal.stream], COMBINE_FILTER)
-        .take_latest_when(filter_mapped, LATEST_FILTER);
+        .take_latest_when(filter_mapped, LATEST_FILTER_COMBINED);
 
     let mut composed = Box::pin(composed);
 
@@ -398,7 +404,7 @@ async fn test_combine_latest_then_take_latest_when() {
     assert_eq!(state[1], animal_dog());
 }
 
-/// Test ordered_merge -> take_while_with composition
+/// Test `ordered_merge` -> `take_while_with` composition
 /// Merges streams and terminates when a condition is no longer met
 #[tokio::test]
 async fn test_ordered_merge_then_take_while_with() {
@@ -431,7 +437,7 @@ async fn test_ordered_merge_then_take_while_with() {
     assert_no_element_emitted(&mut composed, 100).await;
 }
 
-/// Test combine_latest -> take_while_with, then parallel merge
+/// Test `combine_latest` -> `take_while_with`, then parallel merge
 /// Three-level composition demonstrating complex stream processing
 #[tokio::test]
 async fn test_triple_composition_combine_latest_take_while_ordered_merge() {
@@ -440,7 +446,7 @@ async fn test_triple_composition_combine_latest_take_while_ordered_merge() {
     let animal: FluxionChannel<TestData> = FluxionChannel::new();
     let filter: FluxionChannel<bool> = FluxionChannel::new();
 
-    static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+    // Use module-level `COMBINE_FILTER`
 
     // Chain: combine_latest -> take_while_with -> combine_with_previous
     let composed = FluxionStream::new(person.stream)
@@ -470,7 +476,7 @@ async fn test_triple_composition_combine_latest_take_while_ordered_merge() {
     assert_no_element_emitted(&mut composed, 100).await;
 }
 
-/// Test ordered_merge -> take_latest_when composition
+/// Test `ordered_merge` -> `take_latest_when` composition
 /// Merges streams, then conditionally emits based on filter
 #[tokio::test]
 async fn test_ordered_merge_then_take_latest_when() {
@@ -479,7 +485,7 @@ async fn test_ordered_merge_then_take_latest_when() {
     let animal = FluxionChannel::new();
     let filter: FluxionChannel<TestData> = FluxionChannel::new();
 
-    static LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+    // Use module-level `LATEST_FILTER`
 
     // Chain: ordered_merge -> take_latest_when
     let composed = FluxionStream::new(person.stream)
@@ -505,7 +511,7 @@ async fn test_ordered_merge_then_take_latest_when() {
     assert_eq!(composed.next().await.unwrap().get(), &person_charlie());
 }
 
-/// Test take_latest_when -> ordered_merge composition
+/// Test `take_latest_when` -> `ordered_merge` composition
 /// Filters a primary stream, then merges it with other streams
 #[tokio::test]
 async fn test_take_latest_when_then_ordered_merge() {

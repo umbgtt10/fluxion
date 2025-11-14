@@ -13,8 +13,8 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-authors = ["umbgtt10"]
-license = "MIT OR Apache-2.0"
+authors = ["umberto.gotti@umbertogotti.dev"]
+license = "Apache-2.0"
 repository = "https://github.com/umbgtt10/fluxion"
 
 [workspace.dependencies]
@@ -45,3 +45,6 @@ fluxion-test-utils = { path = "fluxion-test-utils" }
 # Bench & testing utilities (used in members via workspace = true)
 criterion = { version = "0.7.0", features = ["async", "html_reports"] }
 rstest = "0.26.1"
+
+# Platform bindings (unify versions across workspace)
+windows-sys = "0.61.2"
