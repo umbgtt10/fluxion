@@ -137,6 +137,22 @@ where
         FluxionStream::new(inner.map(f))
     }
 
+    pub fn filter_ordered<F>(
+        self,
+        mut predicate: F,
+    ) -> FluxionStream<impl Stream<Item = T> + Send + Sync>
+    where
+        S: Send + Sync + Unpin + 'static,
+        F: FnMut(&T::Inner) -> bool + Send + Sync + 'static,
+    {
+        let inner = self.into_inner();
+        FluxionStream::new(inner.filter(move |item| {
+            let inner = item.get();
+            let result = predicate(inner);
+            futures::future::ready(result)
+        }))
+    }
+
     pub fn combine_with_previous(
         self,
     ) -> FluxionStream<

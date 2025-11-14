@@ -16,15 +16,16 @@ async fn test_map_ordered_basic_transformation() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
-    let mut stream = stream
-        .combine_with_previous()
-        .map_ordered(|item: WithPrevious<Sequenced<TestData>>| {
-            format!(
-                "Previous: {:?}, Current: {}",
-                item.previous.map(|p| p.get().to_string()),
-                item.current.get()
-            )
-        });
+    let mut stream =
+        stream
+            .combine_with_previous()
+            .map_ordered(|item: WithPrevious<Sequenced<TestData>>| {
+                format!(
+                    "Previous: {:?}, Current: {}",
+                    item.previous.map(|p| p.get().to_string()),
+                    item.current.get()
+                )
+            });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap();
@@ -61,24 +62,25 @@ async fn test_map_ordered_to_struct() {
 
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
-    let mut stream = stream
-        .combine_with_previous()
-        .map_ordered(|item: WithPrevious<Sequenced<TestData>>| {
-            let current_age = match &item.current.get() {
-                TestData::Person(p) => p.age,
-                _ => 0,
-            };
-            let previous_age = item.previous.as_ref().and_then(|prev| match &prev.get() {
-                TestData::Person(p) => Some(p.age),
-                _ => None,
+    let mut stream =
+        stream
+            .combine_with_previous()
+            .map_ordered(|item: WithPrevious<Sequenced<TestData>>| {
+                let current_age = match &item.current.get() {
+                    TestData::Person(p) => p.age,
+                    _ => 0,
+                };
+                let previous_age = item.previous.as_ref().and_then(|prev| match &prev.get() {
+                    TestData::Person(p) => Some(p.age),
+                    _ => None,
+                });
+                let age_increased = previous_age.map_or(false, |prev| current_age > prev);
+                AgeComparison {
+                    previous_age,
+                    current_age,
+                    age_increased,
+                }
             });
-            let age_increased = previous_age.map_or(false, |prev| current_age > prev);
-            AgeComparison {
-                previous_age,
-                current_age,
-                age_increased,
-            }
-        });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
@@ -131,20 +133,19 @@ async fn test_map_ordered_extract_age_difference() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
-    let mut stream =
-        stream
-            .combine_with_previous()
-            .map_ordered(|item: WithPrevious<Sequenced<TestData>>| -> i32 {
-                let current_age = match &item.current.get() {
-                    TestData::Person(p) => p.age as i32,
-                    _ => 0,
-                };
-                let previous_age = item.previous.as_ref().and_then(|prev| match &prev.get() {
-                    TestData::Person(p) => Some(p.age as i32),
-                    _ => None,
-                });
-                current_age - previous_age.unwrap_or(current_age)
+    let mut stream = stream.combine_with_previous().map_ordered(
+        |item: WithPrevious<Sequenced<TestData>>| -> i32 {
+            let current_age = match &item.current.get() {
+                TestData::Person(p) => p.age as i32,
+                _ => 0,
+            };
+            let previous_age = item.previous.as_ref().and_then(|prev| match &prev.get() {
+                TestData::Person(p) => Some(p.age as i32),
+                _ => None,
             });
+            current_age - previous_age.unwrap_or(current_age)
+        },
+    );
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
@@ -200,15 +201,16 @@ async fn test_map_ordered_preserves_ordering() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
-    let mut stream = stream
-        .combine_with_previous()
-        .map_ordered(|item: WithPrevious<Sequenced<TestData>>| {
-            // Extract name from current
-            match &item.current.get() {
-                TestData::Person(p) => p.name.clone(),
-                _ => String::from("Unknown"),
-            }
-        });
+    let mut stream =
+        stream
+            .combine_with_previous()
+            .map_ordered(|item: WithPrevious<Sequenced<TestData>>| {
+                // Extract name from current
+                match &item.current.get() {
+                    TestData::Person(p) => p.name.clone(),
+                    _ => String::from("Unknown"),
+                }
+            });
 
     // Act
     tx.send(Sequenced::new(person_alice())).unwrap();
@@ -228,15 +230,16 @@ async fn test_map_ordered_multiple_transformations() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
-    let mut stream = stream
-        .combine_with_previous()
-        .map_ordered(|item: WithPrevious<Sequenced<TestData>>| {
-            // First transformation: extract age
-            match &item.current.get() {
-                TestData::Person(p) => p.age,
-                _ => 0,
-            }
-        });
+    let mut stream =
+        stream
+            .combine_with_previous()
+            .map_ordered(|item: WithPrevious<Sequenced<TestData>>| {
+                // First transformation: extract age
+                match &item.current.get() {
+                    TestData::Person(p) => p.age,
+                    _ => 0,
+                }
+            });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap();
@@ -262,35 +265,36 @@ async fn test_map_ordered_with_complex_closure() {
         changed_from_previous: bool,
     }
 
-    let mut stream = stream
-        .combine_with_previous()
-        .map_ordered(|item: WithPrevious<Sequenced<TestData>>| {
-            let current = match &item.current.get() {
-                TestData::Person(p) => p,
-                _ => panic!("Expected person"),
-            };
+    let mut stream =
+        stream
+            .combine_with_previous()
+            .map_ordered(|item: WithPrevious<Sequenced<TestData>>| {
+                let current = match &item.current.get() {
+                    TestData::Person(p) => p,
+                    _ => panic!("Expected person"),
+                };
 
-            let age_category = match current.age {
-                0..=17 => "child",
-                18..=29 => "young adult",
-                30..=59 => "adult",
-                _ => "senior",
-            };
+                let age_category = match current.age {
+                    0..=17 => "child",
+                    18..=29 => "young adult",
+                    30..=59 => "adult",
+                    _ => "senior",
+                };
 
-            let changed_from_previous = item.previous.as_ref().map_or(true, |prev| {
-                if let TestData::Person(prev_person) = &prev.get() {
-                    prev_person.name != current.name
-                } else {
-                    true
+                let changed_from_previous = item.previous.as_ref().map_or(true, |prev| {
+                    if let TestData::Person(prev_person) = &prev.get() {
+                        prev_person.name != current.name
+                    } else {
+                        true
+                    }
+                });
+
+                PersonSummary {
+                    name: current.name.clone(),
+                    age_category,
+                    changed_from_previous,
                 }
             });
-
-            PersonSummary {
-                name: current.name.clone(),
-                age_category,
-                changed_from_previous,
-            }
-        });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
@@ -332,22 +336,23 @@ async fn test_map_ordered_boolean_logic() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
-    let mut stream = stream
-        .combine_with_previous()
-        .map_ordered(|item: WithPrevious<Sequenced<TestData>>| {
-            // Returns true if age increased from previous
-            let current_age = match &item.current.get() {
-                TestData::Person(p) => p.age,
-                _ => 0,
-            };
-            item.previous.as_ref().map_or(false, |prev| {
-                if let TestData::Person(p) = &prev.get() {
-                    current_age > p.age
-                } else {
-                    false
-                }
-            })
-        });
+    let mut stream =
+        stream
+            .combine_with_previous()
+            .map_ordered(|item: WithPrevious<Sequenced<TestData>>| {
+                // Returns true if age increased from previous
+                let current_age = match &item.current.get() {
+                    TestData::Person(p) => p.age,
+                    _ => 0,
+                };
+                item.previous.as_ref().map_or(false, |prev| {
+                    if let TestData::Person(p) = &prev.get() {
+                        current_age > p.age
+                    } else {
+                        false
+                    }
+                })
+            });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
@@ -365,4 +370,3 @@ async fn test_map_ordered_boolean_logic() {
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
     assert_eq!(stream.next().await.unwrap(), false); // 25 < 28
 }
-
