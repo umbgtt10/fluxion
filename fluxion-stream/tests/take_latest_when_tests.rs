@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::{combine_latest::CombinedState, take_latest_when::TakeLatestWhenExt};
+use fluxion_stream::take_latest_when::TakeLatestWhenExt;
 use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
@@ -17,7 +17,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_take_latest_when_empty_streams() {
-    let filter_fn = |_: &CombinedState<TestData>| -> bool { true };
+    let filter_fn = |_: &TestData| -> bool { true };
 
     // Arrange
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
@@ -45,9 +45,8 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let state = state.get_state().first().unwrap().clone();
-        match state {
+    let filter_fn = |filter_val: &TestData| -> bool {
+        match filter_val {
             TestData::Animal(animal) => animal.legs > 5,
             _ => false,
         }
@@ -73,14 +72,12 @@ async fn test_take_latest_when_filter_satisfied_emits() {
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let filter_value = state.get_state()[1].clone();
-
-        match filter_value {
+    let filter_fn = |filter_val: &TestData| -> bool {
+        match filter_val {
             TestData::Animal(animal) => animal.legs > 5,
             _ => {
                 panic!(
-                    "Expected the filter stream to emit an Animal value. But it emitted: {filter_value:?} instead!"
+                    "Expected the filter stream to emit an Animal value. But it emitted: {filter_val:?} instead!"
                 );
             }
         }
@@ -111,13 +108,11 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let filter_value = state.get_state()[1].clone();
-
-        match filter_value {
+    let filter_fn = |filter_val: &TestData| -> bool {
+        match filter_val {
             TestData::Animal(animal) => animal.legs > 5,
             _ => panic!(
-                "Expected the filter stream to emit an Animal value. But it emitted: {filter_value:?} instead!",
+                "Expected the filter stream to emit an Animal value. But it emitted: {filter_val:?} instead!",
             ),
         }
     };
@@ -159,13 +154,11 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let filter_value = state.get_state()[1].clone();
-
-        match filter_value {
+    let filter_fn = |filter_val: &TestData| -> bool {
+        match filter_val {
             TestData::Animal(animal) => animal.legs > 5,
             _ => panic!(
-                "Expected the filter stream to emit an Animal value. But it emitted: {filter_value:?} instead!",
+                "Expected the filter stream to emit an Animal value. But it emitted: {filter_val:?} instead!",
             ),
         }
     };
@@ -203,13 +196,11 @@ async fn test_take_latest_when_filter_toggle_emissions() {
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let filter_value = state.get_state()[1].clone();
-
-        match filter_value {
+    let filter_fn = |filter_val: &TestData| -> bool {
+        match filter_val {
             TestData::Animal(animal) => animal.legs > 5,
             _ => panic!(
-                "Expected the filter stream to emit an Animal value. But it emitted: {filter_value:?} instead!",
+                "Expected the filter stream to emit an Animal value. But it emitted: {filter_val:?} instead!",
             ),
         }
     };
@@ -260,9 +251,8 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let filter_value = state.get_state()[1].clone();
-        match filter_value {
+    let filter_fn = |filter_val: &TestData| -> bool {
+        match filter_val {
             TestData::Animal(animal) => animal.legs > 5,
             _ => false,
         }
@@ -311,9 +301,8 @@ async fn test_take_latest_when_source_publishes_before_filter() {
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let filter_value = state.get_state()[1].clone();
-        match filter_value {
+    let filter_fn = |filter_val: &TestData| -> bool {
+        match filter_val {
             TestData::Animal(animal) => animal.legs > 5,
             _ => false,
         }
@@ -367,9 +356,8 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let filter_value = state.get_state()[1].clone();
-        match filter_value {
+    let filter_fn = |filter_val: &TestData| -> bool {
+        match filter_val {
             TestData::Animal(animal) => animal.legs > 5,
             _ => false,
         }
@@ -425,9 +413,8 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let filter_value = state.get_state()[1].clone();
-        match filter_value {
+    let filter_fn = |filter_val: &TestData| -> bool {
+        match filter_val {
             TestData::Animal(animal) => animal.legs > 5,
             _ => false,
         }
@@ -486,7 +473,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
 
 #[tokio::test]
 async fn test_take_latest_when_boundary_empty_string_zero_values() {
-    let filter_fn: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
+    let filter_fn: fn(&TestData) -> bool = |_: &TestData| true;
 
     // Arrange: Test boundary values (empty strings, zero numeric values)
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
@@ -527,7 +514,7 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() {
 
 #[tokio::test]
 async fn test_take_latest_when_boundary_maximum_concurrent_streams() {
-    let filter_fn: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
+    let filter_fn: fn(&TestData) -> bool = |_: &TestData| true;
 
     // Arrange: Test concurrent handling with many parallel streams
     let num_concurrent: u32 = 50;
@@ -578,7 +565,7 @@ async fn test_take_latest_when_boundary_maximum_concurrent_streams() {
 #[should_panic(expected = "Filter panicked")]
 async fn test_take_latest_when_filter_panics() {
     // Arrange:
-    let filter_fn = |_: &CombinedState<TestData>| -> bool {
+    let filter_fn = |_: &TestData| -> bool {
         panic!("Filter panicked");
     };
 

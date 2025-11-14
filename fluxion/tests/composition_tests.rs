@@ -10,11 +10,11 @@ use fluxion_test_utils::test_data::{
 use fluxion_test_utils::{FluxionChannel, TestChannels};
 use futures::StreamExt;
 
-static FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+static FILTER: fn(&TestData) -> bool = |_| true;
 static COMBINE_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
 static WITH_LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
-static LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
-static LATEST_FILTER_COMBINED: fn(&CombinedState<CombinedState<TestData>>) -> bool = |_| true;
+static LATEST_FILTER: fn(&TestData) -> bool = |_| true;
+static LATEST_FILTER_COMBINED: fn(&CombinedState<TestData>) -> bool = |_| true;
 
 #[tokio::test]
 async fn test_fluxion_stream_composition() {
@@ -429,14 +429,14 @@ async fn test_ordered_merge_then_take_latest_when() {
 #[tokio::test]
 async fn test_take_latest_when_then_ordered_merge() {
     // Arrange
-    static LATEST_FILTER: fn(&CombinedState<TestData>) -> bool = |_| true;
+    static LATEST_FILTER_LOCAL: fn(&TestData) -> bool = |_| true;
 
     let source: FluxionChannel<TestData> = FluxionChannel::new();
     let filter: FluxionChannel<TestData> = FluxionChannel::new();
     let animal: FluxionChannel<TestData> = FluxionChannel::new();
 
     let composed = FluxionStream::new(source.stream)
-        .take_latest_when(filter.stream, LATEST_FILTER)
+        .take_latest_when(filter.stream, LATEST_FILTER_LOCAL)
         .ordered_merge(vec![animal.stream]);
 
     // Act & Assert

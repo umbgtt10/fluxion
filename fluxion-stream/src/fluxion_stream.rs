@@ -5,6 +5,7 @@
 use crate::Ordered;
 use crate::combine_latest::{CombineLatestExt, CombinedState};
 use crate::combine_with_previous::CombineWithPreviousExt;
+use crate::emit_when::EmitWhenExt;
 use crate::ordered_merge::OrderedStreamExt;
 use crate::take_latest_when::TakeLatestWhenExt;
 use crate::take_while_with::TakeWhileExt;
@@ -147,7 +148,7 @@ where
     pub fn take_latest_when<SF>(
         self,
         filter_stream: SF,
-        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
+        filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
     ) -> FluxionStream<Pin<Box<dyn Stream<Item = T> + Send + Sync>>>
     where
         S: Stream<Item = T> + Send + Sync + 'static,
@@ -155,6 +156,24 @@ where
     {
         let inner = self.into_inner();
         FluxionStream::new(TakeLatestWhenExt::take_latest_when(
+            inner,
+            filter_stream,
+            filter,
+        ))
+    }
+
+    /// Emits the latest value from source when filter predicate is satisfied (original behavior)
+    pub fn emit_when<SF>(
+        self,
+        filter_stream: SF,
+        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
+    ) -> FluxionStream<Pin<Box<dyn Stream<Item = T> + Send + Sync>>>
+    where
+        S: Stream<Item = T> + Send + Sync + 'static,
+        SF: Stream<Item = T> + Send + Sync + 'static,
+    {
+        let inner = self.into_inner();
+        FluxionStream::new(EmitWhenExt::emit_when(
             inner,
             filter_stream,
             filter,

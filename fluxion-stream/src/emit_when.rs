@@ -1,8 +1,9 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umberto.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::Ordered;
+use crate::combine_latest::CombinedState;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::safe_lock;
 use fluxion_ordered_merge::OrderedMergeExt;
@@ -11,15 +12,15 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-pub trait TakeLatestWhenExt<T>: Stream<Item = T> + Sized
+pub trait EmitWhenExt<T>: Stream<Item = T> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
-    fn take_latest_when<IS>(
+    fn emit_when<IS>(
         self,
         filter_stream: IS,
-        filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
+        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
     ) -> Pin<Box<dyn Stream<Item = T> + Send + Sync>>
     where
         IS: IntoStream<Item = T>,
@@ -27,7 +28,7 @@ where
 }
 
 #[derive(Clone, Debug)]
-struct TakeLatestState<T>
+struct EmitWhenState<T>
 where
     T: Clone,
 {
@@ -35,7 +36,7 @@ where
     filter_value: Option<T>,
 }
 
-impl<T> TakeLatestState<T>
+impl<T> EmitWhenState<T>
 where
     T: Clone,
 {
@@ -49,19 +50,27 @@ where
     const fn is_complete(&self) -> bool {
         self.source_value.is_some() && self.filter_value.is_some()
     }
+
+    fn get_values(&self) -> Option<Vec<T>> {
+        if let (Some(source), Some(filter)) = (&self.source_value, &self.filter_value) {
+            Some(vec![source.clone(), filter.clone()])
+        } else {
+            None
+        }
+    }
 }
 
 type IndexedStream<T> = Pin<Box<dyn Stream<Item = (T, usize)> + Send + Sync>>;
-impl<T, S> TakeLatestWhenExt<T> for S
+impl<T, S> EmitWhenExt<T> for S
 where
     S: Stream<Item = T> + Send + Sync + 'static,
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
-    fn take_latest_when<IS>(
+    fn emit_when<IS>(
         self,
         filter_stream: IS,
-        filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
+        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
     ) -> Pin<Box<dyn Stream<Item = T> + Send + Sync>>
     where
         IS: IntoStream<Item = T>,
@@ -72,7 +81,7 @@ where
 
         let streams: Vec<IndexedStream<T>> = vec![source_stream, filter_stream];
 
-        let state = Arc::new(Mutex::new(TakeLatestState::new()));
+        let state = Arc::new(Mutex::new(EmitWhenState::new()));
         let filter = Arc::new(filter);
 
         Box::pin(
@@ -83,10 +92,10 @@ where
                     let filter = Arc::clone(&filter);
                     let order = ordered_value.order();
                     async move {
-                        let mut state = match safe_lock(&state, "take_latest_when state") {
+                        let mut state = match safe_lock(&state, "emit_when state") {
                             Ok(lock) => lock,
                             Err(e) => {
-                                error!("Failed to acquire lock in take_latest_when: {}", e);
+                                error!("Failed to acquire lock in emit_when: {}", e);
                                 return None;
                             }
                         };
@@ -96,22 +105,21 @@ where
                             1 => state.filter_value = Some(ordered_value.get().clone()),
                             _ => {
                                 warn!(
-                                    "take_latest_when: unexpected stream index {} – ignoring",
+                                    "emit_when: unexpected stream index {} – ignoring",
                                     index
                                 );
                             }
                         }
 
                         if state.is_complete() {
-                            if let Some(filter_val) = &state.filter_value {
-                                if filter(filter_val) {
-                                    state
-                                        .source_value
-                                        .clone()
-                                        .map(|source| T::with_order(source, order))
-                                } else {
-                                    None
-                                }
+                            let values = state.get_values()?;
+                            let combined_state = CombinedState::new(values);
+
+                            if filter(&combined_state) {
+                                state
+                                    .source_value
+                                    .clone()
+                                    .map(|source| T::with_order(source, order))
                             } else {
                                 None
                             }

@@ -9,7 +9,8 @@ use fluxion_test_utils::test_data::{
 use fluxion_test_utils::TestChannel;
 use futures::StreamExt;
 
-static ALWAYS_TRUE: fn(&CombinedState<TestData>) -> bool = |_| true;
+static ALWAYS_TRUE: fn(&TestData) -> bool = |_| true;
+static ALWAYS_TRUE_COMBINED: fn(&CombinedState<TestData>) -> bool = |_| true;
 
 #[tokio::test]
 async fn test_functional_combine_latest() {
@@ -23,7 +24,7 @@ async fn test_functional_combine_latest() {
     let person_stream = FluxionStream::new(person_chan.stream);
     let animal_stream = FluxionStream::new(animal_chan.stream);
 
-    let mut combined = person_stream.combine_latest(vec![animal_stream], ALWAYS_TRUE);
+    let mut combined = person_stream.combine_latest(vec![animal_stream], ALWAYS_TRUE_COMBINED);
 
     // Act
     person_sender.send(person_alice()).unwrap();
@@ -154,7 +155,7 @@ async fn test_functional_with_latest_from() {
     let primary_stream = FluxionStream::new(primary_chan.stream);
     let secondary_stream = FluxionStream::new(secondary_chan.into_stream());
 
-    let mut combined = primary_stream.with_latest_from(secondary_stream, ALWAYS_TRUE);
+    let mut combined = primary_stream.with_latest_from(secondary_stream, ALWAYS_TRUE_COMBINED);
 
     // Act
     secondary_sender.send(animal_dog()).unwrap();
