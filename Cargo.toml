@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "fluxion",
     "fluxion-core",
     "fluxion-error",
     "fluxion-ordered-merge",
