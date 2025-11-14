@@ -4,26 +4,32 @@
 
 use fluxion_stream::{combine_latest::CombinedState, take_latest_when::TakeLatestWhenExt};
 use fluxion_test_utils::{
-    TestChannels,
     helpers::assert_no_element_emitted,
-    push,
     test_data::{
         TestData, animal, animal_ant, animal_cat, animal_dog, person, person_alice, person_bob,
         person_charlie, person_dave,
     },
 };
+use fluxion_test_utils::sequenced::Sequenced;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use futures::StreamExt;
+
 
 #[tokio::test]
 async fn test_take_latest_when_empty_streams() {
     let filter_fn = |_: &CombinedState<TestData>| -> bool { true };
 
     // Arrange
-    let (source, filter) = TestChannels::two();
-    drop(source.sender);
-    drop(filter.sender);
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    drop(source_tx);
+    drop(filter_tx);
 
-    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+
+    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act & Assert
@@ -37,7 +43,8 @@ async fn test_take_latest_when_empty_streams() {
 #[tokio::test]
 async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
     // Arrange
-    let (source, filter) = TestChannels::two();
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let state = state.get_state().first().unwrap().clone();
@@ -47,12 +54,15 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+
+    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act
-    push(person_alice(), &source.sender);
-    push(animal_dog(), &filter.sender);
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
+    filter_tx.send(Sequenced::new(animal_dog())).unwrap();
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -61,7 +71,8 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
 #[tokio::test]
 async fn test_take_latest_when_filter_satisfied_emits() {
     // Arrange
-    let (source, filter) = TestChannels::two();
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
@@ -76,11 +87,14 @@ async fn test_take_latest_when_filter_satisfied_emits() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+
+    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act
-    push(person_alice(), &source.sender);
-    push(animal_ant(), &filter.sender);
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
+    filter_tx.send(Sequenced::new(animal_ant())).unwrap();
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
@@ -95,7 +109,8 @@ async fn test_take_latest_when_filter_satisfied_emits() {
 #[tokio::test]
 async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     // Arrange
-    let (source, filter) = TestChannels::two();
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
@@ -108,11 +123,14 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+
+    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act
-    push(person_alice(), &source.sender);
-    push(animal_ant(), &filter.sender);
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
+    filter_tx.send(Sequenced::new(animal_ant())).unwrap();
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
@@ -125,7 +143,7 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     );
 
     // Act
-    push(person_bob(), &source.sender);
+    source_tx.send(Sequenced::new(person_bob())).unwrap();
 
     // Assert
     let second_item = output_stream.next().await.unwrap();
@@ -139,7 +157,8 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
 #[tokio::test]
 async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     // Arrange
-    let (source, filter) = TestChannels::two();
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
@@ -152,11 +171,14 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+
+    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act
-    push(animal_ant(), &filter.sender);
-    push(person_charlie(), &source.sender);
+    filter_tx.send(Sequenced::new(animal_ant())).unwrap();
+    source_tx.send(Sequenced::new(person_charlie())).unwrap();
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
@@ -169,8 +191,8 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     );
 
     // Act
-    push(animal_cat(), &filter.sender);
-    push(person_dave(), &source.sender);
+    filter_tx.send(Sequenced::new(animal_cat())).unwrap();
+    source_tx.send(Sequenced::new(person_dave())).unwrap();
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -179,7 +201,8 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
 #[tokio::test]
 async fn test_take_latest_when_filter_toggle_emissions() {
     // Arrange
-    let (source, filter) = TestChannels::two();
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
@@ -192,12 +215,15 @@ async fn test_take_latest_when_filter_toggle_emissions() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+
+    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act: filter true, then source -> emit
-    push(animal_ant(), &filter.sender); // legs 6 -> true
-    push(person_alice(), &source.sender);
+    filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
     let first = output_stream.next().await.unwrap();
     assert_eq!(
         first.get(),
@@ -206,12 +232,12 @@ async fn test_take_latest_when_filter_toggle_emissions() {
     );
 
     // Act: filter false, then source -> no emit
-    push(animal_cat(), &filter.sender); // legs 4 -> false
-    push(person_bob(), &source.sender);
+    filter_tx.send(Sequenced::new(animal_cat())).unwrap(); // legs 4 -> false
+    source_tx.send(Sequenced::new(person_bob())).unwrap();
     fluxion_test_utils::helpers::assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: filter true again -> should emit the latest buffered source (Bob)
-    push(animal_ant(), &filter.sender); // true
+    filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // true
     let third = output_stream.next().await.unwrap();
     assert_eq!(
         third.get(),
@@ -220,7 +246,7 @@ async fn test_take_latest_when_filter_toggle_emissions() {
     );
 
     // Act: then source emits another -> emit immediately with true filter
-    push(person_charlie(), &source.sender);
+    source_tx.send(Sequenced::new(person_charlie())).unwrap();
     let fourth = output_stream.next().await.unwrap();
     assert_eq!(
         fourth.get(),
@@ -232,7 +258,8 @@ async fn test_take_latest_when_filter_toggle_emissions() {
 #[tokio::test]
 async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
     // Arrange
-    let (source, filter) = TestChannels::two();
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
@@ -242,12 +269,15 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+
+    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Prime both streams so a first emission can happen
-    push(animal_ant(), &filter.sender); // true
-    push(person_alice(), &source.sender);
+    filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // true
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
     let first = output_stream.next().await.unwrap();
     assert_eq!(
         first.get(),
@@ -256,10 +286,10 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
     );
 
     // Close the filter stream
-    drop(filter.sender);
+    drop(filter_tx);
 
     // With the last filter value still true, further source events should continue to emit
-    push(person_bob(), &source.sender);
+    source_tx.send(Sequenced::new(person_bob())).unwrap();
     let second = output_stream.next().await.unwrap();
     assert_eq!(
         second.get(),
@@ -267,7 +297,7 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
         "Should emit Bob with persisted filter value after filter stream closes"
     );
 
-    push(person_charlie(), &source.sender);
+    source_tx.send(Sequenced::new(person_charlie())).unwrap();
     let third = output_stream.next().await.unwrap();
     assert_eq!(
         third.get(),
@@ -279,7 +309,8 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
 #[tokio::test]
 async fn test_take_latest_when_source_publishes_before_filter() {
     // Arrange
-    let (source, filter) = TestChannels::two();
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
@@ -289,17 +320,20 @@ async fn test_take_latest_when_source_publishes_before_filter() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+
+    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act: Source publishes first (before filter has any value)
-    push(person_alice(), &source.sender);
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
 
     // Assert: No emission yet (waiting for filter)
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Filter publishes with true condition
-    push(animal_ant(), &filter.sender); // legs 6 -> true
+    filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true
 
     // Assert: Now we get the buffered source value
     let first = output_stream.next().await.unwrap();
@@ -310,14 +344,14 @@ async fn test_take_latest_when_source_publishes_before_filter() {
     );
 
     // Act: Filter changes to false first, THEN source updates
-    push(animal_cat(), &filter.sender); // legs 4 -> false
-    push(person_bob(), &source.sender);
+    filter_tx.send(Sequenced::new(animal_cat())).unwrap(); // legs 4 -> false
+    source_tx.send(Sequenced::new(person_bob())).unwrap();
 
     // Assert: No emission (filter is false when Bob arrives and after)
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Filter becomes true again
-    push(animal_ant(), &filter.sender); // legs 6 -> true
+    filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true
 
     // Assert: Emits the buffered Bob
     let second = output_stream.next().await.unwrap();
@@ -331,7 +365,8 @@ async fn test_take_latest_when_source_publishes_before_filter() {
 #[tokio::test]
 async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
     // Arrange
-    let (source, filter) = TestChannels::two();
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
@@ -341,23 +376,26 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+
+    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act: Start with filter false
-    push(animal_cat(), &filter.sender); // legs 4 -> false
+    filter_tx.send(Sequenced::new(animal_cat())).unwrap(); // legs 4 -> false
 
     // Act: Source publishes multiple times while filter remains false
-    push(person_alice(), &source.sender);
-    push(person_bob(), &source.sender);
-    push(person_charlie(), &source.sender);
-    push(person_dave(), &source.sender);
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
+    source_tx.send(Sequenced::new(person_bob())).unwrap();
+    source_tx.send(Sequenced::new(person_charlie())).unwrap();
+    source_tx.send(Sequenced::new(person_dave())).unwrap();
 
     // Assert: No emissions yet
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Filter becomes true
-    push(animal_ant(), &filter.sender); // legs 6 -> true
+    filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true
 
     // Assert: Only the LATEST source value (Dave) is emitted, not all previous ones
     let first = output_stream.next().await.unwrap();
@@ -371,7 +409,7 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Source publishes again with filter still true
-    push(person_alice(), &source.sender);
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
 
     // Assert: Emits immediately
     let second = output_stream.next().await.unwrap();
@@ -385,7 +423,8 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
 #[tokio::test]
 async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     // Arrange
-    let (source, filter) = TestChannels::two();
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let filter_value = state.get_state()[1].clone();
@@ -395,22 +434,25 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
         }
     };
 
-    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+
+    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act: Set filter to false
-    push(animal_cat(), &filter.sender); // legs 4 -> false
+    filter_tx.send(Sequenced::new(animal_cat())).unwrap(); // legs 4 -> false
 
     // Act: Publish a large number of source events while filter is false
     for i in 0u32..10000u32 {
-        source.sender.send(person(format!("Person{i}"), i)).unwrap();
+        source_tx.send(Sequenced::new(person(format!("Person{i}"), i))).unwrap();
     }
 
     // Assert: No emissions yet
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Filter becomes true
-    push(animal_ant(), &filter.sender); // legs 6 -> true
+    filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true
 
     // Assert: Only the LATEST value is emitted (Person9999)
     let first = output_stream.next().await.unwrap();
@@ -420,16 +462,16 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Toggle filter false and publish more
-    push(animal_dog(), &filter.sender); // legs 4 -> false
+    filter_tx.send(Sequenced::new(animal_dog())).unwrap(); // legs 4 -> false
     for i in 10000u32..20000u32 {
-        source.sender.send(person(format!("Person{i}"), i)).unwrap();
+        source_tx.send(Sequenced::new(person(format!("Person{i}"), i))).unwrap();
     }
 
     // Assert: Still no emissions
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Filter true again
-    push(animal_ant(), &filter.sender); // legs 6 -> true
+    filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true
 
     // Assert: Only the latest from the second batch (Person19999)
     let second = output_stream.next().await.unwrap();
@@ -444,16 +486,20 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() {
     let filter_fn: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
 
     // Arrange: Test boundary values (empty strings, zero numeric values)
-    let (source, filter) = TestChannels::two();
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
-    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+
+    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
     let mut output_stream = Box::pin(output_stream);
 
     // Act: Send empty string with zero value to source
-    push(person(String::new(), 0), &source.sender);
+    source_tx.send(Sequenced::new(person(String::new(), 0))).unwrap();
 
     // Act: Send filter trigger with empty/zero
-    push(animal(String::new(), 0), &filter.sender);
+    filter_tx.send(Sequenced::new(animal(String::new(), 0))).unwrap();
 
     // Assert: Should emit the boundary value
     let result = output_stream.next().await.unwrap();
@@ -464,8 +510,8 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() {
     );
 
     // Act: Update to normal values
-    push(person_alice(), &source.sender);
-    push(animal_dog(), &filter.sender);
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
+    filter_tx.send(Sequenced::new(animal_dog())).unwrap();
 
     // Assert: Should emit normal value
     let result2 = output_stream.next().await.unwrap();
@@ -482,21 +528,24 @@ async fn test_take_latest_when_boundary_maximum_concurrent_streams() {
 
     for i in 0..num_concurrent {
         let handle = tokio::spawn(async move {
-            let (source, filter) = TestChannels::two();
-            let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+            let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+            let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+            let source_stream = UnboundedReceiverStream::new(source_rx);
+            let filter_stream = UnboundedReceiverStream::new(filter_rx);
+            let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
             let mut output_stream = Box::pin(output_stream);
 
-            // Act: Send values
-            push(person(format!("Person{i}"), i), &source.sender);
-            push(animal(format!("Animal{i}"), i), &filter.sender);
+            // Act: Send test values
+            source_tx.send(Sequenced::new(person(format!("Person{i}"), i))).unwrap();
+            filter_tx.send(Sequenced::new(animal(format!("Animal{i}"), i))).unwrap();
 
             // Assert: Should emit
             let result = output_stream.next().await.unwrap();
             assert_eq!(result.get(), &person(format!("Person{i}"), i));
 
             // Act: Update source and trigger again
-            push(person_bob(), &source.sender);
-            push(animal_cat(), &filter.sender);
+            source_tx.send(Sequenced::new(person_bob())).unwrap();
+            filter_tx.send(Sequenced::new(animal_cat())).unwrap();
 
             // Assert: Should emit updated value
             let result2 = output_stream.next().await.unwrap();
@@ -522,12 +571,15 @@ async fn test_take_latest_when_filter_panics() {
         panic!("Filter panicked");
     };
 
-    let (source, filter) = TestChannels::two();
-    let output_stream = source.stream.take_latest_when(filter.stream, filter_fn);
+    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let source_stream = UnboundedReceiverStream::new(source_rx);
+    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act
-    push(person_alice(), &source.sender);
-    push(animal_dog(), &filter.sender);
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
+    filter_tx.send(Sequenced::new(animal_dog())).unwrap();
 
     // Assert
     let mut output_stream = Box::pin(output_stream);
