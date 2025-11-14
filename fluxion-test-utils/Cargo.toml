@@ -20,6 +20,6 @@ tokio-stream = { workspace = true }
 [dev-dependencies]
 fluxion = { workspace = true }
 
-[package.metadata.cargo-udeps]
-ignore = ["fluxion"]
+[package.metadata.cargo-udeps.ignore]
+normal = ["fluxion"]
 
