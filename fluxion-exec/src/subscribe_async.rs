@@ -6,7 +6,10 @@ use async_trait::async_trait;
 use futures::stream::Stream;
 use futures::stream::StreamExt;
 use std::future::Future;
+use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
+
+use fluxion_error::{FluxionError, Result};
 
 /// Extension trait providing async subscription capabilities for streams.
 ///
@@ -25,8 +28,8 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// - Processes each stream item with the provided async handler
     /// - Spawns a new task for each item (non-blocking)
     /// - Continues until stream ends or cancellation token is triggered
-    /// - Errors from handlers are passed to the error callback
-    /// - If no error callback provided, errors are logged
+    /// - Errors from handlers are passed to the error callback if provided
+    /// - If no error callback provided, errors are collected and returned on completion
     ///
     /// # Arguments
     ///
@@ -35,7 +38,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// * `cancellation_token` - Optional token to stop processing. If `None`, a default
     ///                          token is created that never cancels.
     /// * `on_error_callback` - Optional error handler called when `on_next_func` returns
-    ///                         an error. If `None`, errors are logged.
+    ///                         an error. If `None`, errors are collected and returned.
     ///
     /// # Type Parameters
     ///
@@ -46,10 +49,12 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///
     /// # Errors
     ///
-    /// Returns `Ok(())` when the stream completes successfully. Errors from the handler
-    /// function (`on_next_func`) are passed to `on_error_callback` if provided, or logged
-    /// if no callback is provided. The subscription continues processing subsequent items
-    /// even if individual items fail, unless the cancellation token is triggered.
+    /// Returns `Err(FluxionError::MultipleErrors)` if any items failed to process and
+    /// no error callback was provided. If an error callback is provided, errors are
+    /// passed to it and the function returns `Ok(())` on stream completion.
+    ///
+    /// The subscription continues processing subsequent items even if individual items
+    /// fail, unless the cancellation token is triggered.
     ///
     /// # See Also
     ///
@@ -62,7 +67,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// use futures::StreamExt;
     /// use tokio_stream::wrappers::UnboundedReceiverStream;
     ///
-    /// # async fn example() {
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     /// let stream = UnboundedReceiverStream::new(rx);
     ///
@@ -74,7 +79,8 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///     },
     ///     None,
     ///     Some(|err| eprintln!("Error: {}", err))
-    /// ).await;
+    /// ).await?;
+    /// # Ok(())
     /// # }
     /// ```
     ///
@@ -84,7 +90,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// # use fluxion_exec::SubscribeAsyncExt;
     /// # use futures::StreamExt;
     /// # use tokio_util::sync::CancellationToken;
-    /// # async fn example() {
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// # let stream = futures::stream::iter(vec![1, 2, 3]);
     /// let cancel = CancellationToken::new();
     /// let cancel_clone = cancel.clone();
@@ -104,7 +110,8 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///     },
     ///     Some(cancel),
     ///     None
-    /// ).await;
+    /// ).await?;
+    /// # Ok(())
     /// # }
     /// ```
     ///
@@ -117,12 +124,13 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
         on_next_func: F,
         cancellation_token: Option<CancellationToken>,
         on_error_callback: Option<OnError>,
-    ) where
+    ) -> Result<()>
+    where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
-        Fut: Future<Output = Result<(), E>> + Send + 'static,
+        Fut: Future<Output = std::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
         T: std::fmt::Debug + Send + Clone + 'static,
-        E: std::error::Error + Send + 'static;
+        E: std::error::Error + Send + Sync + 'static;
 }
 
 #[async_trait]
@@ -136,14 +144,16 @@ where
         on_next_func: F,
         cancellation_token: Option<CancellationToken>,
         on_error_callback: Option<OnError>,
-    ) where
+    ) -> Result<()>
+    where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
-        Fut: Future<Output = Result<(), E>> + Send + 'static,
+        Fut: Future<Output = std::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
         T: std::fmt::Debug + Send + Clone + 'static,
-        E: std::error::Error + Send + 'static,
+        E: std::error::Error + Send + Sync + 'static,
     {
         let cancellation_token = cancellation_token.unwrap_or_default();
+        let errors: Arc<Mutex<Vec<E>>> = Arc::new(Mutex::new(Vec::new()));
 
         while let Some(item) = self.next().await {
             if cancellation_token.is_cancelled() {
@@ -153,6 +163,7 @@ where
             let on_next_func = on_next_func.clone();
             let cancellation_token = cancellation_token.clone();
             let on_error_callback = on_error_callback.clone();
+            let errors = errors.clone();
 
             tokio::spawn(async move {
                 let result = on_next_func(item.clone(), cancellation_token).await;
@@ -161,13 +172,25 @@ where
                     if let Some(on_error_callback) = on_error_callback {
                         on_error_callback(error);
                     } else {
-                        error!(
-                            "Unhandled error in subscribe_async while processing item: {:?}, error: {}",
-                            item, error
-                        );
+                        // Collect error for later aggregation
+                        if let Ok(mut errs) = errors.lock() {
+                            errs.push(error);
+                        }
                     }
                 }
             });
+        }
+
+        // Check if any errors were collected
+        let collected_errors = {
+            let mut guard = errors.lock().unwrap_or_else(|e| e.into_inner());
+            std::mem::take(&mut *guard)
+        };
+
+        if !collected_errors.is_empty() {
+            Err(FluxionError::from_user_errors(collected_errors))
+        } else {
+            Ok(())
         }
     }
 }

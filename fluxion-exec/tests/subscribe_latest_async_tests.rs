@@ -61,7 +61,8 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
-                .await;
+                .await
+                .expect("subscribe_latest_async should succeed");
         }
     });
 
@@ -172,7 +173,8 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
-                .await;
+                .await
+                .expect("subscribe_latest_async should succeed");
         }
     });
 
@@ -251,7 +253,8 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
-                .await;
+                .await
+                .expect("subscribe_latest_async should succeed");
         }
     });
 
@@ -325,7 +328,8 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), Some(cancellation_token))
-                .await;
+                .await
+                .expect("subscribe_latest_async should succeed");
         }
     });
 
@@ -401,7 +405,8 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), Some(cancellation_token))
-                .await;
+                .await
+                .expect("subscribe_latest_async should succeed");
         }
     });
 
@@ -494,7 +499,8 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
-                .await;
+                .await
+                .expect("subscribe_latest_async should succeed");
         }
     });
 
@@ -554,7 +560,8 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
-                .await;
+                .await
+                .expect("subscribe_latest_async should succeed");
         }
     });
 
@@ -631,7 +638,8 @@ async fn test_subscribe_latest_async_high_volume() {
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
-                .await;
+                .await
+                .expect("subscribe_latest_async should succeed");
         }
     });
 
@@ -702,7 +710,8 @@ async fn test_subscribe_latest_async_single_item() {
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
-                .await;
+                .await
+                .expect("subscribe_latest_async should succeed");
         }
     });
 
@@ -723,4 +732,64 @@ async fn test_subscribe_latest_async_single_item() {
     // Cleanup
     drop(tx);
     task_handle.await.unwrap();
+}
+
+#[tokio::test]
+async fn test_subscribe_latest_async_error_aggregation_without_callback() {
+    // Arrange
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = UnboundedReceiverStream::new(rx);
+    let stream = stream.map(|timestamped| timestamped.value);
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+
+    let func = {
+        let notify_tx = notify_tx.clone();
+        move |item: TestData, _ctx: CancellationToken| {
+            let notify_tx = notify_tx.clone();
+            async move {
+                let _ = notify_tx.send(());
+                if matches!(&item, TestData::Animal(_)) {
+                    Err(TestError::new(format!("Animals not allowed: {:?}", item)))
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    };
+
+    let task_handle = tokio::spawn({
+        async move {
+            stream
+                .subscribe_latest_async(func, Option::<fn(TestError)>::None, None) // No error callback
+                .await
+        }
+    });
+
+    // Act - Send mix of valid and invalid items
+    tx.send(Sequenced::new(person_alice())).unwrap();
+    notify_rx.recv().await.unwrap();
+
+    tx.send(Sequenced::new(animal_dog())).unwrap(); // Error
+    notify_rx.recv().await.unwrap();
+
+    tx.send(Sequenced::new(person_bob())).unwrap();
+    notify_rx.recv().await.unwrap();
+
+    tx.send(Sequenced::new(animal_cat())).unwrap(); // Error
+    notify_rx.recv().await.unwrap();
+
+    drop(tx);
+
+    // Assert - Should return MultipleErrors with 2 errors
+    let result = task_handle.await.unwrap();
+    assert!(result.is_err(), "Expected error aggregation");
+
+    let err = result.unwrap_err();
+    match err {
+        fluxion_error::FluxionError::MultipleErrors { count, errors } => {
+            assert_eq!(count, 2, "Expected 2 errors");
+            assert_eq!(errors.len(), 2, "Expected 2 error entries");
+        }
+        other => panic!("Expected MultipleErrors, got: {:?}", other),
+    }
 }

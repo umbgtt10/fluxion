@@ -210,6 +210,46 @@ impl FluxionError {
         Self::UserError(Box::new(error))
     }
 
+    /// Aggregate multiple user errors into a `MultipleErrors` variant
+    ///
+    /// This is useful for collecting errors from stream subscribers that don't have
+    /// error callbacks, allowing them to be propagated as a single error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fluxion_error::FluxionError;
+    ///
+    /// #[derive(Debug, thiserror::Error)]
+    /// #[error("Custom error: {msg}")]
+    /// struct CustomError {
+    ///     msg: String,
+    /// }
+    ///
+    /// let errors = vec![
+    ///     CustomError { msg: "first".to_string() },
+    ///     CustomError { msg: "second".to_string() },
+    /// ];
+    ///
+    /// let result = FluxionError::from_user_errors(errors);
+    /// assert!(matches!(result, FluxionError::MultipleErrors { count: 2, .. }));
+    /// ```
+    pub fn from_user_errors<E>(errors: Vec<E>) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        let count = errors.len();
+        let fluxion_errors = errors
+            .into_iter()
+            .map(|e| Self::UserError(Box::new(e)))
+            .collect();
+
+        Self::MultipleErrors {
+            count,
+            errors: fluxion_errors,
+        }
+    }
+
     /// Check if this is a recoverable error
     ///
     /// Some errors indicate transient failures that could succeed on retry.

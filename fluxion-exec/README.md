@@ -12,7 +12,7 @@ Async stream subscribers and execution utilities for fluxion.
 ## Subscribers
 
 ### `subscribe_async`
-Sequential processing of stream items with async handlers.
+Sequential processing of stream items with async handlers. Returns `Result<()>`.
 
 ```rust
 use fluxion_exec::subscribe_async::SubscribeAsyncExt;
@@ -26,11 +26,11 @@ stream
         None,  // Optional cancellation token
         Some(|err| eprintln!("Error: {:?}", err))
     )
-    .await;
+    .await?;
 ```
 
 ### `subscribe_latest_async`
-Parallel processing with automatic cancellation of outdated work.
+Parallel processing with automatic cancellation of outdated work. Returns `Result<()>`.
 
 ```rust
 use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
@@ -43,7 +43,7 @@ stream
         None,
         Some(|err| eprintln!("Error: {:?}", err))
     )
-    .await;
+    .await?;
 ```
 
 ## Use Cases

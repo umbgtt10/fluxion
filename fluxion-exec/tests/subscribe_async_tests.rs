@@ -65,7 +65,8 @@ async fn test_subscribe_async_processes_items_when_waiting_per_item() {
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
-                .await;
+                .await
+                .expect("subscribe_async should succeed");
         }
     });
 
@@ -157,7 +158,8 @@ async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() {
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
-                .await;
+                .await
+                .expect("subscribe_async should succeed");
         }
     });
 
@@ -230,7 +232,8 @@ async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() {
         async move {
             stream
                 .subscribe_async(func, Some(cancellation_token), Some(error_callback))
-                .await;
+                .await
+                .expect("subscribe_async should succeed");
         }
     });
 
@@ -309,7 +312,8 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
         async move {
             stream
                 .subscribe_async(func, Some(cancellation_token), Some(error_callback))
-                .await;
+                .await
+                .expect("subscribe_async should succeed");
         }
     });
 
@@ -388,7 +392,8 @@ async fn test_subscribe_async_empty_stream_completes_without_items() {
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
-                .await;
+                .await
+                .expect("subscribe_async should succeed");
         }
     });
 
@@ -462,7 +467,8 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() {
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
-                .await;
+                .await
+                .expect("subscribe_async should succeed");
         }
     });
 
@@ -534,7 +540,8 @@ async fn test_subscribe_async_high_volume_processes_all() {
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
-                .await;
+                .await
+                .expect("subscribe_async should succeed");
         }
     });
 
@@ -593,7 +600,8 @@ async fn test_subscribe_async_precancelled_token_processes_nothing() {
         async move {
             stream
                 .subscribe_async(func, Some(cancellation_token), Some(error_callback))
-                .await;
+                .await
+                .expect("subscribe_async should succeed");
         }
     });
 
@@ -607,4 +615,64 @@ async fn test_subscribe_async_precancelled_token_processes_nothing() {
 
     // Assert
     assert_eq!(*results.lock().await, Vec::<TestData>::new());
+}
+
+#[tokio::test]
+async fn test_subscribe_async_error_aggregation_without_callback() {
+    // Arrange
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = UnboundedReceiverStream::new(rx);
+    let stream = stream.map(|timestamped| timestamped.value);
+    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+
+    let func = {
+        let notify_tx = notify_tx.clone();
+        move |item: TestData, _ctx: CancellationToken| {
+            let notify_tx = notify_tx.clone();
+            async move {
+                let _ = notify_tx.send(());
+                if matches!(&item, TestData::Animal(_)) {
+                    Err(TestError::new(format!("Animals not allowed: {:?}", item)))
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    };
+
+    let task_handle = tokio::spawn({
+        async move {
+            stream
+                .subscribe_async(func, None, Option::<fn(TestError)>::None) // No error callback
+                .await
+        }
+    });
+
+    // Act - Send mix of valid and invalid items
+    tx.send(Sequenced::new(person_alice())).unwrap();
+    notify_rx.recv().await.unwrap();
+
+    tx.send(Sequenced::new(animal_dog())).unwrap(); // Error
+    notify_rx.recv().await.unwrap();
+
+    tx.send(Sequenced::new(person_bob())).unwrap();
+    notify_rx.recv().await.unwrap();
+
+    tx.send(Sequenced::new(animal_cat())).unwrap(); // Error
+    notify_rx.recv().await.unwrap();
+
+    drop(tx);
+
+    // Assert - Should return MultipleErrors with 2 errors
+    let result = task_handle.await.unwrap();
+    assert!(result.is_err(), "Expected error aggregation");
+
+    let err = result.unwrap_err();
+    match err {
+        fluxion_error::FluxionError::MultipleErrors { count, errors } => {
+            assert_eq!(count, 2, "Expected 2 errors");
+            assert_eq!(errors.len(), 2, "Expected 2 error entries");
+        }
+        other => panic!("Expected MultipleErrors, got: {:?}", other),
+    }
 }

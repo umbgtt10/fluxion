@@ -110,7 +110,7 @@ pub use fluxion_stream::combine_latest::CombinedState;
 ///
 /// This is the recommended way to use Fluxion in most applications.
 pub mod prelude {
-    
+
     pub use crate::FluxionStream;
     pub use fluxion_core::into_stream::IntoStream;
     pub use fluxion_core::Ordered;

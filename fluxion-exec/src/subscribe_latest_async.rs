@@ -8,6 +8,8 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, Notify};
 use tokio_util::sync::CancellationToken;
 
+use fluxion_error::{FluxionError, Result};
+
 /// Extension trait providing async subscription with automatic cancellation of outdated work.
 ///
 /// This trait enables processing stream items where newer items automatically cancel
@@ -47,10 +49,12 @@ where
     ///
     /// # Errors
     ///
-    /// Returns `Ok(())` when the stream completes. Errors from the handler function
-    /// are passed to `on_error_callback` if provided, or logged otherwise. Processing
-    /// continues with new items even if previous items failed, unless the cancellation
-    /// token is triggered.
+    /// Returns `Err(FluxionError::MultipleErrors)` if any items failed to process and
+    /// no error callback was provided. If an error callback is provided, errors are
+    /// passed to it and the function returns `Ok(())` on stream completion.
+    ///
+    /// Processing continues with new items even if previous items failed, unless the
+    /// cancellation token is triggered.
     ///
     /// # See Also
     ///
@@ -63,7 +67,7 @@ where
     /// use futures::StreamExt;
     /// use tokio_stream::wrappers::UnboundedReceiverStream;
     ///
-    /// # async fn example() {
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     /// let stream = UnboundedReceiverStream::new(rx);
     ///
@@ -83,7 +87,8 @@ where
     ///     },
     ///     Some(|err| eprintln!("Error: {}", err)),
     ///     None
-    /// ).await;
+    /// ).await?;
+    /// # Ok(())
     /// # }
     /// ```
     ///
@@ -108,11 +113,12 @@ where
         on_next_func: F,
         on_error_callback: Option<OnError>,
         cancellation_token: Option<CancellationToken>,
-    ) where
+    ) -> Result<()>
+    where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
-        Fut: std::future::Future<Output = Result<(), E>> + Send + 'static,
+        Fut: std::future::Future<Output = std::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
-        E: std::error::Error + Send + 'static,
+        E: std::error::Error + Send + Sync + 'static,
         T: std::fmt::Debug + Clone + Send + Sync + 'static;
 }
 
@@ -127,22 +133,26 @@ where
         on_next_func: F,
         on_error_callback: Option<OnError>,
         cancellation_token: Option<CancellationToken>,
-    ) where
+    ) -> Result<()>
+    where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
-        Fut: std::future::Future<Output = Result<(), E>> + Send + 'static,
+        Fut: std::future::Future<Output = std::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
-        E: std::error::Error + Send + 'static,
+        E: std::error::Error + Send + Sync + 'static,
         T: std::fmt::Debug + Clone + Send + Sync + 'static,
     {
         let state = Arc::new(Context::default());
         let cancellation_token = cancellation_token.unwrap_or_default();
         let state_for_wait = state.clone();
+        let errors: Arc<std::sync::Mutex<Vec<E>>> = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let errors_clone = errors.clone();
 
         self.for_each(move |new_data| {
             let on_next_func = on_next_func.clone();
             let state = state.clone();
             let cancellation_token = cancellation_token.clone();
             let on_error_callback = on_error_callback.clone();
+            let errors = errors.clone();
             async move {
                 if cancellation_token.is_cancelled() {
                     return;
@@ -162,10 +172,10 @@ where
                                 if let Some(on_error_callback) = on_error_callback.clone() {
                                     on_error_callback(error);
                                 } else {
-                                    error!(
-                                        "Unhandled error in subscribe_latest_async while processing item: {:?}, error: {}",
-                                        item, error
-                                    );
+                                    // Collect error for later aggregation
+                                    if let Ok(mut errs) = errors.lock() {
+                                        errs.push(error);
+                                    }
                                 }
                             }
 
@@ -185,6 +195,18 @@ where
 
         // Wait for any remaining processing tasks to complete
         state_for_wait.wait_for_processing_complete().await;
+
+        // Check if any errors were collected
+        let collected_errors = {
+            let mut guard = errors_clone.lock().unwrap_or_else(|e| e.into_inner());
+            std::mem::take(&mut *guard)
+        };
+
+        if !collected_errors.is_empty() {
+            Err(FluxionError::from_user_errors(collected_errors))
+        } else {
+            Ok(())
+        }
     }
 }
 
