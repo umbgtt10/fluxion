@@ -4,77 +4,14 @@
 
 //! Domain types for the RabbitMQ aggregator example
 
-use fluxion::Ordered;
+mod aggregated_event;
+mod data_event;
+mod metric_data;
+mod sensor_reading;
+mod system_event;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SensorReading {
-    pub timestamp: u64,
-    pub sensor_id: String,
-    pub temperature: i32, // Store as integer (e.g., temperature * 10)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct MetricData {
-    pub timestamp: u64,
-    pub metric_name: String,
-    pub value: u64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SystemEvent {
-    pub timestamp: u64,
-    pub event_type: String,
-    pub severity: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct AggregatedEvent {
-    pub timestamp: u64,
-    pub temperature: Option<i32>, // Store as integer (temp * 10)
-    pub metric_value: Option<u64>,
-    pub has_alert: bool,
-}
-
-impl Ordered for AggregatedEvent {
-    type Inner = AggregatedEvent;
-
-    fn order(&self) -> u64 {
-        self.timestamp
-    }
-
-    fn get(&self) -> &Self::Inner {
-        self
-    }
-
-    fn with_order(value: Self::Inner, _order: u64) -> Self {
-        value
-    }
-}
-
-/// Unified event type for combining different data sources
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum DataEvent {
-    Sensor(SensorReading),
-    Metric(MetricData),
-    SystemEvent(SystemEvent),
-}
-
-impl Ordered for DataEvent {
-    type Inner = DataEvent;
-
-    fn order(&self) -> u64 {
-        match self {
-            DataEvent::Sensor(s) => s.timestamp,
-            DataEvent::Metric(m) => m.timestamp,
-            DataEvent::SystemEvent(e) => e.timestamp,
-        }
-    }
-
-    fn get(&self) -> &Self::Inner {
-        self
-    }
-
-    fn with_order(value: Self::Inner, _order: u64) -> Self {
-        value // Just return the value since it already has the timestamp
-    }
-}
+pub use aggregated_event::AggregatedEvent;
+pub use data_event::DataEvent;
+pub use metric_data::MetricData;
+pub use sensor_reading::SensorReading;
+pub use system_event::SystemEvent;
