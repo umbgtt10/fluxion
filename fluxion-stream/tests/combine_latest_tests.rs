@@ -341,9 +341,9 @@ async fn combine_latest_stream_order_test(
 async fn test_combine_latest_with_identical_streams_emits_updates() {
     // Arrange
     let (stream1_tx, stream1_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let mut stream1 = UnboundedReceiverStream::new(stream1_rx);
+    let stream1 = UnboundedReceiverStream::new(stream1_rx);
     let (stream2_tx, stream2_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let mut stream2 = UnboundedReceiverStream::new(stream2_rx);
+    let stream2 = UnboundedReceiverStream::new(stream2_rx);
 
     let mut combined_stream = stream1.combine_latest(vec![stream2], FILTER);
 
