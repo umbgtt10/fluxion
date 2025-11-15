@@ -12,11 +12,75 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
+/// Extension trait providing the `emit_when` operator for ordered streams.
+///
+/// This operator gates a source stream based on conditions from a filter stream,
+/// emitting source values only when the combined state passes a predicate.
 pub trait EmitWhenExt<T>: Stream<Item = T> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
+    /// Emits source stream values only when the filter condition is satisfied.
+    ///
+    /// This operator maintains the latest values from both the source and filter streams,
+    /// creating a combined state. Source values are emitted only when this combined state
+    /// passes the provided filter predicate.
+    ///
+    /// # Behavior
+    ///
+    /// - Maintains latest value from both source and filter streams
+    /// - Evaluates predicate on `CombinedState` containing both values
+    /// - Emits source value when predicate returns `true`
+    /// - Both streams must emit at least once before any emission occurs
+    /// - Preserves temporal ordering of source stream
+    ///
+    /// # Arguments
+    ///
+    /// * `filter_stream` - Stream providing filter values for the gate condition
+    /// * `filter` - Predicate function that receives `CombinedState<T::Inner>` containing
+    ///   `[source_value, filter_value]` and returns `true` to emit.
+    ///
+    /// # Returns
+    ///
+    /// A pinned stream of `T` containing source values that pass the filter condition.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use fluxion_stream::{EmitWhenExt, FluxionStream};
+    /// use futures::StreamExt;
+    ///
+    /// # async fn example() {
+    /// let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
+    /// let enable_stream = FluxionStream::from_unbounded_receiver(rx_enable);
+    ///
+    /// // Emit data only when enable flag is true
+    /// let gated = data_stream.emit_when(
+    ///     enable_stream,
+    ///     |state| {
+    ///         let values = state.get_state();
+    ///         // values[0] = source, values[1] = filter
+    ///         values[1] == true  // Only emit when enabled
+    ///     }
+    /// );
+    ///
+    /// gated.for_each(|value| async move {
+    ///     println!("Emitted: {:?}", value.get());
+    /// }).await;
+    /// # }
+    /// ```
+    ///
+    /// # Use Cases
+    ///
+    /// - Conditional forwarding based on external signals
+    /// - State-dependent filtering
+    /// - Complex gating logic involving multiple stream values
+    ///
+    /// # Thread Safety
+    ///
+    /// Uses internal locks to maintain shared state. Lock errors are logged and
+    /// affected emissions are skipped.
     fn emit_when<IS>(
         self,
         filter_stream: IS,

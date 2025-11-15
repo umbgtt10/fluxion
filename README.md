@@ -1,14 +1,46 @@
 # fluxion
 
-Licensed under either of:
-
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+Licensed under the Apache License, Version 2.0 ([LICENSE](LICENSE) or http://www.apache.org/licenses/LICENSE-2.0)
 
 [![CI](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml/badge.svg)](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml)
 [![Coverage](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml/badge.svg)](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml)
 
 Fluxion is a 100% Rust implementation of composite Rx-style stream operators and helpers focused on correct temporal ordering and efficient async processing.
+
+## Quick Start
+
+Add fluxion to your `Cargo.toml`:
+
+```toml
+[dependencies]
+fluxion = { path = "path/to/fluxion" }
+tokio = { version = "1.48", features = ["full"] }
+futures = "0.3"
+```
+
+Basic usage example:
+
+```rust
+use fluxion::FluxionStream;
+use futures::StreamExt;
+
+#[tokio::main]
+async fn main() {
+    // Create a channel and stream
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
+    let stream = FluxionStream::from_unbounded_receiver(rx);
+    
+    // Send some values
+    tx.send(1).unwrap();
+    tx.send(2).unwrap();
+    tx.send(3).unwrap();
+    drop(tx); // Close the sender
+    
+    // Collect and print values
+    let values: Vec<_> = stream.collect().await;
+    println!("Received: {:?}", values); // Prints: Received: [1, 2, 3]
+}
+```
 
 Quick links
 - Crates: `fluxion-stream`, `fluxion-exec`, `fluxion-test-utils`
@@ -43,7 +75,7 @@ Development notes
 - Local scripts live in `.ci/` (use `coverage.ps1` to collect coverage locally with `cargo-llvm-cov`).
 
 TODOs:
-- [ ] Enable direct usage of TestChannel/FluxionChannel in FluxionStream methods:
+- [ ] Enable direct usage of TestChannel in FluxionStream methods:
     - Currently: `FluxionStream::from(person1.stream).ordered_merge(vec![FluxionStream::from(person2.stream)])`
     - Goal: `person1.ordered_merge(vec![person2])`
     - Blocker: Avoid circular dependencies between fluxion-stream and fluxion-test-utils
@@ -82,8 +114,8 @@ TODOs:
 
 Issues & contributions
 
-Contributions are welcome. Please open issues and PRs. Use the existing CI scripts to verify changes locally before pushing.
+Contributions are welcome. Please open issues and PRs. See [CONTRIBUTING.md](CONTRIBUTING.md) for details. Use the existing CI scripts to verify changes locally before pushing.
 
 License
 
-MIT OR Apache-2.0
+Apache-2.0

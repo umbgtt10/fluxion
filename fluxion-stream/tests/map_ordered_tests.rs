@@ -74,7 +74,7 @@ async fn test_map_ordered_to_struct() {
                     TestData::Person(p) => Some(p.age),
                     _ => None,
                 });
-                let age_increased = previous_age.map_or(false, |prev| current_age > prev);
+                let age_increased = previous_age.is_some_and(|prev| current_age > prev);
                 AgeComparison {
                     previous_age,
                     current_age,
@@ -281,11 +281,11 @@ async fn test_map_ordered_with_complex_closure() {
                     _ => "senior",
                 };
 
-                let changed_from_previous = item.previous.as_ref().map_or(true, |prev| {
+                let changed_from_previous = !item.previous.as_ref().is_some_and(|prev| {
                     if let TestData::Person(prev_person) = &prev.get() {
-                        prev_person.name != current.name
+                        prev_person.name == current.name
                     } else {
-                        true
+                        false
                     }
                 });
 
@@ -345,7 +345,7 @@ async fn test_map_ordered_boolean_logic() {
                     TestData::Person(p) => p.age,
                     _ => 0,
                 };
-                item.previous.as_ref().map_or(false, |prev| {
+                item.previous.as_ref().is_some_and(|prev| {
                     if let TestData::Person(p) = &prev.get() {
                         current_age > p.age
                     } else {
@@ -356,17 +356,17 @@ async fn test_map_ordered_boolean_logic() {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
-    assert_eq!(stream.next().await.unwrap(), false); // No previous
+    assert!(!stream.next().await.unwrap()); // No previous
 
     tx.send(Sequenced::new(person_bob())).unwrap(); // Age 30
-    assert_eq!(stream.next().await.unwrap(), true); // 30 > 25
+    assert!(stream.next().await.unwrap()); // 30 > 25
 
     tx.send(Sequenced::new(person_charlie())).unwrap(); // Age 35
-    assert_eq!(stream.next().await.unwrap(), true); // 35 > 30
+    assert!(stream.next().await.unwrap()); // 35 > 30
 
     tx.send(Sequenced::new(person_dave())).unwrap(); // Age 28
-    assert_eq!(stream.next().await.unwrap(), false); // 28 < 35
+    assert!(!stream.next().await.unwrap()); // 28 < 35
 
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
-    assert_eq!(stream.next().await.unwrap(), false); // 25 < 28
+    assert!(!stream.next().await.unwrap()); // 25 < 28
 }

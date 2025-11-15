@@ -8,11 +8,59 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, Notify};
 use tokio_util::sync::CancellationToken;
 
+/// Extension trait providing async subscription with automatic cancellation of outdated work.
+///
+/// This trait enables processing stream items where newer items automatically cancel
+/// processing of older items, ensuring only the latest value is being processed.
 #[async_trait]
 pub trait SubscribeLatestAsyncExt<T>: Stream<Item = T> + Send + 'static
 where
     T: Send + 'static,
 {
+    /// Subscribes to the stream, automatically cancelling processing of older items when new items arrive.
+    ///
+    /// This method is ideal for scenarios where you only care about processing the most recent
+    /// value and want to abandon work on outdated values. When a new item arrives while an
+    /// existing item is being processed, a new task starts for the latest item.
+    ///
+    /// # Behavior
+    ///
+    /// - Only one processing task runs at a time per stream
+    /// - When a new item arrives during processing, it queues as "latest"
+    /// - After current processing completes, the latest queued item is processed
+    /// - Intermediate items between current and latest are discarded
+    /// - Waits for all processing to complete before returning
+    ///
+    /// # Arguments
+    ///
+    /// * `on_next_func` - Async function called for each item. Should check the cancellation
+    ///                    token periodically to enable responsive cancellation.
+    /// * `on_error_callback` - Optional error handler for processing failures
+    /// * `cancellation_token` - Optional token to stop all processing
+    ///
+    /// # Type Parameters
+    ///
+    /// * `F` - Function type for the item handler
+    /// * `Fut` - Future type returned by the handler
+    /// * `E` - Error type that implements `std::error::Error`
+    /// * `OnError` - Function type for error handling
+    ///
+    /// # Use Cases
+    ///
+    /// - UI updates where only the latest state matters
+    /// - Search-as-you-type with debouncing
+    /// - Real-time data processing where stale data is irrelevant
+    /// - API calls that should be cancelled when parameters change
+    ///
+    /// # Comparison with `subscribe_async`
+    ///
+    /// - `subscribe_async`: Processes every item, all handlers run to completion
+    /// - `subscribe_latest_async`: Processes only latest, abandons outdated work
+    ///
+    /// # Thread Safety
+    ///
+    /// Uses tokio's async mutex for state coordination. Only one processing task
+    /// is active at a time, but task spawning is non-blocking.
     async fn subscribe_latest_async<F, Fut, E, OnError>(
         self,
         on_next_func: F,

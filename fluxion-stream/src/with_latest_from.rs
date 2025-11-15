@@ -13,15 +13,73 @@ use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::safe_lock;
 use fluxion_core::{CompareByInner, OrderedWrapper};
 
+/// Extension trait providing the `with_latest_from` operator for ordered streams.
+///
+/// This operator combines a primary stream with a secondary stream, emitting only
+/// when the primary stream emits, using the latest value from the secondary stream.
 pub trait WithLatestFromExt<T>: Stream<Item = T> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
 {
     /// Combines elements from the primary stream (self) with the latest element from the secondary stream (other).
-    /// Only emits when the primary stream emits.
     ///
-    /// The result_selector transforms the CombinedState into the result type R.
+    /// This operator only emits when the primary stream emits. It waits until both streams
+    /// have emitted at least once, then for each primary emission, it combines the primary
+    /// value with the most recent secondary value.
+    ///
+    /// # Behavior
+    ///
+    /// - Emissions are triggered **only** by the primary stream (self)
+    /// - Secondary stream updates are stored but don't trigger emissions
+    /// - Waits until both streams have emitted at least once
+    /// - Preserves temporal ordering from the primary stream
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - Secondary stream whose latest value will be combined with primary emissions
+    /// * `result_selector` - Function that transforms the `CombinedState` into the output type `R`.
+    ///   The combined state contains `[primary_value, secondary_value]`.
+    ///
+    /// # Returns
+    ///
+    /// A stream of `OrderedWrapper<R>` where each emission contains the result of applying
+    /// `result_selector` to the combined state, ordered by the primary stream's order.
+    ///
+    /// # Type Parameters
+    ///
+    /// * `IS` - Type that can be converted into a stream compatible with this stream
+    /// * `R` - Result type produced by the `result_selector` function
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use fluxion_stream::{WithLatestFromExt, FluxionStream};
+    /// use futures::StreamExt;
+    ///
+    /// # async fn example() {
+    /// let primary = FluxionStream::from_unbounded_receiver(rx_primary);
+    /// let secondary = FluxionStream::from_unbounded_receiver(rx_secondary);
+    ///
+    /// let combined = primary.with_latest_from(
+    ///     secondary,
+    ///     |state| {
+    ///         // state[0] = primary value, state[1] = latest secondary value
+    ///         let values = state.get_state();
+    ///         format!("{:?} + {:?}", values[0], values[1])
+    ///     }
+    /// );
+    ///
+    /// combined.for_each(|result| async move {
+    ///     println!("Result: {}", result.get());
+    /// }).await;
+    /// # }
+    /// ```
+    ///
+    /// # Thread Safety
+    ///
+    /// Uses internal locks to maintain shared state. Lock errors are logged and
+    /// affected emissions are skipped.
     fn with_latest_from<IS, R>(
         self,
         other: IS,

@@ -25,19 +25,64 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust,no_run
+//! ```rust
 //! use fluxion::FluxionStream;
-//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use futures::StreamExt;
 //!
 //! #[tokio::main]
 //! async fn main() {
 //!     // Create a stream from a tokio channel
-//!     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+//!     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
 //!     let stream = FluxionStream::from_unbounded_receiver(rx);
 //!
-//!     // Use stream operators
-//!     // let result = stream.combine_latest(others, filter);
+//!     // Send some values
+//!     tx.send(1).unwrap();
+//!     tx.send(2).unwrap();
+//!     tx.send(3).unwrap();
+//!     drop(tx);
+//!
+//!     // Process the stream
+//!     let sum: i32 = stream.fold(0, |acc, x| async move { acc + x }).await;
+//!     println!("Sum: {}", sum);  // Prints: Sum: 6
 //! }
+//! ```
+//!
+//! ## Core Concepts
+//!
+//! ### Ordered Trait
+//!
+//! All stream operators work with types implementing the [`Ordered`] trait, which
+//! provides temporal ordering:
+//!
+//! ```rust
+//! use fluxion::Ordered;
+//!
+//! // Items must provide an order value
+//! fn process_ordered<T: Ordered>(item: &T) {
+//!     let order = item.order();  // Get temporal order
+//!     let value = item.get();    // Get inner value
+//! }
+//! ```
+//!
+//! ### Stream Operators
+//!
+//! Fluxion provides powerful stream composition operators:
+//!
+//! - **combine_latest** - Combine multiple streams, emitting when any emits
+//! - **with_latest_from** - Sample one stream using another as trigger
+//! - **ordered_merge** - Merge streams preserving temporal order
+//! - **take_latest_when** - Sample on filter condition
+//! - **emit_when** - Gate stream emissions based on conditions
+//!
+//! See [`fluxion_stream`] for the complete list.
+//!
+//! ## Workspace Structure
+//!
+//! - [`fluxion`](crate) - Main crate (this crate), re-exports core types
+//! - [`fluxion_core`] - Core traits and utilities
+//! - [`fluxion_stream`] - Stream operators and combinators
+//! - `fluxion_exec` - Async execution and subscription utilities
+//! - `fluxion_error` - Error types and handling
 //! ```
 
 // Re-export core types
@@ -50,8 +95,23 @@ pub use fluxion_stream::FluxionStream;
 // Re-export commonly used types
 pub use fluxion_stream::combine_latest::CombinedState;
 
-/// Prelude module for convenient imports
+/// Prelude module for convenient imports.
+///
+/// Import this module to bring the most commonly used Fluxion types into scope:
+///
+/// ```rust
+/// use fluxion::prelude::*;
+///
+/// // Now you have access to:
+/// // - FluxionStream
+/// // - Ordered trait
+/// // - IntoStream trait  
+/// // - CombinedState
+/// ```
+///
+/// This is the recommended way to use Fluxion in most applications.
 pub mod prelude {
+    
     pub use crate::FluxionStream;
     pub use fluxion_core::into_stream::IntoStream;
     pub use fluxion_core::Ordered;

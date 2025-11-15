@@ -11,11 +11,76 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
+/// Extension trait providing the `take_latest_when` operator for ordered streams.
+///
+/// This operator samples the latest value from a source stream whenever a filter
+/// stream emits a value that passes a predicate.
 pub trait TakeLatestWhenExt<T>: Stream<Item = T> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
+    /// Emits the latest value from the source stream when the filter stream emits a passing value.
+    ///
+    /// This operator maintains the latest value from the source stream and the latest value
+    /// from the filter stream. When the filter stream emits a value that passes the predicate,
+    /// the operator emits the most recent source value (if one exists).
+    ///
+    /// # Behavior
+    ///
+    /// - Source stream values are cached but don't trigger emissions
+    /// - Filter stream values are evaluated with the predicate
+    /// - Emission occurs when: filter predicate returns `true` AND a source value exists
+    /// - Emitted values preserve the temporal order of the triggering filter value
+    ///
+    /// # Arguments
+    ///
+    /// * `filter_stream` - Stream whose values control when to sample the source
+    /// * `filter` - Predicate function applied to filter stream values. Returns `true` to emit.
+    ///
+    /// # Returns
+    ///
+    /// A stream of `T` containing source values sampled when the filter permits.
+    ///
+    /// # Type Parameters
+    ///
+    /// * `IS` - Type that can be converted into a stream compatible with this stream
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use fluxion_stream::{TakeLatestWhenExt, FluxionStream};
+    /// use futures::StreamExt;
+    ///
+    /// # async fn example() {
+    /// // Source stream: continuous data
+    /// let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
+    ///
+    /// // Filter stream: boolean signals
+    /// let trigger_stream = FluxionStream::from_unbounded_receiver(rx_trigger);
+    ///
+    /// // Emit latest data value only when trigger is true
+    /// let sampled = data_stream.take_latest_when(
+    ///     trigger_stream,
+    ///     |trigger_value| *trigger_value == true
+    /// );
+    ///
+    /// sampled.for_each(|value| async move {
+    ///     println!("Sampled: {:?}", value.get());
+    /// }).await;
+    /// # }
+    /// ```
+    ///
+    /// # Use Cases
+    ///
+    /// - Sampling sensor data on timer ticks
+    /// - Gate pattern: emit values only when enabled
+    /// - Throttling with external control signals
+    ///
+    /// # Thread Safety
+    ///
+    /// Uses internal locks to maintain state. Lock errors are logged and the
+    /// affected emission is skipped.
     fn take_latest_when<IS>(
         self,
         filter_stream: IS,

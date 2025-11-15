@@ -2,24 +2,32 @@
 
 Shared test utilities and fixtures used across the fluxion workspace. This crate contains helpers for creating sequenced streams, reusable test data, and common assertions to simplify unit and integration tests.
 
-What you'll find here
+## What you'll find here
 
-- Helpers to create sequenced items and channels used by the stream combinators
-- Small fixtures for `person`, `animal`, and `plant` test data
-- Assertion helpers for deterministic ordering and equality checks
+- `Sequenced<T>` wrapper for adding temporal ordering to test values
+- Test data fixtures: `Person`, `Animal`, `Plant`
+- `TestData` enum for diverse test scenarios
+- Assertion helpers for stream testing
 
-Quick example
+## Quick example
 
 ```rust
-use fluxion_test_utils::sequenced::make_sequenced_stream;
-use tokio_stream::StreamExt;
+use fluxion_test_utils::Sequenced;
+use fluxion_stream::FluxionStream;
 
-let s = make_sequenced_stream(vec![1, 2, 3]);
-let collected: Vec<_> = s.collect().await;
-// assert ordering and content
+#[tokio::test]
+async fn example() {
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let stream = FluxionStream::from_unbounded_receiver(rx);
+    
+    // Send sequenced values
+    tx.send(Sequenced::new(1, 100)).unwrap();
+    tx.send(Sequenced::new(2, 200)).unwrap();
+    tx.send(Sequenced::new(3, 300)).unwrap();
+}
 ```
 
-Running tests
+## Running tests
 
 ```powershell
 cargo test --package fluxion-test-utils --all-features --all-targets
@@ -27,4 +35,4 @@ cargo test --package fluxion-test-utils --all-features --all-targets
 
 License
 
-MIT OR Apache-2.0
+Apache-2.0

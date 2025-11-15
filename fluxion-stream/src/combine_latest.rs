@@ -14,11 +14,73 @@ use fluxion_ordered_merge::OrderedMergeExt;
 
 use fluxion_core::lock_utilities::safe_lock;
 
+/// Extension trait providing the `combine_latest` operator for ordered streams.
+///
+/// This trait enables combining multiple streams where each emission waits for
+/// at least one value from all streams, then emits the combination of the latest
+/// values from each stream.
 pub trait CombineLatestExt<T>: Stream<Item = T> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
 {
+    /// Combines this stream with multiple other streams, emitting when any stream emits.
+    ///
+    /// This operator maintains the latest value from each stream and emits a combined state
+    /// whenever any stream produces a new value (after all streams have emitted at least once).
+    /// The emitted items preserve temporal ordering based on the triggering stream's order.
+    ///
+    /// # Behavior
+    ///
+    /// - Waits until all streams have emitted at least one value
+    /// - After initialization, emits whenever any stream produces a value
+    /// - Maintains temporal ordering using the `Ordered` trait
+    /// - Allows filtering emissions based on the combined state
+    ///
+    /// # Arguments
+    ///
+    /// * `others` - Vector of streams to combine with this stream. Each stream must implement
+    ///   `IntoStream` with items compatible with this stream's item type.
+    /// * `filter` - Predicate function that determines whether to emit a combined state.
+    ///   Receives `&CombinedState<T::Inner>` and returns `true` to emit.
+    ///
+    /// # Returns
+    ///
+    /// A stream of `OrderedWrapper<CombinedState<T::Inner>>` where each emission contains
+    /// the latest values from all streams, preserving the temporal order of the triggering value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use fluxion_stream::{CombineLatestExt, FluxionStream};
+    /// use fluxion_core::Ordered;
+    /// use futures::StreamExt;
+    ///
+    /// # async fn example() {
+    /// // Combine multiple streams of ordered data
+    /// let stream1 = FluxionStream::from_unbounded_receiver(rx1);
+    /// let stream2 = FluxionStream::from_unbounded_receiver(rx2);
+    ///
+    /// let combined = stream1.combine_latest(
+    ///     vec![stream2],
+    ///     |state| {
+    ///         // Filter: only emit when both values are present
+    ///         state.get_state().len() == 2
+    ///     }
+    /// );
+    ///
+    /// // Process combined values
+    /// combined.for_each(|combined_value| async move {
+    ///     let values = combined_value.get().get_state();
+    ///     println!("Combined: {:?}", values);
+    /// }).await;
+    /// # }
+    /// ```
+    ///
+    /// # Thread Safety
+    ///
+    /// This operator uses internal locks to maintain shared state. Lock errors are logged
+    /// and affected emissions are skipped rather than causing panics.
     fn combine_latest<IS>(
         self,
         others: Vec<IS>,
@@ -105,6 +167,25 @@ where
     }
 }
 
+/// Represents the combined state of multiple streams in `combine_latest`.
+///
+/// This type holds a vector of the latest values from each stream being combined.
+/// The order of values matches the order streams were provided to `combine_latest`:
+/// index 0 is the primary stream, indices 1+ are the `others` streams in order.
+///
+/// # Type Parameters
+///
+/// * `V` - The inner value type from the ordered streams
+///
+/// # Examples
+///
+/// ```rust
+/// use fluxion_stream::CombinedState;
+///
+/// let state = CombinedState::new(vec![1, 2, 3]);
+/// assert_eq!(state.get_state().len(), 3);
+/// assert_eq!(state.get_state()[0], 1);
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CombinedState<V>
 where

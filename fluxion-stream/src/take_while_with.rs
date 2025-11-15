@@ -15,11 +15,11 @@ use std::sync::{Arc, Mutex};
 type PinnedItemStream<TItem, TFilter> =
     Pin<Box<dyn Stream<Item = Item<TItem, TFilter>> + Send + Sync>>;
 
-/// Takes elements from the source stream while the condition on the filter stream is satisfied.
+/// Extension trait providing the `take_while_with` operator for ordered streams.
 ///
-/// This operator combines the source stream with a filter stream, emitting source elements
-/// only while the filter predicate applied to the latest filter stream element returns true.
-/// Once the predicate returns false, the stream terminates.
+/// This operator conditionally emits elements from a source stream based on values
+/// from a separate filter stream. The stream terminates when the filter condition
+/// becomes false.
 pub trait TakeWhileExt<TItem, TFilter, S>: Stream<Item = TItem> + Sized
 where
     TItem: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
@@ -30,12 +30,63 @@ where
 {
     /// Takes elements from the source stream while the filter predicate returns true.
     ///
+    /// This operator merges the source stream with a filter stream in temporal order.
+    /// It maintains the latest filter value and only emits source values when the
+    /// filter predicate evaluates to `true`. Once the predicate returns `false`,
+    /// the entire stream terminates.
+    ///
+    /// # Behavior
+    ///
+    /// - Source values are emitted only when latest filter passes the predicate
+    /// - Filter stream updates change the gating condition
+    /// - Stream terminates immediately when filter predicate returns `false`
+    /// - Emitted values are unwrapped (returns `TItem::Inner`, not `TItem`)
+    ///
     /// # Arguments
-    /// * `filter_stream` - The stream providing filter values
-    /// * `filter` - A function that takes the latest filter stream element and returns whether to continue
+    ///
+    /// * `filter_stream` - Stream providing filter values that control emission
+    /// * `filter` - Predicate function applied to filter values. Returns `true` to continue.
     ///
     /// # Returns
-    /// A stream of unwrapped source elements that passes while the filter condition is true
+    ///
+    /// A `FluxionStream` of unwrapped source elements (`TItem::Inner`) that are emitted
+    /// while the filter condition remains true. Stream terminates when condition becomes false.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use fluxion_stream::{TakeWhileExt, FluxionStream};
+    /// use futures::StreamExt;
+    ///
+    /// # async fn example() {
+    /// // Source stream: data to conditionally emit
+    /// let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
+    ///
+    /// // Filter stream: gate control
+    /// let gate_stream = FluxionStream::from_unbounded_receiver(rx_gate);
+    ///
+    /// // Emit data while gate is open, terminate when it closes
+    /// let gated = data_stream.take_while_with(
+    ///     gate_stream,
+    ///     |gate_value| *gate_value == true
+    /// );
+    ///
+    /// gated.for_each(|value| async move {
+    ///     println!("Gated value: {:?}", value);
+    /// }).await;
+    /// # }
+    /// ```
+    ///
+    /// # Use Cases
+    ///
+    /// - Emergency stop mechanism for data streams
+    /// - Time-bounded stream processing
+    /// - Conditional data forwarding with external control
+    ///
+    /// # Thread Safety
+    ///
+    /// Uses internal locks to maintain state. Lock errors are logged and cause
+    /// the stream to terminate.
     fn take_while_with(
         self,
         filter_stream: S,

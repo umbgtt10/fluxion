@@ -8,8 +8,46 @@ use futures::stream::StreamExt;
 use std::future::Future;
 use tokio_util::sync::CancellationToken;
 
+/// Extension trait providing async subscription capabilities for streams.
+///
+/// This trait enables processing stream items with async handlers in a sequential manner.
 #[async_trait]
 pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
+    /// Subscribes to the stream with an async handler, processing items sequentially.
+    ///
+    /// This method consumes the stream and spawns async tasks to process each item.
+    /// Items are processed in the order they arrive, with each item's handler running
+    /// to completion before the next item is processed (though handlers run concurrently
+    /// via tokio spawn).
+    ///
+    /// # Behavior
+    ///
+    /// - Processes each stream item with the provided async handler
+    /// - Spawns a new task for each item (non-blocking)
+    /// - Continues until stream ends or cancellation token is triggered
+    /// - Errors from handlers are passed to the error callback
+    /// - If no error callback provided, errors are logged
+    ///
+    /// # Arguments
+    ///
+    /// * `on_next_func` - Async function called for each stream item. Receives the item
+    ///                    and a cancellation token. Returns `Result<(), E>`.
+    /// * `cancellation_token` - Optional token to stop processing. If `None`, a default
+    ///                          token is created that never cancels.
+    /// * `on_error_callback` - Optional error handler called when `on_next_func` returns
+    ///                         an error. If `None`, errors are logged.
+    ///
+    /// # Type Parameters
+    ///
+    /// * `F` - Function type for the item handler
+    /// * `Fut` - Future type returned by the handler
+    /// * `E` - Error type that implements `std::error::Error`
+    /// * `OnError` - Function type for error handling
+    ///
+    /// # Thread Safety
+    ///
+    /// All spawned tasks run on the tokio runtime. The subscription completes
+    /// when the stream ends, not when all spawned tasks complete.
     async fn subscribe_async<F, Fut, E, OnError>(
         self,
         on_next_func: F,

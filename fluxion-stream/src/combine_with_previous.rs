@@ -55,10 +55,59 @@ impl<T: Ordered> Ordered for WithPrevious<T> {
     }
 }
 
+/// Extension trait providing the `combine_with_previous` operator for ordered streams.
+///
+/// This operator pairs each stream element with its predecessor, enabling
+/// stateful processing and change detection.
 pub trait CombineWithPreviousExt<T>: Stream<Item = T> + Sized
 where
     T: Ordered + Clone + Send + Sync + 'static,
 {
+    /// Pairs each stream element with its previous element.
+    ///
+    /// This operator transforms a stream of `T` into a stream of `WithPrevious<T>`,
+    /// where each item contains both the current value and the previous value (if any).
+    /// The first element will have `previous = None`.
+    ///
+    /// # Behavior
+    ///
+    /// - First element: `WithPrevious { previous: None, current: first_value }`
+    /// - Subsequent elements: `WithPrevious { previous: Some(prev), current: curr }`
+    /// - Maintains state to track the previous value
+    /// - Preserves temporal ordering from the source stream
+    ///
+    /// # Returns
+    ///
+    /// A `FluxionStream` of `WithPrevious<T>` where each item contains the current
+    /// and previous values.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use fluxion_stream::{CombineWithPreviousExt, FluxionStream};
+    /// use futures::StreamExt;
+    ///
+    /// # async fn example() {
+    /// let stream = FluxionStream::from_unbounded_receiver(rx);
+    ///
+    /// let paired = stream.combine_with_previous();
+    ///
+    /// paired.for_each(|with_prev| async move {
+    ///     if let Some((prev, curr)) = with_prev.both() {
+    ///         println!("Changed from {:?} to {:?}", prev.get(), curr.get());
+    ///     } else {
+    ///         println!("First value: {:?}", with_prev.current.get());
+    ///     }
+    /// }).await;
+    /// # }
+    /// ```
+    ///
+    /// # Use Cases
+    ///
+    /// - Change detection (comparing consecutive values)
+    /// - Delta calculation (computing differences)
+    /// - State transitions (analyzing previous → current)
+    /// - Duplicate filtering (skip if same as previous)
     fn combine_with_previous(self) -> FluxionStream<impl Stream<Item = WithPrevious<T>>>;
 }
 
