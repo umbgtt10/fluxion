@@ -2,14 +2,12 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Extension methods for tokio's `mpsc::UnboundedReceiver` to create FluxionStreams.
-//!
-//! This module provides convenience methods for converting tokio's unbounded receivers
-//! into FluxionStreams, optionally applying transformations for type erasure.
+//! Extension methods for tokio UnboundedReceiver to create FluxionStreams.
 
 use crate::FluxionStream;
 use fluxion_core::Ordered;
 use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// Extension trait for `UnboundedReceiver` to create FluxionStreams.
 pub trait UnboundedReceiverExt<T> {
@@ -70,7 +68,7 @@ pub trait UnboundedReceiverExt<T> {
     fn into_fluxion_stream<U, F>(
         self,
         mapper: F,
-    ) -> FluxionStream<tokio_stream::wrappers::UnboundedReceiverStream<U>>
+    ) -> FluxionStream<UnboundedReceiverStream<U>>
     where
         F: FnMut(T) -> U + Send + 'static,
         U: Send + 'static;
@@ -83,7 +81,7 @@ where
     fn into_fluxion_stream<U, F>(
         self,
         mut mapper: F,
-    ) -> FluxionStream<tokio_stream::wrappers::UnboundedReceiverStream<U>>
+    ) -> FluxionStream<UnboundedReceiverStream<U>>
     where
         F: FnMut(T) -> U + Send + 'static,
         U: Send + 'static,

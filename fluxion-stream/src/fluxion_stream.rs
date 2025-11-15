@@ -18,6 +18,7 @@ use pin_project::pin_project;
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// A concrete wrapper type that provides all fluxion stream extensions.
 ///
@@ -92,17 +93,13 @@ impl FluxionStream<()> {
     /// ```
     pub fn from_unbounded_receiver<T>(
         receiver: tokio::sync::mpsc::UnboundedReceiver<T>,
-    ) -> FluxionStream<tokio_stream::wrappers::UnboundedReceiverStream<T>> {
-        FluxionStream::new(tokio_stream::wrappers::UnboundedReceiverStream::new(
-            receiver,
-        ))
+    ) -> FluxionStream<UnboundedReceiverStream<T>> {
+        FluxionStream::new(UnboundedReceiverStream::new(receiver))
     }
 }
 
-impl<T> From<tokio_stream::wrappers::UnboundedReceiverStream<T>>
-    for FluxionStream<tokio_stream::wrappers::UnboundedReceiverStream<T>>
-{
-    fn from(stream: tokio_stream::wrappers::UnboundedReceiverStream<T>) -> Self {
+impl<T> From<UnboundedReceiverStream<T>> for FluxionStream<UnboundedReceiverStream<T>> {
+    fn from(stream: UnboundedReceiverStream<T>) -> Self {
         FluxionStream::new(stream)
     }
 }
