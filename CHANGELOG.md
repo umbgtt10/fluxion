@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced README examples with runnable code
 - Detailed operator documentation for `fluxion-stream`
 - Detailed subscription documentation for `fluxion-exec`
+- Operator chaining examples in `fluxion-stream` documentation
+- `map_ordered` operator for transforming streams while preserving temporal order
+- `filter_ordered` operator for filtering streams while preserving temporal order
 
 ### Changed
 - Consolidated license to Apache-2.0 (removed MIT dual-licensing)

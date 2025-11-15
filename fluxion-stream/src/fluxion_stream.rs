@@ -127,6 +127,54 @@ where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
+    /// Maps each item to a new value while preserving temporal ordering.
+    ///
+    /// This operator transforms each item in the stream using the provided function.
+    /// Unlike the standard `map` operator from [`StreamExt`], `map_ordered` maintains
+    /// the ordering guarantees of the wrapped stream, ensuring that transformed items
+    /// are emitted in temporal order.
+    ///
+    /// # Why use `map_ordered` instead of `StreamExt::map`?
+    ///
+    /// The standard `map` operator breaks the `FluxionStream` wrapper, losing temporal
+    /// ordering guarantees. Using `map_ordered` preserves the ordering contract needed
+    /// for correct operator chaining.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - A function that transforms each item of type `T` into type `U`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fluxion_stream::{FluxionStream, CombineWithPreviousExt, Ordered};
+    /// use fluxion_test_utils::Sequenced;
+    /// use futures::StreamExt;
+    /// use tokio::sync::mpsc;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    ///
+    /// async fn example() {
+    /// let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
+    /// let stream = UnboundedReceiverStream::new(rx);
+    ///
+    /// // Transform ordered stream to strings
+    /// let mut mapped = stream
+    ///     .combine_with_previous()
+    ///     .map_ordered(|item| {
+    ///         format!("Value: {}", item.current.get())
+    ///     });
+    ///
+    /// tx.send(Sequenced::new(42)).unwrap();
+    /// assert_eq!(mapped.next().await.unwrap(), "Value: 42");
+    /// }
+    /// ```
+    ///
+    /// # See Also
+    ///
+    /// - [`filter_ordered`](FluxionStream::filter_ordered) - Filter items while preserving order
+    /// - [`combine_with_previous`](crate::CombineWithPreviousExt::combine_with_previous) - Often used before mapping
+    ///
+    /// [`StreamExt`]: futures::StreamExt
     pub fn map_ordered<U, F>(self, f: F) -> FluxionStream<impl Stream<Item = U> + Send + Sync>
     where
         S: Send + Sync + Unpin + 'static,
@@ -137,6 +185,57 @@ where
         FluxionStream::new(inner.map(f))
     }
 
+    /// Filters items based on a predicate while preserving temporal ordering.
+    ///
+    /// This operator filters the stream using the provided predicate function.
+    /// Unlike the standard `filter` operator from [`StreamExt`], `filter_ordered` maintains
+    /// the ordering guarantees of the wrapped stream, ensuring that items passing the
+    /// filter are emitted in temporal order.
+    ///
+    /// # Why use `filter_ordered` instead of `StreamExt::filter`?
+    ///
+    /// The standard `filter` operator breaks the `FluxionStream` wrapper, losing temporal
+    /// ordering guarantees. Using `filter_ordered` preserves the ordering contract needed
+    /// for correct operator chaining with other Fluxion operators.
+    ///
+    /// # Arguments
+    ///
+    /// * `predicate` - A function that returns `true` for items to keep, `false` to filter out.
+    ///   The predicate receives a reference to the inner value of type `T::Inner`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_test_utils::Sequenced;
+    /// use futures::StreamExt;
+    /// use tokio::sync::mpsc;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    ///
+    /// async fn example() {
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let stream = UnboundedReceiverStream::new(rx);
+    ///
+    /// // Filter for even numbers only
+    /// let mut filtered = FluxionStream::new(stream)
+    ///     .filter_ordered(|n| n % 2 == 0);
+    ///
+    /// tx.send(Sequenced::new(1)).unwrap();
+    /// tx.send(Sequenced::new(2)).unwrap();
+    /// tx.send(Sequenced::new(3)).unwrap();
+    /// tx.send(Sequenced::new(4)).unwrap();
+    ///
+    /// assert_eq!(filtered.next().await.unwrap().get(), &2);
+    /// assert_eq!(filtered.next().await.unwrap().get(), &4);
+    /// }
+    /// ```
+    ///
+    /// # See Also
+    ///
+    /// - [`map_ordered`](FluxionStream::map_ordered) - Transform items while preserving order
+    /// - [`take_while_with`](crate::TakeWhileExt::take_while_with) - Conditional filtering with external stream
+    ///
+    /// [`StreamExt`]: futures::StreamExt
     pub fn filter_ordered<F>(
         self,
         mut predicate: F,

@@ -316,6 +316,118 @@
 //! stream1.combine_latest(vec![stream2], should_emit);
 //! ```
 //!
+//! # Operator Chaining
+//!
+//! Fluxion operators are designed to be composed together, creating sophisticated
+//! data flows from simple building blocks. The key to successful chaining is
+//! understanding how each operator transforms the stream.
+//!
+//! ## Basic Chaining Pattern
+//!
+//! ```rust
+//! use fluxion_stream::{FluxionStream, CombineWithPreviousExt, TakeLatestWhenExt};
+//! use fluxion_test_utils::Sequenced;
+//! use tokio::sync::mpsc;
+//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use futures::StreamExt;
+//!
+//! async fn example() {
+//! let (source_tx, source_rx) = mpsc::unbounded_channel();
+//! let (filter_tx, filter_rx) = mpsc::unbounded_channel();
+//!
+//! let source_stream = UnboundedReceiverStream::new(source_rx);
+//! let filter_stream = UnboundedReceiverStream::new(filter_rx);
+//!
+//! // Chain: sample when filter emits, then pair with previous value
+//! let mut composed = FluxionStream::new(source_stream)
+//!     .take_latest_when(filter_stream, |_| true)
+//!     .combine_with_previous();
+//!
+//! filter_tx.send(Sequenced::new(1)).unwrap();
+//! source_tx.send(Sequenced::new(42)).unwrap();
+//!
+//! let item = composed.next().await.unwrap();
+//! assert!(item.previous.is_none());
+//! assert_eq!(item.current.get(), &42);
+//! }
+//! ```
+//!
+//! ## Chaining with Transformation
+//!
+//! Use [`map_ordered`] and [`filter_ordered`] to transform streams while preserving
+//! temporal ordering:
+//!
+//! ```rust
+//! use fluxion_stream::{FluxionStream, Ordered};
+//! use fluxion_test_utils::Sequenced;
+//! use tokio::sync::mpsc;
+//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use futures::StreamExt;
+//!
+//! async fn example() {
+//! let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let stream = UnboundedReceiverStream::new(rx);
+//!
+//! // Chain: filter positives, map to string
+//! let mut composed = FluxionStream::new(stream)
+//!     .filter_ordered(|n| *n > 0)
+//!     .map_ordered(|item| format!("Value: {}", item.get()));
+//!
+//! tx.send(Sequenced::new(-1)).unwrap();
+//! tx.send(Sequenced::new(5)).unwrap();
+//!
+//! let result = composed.next().await.unwrap();
+//! assert_eq!(result, "Value: 5");
+//! }
+//! ```
+//!
+//! ## Multi-Stream Chaining
+//!
+//! Combine multiple streams and then process the result:
+//!
+//! ```rust
+//! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt, Ordered};
+//! use fluxion_test_utils::Sequenced;
+//! use tokio::sync::mpsc;
+//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use futures::StreamExt;
+//!
+//! async fn example() {
+//! let (tx1, rx1) = mpsc::unbounded_channel();
+//! let (tx2, rx2) = mpsc::unbounded_channel();
+//!
+//! let stream1 = UnboundedReceiverStream::new(rx1);
+//! let stream2 = UnboundedReceiverStream::new(rx2);
+//!
+//! // Chain: combine latest from both streams, then track changes
+//! let mut composed = FluxionStream::new(stream1)
+//!     .combine_latest(vec![stream2], |_| true)
+//!     .combine_with_previous();
+//!
+//! tx1.send(Sequenced::new(1)).unwrap();
+//! tx2.send(Sequenced::new(2)).unwrap();
+//!
+//! let item = composed.next().await.unwrap();
+//! assert!(item.previous.is_none());
+//! assert_eq!(item.current.get().get_state().len(), 2);
+//! }
+//! ```
+//!
+//! ## Key Principles for Chaining
+//!
+//! 1. **Use `map_ordered` and `filter_ordered`**: These preserve the `FluxionStream` wrapper
+//!    and maintain temporal ordering guarantees
+//! 2. **Order matters**: `combine_with_previous().filter_ordered()` is different from
+//!    `filter_ordered().combine_with_previous()`
+//! 3. **Type awareness**: Each operator changes the item type - track what flows through
+//!    the chain
+//! 4. **Test incrementally**: Build complex chains step by step, testing each addition
+//!
+//! See the composition tests in the source repository for more sophisticated chaining examples.
+//!
+//! [`map_ordered`]: fluxion_stream::FluxionStream::map_ordered
+//! [`filter_ordered`]: fluxion_stream::FluxionStream::filter_ordered
+//!
 //! # Getting Started
 //!
 //! Add to your `Cargo.toml`:
