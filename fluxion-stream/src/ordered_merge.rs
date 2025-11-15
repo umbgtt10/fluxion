@@ -44,22 +44,34 @@ where
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```rust
     /// use fluxion_stream::{OrderedStreamExt, FluxionStream};
+    /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
+    /// use fluxion_core::Ordered;
     ///
     /// # async fn example() {
+    /// // Create channels
+    /// let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel();
+    ///
+    /// // Create streams
     /// let stream1 = FluxionStream::from_unbounded_receiver(rx1);
     /// let stream2 = FluxionStream::from_unbounded_receiver(rx2);
-    /// let stream3 = FluxionStream::from_unbounded_receiver(rx3);
     ///
-    /// // Merge all streams, emitting values in temporal order
-    /// let merged = stream1.ordered_merge(vec![stream2, stream3]);
+    /// // Merge streams
+    /// let merged = stream1.ordered_merge(vec![stream2]);
+    /// let mut merged = Box::pin(merged);
     ///
-    /// // All values from all streams, in order
-    /// merged.for_each(|value| async move {
-    ///     println!("Order: {}, Value: {:?}", value.order(), value.get());
-    /// }).await;
+    /// // Send values with explicit ordering
+    /// tx1.send(Sequenced::with_sequence(1, 100)).unwrap();
+    /// tx2.send(Sequenced::with_sequence(2, 200)).unwrap();
+    /// tx1.send(Sequenced::with_sequence(3, 300)).unwrap();
+    ///
+    /// // Assert - values emitted in temporal order
+    /// assert_eq!(merged.next().await.unwrap().value, 1);
+    /// assert_eq!(merged.next().await.unwrap().value, 2);
+    /// assert_eq!(merged.next().await.unwrap().value, 3);
     /// # }
     /// ```
     ///

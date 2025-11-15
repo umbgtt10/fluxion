@@ -83,22 +83,36 @@ where
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```rust
     /// use fluxion_stream::{CombineWithPreviousExt, FluxionStream};
+    /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
+    /// use fluxion_core::Ordered;
     ///
     /// # async fn example() {
+    /// // Create channel
+    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    ///
+    /// // Create stream
     /// let stream = FluxionStream::from_unbounded_receiver(rx);
     ///
+    /// // Combine with previous
     /// let paired = stream.combine_with_previous();
+    /// let mut paired = Box::pin(paired);
     ///
-    /// paired.for_each(|with_prev| async move {
-    ///     if let Some((prev, curr)) = with_prev.both() {
-    ///         println!("Changed from {:?} to {:?}", prev.get(), curr.get());
-    ///     } else {
-    ///         println!("First value: {:?}", with_prev.current.get());
-    ///     }
-    /// }).await;
+    /// // Send values
+    /// tx.send(Sequenced::with_sequence(1, 1)).unwrap();
+    /// tx.send(Sequenced::with_sequence(2, 2)).unwrap();
+    ///
+    /// // Assert - first has no previous
+    /// let first = paired.next().await.unwrap();
+    /// assert_eq!(first.previous, None);
+    /// assert_eq!(*first.current.get(), 1);
+    ///
+    /// // Assert - second has previous
+    /// let second = paired.next().await.unwrap();
+    /// assert_eq!(*second.previous.as_ref().unwrap().get(), 1);
+    /// assert_eq!(*second.current.get(), 2);
     /// # }
     /// ```
     ///

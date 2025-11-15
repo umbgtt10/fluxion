@@ -54,26 +54,33 @@ where
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```rust
     /// use fluxion_stream::{TakeWhileExt, FluxionStream};
+    /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// // Source stream: data to conditionally emit
-    /// let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
+    /// // Create channels
+    /// let (tx_data, rx_data) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx_gate, rx_gate) = tokio::sync::mpsc::unbounded_channel();
     ///
-    /// // Filter stream: gate control
+    /// // Create streams
+    /// let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
     /// let gate_stream = FluxionStream::from_unbounded_receiver(rx_gate);
     ///
-    /// // Emit data while gate is open, terminate when it closes
+    /// // Combine streams
     /// let gated = data_stream.take_while_with(
     ///     gate_stream,
     ///     |gate_value| *gate_value == true
     /// );
+    /// let mut gated = Box::pin(gated);
     ///
-    /// gated.for_each(|value| async move {
-    ///     println!("Gated value: {:?}", value);
-    /// }).await;
+    /// // Send values
+    /// tx_gate.send(Sequenced::with_sequence(true, 1)).unwrap();
+    /// tx_data.send(Sequenced::with_sequence(1, 2)).unwrap();
+    ///
+    /// // Assert
+    /// assert_eq!(gated.next().await.unwrap(), 1);
     /// # }
     /// ```
     ///

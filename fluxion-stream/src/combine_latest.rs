@@ -51,29 +51,36 @@ where
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```rust
     /// use fluxion_stream::{CombineLatestExt, FluxionStream};
+    /// use fluxion_test_utils::Sequenced;
     /// use fluxion_core::Ordered;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// // Combine multiple streams of ordered data
+    /// // Create channels
+    /// let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel();
+    ///
+    /// // Create streams
     /// let stream1 = FluxionStream::from_unbounded_receiver(rx1);
     /// let stream2 = FluxionStream::from_unbounded_receiver(rx2);
     ///
+    /// // Combine streams
     /// let combined = stream1.combine_latest(
     ///     vec![stream2],
-    ///     |state| {
-    ///         // Filter: only emit when both values are present
-    ///         state.get_state().len() == 2
-    ///     }
+    ///     |state| state.get_state().len() == 2
     /// );
+    /// let mut combined = Box::pin(combined);
     ///
-    /// // Process combined values
-    /// combined.for_each(|combined_value| async move {
-    ///     let values = combined_value.get().get_state();
-    ///     println!("Combined: {:?}", values);
-    /// }).await;
+    /// // Send values
+    /// tx1.send(Sequenced::with_sequence(1, 1)).unwrap();
+    /// tx2.send(Sequenced::with_sequence(2, 2)).unwrap();
+    ///
+    /// // Assert
+    /// let result = combined.next().await.unwrap();
+    /// let values = result.get().get_state();
+    /// assert_eq!(values.len(), 2);
     /// # }
     /// ```
     ///

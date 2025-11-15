@@ -24,24 +24,31 @@
 //!
 //! A wrapper type that adds temporal ordering to test values:
 //!
-//! ```rust,ignore
+//! ```rust
 //! use fluxion_test_utils::Sequenced;
+//! use fluxion_core::Ordered;
 //!
-//! let item = Sequenced::new(42, 1);  // value=42, order=1
+//! let item = Sequenced::new(42);  // Auto-sequenced
 //! assert_eq!(item.value, 42);
-//! assert_eq!(item.order(), 1);
+//! // Sequence numbers are auto-incremented globally
 //! ```
 //!
 //! ## TestData and Variants
 //!
 //! Enum types for creating diverse test scenarios:
 //!
-//! ```rust,ignore
-//! use fluxion_test_utils::{TestData, DataVariant};
+//! ```rust
+//! use fluxion_test_utils::test_data::{TestData, person_alice, person_bob};
 //!
-//! let person = TestData::person(1, "Alice");
-//! let animal = TestData::animal(2, "Cat");
-//! let plant = TestData::plant(3, "Oak");
+//! // Use pre-defined fixtures
+//! let alice = person_alice();
+//! let bob = person_bob();
+//!
+//! // Create custom test data
+//! match alice {
+//!     TestData::Person(p) => assert_eq!(p.name, "Alice"),
+//!     _ => panic!("Expected person"),
+//! }
 //! ```
 //!
 //! ## Test Fixtures
@@ -54,38 +61,36 @@
 //!
 //! # Examples
 //!
-//! ## Creating Ordered Test Streams
+//! ## Creating Ordered Test Values
 //!
-//! ```rust,ignore
+//! ```rust
 //! use fluxion_test_utils::Sequenced;
-//! use tokio::sync::mpsc;
-//! use fluxion_stream::FluxionStream;
+//! use fluxion_core::Ordered;
 //!
-//! #[tokio::test]
-//! async fn test_example() {
-//!     let (tx, rx) = mpsc::unbounded_channel();
-//!     let stream = FluxionStream::from_unbounded_receiver(rx);
-//!     
-//!     // Send ordered values
-//!     tx.send(Sequenced::new(1, 100)).unwrap();
-//!     tx.send(Sequenced::new(2, 200)).unwrap();
-//!     tx.send(Sequenced::new(3, 300)).unwrap();
-//!     
-//!     // Test stream operations...
-//! }
+//! // Create sequenced values with explicit ordering
+//! let first = Sequenced::with_sequence(100, 1);
+//! let second = Sequenced::with_sequence(200, 2);
+//! let third = Sequenced::with_sequence(300, 3);
+//!
+//! // Verify ordering
+//! assert!(first.order() < second.order());
+//! assert!(second.order() < third.order());
+//!
+//! // Access inner values
+//! assert_eq!(first.value, 100);
+//! assert_eq!(*second.get(), 200);
 //! ```
 //!
 //! ## Using Assertion Helpers
 //!
-//! ```rust,ignore
+//! ```rust
 //! use fluxion_test_utils::assert_no_element_emitted;
 //! use futures::stream;
 //!
-//! #[tokio::test]
-//! async fn test_empty_stream() {
-//!     let empty = stream::empty::<i32>();
-//!     assert_no_element_emitted(empty).await;
-//! }
+//! # async fn example() {
+//! let mut empty = stream::empty::<i32>();
+//! assert_no_element_emitted(&mut empty, 10).await;
+//! # }
 //! ```
 //!
 //! # Module Organization
