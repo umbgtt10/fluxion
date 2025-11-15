@@ -16,7 +16,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 async fn test_map_ordered_basic_transformation() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream =
         stream
             .combine_with_previous()
@@ -62,7 +62,7 @@ async fn test_map_ordered_to_struct() {
     }
 
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream =
         stream
             .combine_with_previous()
@@ -133,7 +133,7 @@ async fn test_map_ordered_to_struct() {
 async fn test_map_ordered_extract_age_difference() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream = stream.combine_with_previous().map_ordered(
         |item: WithPrevious<Sequenced<TestData>>| -> i32 {
             let current_age = match &item.current.get() {
@@ -170,7 +170,7 @@ async fn test_map_ordered_extract_age_difference() {
 async fn test_map_ordered_single_value() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream = stream
         .combine_with_previous()
         .map_ordered(|item: WithPrevious<Sequenced<TestData>>| item.current.get().to_string());
@@ -185,7 +185,7 @@ async fn test_map_ordered_single_value() {
 async fn test_map_ordered_empty_stream() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream = stream
         .combine_with_previous()
         .map_ordered(|item: WithPrevious<Sequenced<TestData>>| item.current.get().to_string());
@@ -201,7 +201,7 @@ async fn test_map_ordered_empty_stream() {
 async fn test_map_ordered_preserves_ordering() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream =
         stream
             .combine_with_previous()
@@ -230,7 +230,7 @@ async fn test_map_ordered_preserves_ordering() {
 async fn test_map_ordered_multiple_transformations() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream =
         stream
             .combine_with_previous()
@@ -257,7 +257,7 @@ async fn test_map_ordered_multiple_transformations() {
 async fn test_map_ordered_with_complex_closure() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
 
     #[derive(Debug, PartialEq)]
     struct PersonSummary {
@@ -336,7 +336,7 @@ async fn test_map_ordered_with_complex_closure() {
 async fn test_map_ordered_boolean_logic() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream =
         stream
             .combine_with_previous()

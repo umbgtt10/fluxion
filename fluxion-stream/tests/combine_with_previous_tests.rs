@@ -13,7 +13,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 async fn test_combine_with_previous_no_previous_value_emits() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream = stream.combine_with_previous();
 
     // Act
@@ -31,7 +31,7 @@ async fn test_combine_with_previous_no_previous_value_emits() {
 async fn test_combine_with_previous_single_previous_value() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream = stream.combine_with_previous();
 
     // Act
@@ -65,7 +65,7 @@ async fn test_combine_with_previous_single_previous_value() {
 async fn test_combine_with_previous_multiple_values() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream = stream.combine_with_previous();
 
     // Act
@@ -112,7 +112,7 @@ async fn test_combine_with_previous_multiple_values() {
 async fn test_combine_with_previous_stream_ends() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream = stream.combine_with_previous();
 
     // Act
@@ -153,7 +153,7 @@ async fn test_combine_with_previous_stream_ends() {
 async fn test_combine_with_previous_for_types() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream = stream.combine_with_previous();
 
     // Act
@@ -187,7 +187,7 @@ async fn test_combine_with_previous_for_types() {
 async fn test_combine_with_previous_high_volume_sequential() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream = stream.combine_with_previous();
 
     // Act: send a sequence of 200 items (mix of known fixtures cycling Alice,Bob,Charlie)
@@ -234,7 +234,7 @@ async fn test_combine_with_previous_high_volume_sequential() {
 async fn test_combine_with_previous_boundary_empty_string_zero_values() {
     // Arrange: Test with boundary values (empty strings, zero numeric values)
     let (tx, rx) = mpsc::unbounded_channel();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream = stream.combine_with_previous();
 
     // Act: Send empty string with zero value
@@ -277,7 +277,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
     for i in 0..num_concurrent {
         let handle = tokio::spawn(async move {
             let (tx, rx) = mpsc::unbounded_channel();
-            let mut stream = UnboundedReceiverStream::new(rx);
+            let stream = UnboundedReceiverStream::new(rx);
             let mut stream = stream.combine_with_previous();
 
             // Act: Send first value
@@ -327,7 +327,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
 async fn test_combine_with_previous_single_value_stream() {
     // Arrange: Stream that emits only one value
     let (tx, rx) = mpsc::unbounded_channel();
-    let mut stream = UnboundedReceiverStream::new(rx);
+    let stream = UnboundedReceiverStream::new(rx);
     let mut stream = stream.combine_with_previous();
 
     // Act: Send single value and close

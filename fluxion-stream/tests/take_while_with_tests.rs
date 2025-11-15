@@ -21,7 +21,7 @@ async fn test_take_while_basic() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
+    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -53,7 +53,7 @@ async fn test_take_while_filter_false_immediately() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
+    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -72,7 +72,7 @@ async fn test_take_while_always_true() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
+    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -128,7 +128,7 @@ async fn test_take_while_interleaved_updates() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
+    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -162,7 +162,7 @@ async fn test_take_while_no_filter_value() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
+    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -189,7 +189,7 @@ async fn test_take_while_empty_source() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
+    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act
@@ -209,7 +209,7 @@ async fn test_take_while_empty_filter() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
+    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act
@@ -229,7 +229,7 @@ async fn test_take_while_filter_changes_back_to_true() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
+    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -256,7 +256,7 @@ async fn test_take_while_multiple_source_items_same_filter() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
+    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
@@ -292,7 +292,7 @@ async fn test_take_while_filter_updates_without_source() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
+    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
