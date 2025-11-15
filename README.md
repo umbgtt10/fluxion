@@ -5,6 +5,12 @@
 
 A reactive stream processing library for Rust with temporal ordering guarantees and efficient async execution.
 
+## Documentation
+
+- **[Integration Guide](INTEGRATION.md)** - Learn the three patterns for integrating events (intrinsic, extrinsic, wrapper ordering)
+- **[API Documentation](https://docs.rs/fluxion)** - Detailed API reference (when published)
+- **[Examples](examples/)** - Complete working examples including stream aggregation
+
 ## Features
 
 - 🔄 **Rx-Style Operators**: Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, etc.)
