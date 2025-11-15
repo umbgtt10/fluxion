@@ -134,7 +134,6 @@ where
     }
 }
 
-
 /// Type alias for the common trait bounds used for ordered stream items.
 ///
 /// This trait requires that types are:

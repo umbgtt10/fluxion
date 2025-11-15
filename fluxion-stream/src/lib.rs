@@ -737,5 +737,7 @@ pub use fluxion_stream::FluxionStream;
 pub use ordered_merge::OrderedStreamExt;
 pub use take_latest_when::TakeLatestWhenExt;
 pub use take_while_with::TakeWhileExt;
-pub use types::{CombinedState, OrderedInner, OrderedInnerUnwrapped, OrderedStreamItem, WithPrevious};
+pub use types::{
+    CombinedState, OrderedInner, OrderedInnerUnwrapped, OrderedStreamItem, WithPrevious,
+};
 pub use with_latest_from::WithLatestFromExt;

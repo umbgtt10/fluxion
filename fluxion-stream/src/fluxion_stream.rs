@@ -160,7 +160,7 @@ where
     ///
     /// # async fn example() {
     /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    /// 
+    ///
     /// // Enable ordered operations on self-ordered events
     /// let stream = FluxionStream::from_unbounded_receiver(rx)
     ///     .auto_ordered()

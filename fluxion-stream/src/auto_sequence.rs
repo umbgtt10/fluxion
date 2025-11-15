@@ -35,7 +35,7 @@ use futures::Stream;
 ///
 /// # async fn example() {
 /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-/// 
+///
 /// // auto_ordered() wraps in FluxionStream for ordered operations
 /// let stream = FluxionStream::from_unbounded_receiver(rx)
 ///     .auto_ordered(); // Now can use map_ordered, filter_ordered, etc.

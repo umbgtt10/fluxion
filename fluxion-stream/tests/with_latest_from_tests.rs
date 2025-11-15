@@ -74,7 +74,8 @@ async fn test_with_latest_from_ordering_preserved() {
         let primary_stream = UnboundedReceiverStream::new(primary_rx);
         let secondary_stream = UnboundedReceiverStream::new(secondary_rx);
 
-        let mut combined_stream = primary_stream.with_latest_from(secondary_stream, result_selector);
+        let mut combined_stream =
+            primary_stream.with_latest_from(secondary_stream, result_selector);
 
         // Act - interleave emissions to test ordering
         secondary_tx.send(Sequenced::new(person_alice())).unwrap();

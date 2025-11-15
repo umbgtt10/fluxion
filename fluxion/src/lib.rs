@@ -84,6 +84,8 @@
 //! - `fluxion_exec` - Async execution and subscription utilities
 //! - `fluxion_error` - Error types and handling
 
+mod receiver_ext;
+
 // Re-export core types
 pub use fluxion_core::into_stream::IntoStream;
 pub use fluxion_core::{CompareByInner, Ordered, OrderedWrapper};
@@ -93,6 +95,9 @@ pub use fluxion_stream::FluxionStream;
 
 // Re-export commonly used types
 pub use fluxion_stream::{CombinedState, WithPrevious};
+
+// Re-export convenience extensions
+pub use receiver_ext::UnboundedReceiverExt;
 
 /// Prelude module for convenient imports.
 ///
@@ -113,6 +118,7 @@ pub use fluxion_stream::{CombinedState, WithPrevious};
 pub mod prelude {
 
     pub use crate::FluxionStream;
+    pub use crate::UnboundedReceiverExt;
     pub use fluxion_core::into_stream::IntoStream;
     pub use fluxion_core::Ordered;
     pub use fluxion_stream::{AutoOrderedExt, CombinedState, WithPrevious};

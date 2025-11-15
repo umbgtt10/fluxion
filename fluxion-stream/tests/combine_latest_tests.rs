@@ -3,8 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::Ordered;
-use fluxion_stream::combine_latest::CombineLatestExt;
 use fluxion_stream::CombinedState;
+use fluxion_stream::combine_latest::CombineLatestExt;
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     sequenced::Sequenced,
@@ -49,7 +49,8 @@ async fn test_combine_latest_empty_streams() {
     let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let plant_stream = UnboundedReceiverStream::new(plant_rx);
 
-    let mut combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    let mut combined_stream =
+        person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
     drop(person_tx);
@@ -74,7 +75,8 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
     let (_plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let plant_stream = UnboundedReceiverStream::new(plant_rx);
 
-    let mut combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    let mut combined_stream =
+        person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
     person_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -99,7 +101,8 @@ async fn test_combine_latest_stream_closes_before_publish_no_output() {
     let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let plant_stream = UnboundedReceiverStream::new(plant_rx);
 
-    let mut combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    let mut combined_stream =
+        person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
     drop(plant_tx);
@@ -127,7 +130,8 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues()
     let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let plant_stream = UnboundedReceiverStream::new(plant_rx);
 
-    let mut combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    let mut combined_stream =
+        person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
     person_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -188,7 +192,8 @@ async fn combine_latest_template_test(
 
     let senders = vec![person_tx, animal_tx, plant_tx];
 
-    let mut combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    let mut combined_stream =
+        person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
     send_variant(&order1, &senders);
@@ -214,7 +219,8 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let plant_stream = UnboundedReceiverStream::new(plant_rx);
 
-    let mut combined_stream = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
+    let mut combined_stream =
+        person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
     person_tx.send(Sequenced::new(person_alice())).unwrap();
