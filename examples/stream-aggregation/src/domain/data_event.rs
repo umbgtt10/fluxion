@@ -4,7 +4,7 @@
 
 //! Unified data event enum
 
-use fluxion::Ordered;
+use fluxion::{CompareByInner, Ordered};
 
 use super::{MetricData, SensorReading, SystemEvent};
 
@@ -33,5 +33,11 @@ impl Ordered for DataEvent {
 
     fn with_order(value: Self::Inner, _order: u64) -> Self {
         value // Just return the value since it already has the timestamp
+    }
+}
+
+impl CompareByInner for DataEvent {
+    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
+        self.get().cmp(other.get())
     }
 }

@@ -115,5 +115,5 @@ pub mod prelude {
     pub use crate::FluxionStream;
     pub use fluxion_core::into_stream::IntoStream;
     pub use fluxion_core::Ordered;
-    pub use fluxion_stream::{CombinedState, WithPrevious};
+    pub use fluxion_stream::{AutoOrderedExt, CombinedState, WithPrevious};
 }

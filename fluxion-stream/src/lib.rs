@@ -716,6 +716,7 @@
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 #[macro_use]
 mod logging;
+pub mod auto_sequence;
 pub mod combine_latest;
 pub mod combine_with_previous;
 pub mod emit_when;
@@ -727,6 +728,7 @@ pub mod types;
 pub mod with_latest_from;
 
 // Re-export commonly used types
+pub use auto_sequence::AutoOrderedExt;
 pub use combine_latest::CombineLatestExt;
 pub use combine_with_previous::CombineWithPreviousExt;
 pub use emit_when::EmitWhenExt;

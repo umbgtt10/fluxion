@@ -11,7 +11,6 @@ use crate::metrics_producer::MetricsProducer;
 use crate::sensor_producer::SensorProducer;
 use fluxion::prelude::*;
 use fluxion_exec::SubscribeLatestAsyncExt;
-use fluxion_test_utils::Sequenced;
 use std::convert::Infallible;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -121,62 +120,49 @@ impl Aggregator {
         output_tx: mpsc::UnboundedSender<AggregatedEvent>,
         cancel_token: CancellationToken,
     ) {
-        // Create unified DataEvent channels
+        use futures::StreamExt;
+
+        println!("🔄 Aggregator started\n");
+
+        // Create intermediate channels for type-erased DataEvent streams
         let (data_tx1, data_rx1) = mpsc::unbounded_channel();
         let (data_tx2, data_rx2) = mpsc::unbounded_channel();
         let (data_tx3, data_rx3) = mpsc::unbounded_channel();
 
-        // Spawn intermediate tasks that transform specific events to DataEvent
-        // The aggregator acts as the "sequencer" by using timestamp as the order
-        let sensor_transform = tokio::spawn({
-            let data_tx = data_tx1;
-            async move {
-                let mut rx = sensor_rx;
-                while let Some(sensor) = rx.recv().await {
-                    let order = sensor.timestamp;
-                    let data_event = DataEvent::Sensor(sensor);
-                    let sequenced = Sequenced::with_sequence(data_event, order);
-                    let _ = data_tx.send(sequenced);
-                }
-            }
-        });
+        // Transform domain events to DataEvent - intermediate channels provide type erasure
+        let sensor_task = FluxionStream::from_unbounded_receiver(sensor_rx)
+            .auto_ordered()
+            .map_ordered(|s| DataEvent::Sensor(s.clone()))
+            .for_each(move |event| {
+                let _ = data_tx1.send(event);
+                async {}
+            });
 
-        let metrics_transform = tokio::spawn({
-            let data_tx = data_tx2;
-            async move {
-                let mut rx = metrics_rx;
-                while let Some(metric) = rx.recv().await {
-                    let order = metric.timestamp;
-                    let data_event = DataEvent::Metric(metric);
-                    let sequenced = Sequenced::with_sequence(data_event, order);
-                    let _ = data_tx.send(sequenced);
-                }
-            }
-        });
+        let metrics_task = FluxionStream::from_unbounded_receiver(metrics_rx)
+            .auto_ordered()
+            .map_ordered(|m| DataEvent::Metric(m.clone()))
+            .for_each(move |event| {
+                let _ = data_tx2.send(event);
+                async {}
+            });
 
-        let events_transform = tokio::spawn({
-            let data_tx = data_tx3;
-            async move {
-                let mut rx = events_rx;
-                while let Some(event) = rx.recv().await {
-                    let order = event.timestamp;
-                    let data_event = DataEvent::SystemEvent(event);
-                    let sequenced = Sequenced::with_sequence(data_event, order);
-                    let _ = data_tx.send(sequenced);
-                }
-            }
-        });
+        let events_task = FluxionStream::from_unbounded_receiver(events_rx)
+            .auto_ordered()
+            .map_ordered(|e| DataEvent::SystemEvent(e.clone()))
+            .for_each(move |event| {
+                let _ = data_tx3.send(event);
+                async {}
+            });
 
-        println!("🔄 Aggregator started\n");
-
-        // Now all streams have the same type: Stream<Sequenced<DataEvent>>
-        let stream1 = FluxionStream::from_unbounded_receiver(data_rx1);
-        let stream2 = FluxionStream::from_unbounded_receiver(data_rx2);
-        let stream3 = FluxionStream::from_unbounded_receiver(data_rx3);
-
-        // Compose: combine_latest → map_ordered → filter_ordered → subscribe_latest_async
-        let _ = stream1
-            .combine_latest(vec![stream2, stream3], |_| true)
+        // Combine the unified DataEvent streams
+        let aggregation_task = FluxionStream::from_unbounded_receiver(data_rx1)
+            .combine_latest(
+                vec![
+                    FluxionStream::from_unbounded_receiver(data_rx2),
+                    FluxionStream::from_unbounded_receiver(data_rx3),
+                ],
+                |_| true,
+            )
             .map_ordered(create_aggregated_event)
             .filter_ordered(|agg| {
                 // Only process reasonable temperatures (150-300 represents 15.0-30.0°C)
@@ -202,13 +188,10 @@ impl Aggregator {
                 },
                 None::<fn(Infallible)>,
                 Some(cancel_token),
-            )
-            .await;
+            );
 
-        // Clean up transform tasks
-        sensor_transform.abort();
-        metrics_transform.abort();
-        events_transform.abort();
+        // Run all transformation and aggregation tasks concurrently
+        let _ = tokio::join!(sensor_task, metrics_task, events_task, aggregation_task);
 
         println!("\n🔄 Aggregator stopped");
     }
