@@ -62,7 +62,6 @@ async fn main() {
     
     // Events are already ordered by their timestamp
     let stream = FluxionStream::from_unbounded_receiver(rx)
-        .auto_ordered()  // Enable ordered operations
         .filter_ordered(|reading| reading.get().temperature > 25.0);
     
     // Stream processing respects the intrinsic timestamp ordering
@@ -100,8 +99,8 @@ struct Event {
 }
 
 // Test infrastructure adds sequence numbers
-let event1 = Sequenced::new(100, Event { data: "first".into() });
-let event2 = Sequenced::new(200, Event { data: "second".into() });
+let event1 = Sequenced::with_sequence(Event { data: "first".into() }, 100);
+let event2 = Sequenced::with_sequence(Event { data: "second".into() }, 200);
 ```
 
 ### Usage
@@ -125,9 +124,9 @@ async fn test_ordered_filtering() {
         .filter_ordered(|e| e.get().data.starts_with('f'));
 
     // Push events in arbitrary order
-    tx.send(Sequenced::new(300, Event { data: "third".into() })).unwrap();
-    tx.send(Sequenced::new(100, Event { data: "first".into() })).unwrap();
-    tx.send(Sequenced::new(200, Event { data: "second".into() })).unwrap();
+    tx.send(Sequenced::with_sequence(Event { data: "third".into() }, 300)).unwrap();
+    tx.send(Sequenced::with_sequence(Event { data: "first".into() }, 100)).unwrap();
+    tx.send(Sequenced::with_sequence(Event { data: "second".into() }, 200)).unwrap();
     drop(tx);
     
     // Stream will reorder by sequence: 100, 200, 300
@@ -221,7 +220,6 @@ async fn main() {
     
     // Process timestamped events
     let stream = FluxionStream::from_unbounded_receiver(rx)
-        .auto_ordered()
         .map_ordered(|e| e.get().event.clone());
     
     // Now you have ordered stream of ThirdPartyEvent

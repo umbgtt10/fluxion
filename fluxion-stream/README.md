@@ -68,9 +68,9 @@ async fn main() {
     let stream2 = FluxionStream::from_unbounded_receiver(rx2);
     
     // Send ordered values
-    tx1.send(Sequenced::new(1, 1)).unwrap();  // (value, order)
-    tx2.send(Sequenced::new(2, 2)).unwrap();
-    tx1.send(Sequenced::new(3, 3)).unwrap();
+    tx1.send(Sequenced::with_sequence(1, 1)).unwrap();  // (value, sequence)
+    tx2.send(Sequenced::with_sequence(2, 2)).unwrap();
+    tx1.send(Sequenced::with_sequence(3, 3)).unwrap();
     
     drop(tx1);
     drop(tx2);

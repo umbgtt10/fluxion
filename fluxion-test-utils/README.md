@@ -21,9 +21,9 @@ async fn example() {
     let stream = FluxionStream::from_unbounded_receiver(rx);
     
     // Send sequenced values
-    tx.send(Sequenced::new(1, 100)).unwrap();
-    tx.send(Sequenced::new(2, 200)).unwrap();
-    tx.send(Sequenced::new(3, 300)).unwrap();
+    tx.send(Sequenced::with_sequence(1, 100)).unwrap();
+    tx.send(Sequenced::with_sequence(2, 200)).unwrap();
+    tx.send(Sequenced::with_sequence(3, 300)).unwrap();
 }
 ```
 

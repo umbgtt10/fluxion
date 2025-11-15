@@ -122,58 +122,6 @@ where
 impl<S, T> FluxionStream<S>
 where
     S: Stream<Item = T>,
-    T: Ordered<Inner = T> + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    /// Enables ordered stream operations on items that are self-ordered.
-    ///
-    /// This method is a convenience for streams where the items implement `Ordered`
-    /// with `Inner = Self`. It simply returns the FluxionStream itself, but makes
-    /// the code more expressive and enables ordered operations.
-    ///
-    /// # When to use
-    ///
-    /// Use this when your domain types directly implement `Ordered` (e.g., they have
-    /// a timestamp field) and you want to use ordered stream operations like
-    /// `map_ordered`, `filter_ordered`, `combine_latest`, etc.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use fluxion_stream::FluxionStream;
-    /// use fluxion_core::Ordered;
-    ///
-    /// #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-    /// struct Event {
-    ///     timestamp: u64,
-    ///     data: String,
-    /// }
-    ///
-    /// impl Ordered for Event {
-    ///     type Inner = Event;
-    ///     fn order(&self) -> u64 { self.timestamp }
-    ///     fn get(&self) -> &Self::Inner { self }
-    ///     fn with_order(value: Self::Inner, _order: u64) -> Self { value }
-    /// }
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
-    ///
-    /// // Enable ordered operations on self-ordered events
-    /// let stream = FluxionStream::from_unbounded_receiver(rx)
-    ///     .auto_ordered()
-    ///     .map_ordered(|event| event.data);
-    /// # drop(stream);
-    /// # }
-    /// ```
-    pub fn auto_ordered(self) -> Self {
-        self
-    }
-}
-
-impl<S, T> FluxionStream<S>
-where
-    S: Stream<Item = T>,
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
