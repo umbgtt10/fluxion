@@ -1,167 +1,194 @@
-# fluxion
-
-Licensed under the Apache License, Version 2.0 ([LICENSE](LICENSE) or http://www.apache.org/licenses/LICENSE-2.0)
+# Fluxion
 
 [![CI](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml/badge.svg)](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml)
-[![Coverage](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml/badge.svg)](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Fluxion is a 100% Rust implementation of composite Rx-style stream operators and helpers focused on correct temporal ordering and efficient async processing.
+A reactive stream processing library for Rust with temporal ordering guarantees and efficient async execution.
+
+## Features
+
+- 🔄 **Rx-Style Operators**: Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, etc.)
+- ⏱️ **Temporal Ordering**: Guaranteed ordering semantics with `Sequenced<T>` wrapper
+- ⚡ **Async Execution**: Efficient async processing with `subscribe_async` and `subscribe_latest_async`
+- 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `Result` types
+- 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
+- ✅ **Well Tested**: 1,500+ tests with comprehensive coverage
 
 ## Quick Start
 
-Add fluxion to your `Cargo.toml`:
+Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion = { path = "path/to/fluxion" }
+fluxion = "0.1.0"  # Note: Not yet published to crates.io
 tokio = { version = "1.48", features = ["full"] }
 futures = "0.3"
 ```
 
-Basic usage example:
+Basic usage:
 
 ```rust
 use fluxion::FluxionStream;
 use futures::StreamExt;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a channel and stream
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
     let stream = FluxionStream::from_unbounded_receiver(rx);
     
     // Send some values
-    tx.send(1).unwrap();
-    tx.send(2).unwrap();
-    tx.send(3).unwrap();
-    drop(tx); // Close the sender
+    tx.send(1)?;
+    tx.send(2)?;
+    tx.send(3)?;
+    drop(tx);
     
-    // Collect and print values
+    // Collect and process
     let values: Vec<_> = stream.collect().await;
-    println!("Received: {:?}", values); // Prints: Received: [1, 2, 3]
+    println!("Received: {:?}", values); // Prints: [1, 2, 3]
+    
+    Ok(())
 }
+```
+
+## Core Concepts
+
+### Stream Operators
+
+**Combining Streams:**
+- `combine_latest` - Emit when any stream emits, with latest from all
+- `with_latest_from` - Sample secondary streams on primary emission
+- `ordered_merge` - Merge multiple streams preserving temporal order
+
+**Filtering & Gating:**
+- `emit_when` - Gate emissions based on a filter condition
+- `take_latest_when` - Sample stream on trigger events
+- `take_while_with` - Emit while condition holds
+
+**Transformation:**
+- `combine_with_previous` - Pair consecutive values
+- `map_ordered` - Transform while preserving order
+- `filter_ordered` - Filter while preserving order
+
+### Async Execution
+
+**Sequential Processing:**
+```rust
+use fluxion_exec::SubscribeAsyncExt;
+
+stream
+    .subscribe_async(
+        |item, _token| async move {
+            process(item).await?;
+            Ok::<(), MyError>(())
+        },
+        None,
+        Some(|err| eprintln!("Error: {}", err))
+    )
+    .await?;
+```
+
+**Latest-Value Processing (with auto-cancellation):**
+```rust
+use fluxion_exec::SubscribeLatestAsyncExt;
+
+stream
+    .subscribe_latest_async(
+        |item, token| async move {
+            expensive_operation(item, token).await?;
+            Ok::<(), MyError>(())
+        },
+        Some(|err| eprintln!("Error: {}", err)),
+        None
+    )
+    .await?;
 ```
 
 ## Documentation
 
-Fluxion provides comprehensive documentation with conceptual guides and working examples:
+### 📚 Guides
 
-### 📚 Getting Started Guides
-
-- **[fluxion-stream](fluxion-stream/)** - Stream composition and temporal ordering
-  - Architecture and key concepts
-  - Temporal ordering explained
-  - Operator selection guide with comparison tables
-  - Common patterns with runnable examples
-  - Performance characteristics
-
-- **[fluxion-exec](fluxion-exec/)** - Execution patterns and async subscriptions
-  - Sequential vs. latest-value processing
-  - Task spawning and cancellation
-  - Comparisons with other async patterns
-  - Error handling best practices
+- **[fluxion-stream](fluxion-stream/README.md)** - Stream operators and composition patterns
+- **[fluxion-exec](fluxion-exec/README.md)** - Async execution and subscription utilities
 
 ### 🔧 API Documentation
 
-Generate full API docs locally:
+Generate and browse full API documentation:
+
 ```bash
 cargo doc --no-deps --open
 ```
 
-Or browse specific crate docs:
-- `cargo doc --package fluxion-stream --open` - Stream operators
-- `cargo doc --package fluxion-exec --open` - Execution utilities
-- `cargo doc --package fluxion-test-utils --open` - Testing helpers
-
-### 📖 Quick Reference
-
-**Stream Operators:**
-- `combine_latest` - Combine multiple streams with latest values
-- `with_latest_from` - Sample secondary on primary emission
-- `ordered_merge` - Merge preserving temporal order  
-- `emit_when` - Gate emissions by filter condition
-- `take_latest_when` - Sample on trigger
-- `take_while_with` - Emit while condition holds
-- `combine_with_previous` - Pair consecutive values
-
-**Execution:**
-- `subscribe_async` - Sequential item processing
-- `subscribe_latest_async` - Latest-value with auto-cancellation
-
-## Quick links
-- Crates: `fluxion-stream`, `fluxion-exec`, `fluxion-test-utils`
-- Full docs: `cargo doc --no-deps --open`
-
-## Getting started
-
-Prerequisites: Rust (recommended toolchain is pinned by `rust-toolchain.toml`).
-
-- Build and run tests for the whole workspace:
-
-```powershell
-cargo build --all
-cargo test --all-features --all-targets
+Or for specific crates:
+```bash
+cargo doc --package fluxion-stream --open
+cargo doc --package fluxion-exec --open
 ```
 
-- Run the local CI helper (PowerShell):
+## Development
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\.ci\ci.ps1
+### Prerequisites
+
+- Rust toolchain (version pinned in `rust-toolchain.toml`)
+- Cargo
+
+### Building
+
+```bash
+# Build all crates
+cargo build --workspace
+
+# Run all tests
+cargo test --workspace --all-features
+
+# Run CI checks locally (PowerShell)
+.\.ci\ci.ps1
 ```
 
-Workspace overview
+### Workspace Structure
 
-- `fluxion-stream` — stream combinators and timestamping helpers (ordering guarantees)
-- `fluxion-exec` — execution utilities and subscription helpers for async processing
-- `fluxion-test-utils` — shared test helpers, fixtures and sample data used by tests
+- **`fluxion`** - Main crate (re-exports from other crates)
+- **`fluxion-stream`** - Stream operators and combinators
+- **`fluxion-exec`** - Execution utilities and subscriptions
+- **`fluxion-core`** - Core utilities and traits
+- **`fluxion-error`** - Error types and handling
+- **`fluxion-test-utils`** - Test helpers and fixtures
+- **`fluxion-merge`** - Stream merging utilities
+- **`fluxion-ordered-merge`** - Ordered merging implementation
 
-Development notes
+### Development Notes
 
-- Clippy, formatting and documentation warnings are treated as errors in CI.
-- Local scripts live in `.ci/` (use `coverage.ps1` to collect coverage locally with `cargo-llvm-cov`).
+- All clippy, formatting, and documentation warnings are treated as errors in CI
+- Use `.ci/coverage.ps1` to collect code coverage locally (requires `cargo-llvm-cov`)
+- See [ROADMAP.md](ROADMAP.md) for planned features and release schedule
 
-TODOs:
-- [ ] Enable direct usage of TestChannel in FluxionStream methods:
-    - Currently: `FluxionStream::from(person1.stream).ordered_merge(vec![FluxionStream::from(person2.stream)])`
-    - Goal: `person1.ordered_merge(vec![person2])`
-    - Blocker: Avoid circular dependencies between fluxion-stream and fluxion-test-utils
-- [ ] Review all performance benches:
-    - Ensure consistency
-	- Double-check sample sizes and test duration
-	- Ensure reasonable complexity of the benches
-	- Consider adding additional cases
-- [ ] Investigate a clean way to suppress unit-test harness noise when running `cargo bench`.
-	- Consider options: `cargo -q bench`, running the bench binary directly, per-package bench (`-p`), or a `.ci/bench.ps1` wrapper that builds then executes bench executables.
-- [ ] Rework/review ci.yml
-	- Consider options: add code coverage
-	- Improve speed
-	- Consider removing unnecessary steps
-	- Check whether new steps should be added
-- [ ] Windows double-versioning issue:
-    - Resolve `windows-sys` multiple-version issue on Windows
-	- Symptom: both `windows-sys 0.60.x` and `0.61.x` appear in `Cargo.lock` (clippy flags `multiple_crate_versions`).
-	- Options:
-	   - bump workspace `tokio`/transitive crates so they align [DONE]
-	   - pin `socket2`/`mio` to compatible versions [NOT DONE]
-	   - or accept both and suppress the clippy lint in CI. [DONE]
-	- Fix / workaround:
-       - suppress Clippy at crate level with #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)] [DONE]
-       - or add a [patch.crates-io] override for the transitive crate (preferred over forcing windows-sys directly) [NOT DONE]
-	- Note: attempting to force windows-sys = "0.61.2" may fail if an upstream crate requires ^0.60; use cargo tree -i to inspect dependency paths before attempting a pin/patch
-	- Optimal solution: update tokio / related transitive crates to versions that align their windows-sys reqs, remove any suppressions/pins and re-run cargo update (may require coordinated upgrades).
-	- Quick checks:
-		```
-		cargo tree -i windows-sys@0.60.2 --workspace
-		cargo tree -i windows-sys@0.61.2 --workspace
-		cargo tree -i windows-sys --workspace
-		```
-		Use `cargo update` after edits to `Cargo.toml` to refresh `Cargo.lock`.
+## Project Status
 
+**Current Version:** 0.1.0 (pre-release)
 
-Issues & contributions
+- ✅ Core functionality complete
+- ✅ Comprehensive test coverage
+- ✅ Phase 1 error handling implemented
+- 🚧 Phase 2 error propagation in progress
+- 📝 Documentation complete for current features
 
-Contributions are welcome. Please open issues and PRs. See [CONTRIBUTING.md](CONTRIBUTING.md) for details. Use the existing CI scripts to verify changes locally before pushing.
+See [ROADMAP.md](ROADMAP.md) for details on the path to 1.0.0.
 
-License
+## Contributing
 
-Apache-2.0
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+Before submitting a PR:
+1. Run tests: `cargo test --workspace`
+2. Run clippy: `cargo clippy --workspace -- -D warnings`
+3. Format code: `cargo fmt --all`
+4. Update documentation if needed
+
+## License
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+
+## Acknowledgments
+
+Inspired by ReactiveX and other reactive programming libraries, with a focus on Rust's safety and performance characteristics.
+
