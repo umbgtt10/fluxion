@@ -8,11 +8,11 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
+use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
+use fluxion_core::lock_utilities::safe_lock;
 use fluxion_core::{CompareByInner, Ordered, OrderedWrapper};
 use fluxion_ordered_merge::OrderedMergeExt;
-
-use fluxion_core::lock_utilities::safe_lock;
 
 /// Extension trait providing the `combine_latest` operator for ordered streams.
 ///
@@ -183,91 +183,6 @@ where
                     ready(filter(combined_state))
                 }),
         )
-    }
-}
-
-/// Represents the combined state of multiple streams in `combine_latest`.
-///
-/// This type holds a vector of the latest values from each stream being combined.
-/// The order of values matches the order streams were provided to `combine_latest`:
-/// index 0 is the primary stream, indices 1+ are the `others` streams in order.
-///
-/// # Type Parameters
-///
-/// * `V` - The inner value type from the ordered streams
-///
-/// # Examples
-///
-/// ```rust
-/// use fluxion_stream::CombinedState;
-///
-/// let state = CombinedState::new(vec![1, 2, 3]);
-/// assert_eq!(state.get_state().len(), 3);
-/// assert_eq!(state.get_state()[0], 1);
-/// ```
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CombinedState<V>
-where
-    V: Clone + Send + Sync,
-{
-    state: Vec<V>,
-}
-
-impl<V> PartialOrd for CombinedState<V>
-where
-    V: Clone + Send + Sync + Ord,
-{
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<V> Ord for CombinedState<V>
-where
-    V: Clone + Send + Sync + Ord,
-{
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.state.cmp(&other.state)
-    }
-}
-
-impl<V> CombinedState<V>
-where
-    V: Clone + Send + Sync,
-{
-    #[must_use]
-    pub const fn new(state: Vec<V>) -> Self {
-        Self { state }
-    }
-
-    #[must_use]
-    pub const fn get_state(&self) -> &Vec<V> {
-        &self.state
-    }
-}
-
-impl<V> Ordered for CombinedState<V>
-where
-    V: Clone + Send + Sync,
-{
-    type Inner = Self;
-
-    fn order(&self) -> u64 {
-        // CombinedState doesn't have its own order - it's always wrapped by an Ordered type
-        // This should never be called directly
-        0
-    }
-
-    fn get(&self) -> &Self::Inner {
-        self
-    }
-
-    fn with_order(value: Self::Inner, _order: u64) -> Self {
-        value
-    }
-
-    fn into_inner(self) -> Self::Inner {
-        self
     }
 }
 

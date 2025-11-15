@@ -92,7 +92,7 @@ pub use fluxion_core::{CompareByInner, Ordered, OrderedWrapper};
 pub use fluxion_stream::FluxionStream;
 
 // Re-export commonly used types
-pub use fluxion_stream::combine_latest::CombinedState;
+pub use fluxion_stream::{CombinedState, WithPrevious};
 
 /// Prelude module for convenient imports.
 ///
@@ -106,6 +106,7 @@ pub use fluxion_stream::combine_latest::CombinedState;
 /// // - Ordered trait
 /// // - IntoStream trait  
 /// // - CombinedState
+/// // - WithPrevious
 /// ```
 ///
 /// This is the recommended way to use Fluxion in most applications.
@@ -114,5 +115,5 @@ pub mod prelude {
     pub use crate::FluxionStream;
     pub use fluxion_core::into_stream::IntoStream;
     pub use fluxion_core::Ordered;
-    pub use fluxion_stream::combine_latest::CombinedState;
+    pub use fluxion_stream::{CombinedState, WithPrevious};
 }

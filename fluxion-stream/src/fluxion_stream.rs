@@ -3,12 +3,13 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::Ordered;
-use crate::combine_latest::{CombineLatestExt, CombinedState};
-use crate::combine_with_previous::{CombineWithPreviousExt, WithPrevious};
+use crate::combine_latest::CombineLatestExt;
+use crate::combine_with_previous::CombineWithPreviousExt;
 use crate::emit_when::EmitWhenExt;
 use crate::ordered_merge::OrderedStreamExt;
 use crate::take_latest_when::TakeLatestWhenExt;
 use crate::take_while_with::TakeWhileExt;
+use crate::types::{CombinedState, WithPrevious};
 use crate::with_latest_from::WithLatestFromExt;
 use fluxion_core::{CompareByInner, OrderedWrapper};
 use futures::Stream;

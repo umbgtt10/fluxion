@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::combine_latest::CombinedState;
+use fluxion_stream::CombinedState;
 use fluxion_stream::emit_when::EmitWhenExt;
 use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::{

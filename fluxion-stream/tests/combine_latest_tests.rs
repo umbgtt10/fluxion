@@ -3,7 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::Ordered;
-use fluxion_stream::combine_latest::{CombineLatestExt, CombinedState};
+use fluxion_stream::combine_latest::CombineLatestExt;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     sequenced::Sequenced,

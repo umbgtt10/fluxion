@@ -126,6 +126,87 @@
 //! - No blocking operations in hot paths
 //! - Efficient polling with `futures::StreamExt`
 //!
+//! # Return Type Patterns
+//!
+//! Fluxion operators use three different return type patterns, each chosen for specific
+//! reasons related to type erasure, composability, and performance.
+//!
+//! ## Pattern 1: `impl Stream<Item = T>`
+//!
+//! **When used:** Lightweight operators with simple transformations
+//!
+//! **Examples:**
+//! - [`ordered_merge`](OrderedStreamExt::ordered_merge)
+//! - [`map_ordered`](FluxionStream::map_ordered)
+//! - [`filter_ordered`](FluxionStream::filter_ordered)
+//!
+//! **Benefits:**
+//! - Zero-cost abstraction (no boxing)
+//! - Compiler can fully optimize the stream pipeline
+//! - Type information preserved for further optimizations
+//!
+//! **Tradeoffs:**
+//! - Concrete type exposed in signatures (can be complex)
+//! - May increase compile times for deeply nested operators
+//!
+//! ## Pattern 2: `FluxionStream<impl Stream<Item = T>>`
+//!
+//! **When used:** Operators that should compose with other FluxionStream methods
+//!
+//! **Examples:**
+//! - [`combine_with_previous`](CombineWithPreviousExt::combine_with_previous)
+//! - [`with_latest_from`](WithLatestFromExt::with_latest_from)
+//! - [`combine_latest`](CombineLatestExt::combine_latest)
+//!
+//! **Benefits:**
+//! - Enables method chaining with `FluxionStream` convenience methods
+//! - Still zero-cost (no boxing)
+//! - Provides consistent API surface
+//!
+//! **Use cases:**
+//! - When users are likely to chain multiple operators
+//! - When the operator produces a complex transformed type
+//!
+//! ## Pattern 3: `Pin<Box<dyn Stream<Item = T>>>`
+//!
+//! **When used:** Operators with dynamic dispatch requirements or complex internal state
+//!
+//! **Examples:**
+//! - [`emit_when`](EmitWhenExt::emit_when)
+//! - [`take_latest_when`](TakeLatestWhenExt::take_latest_when)
+//! - [`take_while_with`](TakeWhileExt::take_while_with)
+//!
+//! **Benefits:**
+//! - Type erasure simplifies signatures
+//! - Reduces compile time for complex operator chains
+//! - Hides internal implementation details
+//!
+//! **Tradeoffs:**
+//! - Heap allocation (small overhead)
+//! - Dynamic dispatch prevents some optimizations
+//! - Runtime cost typically negligible compared to async operations
+//!
+//! **Why used for these operators:**
+//! These operators maintain internal state machines with multiple branches and complex
+//! lifetime requirements. Type erasure keeps the public API simple while allowing
+//! internal flexibility.
+//!
+//! ## Choosing the Right Pattern
+//!
+//! As a user, you typically don't need to worry about these patterns - all three compose
+//! seamlessly:
+//!
+//! ```rust,ignore
+//! stream
+//!     .ordered_merge(other)        // → impl Stream
+//!     .combine_with_previous()     // → FluxionStream<impl Stream>
+//!     .filter_ordered(predicate)   // → FluxionStream<impl Stream>
+//!     .take_while_with(filter, f)  // → FluxionStream<impl Stream>
+//! ```
+//!
+//! The patterns are implementation details chosen to balance performance, ergonomics,
+//! and maintainability.
+//!
 //! # Common Patterns
 //!
 //! ## Pattern: Enriching Events with Context
@@ -644,10 +725,11 @@ pub mod fluxion_stream;
 pub mod ordered_merge;
 pub mod take_latest_when;
 pub mod take_while_with;
+pub mod types;
 pub mod with_latest_from;
 
 // Re-export commonly used types
-pub use combine_latest::{CombineLatestExt, CombinedState};
+pub use combine_latest::CombineLatestExt;
 pub use combine_with_previous::CombineWithPreviousExt;
 pub use emit_when::EmitWhenExt;
 pub use fluxion_core::{Ordered, OrderedWrapper};
@@ -655,4 +737,5 @@ pub use fluxion_stream::FluxionStream;
 pub use ordered_merge::OrderedStreamExt;
 pub use take_latest_when::TakeLatestWhenExt;
 pub use take_while_with::TakeWhileExt;
+pub use types::{CombinedState, OrderedInner, OrderedInnerUnwrapped, OrderedStreamItem, WithPrevious};
 pub use with_latest_from::WithLatestFromExt;
