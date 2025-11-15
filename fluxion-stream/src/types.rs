@@ -149,13 +149,23 @@ where
 /// # Usage
 ///
 /// Instead of writing:
-/// ```rust,ignore
-/// where T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static
+/// ```
+/// # use fluxion_stream::OrderedStreamItem;
+/// # use fluxion_core::Ordered;
+/// # use std::fmt::Debug;
+/// fn process_stream<T>()
+/// where
+///     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static
+/// # {}
 /// ```
 ///
 /// You can write:
-/// ```rust,ignore
-/// where T: OrderedStreamItem
+/// ```
+/// # use fluxion_stream::OrderedStreamItem;
+/// fn process_stream<T>()
+/// where
+///     T: OrderedStreamItem
+/// # {}
 /// ```
 pub trait OrderedStreamItem: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static {}
 
@@ -177,13 +187,21 @@ impl<T> OrderedStreamItem for T where
 /// # Usage
 ///
 /// Instead of writing:
-/// ```rust,ignore
-/// where T::Inner: Clone + Debug + Ord + Send + Sync + 'static
+/// ```
+/// # use std::fmt::Debug;
+/// fn process_inner<T>()
+/// where
+///     T: Clone + Debug + Ord + Send + Sync + 'static
+/// # {}
 /// ```
 ///
 /// You can write:
-/// ```rust,ignore
-/// where T::Inner: OrderedInner
+/// ```
+/// # use fluxion_stream::OrderedInner;
+/// fn process_inner<T>()
+/// where
+///     T: OrderedInner
+/// # {}
 /// ```
 pub trait OrderedInner: Clone + Debug + Ord + Send + Sync + 'static {}
 
