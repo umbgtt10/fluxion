@@ -423,7 +423,192 @@
 //!    the chain
 //! 4. **Test incrementally**: Build complex chains step by step, testing each addition
 //!
-//! See the composition tests in the source repository for more sophisticated chaining examples.
+//! ## Advanced Composition Examples
+//!
+//! ### 1. Ordered Merge → Combine With Previous
+//!
+//! Merge multiple streams in temporal order, then track consecutive values:
+//!
+//! ```rust
+//! use fluxion_stream::{FluxionStream, OrderedStreamExt, CombineWithPreviousExt, Ordered};
+//! use fluxion_test_utils::Sequenced;
+//! use tokio::sync::mpsc;
+//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use futures::StreamExt;
+//!
+//! async fn example() {
+//! let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<i32>>();
+//!
+//! let stream1 = UnboundedReceiverStream::new(rx1);
+//! let stream2 = UnboundedReceiverStream::new(rx2);
+//!
+//! // Merge streams in temporal order, then pair consecutive values
+//! let mut composed = FluxionStream::new(stream1)
+//!     .ordered_merge(vec![FluxionStream::new(stream2)])
+//!     .combine_with_previous();
+//!
+//! tx1.send(Sequenced::new(1)).unwrap();
+//! let item = composed.next().await.unwrap();
+//! assert!(item.previous.is_none());
+//! assert_eq!(item.current.get(), &1);
+//!
+//! tx2.send(Sequenced::new(2)).unwrap();
+//! let item = composed.next().await.unwrap();
+//! assert_eq!(item.previous.unwrap().get(), &1);
+//! assert_eq!(item.current.get(), &2);
+//! }
+//! ```
+//!
+//! ### 2. Combine Latest → Combine With Previous
+//!
+//! Combine latest values from multiple streams, then track state changes:
+//!
+//! ```rust
+//! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt, Ordered};
+//! use fluxion_test_utils::Sequenced;
+//! use tokio::sync::mpsc;
+//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use futures::StreamExt;
+//!
+//! async fn example() {
+//! let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<i32>>();
+//!
+//! let stream1 = UnboundedReceiverStream::new(rx1);
+//! let stream2 = UnboundedReceiverStream::new(rx2);
+//!
+//! // Combine latest, then track previous combined state
+//! let mut composed = FluxionStream::new(stream1)
+//!     .combine_latest(vec![stream2], |_| true)
+//!     .combine_with_previous();
+//!
+//! tx1.send(Sequenced::new(1)).unwrap();
+//! tx2.send(Sequenced::new(2)).unwrap();
+//!
+//! let item = composed.next().await.unwrap();
+//! assert!(item.previous.is_none());
+//! assert_eq!(item.current.get().get_state().len(), 2);
+//!
+//! tx1.send(Sequenced::new(3)).unwrap();
+//! let item = composed.next().await.unwrap();
+//! // Previous state had [1, 2], current has [3, 2]
+//! assert!(item.previous.is_some());
+//! }
+//! ```
+//!
+//! ### 3. Combine Latest → Take While With
+//!
+//! Combine streams and continue only while a condition holds:
+//!
+//! ```rust
+//! use fluxion_stream::{FluxionStream, CombineLatestExt, TakeWhileExt};
+//! use fluxion_test_utils::Sequenced;
+//! use tokio::sync::mpsc;
+//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use futures::StreamExt;
+//!
+//! async fn example() {
+//! let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
+//!
+//! let stream1 = UnboundedReceiverStream::new(rx1);
+//! let stream2 = UnboundedReceiverStream::new(rx2);
+//! let filter_stream = UnboundedReceiverStream::new(filter_rx);
+//!
+//! // Combine latest values, but stop when filter becomes false
+//! let composed = FluxionStream::new(stream1)
+//!     .combine_latest(vec![stream2], |_| true)
+//!     .take_while_with(filter_stream, |f| *f);
+//!
+//! filter_tx.send(Sequenced::new(true)).unwrap();
+//! tx1.send(Sequenced::new(1)).unwrap();
+//! tx2.send(Sequenced::new(2)).unwrap();
+//!
+//! let mut composed = Box::pin(composed);
+//! let item = composed.next().await.unwrap();
+//! assert_eq!(item.get_state().len(), 2);
+//! }
+//! ```
+//!
+//! ### 4. Ordered Merge → Take While With
+//!
+//! Merge streams in order and terminate based on external condition:
+//!
+//! ```rust
+//! use fluxion_stream::{FluxionStream, OrderedStreamExt, TakeWhileExt};
+//! use fluxion_test_utils::Sequenced;
+//! use tokio::sync::mpsc;
+//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use futures::StreamExt;
+//!
+//! async fn example() {
+//! let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
+//!
+//! let stream1 = UnboundedReceiverStream::new(rx1);
+//! let stream2 = UnboundedReceiverStream::new(rx2);
+//! let filter_stream = UnboundedReceiverStream::new(filter_rx);
+//!
+//! // Merge all values in order, but stop when filter says so
+//! let composed = FluxionStream::new(stream1)
+//!     .ordered_merge(vec![FluxionStream::new(stream2)])
+//!     .take_while_with(filter_stream, |f| *f);
+//!
+//! filter_tx.send(Sequenced::new(true)).unwrap();
+//! tx1.send(Sequenced::new(1)).unwrap();
+//!
+//! let mut composed = Box::pin(composed);
+//! let item = composed.next().await.unwrap();
+//! assert_eq!(item, 1);
+//!
+//! tx2.send(Sequenced::new(2)).unwrap();
+//! let item = composed.next().await.unwrap();
+//! assert_eq!(item, 2);
+//! }
+//! ```
+//!
+//! ### 5. Take Latest When → Combine With Previous
+//!
+//! Sample latest value on trigger, then pair with previous sampled value:
+//!
+//! ```rust
+//! use fluxion_stream::{FluxionStream, TakeLatestWhenExt, CombineWithPreviousExt, Ordered};
+//! use fluxion_test_utils::Sequenced;
+//! use tokio::sync::mpsc;
+//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use futures::StreamExt;
+//!
+//! async fn example() {
+//! let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
+//!
+//! let source_stream = UnboundedReceiverStream::new(source_rx);
+//! let filter_stream = UnboundedReceiverStream::new(filter_rx);
+//!
+//! // Sample source when filter emits, then track consecutive samples
+//! let mut composed = FluxionStream::new(source_stream)
+//!     .take_latest_when(filter_stream, |_| true)
+//!     .combine_with_previous();
+//!
+//! filter_tx.send(Sequenced::new(0)).unwrap();
+//! source_tx.send(Sequenced::new(42)).unwrap();
+//!
+//! let item = composed.next().await.unwrap();
+//! assert!(item.previous.is_none());
+//! assert_eq!(item.current.get(), &42);
+//!
+//! source_tx.send(Sequenced::new(99)).unwrap();
+//! let item = composed.next().await.unwrap();
+//! assert_eq!(item.previous.unwrap().get(), &42);
+//! assert_eq!(item.current.get(), &99);
+//! }
+//! ```
+//!
+//! These patterns demonstrate how Fluxion operators compose to create sophisticated
+//! data flows. See the composition tests in the source repository for more examples.
 //!
 //! [`map_ordered`]: fluxion_stream::FluxionStream::map_ordered
 //! [`filter_ordered`]: fluxion_stream::FluxionStream::filter_ordered
