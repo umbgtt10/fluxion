@@ -16,7 +16,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 async fn test_filter_ordered_basic_predicate() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let mut stream = UnboundedReceiverStream::new(rx);
     let mut stream =
         FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Person(_)));
 
@@ -36,7 +36,7 @@ async fn test_filter_ordered_basic_predicate() {
 async fn test_filter_ordered_age_threshold() {
     // Arrange - filter people by age > 30
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let mut stream = UnboundedReceiverStream::new(rx);
     let mut stream = FluxionStream::new(stream).filter_ordered(|data| match data {
         TestData::Person(p) => p.age > 30,
         _ => false,
@@ -60,7 +60,7 @@ async fn test_filter_ordered_age_threshold() {
 async fn test_filter_ordered_empty_stream() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let mut stream = UnboundedReceiverStream::new(rx);
     let mut stream = FluxionStream::new(stream).filter_ordered(|_| true);
 
     // Act
@@ -74,7 +74,7 @@ async fn test_filter_ordered_empty_stream() {
 async fn test_filter_ordered_all_filtered_out() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let mut stream = UnboundedReceiverStream::new(rx);
     let mut stream = FluxionStream::new(stream).filter_ordered(|_| false); // Filter everything
 
     // Act
@@ -91,7 +91,7 @@ async fn test_filter_ordered_all_filtered_out() {
 async fn test_filter_ordered_none_filtered() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let mut stream = UnboundedReceiverStream::new(rx);
     let mut stream = FluxionStream::new(stream).filter_ordered(|_| true); // Keep everything
 
     // Act
@@ -109,7 +109,7 @@ async fn test_filter_ordered_none_filtered() {
 async fn test_filter_ordered_preserves_ordering() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let mut stream = UnboundedReceiverStream::new(rx);
 
     // Keep only people with even ages
     let mut stream = FluxionStream::new(stream).filter_ordered(|data| match data {
@@ -142,7 +142,7 @@ async fn test_filter_ordered_preserves_ordering() {
 async fn test_filter_ordered_multiple_types() {
     // Arrange - keep only animals
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let mut stream = UnboundedReceiverStream::new(rx);
     let mut stream =
         FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Animal(_)));
 
@@ -165,7 +165,7 @@ async fn test_filter_ordered_multiple_types() {
 async fn test_filter_ordered_complex_predicate() {
     // Arrange - complex predicate: people with age between 30-40 OR animals
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let mut stream = UnboundedReceiverStream::new(rx);
     let mut stream = FluxionStream::new(stream).filter_ordered(|data| match data {
         TestData::Person(p) => p.age >= 30 && p.age <= 40,
         TestData::Animal(_) => true,
@@ -189,7 +189,7 @@ async fn test_filter_ordered_complex_predicate() {
 async fn test_filter_ordered_single_item() {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let mut stream = UnboundedReceiverStream::new(rx);
     let mut stream =
         FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Person(_)));
 
@@ -207,7 +207,7 @@ async fn test_filter_ordered_single_item() {
 async fn test_filter_ordered_with_pattern_matching() {
     // Arrange - filter by name pattern
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let mut stream = UnboundedReceiverStream::new(rx);
     let mut stream = FluxionStream::new(stream).filter_ordered(|data| match data {
         TestData::Person(p) => p.name.starts_with('A') || p.name.starts_with('D'),
         _ => false,
@@ -230,7 +230,7 @@ async fn test_filter_ordered_with_pattern_matching() {
 async fn test_filter_ordered_alternating_pattern() {
     // Arrange - Keep every other person by creating a stateful filter
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let mut stream = UnboundedReceiverStream::new(rx);
 
     let mut count = 0;
     let mut stream = FluxionStream::new(stream).filter_ordered(move |data| {

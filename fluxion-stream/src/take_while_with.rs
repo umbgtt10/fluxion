@@ -74,11 +74,10 @@ where
     /// let gate_stream = FluxionStream::from_unbounded_receiver(rx_gate);
     ///
     /// // Combine streams
-    /// let gated = data_stream.take_while_with(
+    /// let mut gated = Box::pin(data_stream.take_while_with(
     ///     gate_stream,
     ///     |gate_value| *gate_value == true
-    /// );
-    /// let mut gated = Box::pin(gated);
+    /// ));
     ///
     /// // Send values
     /// tx_gate.send(Sequenced::with_sequence(true, 1)).unwrap();

@@ -54,8 +54,7 @@ where
     /// let stream = FluxionStream::from_unbounded_receiver(rx);
     ///
     /// // Combine with previous
-    /// let paired = stream.combine_with_previous();
-    /// let mut paired = Box::pin(paired);
+    /// let mut paired = stream.combine_with_previous();
     ///
     /// // Send values
     /// tx.send(Sequenced::with_sequence(1, 1)).unwrap();

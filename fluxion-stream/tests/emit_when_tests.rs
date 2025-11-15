@@ -29,8 +29,7 @@ async fn test_emit_when_empty_streams() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act & Assert
     let next_item = output_stream.next().await;
@@ -62,8 +61,7 @@ async fn test_emit_when_filter_compares_source_and_filter() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Alice age=25, Dog legs=4 => 25 > 4 = true
     source_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -122,8 +120,7 @@ async fn test_emit_when_threshold_comparison() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Rose height=15, Sunflower height=180 => diff=165 > 50 = true
     source_tx.send(Sequenced::new(plant_rose())).unwrap();
@@ -166,8 +163,7 @@ async fn test_emit_when_name_length_comparison() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Charlie (7) > Dog (3) = true
     source_tx.send(Sequenced::new(person_charlie())).unwrap();
@@ -216,8 +212,7 @@ async fn test_emit_when_multiple_source_updates_with_comparison() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Setup filter first - Dog with 4 legs
     filter_tx.send(Sequenced::new(animal_dog())).unwrap();
@@ -272,8 +267,7 @@ async fn test_emit_when_both_values_required() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Send only source, no filter yet
     source_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -315,8 +309,7 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Alice age=25, Bird legs=2 => 25 >= 20 = true
     source_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -362,8 +355,7 @@ async fn test_emit_when_delta_based_filtering() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Alice age=25, Bob age=30 => diff=5 <= 10 = false
     source_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -412,8 +404,7 @@ async fn test_emit_when_cross_type_comparison() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Dog legs=4, Alice age=25 => 4 != 25 = false
     source_tx.send(Sequenced::new(animal_dog())).unwrap();
@@ -458,8 +449,7 @@ async fn test_emit_when_stateful_comparison() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Set threshold to Bob age=30
     filter_tx.send(Sequenced::new(person_bob())).unwrap();
@@ -523,8 +513,7 @@ async fn test_emit_when_filter_stream_closes() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Establish both values
     source_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -560,8 +549,7 @@ async fn test_emit_when_source_stream_closes() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Establish both values
     source_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -606,8 +594,7 @@ async fn test_emit_when_filter_panics() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act
     source_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -644,8 +631,7 @@ async fn test_emit_when_complex_multi_condition() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.emit_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Diane age=40 (even), Dog legs=4 => 40 % 4 = 0 ✓
     source_tx.send(Sequenced::new(person_diane())).unwrap();

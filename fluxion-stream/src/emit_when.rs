@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umberto.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -62,14 +62,13 @@ where
     /// let enable_stream = FluxionStream::from_unbounded_receiver(rx_enable);
     ///
     /// // Combine streams
-    /// let gated = data_stream.emit_when(
+    /// let mut gated = data_stream.emit_when(
     ///     enable_stream,
     ///     |state| {
     ///         let values = state.get_state();
     ///         values[1] > 0  // Enable when value > 0
     ///     }
     /// );
-    /// let mut gated = Box::pin(gated);
     ///
     /// // Send values
     /// tx_enable.send(Sequenced::with_sequence(1, 1)).unwrap();  // Enabled

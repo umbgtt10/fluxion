@@ -28,8 +28,7 @@ async fn test_take_latest_when_empty_streams() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act & Assert
     let next_item = output_stream.next().await;
@@ -55,8 +54,7 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act
     source_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -86,14 +84,13 @@ async fn test_take_latest_when_filter_satisfied_emits() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
+    let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act
     source_tx.send(Sequenced::new(person_alice())).unwrap();
     filter_tx.send(Sequenced::new(animal_ant())).unwrap();
 
     // Assert
-    let mut output_stream = Box::pin(output_stream);
     let emitted_item = output_stream.next().await.unwrap();
     assert_eq!(
         emitted_item.get(),
@@ -120,14 +117,13 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
+    let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act
     source_tx.send(Sequenced::new(person_alice())).unwrap();
     filter_tx.send(Sequenced::new(animal_ant())).unwrap();
 
     // Assert
-    let mut output_stream = Box::pin(output_stream);
 
     let first_item = output_stream.next().await.unwrap();
     assert_eq!(
@@ -166,14 +162,13 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
+    let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act
     filter_tx.send(Sequenced::new(animal_ant())).unwrap();
     source_tx.send(Sequenced::new(person_charlie())).unwrap();
 
     // Assert
-    let mut output_stream = Box::pin(output_stream);
 
     let first_item = output_stream.next().await.unwrap();
     assert_eq!(
@@ -208,8 +203,7 @@ async fn test_take_latest_when_filter_toggle_emissions() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act: filter true, then source -> emit
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true
@@ -261,8 +255,7 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Prime both streams so a first emission can happen
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // true
@@ -311,8 +304,7 @@ async fn test_take_latest_when_source_publishes_before_filter() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act: Source publishes first (before filter has any value)
     source_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -366,8 +358,7 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act: Start with filter false
     filter_tx.send(Sequenced::new(animal_cat())).unwrap(); // legs 4 -> false
@@ -423,8 +414,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act: Set filter to false
     filter_tx.send(Sequenced::new(animal_cat())).unwrap(); // legs 4 -> false
@@ -482,8 +472,7 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() {
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
-    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
-    let mut output_stream = Box::pin(output_stream);
+    let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act: Send empty string with zero value to source
     source_tx
@@ -526,8 +515,7 @@ async fn test_take_latest_when_boundary_maximum_concurrent_streams() {
             let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
             let source_stream = UnboundedReceiverStream::new(source_rx);
             let filter_stream = UnboundedReceiverStream::new(filter_rx);
-            let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
-            let mut output_stream = Box::pin(output_stream);
+            let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
             // Act: Send test values
             source_tx
@@ -573,13 +561,12 @@ async fn test_take_latest_when_filter_panics() {
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let source_stream = UnboundedReceiverStream::new(source_rx);
     let filter_stream = UnboundedReceiverStream::new(filter_rx);
-    let output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
+    let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act
     source_tx.send(Sequenced::new(person_alice())).unwrap();
     filter_tx.send(Sequenced::new(animal_dog())).unwrap();
 
     // Assert
-    let mut output_stream = Box::pin(output_stream);
     let _ = output_stream.next().await;
 }

@@ -65,8 +65,7 @@ where
     /// let stream2 = FluxionStream::from_unbounded_receiver(rx2);
     ///
     /// // Merge streams
-    /// let merged = stream1.ordered_merge(vec![stream2]);
-    /// let mut merged = Box::pin(merged);
+    /// let mut merged = stream1.ordered_merge(vec![stream2]);
     ///
     /// // Send values with explicit ordering
     /// tx1.send(Sequenced::with_sequence(1, 100)).unwrap();

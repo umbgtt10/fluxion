@@ -65,7 +65,7 @@
 //! let stream2 = FluxionStream::from_unbounded_receiver(rx2);
 //!
 //! let merged = stream1.ordered_merge(vec![stream2]);
-//! let mut merged = Box::pin(merged);
+//! let mut merged = merged;
 //!
 //! // Send out of order - stream2 sends seq=1, stream1 sends seq=2
 //! tx2.send(Sequenced::with_sequence(100, 1)).unwrap();
@@ -232,7 +232,7 @@
 //!     configs,
 //!     |state| state.get_state().clone()
 //! );
-//! let mut enriched = Box::pin(enriched);
+//! let mut enriched = enriched;
 //!
 //! // Send config first, then click
 //! config_tx.send(Sequenced::with_sequence("theme=dark".to_string(), 1)).unwrap();
@@ -262,7 +262,7 @@
 //! let service2 = FluxionStream::from_unbounded_receiver(service2_rx);
 //!
 //! let unified_log = service1.ordered_merge(vec![service2]);
-//! let mut unified_log = Box::pin(unified_log);
+//! let mut unified_log = unified_log;
 //!
 //! // Send logs with different timestamps
 //! service1_tx.send(Sequenced::with_sequence("service1: started".to_string(), 1)).unwrap();
@@ -290,7 +290,7 @@
 //!
 //! // Pair each value with its previous value
 //! let paired = stream.combine_with_previous();
-//! let mut paired = Box::pin(paired);
+//! let mut paired = paired;
 //!
 //! // Send values
 //! tx.send(Sequenced::with_sequence(1, 1)).unwrap();
@@ -333,7 +333,7 @@
 //!     enabled,
 //!     |state| state.get_state().get(1).map(|v| *v > 0).unwrap_or(false)
 //! );
-//! let mut notifications = Box::pin(notifications);
+//! let mut notifications = notifications;
 //!
 //! // Enable notifications
 //! enabled_tx.send(Sequenced::with_sequence(1, 1)).unwrap();
@@ -599,15 +599,14 @@
 //! let filter_stream = UnboundedReceiverStream::new(filter_rx);
 //!
 //! // Combine latest values, but stop when filter becomes false
-//! let composed = FluxionStream::new(stream1)
+//! let mut composed = Box::pin(FluxionStream::new(stream1)
 //!     .combine_latest(vec![stream2], |_| true)
-//!     .take_while_with(filter_stream, |f| *f);
+//!     .take_while_with(filter_stream, |f| *f));
 //!
 //! filter_tx.send(Sequenced::new(true)).unwrap();
 //! tx1.send(Sequenced::new(1)).unwrap();
 //! tx2.send(Sequenced::new(2)).unwrap();
 //!
-//! let mut composed = Box::pin(composed);
 //! let item = composed.next().await.unwrap();
 //! assert_eq!(item.get_state().len(), 2);
 //! }
@@ -634,14 +633,13 @@
 //! let filter_stream = UnboundedReceiverStream::new(filter_rx);
 //!
 //! // Merge all values in order, but stop when filter says so
-//! let composed = FluxionStream::new(stream1)
+//! let mut composed = Box::pin(FluxionStream::new(stream1)
 //!     .ordered_merge(vec![FluxionStream::new(stream2)])
-//!     .take_while_with(filter_stream, |f| *f);
+//!     .take_while_with(filter_stream, |f| *f));
 //!
 //! filter_tx.send(Sequenced::new(true)).unwrap();
 //! tx1.send(Sequenced::new(1)).unwrap();
 //!
-//! let mut composed = Box::pin(composed);
 //! let item = composed.next().await.unwrap();
 //! assert_eq!(item, 1);
 //!

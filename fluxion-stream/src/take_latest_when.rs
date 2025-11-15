@@ -63,11 +63,10 @@ where
     /// let trigger_stream = FluxionStream::from_unbounded_receiver(rx_trigger);
     ///
     /// // Combine streams
-    /// let sampled = data_stream.take_latest_when(
+    /// let mut sampled = data_stream.take_latest_when(
     ///     trigger_stream,
     ///     |trigger_value| *trigger_value > 0  // Trigger when value > 0
     /// );
-    /// let mut sampled = Box::pin(sampled);
     ///
     /// // Send values
     /// tx_data.send(Sequenced::with_sequence(100, 1)).unwrap();

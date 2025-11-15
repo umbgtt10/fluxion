@@ -29,8 +29,7 @@ async fn test_with_latest_from_basic() {
         let animal_stream = UnboundedReceiverStream::new(animal_rx);
         let person_stream = UnboundedReceiverStream::new(person_rx);
 
-        let combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
-        let mut combined_stream = Box::pin(combined_stream);
+        let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
         // Act - send secondary first (no emission yet)
         person_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -75,8 +74,7 @@ async fn test_with_latest_from_ordering_preserved() {
         let primary_stream = UnboundedReceiverStream::new(primary_rx);
         let secondary_stream = UnboundedReceiverStream::new(secondary_rx);
 
-        let combined_stream = primary_stream.with_latest_from(secondary_stream, result_selector);
-        let mut combined_stream = Box::pin(combined_stream);
+        let mut combined_stream = primary_stream.with_latest_from(secondary_stream, result_selector);
 
         // Act - interleave emissions to test ordering
         secondary_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -118,8 +116,7 @@ async fn test_with_latest_from_custom_selector() {
         format!("{:?}", state.get_state()[0]) // Primary value (index 0) as string
     };
 
-    let combined_stream = animal_stream.with_latest_from(person_stream, custom_selector);
-    let mut combined_stream = Box::pin(combined_stream);
+    let mut combined_stream = animal_stream.with_latest_from(person_stream, custom_selector);
 
     // Act
     person_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -146,8 +143,7 @@ async fn test_with_latest_from_secondary_emits_first_no_output() {
     let animal_stream = UnboundedReceiverStream::new(animal_rx);
     let person_stream = UnboundedReceiverStream::new(person_rx);
 
-    let combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
-    let mut combined_stream = Box::pin(combined_stream);
+    let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
     // Act - primary emits but no secondary value yet
     animal_tx.send(Sequenced::new(animal_cat())).unwrap();
@@ -166,8 +162,7 @@ async fn test_with_latest_from_secondary_completes_early() {
         let animal_stream = UnboundedReceiverStream::new(animal_rx);
         let person_stream = UnboundedReceiverStream::new(person_rx);
 
-        let combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
-        let mut combined_stream = Box::pin(combined_stream);
+        let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
         // Act - secondary emits and completes
         person_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -201,8 +196,7 @@ async fn test_with_latest_from_primary_completes_early() {
         let animal_stream = UnboundedReceiverStream::new(animal_rx);
         let person_stream = UnboundedReceiverStream::new(person_rx);
 
-        let combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
-        let mut combined_stream = Box::pin(combined_stream);
+        let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
         // Act
         person_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -236,8 +230,7 @@ async fn test_with_latest_from_large_number_of_emissions() {
         let animal_stream = UnboundedReceiverStream::new(animal_rx);
         let person_stream = UnboundedReceiverStream::new(person_rx);
 
-        let combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
-        let mut combined_stream = Box::pin(combined_stream);
+        let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
         // Act - send secondary first
         person_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -273,8 +266,7 @@ async fn test_with_latest_from_both_streams_close_before_emission() {
         let animal_stream = UnboundedReceiverStream::new(animal_rx);
         let person_stream = UnboundedReceiverStream::new(person_rx);
 
-        let combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
-        let mut combined_stream = Box::pin(combined_stream);
+        let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
         // Act - close both streams without emissions
         drop(animal_tx);
@@ -295,8 +287,7 @@ async fn test_with_latest_from_secondary_updates_latest() {
         let animal_stream = UnboundedReceiverStream::new(animal_rx);
         let person_stream = UnboundedReceiverStream::new(person_rx);
 
-        let combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
-        let mut combined_stream = Box::pin(combined_stream);
+        let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
         // Act
         person_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -335,8 +326,8 @@ async fn test_with_latest_from_multiple_concurrent_streams() {
         let stream2 = UnboundedReceiverStream::new(animal_rx2)
             .with_latest_from(UnboundedReceiverStream::new(person_rx2), result_selector);
 
-        let mut stream1 = Box::pin(stream1);
-        let mut stream2 = Box::pin(stream2);
+        let mut stream1 = stream1;
+        let mut stream2 = stream2;
 
         // Emit to stream1
         person_tx1.send(Sequenced::new(person_alice())).unwrap();

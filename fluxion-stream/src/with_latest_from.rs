@@ -81,14 +81,13 @@ where
     /// let secondary = FluxionStream::from_unbounded_receiver(rx_secondary);
     ///
     /// // Combine streams
-    /// let combined = primary.with_latest_from(
+    /// let mut combined = primary.with_latest_from(
     ///     secondary,
     ///     |state| {
     ///         let values = state.get_state();
     ///         values[0] + values[1]
     ///     }
     /// );
-    /// let mut combined = Box::pin(combined);
     ///
     /// // Send values
     /// tx_secondary.send(Sequenced::with_sequence(10, 1)).unwrap();

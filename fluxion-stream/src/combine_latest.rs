@@ -79,11 +79,10 @@ where
     /// let stream2 = FluxionStream::from_unbounded_receiver(rx2);
     ///
     /// // Combine streams
-    /// let combined = stream1.combine_latest(
+    /// let mut combined = stream1.combine_latest(
     ///     vec![stream2],
     ///     |state| state.get_state().len() == 2
     /// );
-    /// let mut combined = Box::pin(combined);
     ///
     /// // Send values
     /// tx1.send(Sequenced::with_sequence(1, 1)).unwrap();
