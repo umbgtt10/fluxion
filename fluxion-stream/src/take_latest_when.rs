@@ -85,10 +85,17 @@ where
     /// - Gate pattern: emit values only when enabled
     /// - Throttling with external control signals
     ///
-    /// # Thread Safety
+    /// # Panics
     ///
-    /// Uses internal locks to maintain state. Lock errors are logged and the
-    /// affected emission is skipped.
+    /// Uses internal locks to maintain the latest source value. If a thread panics while
+    /// holding a lock, subsequent operations will log a warning and recover the poisoned
+    /// lock. The affected emission is skipped if lock acquisition fails.
+    ///
+    /// # See Also
+    ///
+    /// - [`emit_when`](crate::EmitWhenExt::emit_when) - Gates source emissions rather than sampling
+    /// - [`with_latest_from`](crate::WithLatestFromExt::with_latest_from) - Emits on primary, samples secondary
+    /// - [`take_while_with`](crate::TakeWhileExt::take_while_with) - Terminates when condition becomes false
     fn take_latest_when<IS>(
         self,
         filter_stream: IS,

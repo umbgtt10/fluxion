@@ -52,6 +52,11 @@ where
     /// A `FluxionStream` of unwrapped source elements (`TItem::Inner`) that are emitted
     /// while the filter condition remains true. Stream terminates when condition becomes false.
     ///
+    /// # See Also
+    ///
+    /// - [`emit_when`](crate::EmitWhenExt::emit_when) - Gates emissions but doesn't terminate
+    /// - [`take_latest_when`](crate::TakeLatestWhenExt::take_latest_when) - Samples on condition
+    ///
     /// # Examples
     ///
     /// ```rust

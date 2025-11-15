@@ -45,6 +45,48 @@ where
     /// * `E` - Error type that implements `std::error::Error`
     /// * `OnError` - Function type for error handling
     ///
+    /// # Errors
+    ///
+    /// Returns `Ok(())` when the stream completes. Errors from the handler function
+    /// are passed to `on_error_callback` if provided, or logged otherwise. Processing
+    /// continues with new items even if previous items failed, unless the cancellation
+    /// token is triggered.
+    ///
+    /// # See Also
+    ///
+    /// - [`subscribe_async`](crate::SubscribeAsyncExt::subscribe_async) - Sequential processing of all items
+    ///
+    /// # Examples
+    ///
+    /// ```text
+    /// use fluxion_exec::SubscribeLatestAsyncExt;
+    /// use futures::StreamExt;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    ///
+    /// # async fn example() {
+    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let stream = UnboundedReceiverStream::new(rx);
+    ///
+    /// stream.subscribe_latest_async(
+    ///     |item, token| async move {
+    ///         // Long-running operation
+    ///         for i in 0..100 {
+    ///             if token.is_cancelled() {
+    ///                 println!("Cancelled processing of {:?}", item);
+    ///                 return Ok(());
+    ///             }
+    ///             // Do work...
+    ///             tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    ///         }
+    ///         println!("Completed: {:?}", item);
+    ///         Ok::<(), std::io::Error>(())
+    ///     },
+    ///     Some(|err| eprintln!("Error: {}", err)),
+    ///     None
+    /// ).await;
+    /// # }
+    /// ```
+    ///
     /// # Use Cases
     ///
     /// - UI updates where only the latest state matters

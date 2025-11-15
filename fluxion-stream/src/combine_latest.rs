@@ -49,6 +49,18 @@ where
     /// A stream of `OrderedWrapper<CombinedState<T::Inner>>` where each emission contains
     /// the latest values from all streams, preserving the temporal order of the triggering value.
     ///
+    /// # Panics
+    ///
+    /// This function uses internal locks to maintain shared state. If a thread panics while
+    /// holding a lock, subsequent operations will log a warning and continue by recovering
+    /// the poisoned lock. Individual emissions may be skipped if lock acquisition fails.
+    ///
+    /// # See Also
+    ///
+    /// - [`with_latest_from`](crate::WithLatestFromExt::with_latest_from) - Similar but only emits when primary stream emits
+    /// - [`ordered_merge`](crate::OrderedStreamExt::ordered_merge) - Merges streams emitting all items
+    /// - [`emit_when`](crate::EmitWhenExt::emit_when) - Gates emissions based on filter conditions
+    ///
     /// # Examples
     ///
     /// ```rust

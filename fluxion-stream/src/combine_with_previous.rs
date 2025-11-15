@@ -81,6 +81,11 @@ where
     /// A `FluxionStream` of `WithPrevious<T>` where each item contains the current
     /// and previous values.
     ///
+    /// # See Also
+    ///
+    /// - [`combine_latest`](crate::CombineLatestExt::combine_latest) - Combines multiple streams
+    /// - Useful for change detection and delta calculations
+    ///
     /// # Examples
     ///
     /// ```rust

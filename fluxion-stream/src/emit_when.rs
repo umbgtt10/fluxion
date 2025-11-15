@@ -87,10 +87,17 @@ where
     /// - State-dependent filtering
     /// - Complex gating logic involving multiple stream values
     ///
-    /// # Thread Safety
+    /// # Panics
     ///
-    /// Uses internal locks to maintain shared state. Lock errors are logged and
-    /// affected emissions are skipped.
+    /// Uses internal locks to maintain shared state. If a thread panics while holding a lock,
+    /// subsequent operations will log a warning and recover the poisoned lock. Affected
+    /// emissions are skipped if lock acquisition fails.
+    ///
+    /// # See Also
+    ///
+    /// - [`take_latest_when`](crate::TakeLatestWhenExt::take_latest_when) - Similar but samples latest instead of gating
+    /// - [`with_latest_from`](crate::WithLatestFromExt::with_latest_from) - Combines with secondary stream on primary emission
+    /// - [`take_while_with`](crate::TakeWhileExt::take_while_with) - Emits while condition holds, then terminates
     fn emit_when<IS>(
         self,
         filter_stream: IS,

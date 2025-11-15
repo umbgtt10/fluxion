@@ -44,6 +44,70 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// * `E` - Error type that implements `std::error::Error`
     /// * `OnError` - Function type for error handling
     ///
+    /// # Errors
+    ///
+    /// Returns `Ok(())` when the stream completes successfully. Errors from the handler
+    /// function (`on_next_func`) are passed to `on_error_callback` if provided, or logged
+    /// if no callback is provided. The subscription continues processing subsequent items
+    /// even if individual items fail, unless the cancellation token is triggered.
+    ///
+    /// # See Also
+    ///
+    /// - [`subscribe_latest_async`](crate::SubscribeLatestAsyncExt::subscribe_latest_async) - Cancels old work for new items
+    ///
+    /// # Examples
+    ///
+    /// ```text
+    /// use fluxion_exec::SubscribeAsyncExt;
+    /// use futures::StreamExt;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    ///
+    /// # async fn example() {
+    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let stream = UnboundedReceiverStream::new(rx);
+    ///
+    /// stream.subscribe_async(
+    ///     |item, _token| async move {
+    ///         // Process item
+    ///         println!("Processing: {:?}", item);
+    ///         Ok::<(), std::io::Error>(())
+    ///     },
+    ///     None,
+    ///     Some(|err| eprintln!("Error: {}", err))
+    /// ).await;
+    /// # }
+    /// ```
+    ///
+    /// # With Cancellation
+    ///
+    /// ```text
+    /// # use fluxion_exec::SubscribeAsyncExt;
+    /// # use futures::StreamExt;
+    /// # use tokio_util::sync::CancellationToken;
+    /// # async fn example() {
+    /// # let stream = futures::stream::iter(vec![1, 2, 3]);
+    /// let cancel = CancellationToken::new();
+    /// let cancel_clone = cancel.clone();
+    ///
+    /// tokio::spawn(async move {
+    ///     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    ///     cancel_clone.cancel();
+    /// });
+    ///
+    /// stream.subscribe_async(
+    ///     |item, token| async move {
+    ///         if token.is_cancelled() {
+    ///             return Ok(());
+    ///         }
+    ///         // Process item...
+    ///         Ok::<(), std::io::Error>(())
+    ///     },
+    ///     Some(cancel),
+    ///     None
+    /// ).await;
+    /// # }
+    /// ```
+    ///
     /// # Thread Safety
     ///
     /// All spawned tasks run on the tokio runtime. The subscription completes

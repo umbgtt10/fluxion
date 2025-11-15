@@ -83,7 +83,6 @@
 //! - [`fluxion_stream`] - Stream operators and combinators
 //! - `fluxion_exec` - Async execution and subscription utilities
 //! - `fluxion_error` - Error types and handling
-//! ```
 
 // Re-export core types
 pub use fluxion_core::into_stream::IntoStream;

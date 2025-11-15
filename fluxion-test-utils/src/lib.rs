@@ -20,7 +20,7 @@
 //!
 //! # Key Types
 //!
-//! ## Sequenced<T>
+//! ## `Sequenced<T>`
 //!
 //! A wrapper type that adds temporal ordering to test values:
 //!

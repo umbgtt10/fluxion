@@ -130,6 +130,9 @@
 //!
 //! ## Pattern: Enriching Events with Context
 //!
+//! Uses [`with_latest_from`](WithLatestFromExt::with_latest_from) to combine a primary stream
+//! with context from a secondary stream.
+//!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, WithLatestFromExt};
 //! use fluxion_test_utils::Sequenced;
@@ -161,6 +164,9 @@
 //!
 //! ## Pattern: Merging Multiple Event Sources
 //!
+//! Uses [`ordered_merge`](OrderedStreamExt::ordered_merge) to combine logs from multiple
+//! services in temporal order.
+//!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt};
 //! use fluxion_test_utils::Sequenced;
@@ -187,6 +193,9 @@
 //! ```
 //!
 //! ## Pattern: Change Detection
+//!
+//! Uses [`combine_with_previous`](CombineWithPreviousExt::combine_with_previous) to detect
+//! when values change by comparing with the previous value.
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
@@ -221,6 +230,9 @@
 //! ```
 //!
 //! ## Pattern: Conditional Processing
+//!
+//! Uses [`emit_when`](EmitWhenExt::emit_when) to gate emissions based on a filter stream,
+//! only emitting when the condition is satisfied.
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, EmitWhenExt};

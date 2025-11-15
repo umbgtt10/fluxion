@@ -42,6 +42,11 @@ where
     ///
     /// A stream of `T` where all values from all input streams are emitted in temporal order.
     ///
+    /// # See Also
+    ///
+    /// - [`combine_latest`](crate::CombineLatestExt::combine_latest) - Emits latest values when any stream emits
+    /// - [`with_latest_from`](crate::WithLatestFromExt::with_latest_from) - Samples secondary on primary emission
+    ///
     /// # Examples
     ///
     /// ```rust

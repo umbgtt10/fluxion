@@ -51,6 +51,18 @@ where
     /// * `IS` - Type that can be converted into a stream compatible with this stream
     /// * `R` - Result type produced by the `result_selector` function
     ///
+    /// # Panics
+    ///
+    /// Uses internal locks to maintain the latest value from the secondary stream. If a thread
+    /// panics while holding a lock, subsequent operations will log a warning and recover the
+    /// poisoned lock. Individual emissions may be skipped if lock acquisition fails.
+    ///
+    /// # See Also
+    ///
+    /// - [`combine_latest`](crate::CombineLatestExt::combine_latest) - Emits when any stream emits
+    /// - [`emit_when`](crate::EmitWhenExt::emit_when) - Gates emissions based on filter stream
+    /// - [`take_latest_when`](crate::TakeLatestWhenExt::take_latest_when) - Samples on filter condition
+    ///
     /// # Examples
     ///
     /// ```rust
