@@ -36,14 +36,14 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 - Stream operators don't yet propagate errors (they log and drop)
 - No published crates.io release
-- No comprehensive benchmarking suite
+- Limited benchmark coverage (6 operators benchmarked)
 - Limited real-world usage validation
 
 ### Pre-Release Checklist
 
-- [ ] Final documentation review for consistency
-- [ ] Review and cleanup TODOs in README
-- [ ] Verify all examples compile and run
+- [x] Final documentation review for consistency
+- [x] Review and cleanup TODOs in README
+- [x] Verify all examples compile and run
 - [ ] Add CHANGELOG.md with 0.1.0 entry
 - [ ] Tag release: `git tag v0.1.0`
 
@@ -174,8 +174,9 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - [ ] Distributed stream processing (tentative)
 
 **Breaking Changes (2.0):**
-- [ ] Resolve `TestChannel` circular dependency issue
-  - Goal: `person1.ordered_merge(vec![person2])` instead of `FluxionStream::from(person1.stream).ordered_merge(...)`
+- [ ] Resolve task lifecycle management for `UnboundedReceiverExt`
+  - Decision: Simple API (orphaned tasks) vs Explicit control (return JoinHandle)
+  - See orphaned task discussion in development notes
 - [ ] API refinements based on 1.x usage patterns
 - [ ] Removal of deprecated APIs from 1.x
 

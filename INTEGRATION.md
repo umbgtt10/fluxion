@@ -277,6 +277,15 @@ async fn main() {
 
 ## Examples
 
-See the `examples/stream-aggregation` directory for a complete production example using intrinsic ordering with sensor readings, metrics, and system events.
+See the `examples/stream-aggregation` directory for a **complete production example** using intrinsic ordering with sensor readings, metrics, and system events.
+
+**What makes this example valuable:**
+- **Real-world architecture**: Demonstrates how to structure a multi-stream event processing system
+- **Three data sources**: Sensor readings, metrics, and system events - all with different types
+- **Type-safe aggregation**: Shows `UnboundedReceiverExt::into_fluxion_stream()` pattern for combining heterogeneous streams
+- **Graceful shutdown**: Proper cleanup and resource management with `CancellationToken`
+- **Production patterns**: Error handling, logging, and event filtering
+
+Run it: `cargo run --example stream-aggregation`
 
 For testing examples, see the test suites in `fluxion-stream/tests/` which extensively use `Sequenced<T>` for controlled ordering scenarios.

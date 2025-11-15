@@ -114,8 +114,27 @@ stream
 
 ### 📚 Guides
 
+- **[Integration Guide](INTEGRATION.md)** - Learn the three patterns for integrating events (intrinsic, extrinsic, wrapper ordering)
 - **[fluxion-stream](fluxion-stream/README.md)** - Stream operators and composition patterns
 - **[fluxion-exec](fluxion-exec/README.md)** - Async execution and subscription utilities
+
+### 💡 Complete Example
+
+The **[stream-aggregation](examples/stream-aggregation/)** example demonstrates production-ready patterns:
+
+- **Real-world architecture**: 3 producers, 1 aggregator, 1 consumer
+- **Ordered stream combining**: Merges sensor readings, metrics, and system events
+- **Type-safe transformations**: Uses `UnboundedReceiverExt` for elegant type erasure
+- **Graceful shutdown**: Proper cleanup with `CancellationToken`
+- **Error handling**: Demonstrates best practices throughout
+
+**Why this example matters:**
+- Shows how all the pieces fit together in a realistic application
+- Demonstrates the `into_fluxion_stream()` pattern for combining heterogeneous streams
+- Illustrates proper resource management and cancellation
+- Serves as a template for building your own event processing systems
+
+Run it with: `cargo run --example stream-aggregation`
 
 ### 🔧 API Documentation
 

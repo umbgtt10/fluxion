@@ -11,12 +11,12 @@
 | Metric | Value | Industry Standard | Our Achievement |
 |--------|-------|------------------|-----------------|
 | **Test-to-Code Ratio** | **3.5:1** | 1:1 | ⭐ **3.5x better** |
-| **Total Tests** | **1,540** | Varies | Comprehensive coverage |
+| **Total Tests** | **1,554** | Varies | Comprehensive coverage |
 | **Test Success Rate** | **100%** | ~95% | Zero failures |
 | **Code Quality** | **Zero warnings** | Some acceptable | Clippy + compiler clean |
-| **Documentation** | **51 public APIs** | Partial | 100% documented |
-| **Code Examples** | **31 examples** | Few | All compile & run |
-| **Doc Tests** | **38 passing** | Few | Examples always current |
+| **Documentation** | **All public APIs** | Partial | 100% documented |
+| **Code Examples** | **Multiple per API** | Few | All compile & run |
+| **Doc Tests** | **29 passing** | Few | Examples always current |
 
 ### 🎯 Exceptional Quality Metrics
 
@@ -31,12 +31,12 @@
   - Bugs are caught before users see them
   - Code behavior is well-documented through tests
 
-#### 2. **Comprehensive Test Suite (1,540 tests)**
+#### 2. **Comprehensive Test Suite (1,554 tests)**
 
-Breaking down our 1,540 tests:
+Breaking down our 1,554 tests:
 - **1,296 integration tests** - Real-world usage validation
-- **219 unit tests** - Component-level verification
-- **38 doc tests** - Ensures all 31 code examples compile and run
+- **229 unit tests** - Component-level verification
+- **29 doc tests** - Ensures all code examples compile and run
 
 **What this means:**
 - Every operator tested in isolation and composition
@@ -55,9 +55,9 @@ Breaking down our 1,540 tests:
 
 #### 4. **Documentation Excellence**
 
-- **51 public API items** - all documented with examples
-- **31 runnable code examples** embedded in documentation
-- **38 doc tests** ensure examples never go stale (some examples have multiple test cases)
+- **All public API items** - all documented with examples
+- **Multiple runnable code examples** embedded in documentation
+- **29 doc tests** ensure examples never go stale
 - **Operator selection guides** help users choose the right tool
 - **Comparison tables** explain tradeoffs clearly
 - **Error handling examples** show proper usage patterns
@@ -89,8 +89,8 @@ Breaking down our 1,540 tests:
 
 | Aspect | Typical Project | Fluxion |
 |--------|----------------|---------|
-| Test coverage | "We have tests" | 3.5:1 ratio with 1,540 tests |
-| Documentation | "See the examples/" | Every API + 31 examples + 38 doc tests |
+| Test coverage | "We have tests" | 3.5:1 ratio with 1,554 tests |
+| Documentation | "See the examples/" | Every API + multiple examples + 29 doc tests |
 | Warnings | "We'll fix them later" | Absolute zero tolerance |
 | Error handling | Panic or unwrap | Type-safe Result propagation |
 | Concurrency safety | "It works on my machine" | Lock poisoning recovery built-in |
@@ -98,7 +98,7 @@ Breaking down our 1,540 tests:
 
 #### Development Discipline
 
-**180 commits** of disciplined development:
+**195+ commits** of disciplined development:
 - Incremental, tested changes
 - Clear commit messages
 - Continuous quality gates
@@ -121,7 +121,7 @@ This isn't just a library - it's a **reference implementation** of Rust best pra
 4. **How to handle errors properly** (no panics, no unwraps in public APIs)
 5. **How to maintain zero warnings** (strict quality standards)
 6. **How to test concurrency** (1,296 integration tests prove it)
-7. **How to use doc tests** (31 examples validated by 38 doc tests)
+7. **How to use doc tests** (examples validated by 29 doc tests)
 
 ### 🚀 Technical Highlights
 
@@ -182,9 +182,9 @@ We didn't just build a library. We built it **right**:
 **Most projects claim quality. We prove it with metrics.**
 
 - **3.5:1 test-to-code ratio** - We don't just test, we over-test
-- **1,540 tests, 100% passing** - Comprehensive validation
+- **1,554 tests, 100% passing** - Comprehensive validation
 - **Zero warnings** - Absolute quality standards
-- **51 documented APIs with 31 working examples** - Complete reference material
+- **All APIs fully documented with working examples** - Complete reference material
 - **8 focused crates** - Clean architecture
 
 This is what **exceptional engineering** looks like in Rust.
@@ -194,8 +194,11 @@ This is what **exceptional engineering** looks like in Rust.
 ## 🔗 Learn More
 
 - **README.md** - Quick start and basic usage
+- **INTEGRATION.md** - Three patterns for event integration (highly recommended)
+- **examples/stream-aggregation** - Production-ready multi-stream aggregation example
 - **ROADMAP.md** - Version planning and future features
 - **CONTRIBUTING.md** - Development guidelines and standards
+- **DONATE.md** - Ways to support the project
 - **API Documentation** - `cargo doc --open`
 
 ## 📄 License

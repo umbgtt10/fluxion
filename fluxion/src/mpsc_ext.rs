@@ -65,10 +65,7 @@ pub trait UnboundedReceiverExt<T> {
     /// # drop(stream);
     /// # }
     /// ```
-    fn into_fluxion_stream<U, F>(
-        self,
-        mapper: F,
-    ) -> FluxionStream<UnboundedReceiverStream<U>>
+    fn into_fluxion_stream<U, F>(self, mapper: F) -> FluxionStream<UnboundedReceiverStream<U>>
     where
         F: FnMut(T) -> U + Send + 'static,
         U: Send + 'static;
@@ -78,10 +75,7 @@ impl<T> UnboundedReceiverExt<T> for mpsc::UnboundedReceiver<T>
 where
     T: Ordered<Inner = T> + Clone + std::fmt::Debug + Ord + Send + Sync + Unpin + 'static,
 {
-    fn into_fluxion_stream<U, F>(
-        self,
-        mut mapper: F,
-    ) -> FluxionStream<UnboundedReceiverStream<U>>
+    fn into_fluxion_stream<U, F>(self, mut mapper: F) -> FluxionStream<UnboundedReceiverStream<U>>
     where
         F: FnMut(T) -> U + Send + 'static,
         U: Send + 'static,
