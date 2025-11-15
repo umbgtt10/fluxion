@@ -194,15 +194,9 @@
 //! ## Choosing the Right Pattern
 //!
 //! As a user, you typically don't need to worry about these patterns - all three compose
-//! seamlessly:
-//!
-//! ```rust,ignore
-//! stream
-//!     .ordered_merge(other)        // → impl Stream
-//!     .combine_with_previous()     // → FluxionStream<impl Stream>
-//!     .filter_ordered(predicate)   // → FluxionStream<impl Stream>
-//!     .take_while_with(filter, f)  // → FluxionStream<impl Stream>
-//! ```
+//! seamlessly. For example, combining different operators in a single chain works naturally
+//! regardless of their internal implementation patterns. Each operator returns either
+//! `impl Stream` or `FluxionStream<impl Stream>`, and they compose transparently.
 //!
 //! The patterns are implementation details chosen to balance performance, ergonomics,
 //! and maintainability.

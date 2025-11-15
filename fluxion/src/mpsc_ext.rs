@@ -2,7 +2,10 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Extension methods for tokio UnboundedReceiver to create FluxionStreams.
+//! Extension methods for tokio's `mpsc::UnboundedReceiver` to create FluxionStreams.
+//!
+//! This module provides convenience methods for converting tokio's unbounded receivers
+//! into FluxionStreams, optionally applying transformations for type erasure.
 
 use crate::FluxionStream;
 use fluxion_core::Ordered;
@@ -10,10 +13,13 @@ use tokio::sync::mpsc;
 
 /// Extension trait for `UnboundedReceiver` to create FluxionStreams.
 pub trait UnboundedReceiverExt<T> {
-    /// Converts an `UnboundedReceiver` into a `FluxionStream` for ordered items.
+    /// Converts an `UnboundedReceiver<T>` into a `FluxionStream<U>` by applying a transformation.
     ///
-    /// This is a convenience method for items that implement `Ordered<Inner = Self>`.
-    /// It wraps the receiver in a FluxionStream, enabling ordered stream operations.
+    /// This method creates an intermediate channel internally and spawns a transformation task
+    /// that maps items from type `T` to type `U`. This is useful for type erasure when combining
+    /// streams that have different underlying types.
+    ///
+    /// The transformation task is spawned automatically, so you only get back the resulting stream.
     ///
     /// # Examples
     ///
@@ -28,57 +34,33 @@ pub trait UnboundedReceiverExt<T> {
     /// }
     ///
     /// impl Ordered for SensorReading {
-    ///     type Inner = SensorReading;
+    ///     type Inner = Self;
     ///     fn order(&self) -> u64 { self.timestamp }
     ///     fn get(&self) -> &Self::Inner { self }
-    ///     fn with_order(value: Self::Inner, _order: u64) -> Self { value }
+    ///     fn with_order(value: Self, _order: u64) -> Self { value }
     /// }
     ///
-    /// # async fn example() {
+    /// #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    /// enum DataEvent {
+    ///     Sensor(SensorReading)
+    /// }
+    ///
+    /// impl Ordered for DataEvent {
+    ///     type Inner = Self;
+    ///     fn order(&self) -> u64 {
+    ///         match self {
+    ///             DataEvent::Sensor(s) => s.timestamp
+    ///         }
+    ///     }
+    ///     fn get(&self) -> &Self::Inner { self }
+    ///     fn with_order(value: Self, _order: u64) -> Self { value }
+    /// }
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// let (tx, rx) = mpsc::unbounded_channel::<SensorReading>();
     ///
-    /// // Convert receiver to FluxionStream and use ordered operations
-    /// let stream = rx.into_fluxion_stream()
-    ///     .map_ordered(|reading| reading.temperature)
-    ///     .filter_ordered(|temp| temp.get() > &200);
-    /// # }
-    /// ```
-    /// Converts an `UnboundedReceiver<T>` into a `FluxionStream<U>` by applying a transformation.
-    ///
-    /// This method creates an intermediate channel internally and handles the transformation task.
-    /// This is useful for type erasure when combining streams that have different underlying types.
-    ///
-    /// By default, spawns the transformation task automatically and returns just the stream.
-    /// If you need control over task execution, pass `spawn: false` to get a tuple with the task.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// use fluxion::prelude::*;
-    /// use tokio::sync::mpsc;
-    ///
-    /// # #[derive(Clone)]
-    /// # struct SensorReading { timestamp: u64 }
-    /// # impl Ordered for SensorReading {
-    /// #     type Inner = Self;
-    /// #     fn order(&self) -> u64 { self.timestamp }
-    /// #     fn get(&self) -> &Self::Inner { self }
-    /// #     fn with_order(v: Self, _: u64) -> Self { v }
-    /// # }
-    /// #
-    /// # #[derive(Clone)]
-    /// # enum DataEvent { Sensor(SensorReading) }
-    /// # impl Ordered for DataEvent {
-    /// #     type Inner = Self;
-    /// #     fn order(&self) -> u64 { match self { DataEvent::Sensor(s) => s.timestamp } }
-    /// #     fn get(&self) -> &Self::Inner { self }
-    /// #     fn with_order(v: Self, _: u64) -> Self { v }
-    /// # }
-    ///
-    /// # async fn example() {
-    /// let (tx, rx) = mpsc::unbounded_channel::<SensorReading>();
-    ///
-    /// // Transform with automatic task spawning (default)
+    /// // Transform SensorReading to DataEvent - task spawned internally
     /// let stream = rx.into_fluxion_stream(|s| DataEvent::Sensor(s.clone()));
     ///
     /// // stream is FluxionStream<DataEvent>

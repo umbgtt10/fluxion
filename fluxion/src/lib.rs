@@ -84,7 +84,7 @@
 //! - `fluxion_exec` - Async execution and subscription utilities
 //! - `fluxion_error` - Error types and handling
 
-mod receiver_ext;
+mod mpsc_ext;
 
 // Re-export core types
 pub use fluxion_core::into_stream::IntoStream;
@@ -97,7 +97,7 @@ pub use fluxion_stream::FluxionStream;
 pub use fluxion_stream::{CombinedState, WithPrevious};
 
 // Re-export convenience extensions
-pub use receiver_ext::UnboundedReceiverExt;
+pub use mpsc_ext::UnboundedReceiverExt;
 
 /// Prelude module for convenient imports.
 ///

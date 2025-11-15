@@ -33,12 +33,14 @@ use futures::Stream;
 ///     fn with_order(value: Self::Inner, _order: u64) -> Self { value }
 /// }
 ///
-/// # async fn example() {
-/// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+/// # #[tokio::main]
+/// # async fn main() {
+/// let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
 ///
 /// // auto_ordered() wraps in FluxionStream for ordered operations
 /// let stream = FluxionStream::from_unbounded_receiver(rx)
 ///     .auto_ordered(); // Now can use map_ordered, filter_ordered, etc.
+/// # drop(stream);
 /// # }
 /// ```
 pub trait AutoOrderedExt<T>: Stream<Item = T> + Sized {

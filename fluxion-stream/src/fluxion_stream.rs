@@ -158,13 +158,15 @@ where
     ///     fn with_order(value: Self::Inner, _order: u64) -> Self { value }
     /// }
     ///
-    /// # async fn example() {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
     ///
     /// // Enable ordered operations on self-ordered events
     /// let stream = FluxionStream::from_unbounded_receiver(rx)
     ///     .auto_ordered()
     ///     .map_ordered(|event| event.data);
+    /// # drop(stream);
     /// # }
     /// ```
     pub fn auto_ordered(self) -> Self {
