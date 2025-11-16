@@ -1,4 +1,4 @@
-# Support v0.1.0
+# Support Fluxion
 
 | Method | Link |
 |--------|------|
@@ -9,4 +9,4 @@
 | **Ethereum** | ![ETH](ETH_QR.png) |
 
 
-*Thank you for using v0.1.0!*
+*Thank you for using Fluxion!*

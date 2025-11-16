@@ -24,7 +24,7 @@ Fluxion processes streams of ordered events. The `Ordered` trait is the core abs
 ### Implementation
 
 ```rust
-use fluxion::prelude::*;
+use fluxion_rx::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct SensorReading {
@@ -35,15 +35,15 @@ struct SensorReading {
 
 impl Ordered for SensorReading {
     type Inner = Self;
-    
+
     fn order(&self) -> u64 {
         self.timestamp  // Use the event's intrinsic timestamp
     }
-    
+
     fn get(&self) -> &Self::Inner {
         self
     }
-    
+
     fn with_order(value: Self::Inner, _order: u64) -> Self {
         value  // Order is immutable, already part of the event
     }
@@ -53,17 +53,17 @@ impl Ordered for SensorReading {
 ### Usage
 
 ```rust
-use fluxion::prelude::*;
+use fluxion_rx::prelude::*;
 use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() {
     let (tx, rx) = mpsc::unbounded_channel::<SensorReading>();
-    
+
     // Events are already ordered by their timestamp
     let stream = FluxionStream::from_unbounded_receiver(rx)
         .filter_ordered(|reading| reading.get().temperature > 25.0);
-    
+
     // Stream processing respects the intrinsic timestamp ordering
 }
 ```
@@ -106,7 +106,7 @@ let event2 = Sequenced::with_sequence(Event { data: "second".into() }, 200);
 ### Usage
 
 ```rust
-use fluxion::prelude::*;
+use fluxion_rx::prelude::*;
 use fluxion_test_utils::Sequenced;
 use tokio::sync::mpsc;
 use futures::StreamExt;
@@ -119,7 +119,7 @@ struct Event {
 #[tokio::test]
 async fn test_ordered_filtering() {
     let (tx, rx) = mpsc::unbounded_channel();
-    
+
     let mut stream = FluxionStream::from_unbounded_receiver(rx)
         .filter_ordered(|e| e.get().data.starts_with('f'));
 
@@ -128,7 +128,7 @@ async fn test_ordered_filtering() {
     tx.send(Sequenced::with_sequence(Event { data: "first".into() }, 100)).unwrap();
     tx.send(Sequenced::with_sequence(Event { data: "second".into() }, 200)).unwrap();
     drop(tx);
-    
+
     // Stream will reorder by sequence: 100, 200, 300
     // Then filter to only: 100 ("first")
     let result = stream.next().await.unwrap();
@@ -156,7 +156,7 @@ async fn test_ordered_filtering() {
 ### Implementation
 
 ```rust
-use fluxion::prelude::*;
+use fluxion_rx::prelude::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 // External system provides unordered events
@@ -179,22 +179,22 @@ impl TimestampedEvent {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_millis() as u64;
-        
+
         Self { timestamp, event }
     }
 }
 
 impl Ordered for TimestampedEvent {
     type Inner = Self;
-    
+
     fn order(&self) -> u64 {
         self.timestamp
     }
-    
+
     fn get(&self) -> &Self::Inner {
         self
     }
-    
+
     fn with_order(value: Self::Inner, _order: u64) -> Self {
         value
     }
@@ -204,12 +204,12 @@ impl Ordered for TimestampedEvent {
 ### Usage
 
 ```rust
-use fluxion::prelude::*;
+use fluxion_rx::prelude::*;
 
 async fn handle_webhook(external_event: ThirdPartyEvent, tx: mpsc::UnboundedSender<TimestampedEvent>) {
     // Add timestamp at the system boundary
     let timestamped = TimestampedEvent::from_external(external_event);
-    
+
     // Send to ordered stream processing pipeline
     tx.send(timestamped).unwrap();
 }
@@ -217,11 +217,11 @@ async fn handle_webhook(external_event: ThirdPartyEvent, tx: mpsc::UnboundedSend
 #[tokio::main]
 async fn main() {
     let (tx, rx) = mpsc::unbounded_channel();
-    
+
     // Process timestamped events
     let stream = FluxionStream::from_unbounded_receiver(rx)
         .map_ordered(|e| e.get().event.clone());
-    
+
     // Now you have ordered stream of ThirdPartyEvent
 }
 ```
@@ -268,7 +268,7 @@ async fn main() {
 
 3. **Integration Boundaries**: Add timestamps as early as possible in your pipeline, ideally at the point of ingestion.
 
-4. **Timestamp Source**: 
+4. **Timestamp Source**:
    - Use event time (when the event occurred) for intrinsic ordering
    - Use processing time (when you received it) for wrapper ordering
    - Be consistent within a stream

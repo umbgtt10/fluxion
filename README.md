@@ -3,13 +3,7 @@
 [![CI](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml/badge.svg)](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-A reactive stream processing library for Rust with temporal ordering guarantees and efficient async execution.
-
-## Documentation
-
-- **[Integration Guide](INTEGRATION.md)** - Learn the three patterns for integrating events (intrinsic, extrinsic, wrapper ordering)
-- **[API Documentation](https://docs.rs/fluxion)** - Detailed API reference (when published)
-- **[Examples](examples/)** - Complete working examples including stream aggregation
+A reactive stream processing library for Rust with temporal ordering guarantees, efficient async execution and friendly fluent API.
 
 ## Features
 
@@ -20,13 +14,20 @@ A reactive stream processing library for Rust with temporal ordering guarantees 
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
 - ✅ **Well Tested**: 1,500+ tests with comprehensive coverage
 
+## Documentation
+
+- **[Integration Guide](INTEGRATION.md)** - Learn the three patterns for integrating events (intrinsic, extrinsic, wrapper ordering)
+- **[API Documentation](https://docs.rs/fluxion-rx)** - Detailed API reference
+- **[Examples](examples/)** - Complete working examples including stream aggregation
+
 ## Quick Start
 
 Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion = "0.1.0"  # Note: Not yet published to crates.io
+fluxion-rx = "0.1.0"
+fluxion-test-utils = "0.1.0"
 tokio = { version = "1.48", features = ["full"] }
 futures = "0.3"
 ```
@@ -34,7 +35,7 @@ futures = "0.3"
 Basic usage:
 
 ```rust
-use fluxion_stream::FluxionStream;
+use fluxion_rx::prelude::*;
 use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
 
@@ -56,7 +57,10 @@ async fn main() {
     let first = merged.next().await.unwrap();
     let second = merged.next().await.unwrap();
 
+    println!("First: {:?}", first);
     assert_eq!(first.value, 100);
+
+    println!("Second: {:?}", second);
     assert_eq!(second.value, 200);
 }
 ```
@@ -170,7 +174,7 @@ cargo doc --package fluxion-exec --open
 
 ### Workspace Structure
 
-- **`fluxion`** - Main crate (re-exports from other crates)
+- **`fluxion-rx`** - Main crate (re-exports from other crates)
 - **`fluxion-stream`** - Stream operators and combinators
 - **`fluxion-exec`** - Execution utilities and subscriptions
 - **`fluxion-core`** - Core utilities and traits
@@ -187,12 +191,13 @@ cargo doc --package fluxion-exec --open
 
 ## Project Status
 
-**Current Version:** 0.1.0 (pre-release)
+**Current Version:** 0.1.1
 
+- ✅ Published to crates.io
 - ✅ Core functionality complete
 - ✅ Comprehensive test coverage
 - ✅ Phase 1 error handling implemented
-- 🚧 Phase 2 error propagation in progress
+- 🚧 Phase 2 error propagation (planned for 1.0.0)
 - 📝 Documentation complete for current features
 
 See [ROADMAP.md](ROADMAP.md) for details on the path to 1.0.0.
@@ -222,3 +227,8 @@ All commits and releases are **GPG signed**.
 **Key ID:** `5729DA194B0929542BF79074C2A11DED229A1E51`
 **Fingerprint:** `5729 DA19 4B09 2954 2BF7 9074 C2A1 1DED 229A 1E51`
 ![GPG Verified](https://img.shields.io/badge/GPG-Verified-success)
+
+## Author
+Name: Umberto Gotti
+Email: umberto.gotti@umbertogotti.dev
+Twitter: https://x.com/GottiUmberto

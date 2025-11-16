@@ -4,9 +4,9 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 ---
 
-## 📦 Version 0.1.0 - Initial Release (Ready for Review)
+## 📦 Version 0.1.x - Initial Release
 
-**Status:** Feature-complete, pending final review
+**Status:** Published to crates.io
 
 **Goal:** Provide a stable, working foundation for reactive stream processing with ordering guarantees.
 
@@ -32,22 +32,13 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ Zero compiler warnings
 - ✅ Doc tests passing
 
-### What's NOT in 0.1.0
+## 🚀 Version 1.0.0 - Production Ready
+**Goal:** Feedback received and integrated
 
-- Stream operators don't yet propagate errors (they log and drop)
-- No published crates.io release
-- Limited benchmark coverage (6 operators benchmarked)
-- Limited real-world usage validation
+### Core Requirements ✅
+[ ] - All feedback assessed and integrated
 
-### Pre-Release Checklist
-
-- [x] Final documentation review for consistency
-- [x] Review and cleanup TODOs in README
-- [x] Verify all examples compile and run
-- [ ] Add CHANGELOG.md with 0.1.0 entry
-- [ ] Tag release: `git tag v0.1.0`
-
----
+**Essential Features:**
 
 ## 🚀 Version 1.0.0 - Production Ready
 
@@ -67,6 +58,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - [ ] All operators handle and propagate internal failures
 - [ ] Update all operator tests to handle `Result` streams
 - [ ] Add specific error-triggering tests (lock poisoning, etc.)
+- [ ] All standard Rx operators supported
 
 **Phase 3: Documentation & Finalization**
 - [ ] Create `docs/error-handling.md` guide
@@ -184,10 +176,11 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 ## 📊 Success Metrics
 
-### 0.1.0 Success Criteria
-- Library compiles and all tests pass
-- Documentation covers all public APIs
-- At least one example project successfully uses the library
+### 0.1.x Achievements ✅
+- ✅ Library compiles and all tests pass
+- ✅ Documentation covers all public APIs
+- ✅ Published to crates.io
+- ✅ Example projects demonstrate usage
 
 ### 1.0.0 Success Criteria
 - Zero critical bugs for 30+ days
@@ -207,11 +200,11 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 ## 🎯 Current Focus
 
-**Immediate Next Steps (Post-0.1.0):**
+**Immediate Next Steps (Post-0.1.x):**
 
-1. **Review & Polish** (1-2 weeks)
-   - Clean up documentation duplication
-   - Resolve TODO items in README
+1. **Community Feedback** (Ongoing)
+   - Gather user feedback from crates.io
+   - Address issues and questions
    - Add missing examples
 
 2. **Phase 2 Error Handling** (2-3 weeks)

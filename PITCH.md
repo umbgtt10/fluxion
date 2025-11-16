@@ -147,7 +147,7 @@ This isn't just a library - it's a **reference implementation** of Rust best pra
    - `subscribe_latest_async` - Sample latest only
    - Error aggregation with detailed reporting
 
-### 📈 Version 0.1.0 Status
+### 📈 Current Status
 
 **Feature Complete ✅**
 - All core operators implemented
@@ -155,7 +155,8 @@ This isn't just a library - it's a **reference implementation** of Rust best pra
 - All documentation written
 - All tests passing
 
-**Production Ready ✅**
+**Published to crates.io ✅**
+- Version 0.1.1 available
 - Zero known bugs
 - Zero warnings
 - Zero failing tests
