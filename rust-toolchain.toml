@@ -2,3 +2,10 @@
 channel = "1.91.1"
 components = ["rustfmt", "clippy"]
 profile = "minimal"
+
+
+
+
+magick -size 200x200 xc:white -gravity center -fill black -pointsize 12 ^
+       qr:"bitcoin:3PavPsoB527KMjEvdpCAFDtUhuWB9WvhCb?label=Donate" ^
+       -resize 180x180 -bordercolor white -border 10x10 -strip BTC_QR.png
