@@ -4,7 +4,7 @@
 
 //! Unified data event enum
 
-use fluxion::{CompareByInner, Ordered};
+use fluxion_rx::{CompareByInner, Ordered};
 
 use super::{MetricData, SensorReading, SystemEvent};
 

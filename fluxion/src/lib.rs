@@ -26,7 +26,7 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use fluxion::FluxionStream;
+//! use fluxion_rx::FluxionStream;
 //! use futures::StreamExt;
 //!
 //! #[tokio::main]
@@ -55,7 +55,7 @@
 //! provides temporal ordering:
 //!
 //! ```rust
-//! use fluxion::Ordered;
+//! use fluxion_rx::Ordered;
 //!
 //! // Items must provide an order value
 //! fn process_ordered<T: Ordered>(item: &T) {

@@ -49,7 +49,7 @@ macro_rules! warn {
 /// match safe_lock(&state, "counter state") {
 ///     Ok(guard) => println!("Value: {}", *guard),
 ///     Err(e) => eprintln!("Failed to lock: {}", e),
-/// }
+/// };
 /// ```
 ///
 /// # Errors
@@ -120,7 +120,7 @@ pub fn safe_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<Mutex
 /// match try_lock(&state, "processing queue") {
 ///     Ok(mut guard) => guard.push(4),
 ///     Err(e) => eprintln!("Lock failed: {}", e),
-/// }
+/// };
 /// ```
 pub fn try_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, operation: &str) -> Result<MutexGuard<'a, T>> {
     safe_lock(mutex, operation)

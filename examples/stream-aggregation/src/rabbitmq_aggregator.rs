@@ -55,10 +55,15 @@ async fn main() {
     let mut aggregator = Aggregator::new(cancel_token.clone());
     aggregator.start();
 
-    // Wait for Ctrl+C
+    // Wait for Ctrl+C or 5 seconds timeout
     select! {
         _ = signal::ctrl_c() => {
             println!("\n\n🛑 Shutting down gracefully...\n");
+            aggregator.stop().await;
+            println!("✅ All tasks stopped\n");
+        }
+        _ = tokio::time::sleep(tokio::time::Duration::from_secs(5)) => {
+            println!("\n\n⏱️  5 seconds elapsed, shutting down...\n");
             aggregator.stop().await;
             println!("✅ All tasks stopped\n");
         }

@@ -4,7 +4,7 @@
 
 //! System event domain type
 
-use fluxion::prelude::Ordered;
+use fluxion_rx::prelude::Ordered;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SystemEvent {

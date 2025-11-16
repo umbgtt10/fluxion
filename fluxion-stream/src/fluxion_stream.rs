@@ -279,7 +279,7 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<Pin<Box<dyn Stream<Item = T> + Send + Sync>>>
+    ) -> FluxionStream<impl Stream<Item = T> + Send + Sync>
     where
         S: Stream<Item = T> + Send + Sync + 'static,
         SF: Stream<Item = T> + Send + Sync + 'static,
@@ -296,7 +296,7 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<Pin<Box<dyn Stream<Item = T> + Send + Sync>>>
+    ) -> FluxionStream<impl Stream<Item = T> + Send + Sync>
     where
         S: Stream<Item = T> + Send + Sync + 'static,
         SF: Stream<Item = T> + Send + Sync + 'static,

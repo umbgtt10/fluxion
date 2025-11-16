@@ -9,7 +9,7 @@ use crate::domain::{AggregatedEvent, DataEvent, MetricData, SensorReading, Syste
 use crate::events_producer::EventsProducer;
 use crate::metrics_producer::MetricsProducer;
 use crate::sensor_producer::SensorProducer;
-use fluxion::prelude::*;
+use fluxion_rx::prelude::*;
 use fluxion_exec::SubscribeLatestAsyncExt;
 use std::convert::Infallible;
 use tokio::sync::mpsc;
@@ -152,7 +152,7 @@ impl Aggregator {
                     async move {
                         let temp_display = agg.temperature.map(|t| t as f64 / 10.0).unwrap_or(0.0);
                         let metric_display = agg.metric_value.map(|m| m as f64).unwrap_or(0.0);
-                        
+
                         println!(
                             "\n  [Aggregator] @ {}: Temp={:.1}°C, Metric={:.1}, Alert={}",
                             agg.timestamp,

@@ -4,7 +4,7 @@
 
 //! Aggregated event domain type
 
-use fluxion::Ordered;
+use fluxion_rx::Ordered;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AggregatedEvent {

@@ -22,7 +22,7 @@ pub trait UnboundedReceiverExt<T> {
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion::prelude::*;
+    /// use fluxion_rx::prelude::*;
     /// use tokio::sync::mpsc;
     ///
     /// #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
