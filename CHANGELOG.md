@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tests**: Created `tests/combine_latest_tests.rs` with functional and composition examples
 - **Integration**: Integrated `stream-aggregation` example into workspace members
 - **API Docs**: Added comprehensive documentation to all FluxionStream extension methods
+- **Code of Conduct**: Added Kingdom of Heaven inspired community guidelines
 
 ### Changed
 - **README**: Restructured with improved organization and table of contents
@@ -29,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Resolved beginner-level API usage mistakes in examples
 - Fixed code formatting to match rustfmt standards
 - Corrected import statements throughout test files
+
+### Known Issues
+- **Dependencies**: Harmless duplicate `windows-sys` versions (0.60.2 and 0.61.2) from tokio ecosystem - does not affect functionality
 
 ## [0.1.0] - 2025-11-16
 
