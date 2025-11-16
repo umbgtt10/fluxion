@@ -34,27 +34,27 @@ futures = "0.3"
 Basic usage:
 
 ```rust
-use fluxion::FluxionStream;
-use futures::StreamExt;
+  use fluxion_stream::{FluxionStream, OrderedStreamExt};
+  use fluxion_test_utils::Sequenced;
+  use futures::StreamExt;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a channel and stream
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
-    let stream = FluxionStream::from_unbounded_receiver(rx);
-    
-    // Send some values
-    tx.send(1)?;
-    tx.send(2)?;
-    tx.send(3)?;
-    drop(tx);
-    
-    // Collect and process
-    let values: Vec<_> = stream.collect().await;
-    println!("Received: {:?}", values); // Prints: [1, 2, 3]
-    
-    Ok(())
-}
+  #[tokio::main]
+  async fn main() {
+  let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel();
+  let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel();
+
+  let stream1 = FluxionStream::from_unbounded_receiver(rx1);
+  let stream2 = FluxionStream::from_unbounded_receiver(rx2);
+
+  let mut merged = stream1.ordered_merge(vec![stream2]);
+
+  // Send out of order - stream2 sends seq=1, stream1 sends seq=2
+  tx2.send(Sequenced::with_sequence(100, 1)).unwrap();
+  tx1.send(Sequenced::with_sequence(200, 2)).unwrap();
+
+  //Items are emitted in temporal order (seq 1, then seq 2)
+  let first = merged.next().await.unwrap();
+  assert_eq!(first.value, 100);
 ```
 
 ## Core Concepts
@@ -160,12 +160,6 @@ cargo doc --package fluxion-exec --open
 ### Building
 
 ```bash
-# Build all crates
-cargo build --workspace
-
-# Run all tests
-cargo test --workspace --all-features
-
 # Run CI checks locally (PowerShell)
 .\.ci\ci.ps1
 ```
