@@ -13,7 +13,7 @@ members = [
 
 [workspace.package]
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 authors = ["umberto.gotti@umbertogotti.dev"]
 license = "Apache-2.0"
 repository = "https://github.com/umbgtt10/fluxion"
@@ -29,9 +29,6 @@ pin-project = "1.1.10"
 async-trait = "0.1.89"
 async-stream = "0.3.6"
 
-# Serialization (for examples)
-serde = { version = "1.0", features = ["derive"] }
-
 # Logging
 tracing = "0.1.41"
 
@@ -46,10 +43,10 @@ rstest = "0.26.1"
 windows-sys = "0.61.2"
 
 # Internal workspace dependencies
-fluxion-core = { path = "fluxion-core" }
-fluxion-error = { path = "fluxion-error" }
-fluxion-ordered-merge = { path = "fluxion-ordered-merge" }
-fluxion-stream = { path = "fluxion-stream" }
-fluxion-exec = { path = "fluxion-exec" }
-fluxion-test-utils = { path = "fluxion-test-utils" }
-fluxion = { path = "fluxion" }
+fluxion-core = { version = "0.1.0", path = "fluxion-core" }
+fluxion-error = { version = "0.1.0", path = "fluxion-error" }
+fluxion-ordered-merge = { version = "0.1.0", path = "fluxion-ordered-merge" }
+fluxion-stream = { version = "0.1.0", path = "fluxion-stream" }
+fluxion-exec = { version = "0.1.0", path = "fluxion-exec" }
+fluxion-test-utils = { version = "0.1.0", path = "fluxion-test-utils" }
+fluxion-merge = { version = "0.1.0", path = "fluxion-merge" }

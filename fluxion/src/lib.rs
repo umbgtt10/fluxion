@@ -96,6 +96,12 @@ pub use fluxion_stream::FluxionStream;
 // Re-export commonly used types
 pub use fluxion_stream::{CombinedState, WithPrevious};
 
+// Re-export exec utilities
+pub use fluxion_exec;
+
+// Re-export merge utilities
+pub use fluxion_merge;
+
 // Re-export convenience extensions
 pub use mpsc_ext::UnboundedReceiverExt;
 
@@ -104,19 +110,18 @@ pub use mpsc_ext::UnboundedReceiverExt;
 /// Import this module to bring the most commonly used Fluxion types into scope:
 ///
 /// ```rust
-/// use fluxion::prelude::*;
+/// use fluxion_rx::prelude::*;
 ///
 /// // Now you have access to:
 /// // - FluxionStream
 /// // - Ordered trait
-/// // - IntoStream trait  
-/// // - CombinedState
-/// // - WithPrevious
+/// // - IntoStream trait
+/// // - CombinedState, WithPrevious
+/// // - UnboundedReceiverExt
 /// ```
 ///
 /// This is the recommended way to use Fluxion in most applications.
 pub mod prelude {
-
     pub use crate::FluxionStream;
     pub use crate::UnboundedReceiverExt;
     pub use fluxion_core::into_stream::IntoStream;

@@ -15,15 +15,15 @@ name = "benchmarks"
 harness = false
 
 [dependencies]
-fluxion-ordered-merge.workspace = true
-fluxion-test-utils.workspace = true
-futures.workspace = true
-futures-util.workspace = true
-tokio.workspace = true
-tokio-stream.workspace = true
-pin-project.workspace = true
+fluxion-ordered-merge = { workspace = true }
+fluxion-test-utils = { workspace = true }
+futures = { workspace = true }
+futures-util = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+pin-project = { workspace = true }
 
 [dev-dependencies]
-fluxion-test-utils.workspace = true
+fluxion-test-utils = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 criterion = { workspace = true }
