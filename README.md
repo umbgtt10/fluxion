@@ -275,15 +275,6 @@ cargo doc --package fluxion-exec --open
 - **`fluxion-merge`** - Stream merging utilities
 - **`fluxion-ordered-merge`** - Ordered merging implementation
 
-### Example Tests
-
-The following integration tests demonstrate operator chaining patterns and are maintained as part of CI:
-
-- **[example1_functional.rs](fluxion/tests/example1_functional.rs)** - `take_latest_when` with trigger streams
-- **[example2_composition.rs](fluxion/tests/example2_composition.rs)** - `combine_latest` → `filter_ordered` chain
-
-These tests serve as runnable examples and are referenced in the README's "Chaining Multiple Operators" section.
-
 ### Development Notes
 
 - All clippy, formatting, and documentation warnings are treated as errors in CI
