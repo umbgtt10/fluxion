@@ -34,30 +34,31 @@ futures = "0.3"
 Basic usage:
 
 ```rust
-  use fluxion_stream::{FluxionStream, OrderedStreamExt};
-  use fluxion_test_utils::Sequenced;
-  use futures::StreamExt;
+use fluxion_stream::FluxionStream;
+use fluxion_test_utils::Sequenced;
+use futures::StreamExt;
 
-  #[tokio::main]
-  async fn main() {
-  let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel();
-  let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel();
+#[tokio::main]
+async fn main() {
+    let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel();
+    let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel();
 
-  let stream1 = FluxionStream::from_unbounded_receiver(rx1);
-  let stream2 = FluxionStream::from_unbounded_receiver(rx2);
+    let stream1 = FluxionStream::from_unbounded_receiver(rx1);
+    let stream2 = FluxionStream::from_unbounded_receiver(rx2);
 
-  let mut merged = stream1.ordered_merge(vec![stream2]);
+    let mut merged = stream1.ordered_merge(vec![stream2]);
 
-  // Send out of order - stream2 sends seq=1, stream1 sends seq=2
-  tx2.send(Sequenced::with_sequence(100, 1)).unwrap();
-  tx1.send(Sequenced::with_sequence(200, 2)).unwrap();
+    // Send out of order - stream2 sends seq=1, stream1 sends seq=2
+    tx2.send(Sequenced::with_sequence(100, 1)).unwrap();
+    tx1.send(Sequenced::with_sequence(200, 2)).unwrap();
 
-  //Items are emitted in temporal order (seq 1, then seq 2)
-  let first = merged.next().await.unwrap();
-  assert_eq!(first.value, 100);
+    // Items are emitted in temporal order (seq 1, then seq 2)
+    let first = merged.next().await.unwrap();
+    let second = merged.next().await.unwrap();
 
-  let second = merged.next().await.unwrap();
-  assert_eq!(second.value, 200);
+    assert_eq!(first.value, 100);
+    assert_eq!(second.value, 200);
+}
 ```
 
 ## Core Concepts
