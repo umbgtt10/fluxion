@@ -214,4 +214,11 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for detai
 
 Inspired by ReactiveX and other reactive programming libraries, with a focus on Rust's safety and performance characteristics.
 
-Signed with GPG: `5729DA194B0929542BF79074C2A11DED229A1E51`
+## Security
+
+All commits and releases are **GPG signed**.
+
+**Key ID:** `5729DA194B0929542BF79074C2A11DED229A1E51`
+**Fingerprint:** `5729 DA19 4B09 2954 2BF7 9074 C2A1 1DED 229A 1E51`
+
+![GPG Verified](https://img.shields.io/badge/GPG-Verified-success)
