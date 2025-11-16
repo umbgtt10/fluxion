@@ -7,6 +7,14 @@ A reactive stream processing library for Rust with temporal ordering guarantees,
 
 **📊 [See why Fluxion sets new standards for quality →](PITCH.md)**
 
+## Table of Contents
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Operator Documentation](#-operator-documentation)
+- [Core Concepts](#core-concepts)
+- [Documentation](#documentation)
+- [Development](#development)
+
 ## Features
 
 - 🔄 **Rx-Style Operators**: Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, etc.)
@@ -16,11 +24,9 @@ A reactive stream processing library for Rust with temporal ordering guarantees,
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
 - ✅ **Well Tested**: 1,500+ tests with comprehensive coverage
 
-## Documentation
 
-- **[Integration Guide](INTEGRATION.md)** - Learn the three patterns for integrating events (intrinsic, extrinsic, wrapper ordering)
-- **[API Documentation](https://docs.rs/fluxion-rx)** - Detailed API reference
-- **[Examples](examples/)** - Complete working examples including stream aggregation
+[![Crates.io](https://img.shields.io/crates/v/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
+[![Documentation](https://docs.rs/fluxion-rx/badge.svg)](https://docs.rs/fluxion-rx)
 
 ## Quick Start
 
@@ -134,6 +140,11 @@ async fn test_take_latest_when_int_bool() {
     assert_eq!(result3.sequence(), 6);
 }
 ```
+
+### 📚 Operator Documentation
+
+- **[All Operators](docs/FLUXION_OPERATOR_SUMMARY.md)** - Complete operator reference
+- **[Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md)** - Planned future operators
 
 ## Core Concepts
 

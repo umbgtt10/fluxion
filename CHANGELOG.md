@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - import issues fixed
 - CI cleaned up
 - stream-aggregation application integrated in the workspace and in .ci.ps1
+- examples in the README improved and tied to existing tests
+- Fluxion_operator_roadmap and Fluxion_operator_summary added
+- README.md restructured
 
 ## [0.1.0] - 2025-11-16
 
