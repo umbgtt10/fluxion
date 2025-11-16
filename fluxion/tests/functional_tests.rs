@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion::{CombinedState, FluxionStream, Ordered};
+use fluxion_rx::{CombinedState, FluxionStream, Ordered};
 use fluxion_test_utils::test_data::{
     animal_dog, person_alice, person_bob, person_charlie, plant_rose, TestData,
 };

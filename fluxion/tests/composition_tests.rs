@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion::{CombinedState, FluxionStream, Ordered, OrderedWrapper};
+use fluxion_rx::{CombinedState, FluxionStream, Ordered, OrderedWrapper};
 use fluxion_stream::WithPrevious;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::sequenced::Sequenced;
