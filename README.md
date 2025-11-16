@@ -55,6 +55,9 @@ Basic usage:
   //Items are emitted in temporal order (seq 1, then seq 2)
   let first = merged.next().await.unwrap();
   assert_eq!(first.value, 100);
+
+  let second = merged.next().await.unwrap();
+  assert_eq!(second.value, 200);
 ```
 
 ## Core Concepts
@@ -211,3 +214,4 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for detai
 
 Inspired by ReactiveX and other reactive programming libraries, with a focus on Rust's safety and performance characteristics.
 
+Signed with GPG: `5729DA194B0929542BF79074C2A11DED229A1E51`
