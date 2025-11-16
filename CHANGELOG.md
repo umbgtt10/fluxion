@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Formatting issues fixed
 - import issues fixed
 - CI cleaned up
+- stream-aggregation application integrated in the workspace and in .ci.ps1
 
 ## [0.1.0] - 2025-11-16
 

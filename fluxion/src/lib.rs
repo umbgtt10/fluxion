@@ -17,11 +17,11 @@
 //! Fluxion maintains a clean separation of concerns:
 //!
 //! - **Production code**: Use `FluxionStream` for composable, immutable stream transformations
-//! - **Test code**: Use `TestChannel` (from `fluxion-test-utils`) which adds push capabilities
+//! - **Test code**: Use `tokio::sync::mpsc` channels for imperative test setup
 //!
 //! This architecture solves the fundamental conflict between:
 //! - Consuming operations (stream extensions that take `self`)
-//! - Mutation operations (push that needs `&self`)
+//! - Mutation operations (sending values via channels)
 //!
 //! ## Quick Start
 //!

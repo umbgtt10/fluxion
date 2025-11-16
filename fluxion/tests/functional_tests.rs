@@ -136,7 +136,6 @@ async fn test_functional_take_while_with() {
     let predicate_stream = FluxionStream::new(predicate_stream);
 
     let taken = source_stream.take_while_with(predicate_stream, |_| true);
-    let mut taken = Box::pin(taken);
 
     // Act
     predicate_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -144,6 +143,7 @@ async fn test_functional_take_while_with() {
     source_tx.send(Sequenced::new(person_charlie())).unwrap();
 
     // Assert
+    let mut taken = Box::pin(taken);
     assert_eq!(taken.next().await.unwrap(), person_bob());
     assert_eq!(taken.next().await.unwrap(), person_charlie());
 }

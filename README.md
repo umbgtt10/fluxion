@@ -5,6 +5,8 @@
 
 A reactive stream processing library for Rust with temporal ordering guarantees, efficient async execution and friendly fluent API.
 
+**📊 [See why Fluxion sets new standards for quality →](PITCH.md)**
+
 ## Features
 
 - 🔄 **Rx-Style Operators**: Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, etc.)
@@ -32,7 +34,7 @@ tokio = { version = "1.48", features = ["full"] }
 futures = "0.3"
 ```
 
-Basic usage:
+### Basic Usage
 
 ```rust
 use fluxion_rx::prelude::*;
@@ -62,6 +64,74 @@ async fn main() {
 
     println!("Second: {:?}", second);
     assert_eq!(second.value, 200);
+}
+```
+
+### Chaining Multiple Operators
+
+Fluxion operators can be chained to create complex processing pipelines. Here are two complete examples:
+
+**Example: `combine_latest` → `filter_ordered`**
+
+```rust
+use fluxion_rx::prelude::*;
+use fluxion_test_utils::Sequenced;
+use futures::StreamExt;
+
+#[tokio::test]
+async fn test_take_latest_when_int_bool() {
+    // Define enum to hold int and bool types
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+    enum Value {
+        Int(i32),
+        Bool(bool),
+    }
+
+    // Create int stream and bool trigger stream
+    let (tx_int, rx_int) = tokio::sync::mpsc::unbounded_channel::<Sequenced<Value>>();
+    let (tx_trigger, rx_trigger) = tokio::sync::mpsc::unbounded_channel::<Sequenced<Value>>();
+
+    let int_stream = FluxionStream::from_unbounded_receiver(rx_int);
+    let trigger_stream = FluxionStream::from_unbounded_receiver(rx_trigger);
+
+    let mut pipeline = int_stream.take_latest_when(trigger_stream, |_| true);
+
+    // Send int values - they will be buffered
+    tx_int
+        .send(Sequenced::with_sequence(Value::Int(10), 1))
+        .unwrap();
+    tx_int
+        .send(Sequenced::with_sequence(Value::Int(20), 2))
+        .unwrap();
+    tx_int
+        .send(Sequenced::with_sequence(Value::Int(30), 3))
+        .unwrap();
+
+    // Trigger with bool - should emit latest int value (30)
+    tx_trigger
+        .send(Sequenced::with_sequence(Value::Bool(true), 4))
+        .unwrap();
+
+    let result1 = pipeline.next().await.unwrap();
+    assert!(matches!(result1.get(), Value::Int(30)));
+    assert_eq!(result1.sequence(), 4);
+
+    // Send more int values - these will trigger emissions
+    tx_int
+        .send(Sequenced::with_sequence(Value::Int(40), 5))
+        .unwrap();
+
+    let result2 = pipeline.next().await.unwrap();
+    assert!(matches!(result2.get(), Value::Int(40)));
+    assert_eq!(result2.sequence(), 5);
+
+    tx_int
+        .send(Sequenced::with_sequence(Value::Int(50), 6))
+        .unwrap();
+
+    let result3 = pipeline.next().await.unwrap();
+    assert!(matches!(result3.get(), Value::Int(50)));
+    assert_eq!(result3.sequence(), 6);
 }
 ```
 
@@ -182,6 +252,15 @@ cargo doc --package fluxion-exec --open
 - **`fluxion-test-utils`** - Test helpers and fixtures
 - **`fluxion-merge`** - Stream merging utilities
 - **`fluxion-ordered-merge`** - Ordered merging implementation
+
+### Example Tests
+
+The following integration tests demonstrate operator chaining patterns and are maintained as part of CI:
+
+- **[example1_functional.rs](fluxion/tests/example1_functional.rs)** - `take_latest_when` with trigger streams
+- **[example2_composition.rs](fluxion/tests/example2_composition.rs)** - `combine_latest` → `filter_ordered` chain
+
+These tests serve as runnable examples and are referenced in the README's "Chaining Multiple Operators" section.
 
 ### Development Notes
 

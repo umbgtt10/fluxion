@@ -1482,8 +1482,6 @@ async fn test_filter_ordered_with_latest_from() {
 
 #[tokio::test]
 async fn test_with_latest_from_in_middle_of_chain() {
-    // Arrange - Demonstrate with_latest_from in the middle of a chain
-    // Pattern: filter_ordered -> with_latest_from -> map_ordered
     let (primary_tx, primary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (secondary_tx, secondary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
@@ -1503,7 +1501,7 @@ async fn test_with_latest_from_in_middle_of_chain() {
         primary_age + secondary_age
     };
 
-    let stream = FluxionStream::new(primary_stream)
+    let mut stream = FluxionStream::new(primary_stream)
         .filter_ordered(|data| matches!(data, TestData::Person(_)))
         .with_latest_from(secondary_stream, age_combiner)
         .map_ordered(|age_sum: OrderedWrapper<u32>| async move {
@@ -1515,7 +1513,6 @@ async fn test_with_latest_from_in_middle_of_chain() {
     primary_tx.send(Sequenced::new(animal_dog())).unwrap(); // Filtered
     primary_tx.send(Sequenced::new(person_bob())).unwrap(); // 30
 
-    let mut stream = Box::pin(stream);
     let result = stream.next().await.unwrap().await;
     assert_eq!(result, "Combined age: 55"); // 30 + 25
 
@@ -1533,10 +1530,7 @@ async fn test_with_latest_from_in_middle_of_chain() {
 
 #[tokio::test]
 async fn test_take_while_with_in_middle_of_chain() {
-    // Arrange - Demonstrate take_while_with returns FluxionStream for chaining
-    // Pattern: ordered_merge -> filter_ordered -> take_while_with -> (returns inner values)
-    // Note: take_while_with returns the inner values (TestData), so we can't chain
-    // ordered operations after it, but we CAN chain before it
+    // Arrange
     let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (other_tx, other_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let (predicate_tx, predicate_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
@@ -1561,7 +1555,6 @@ async fn test_take_while_with_in_middle_of_chain() {
     let result1 = stream.next().await.unwrap();
     let result2 = stream.next().await.unwrap();
 
-    // ordered_merge preserves order based on sequence numbers
     assert_eq!(result1, person_bob());
     assert_eq!(result2, person_charlie());
 }

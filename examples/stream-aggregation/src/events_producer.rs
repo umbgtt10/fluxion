@@ -52,7 +52,7 @@ impl EventsProducer {
 
                     let event = SystemEvent {
                         timestamp,
-                        event_type: if timestamp % 3 == 0 {
+                        event_type: if timestamp.is_multiple_of(3) {
                             "ALERT".to_string()
                         } else {
                             "INFO".to_string()

@@ -12,7 +12,7 @@
 //! - Graceful shutdown with Ctrl+C
 //!
 //! Architecture:
-//! ```
+//! ```text
 //! Producer Tasks (3)      Aggregator Task          Consumer Task
 //! ┌─────────────┐         ┌──────────────┐         ┌──────────┐
 //! │  Queue 1    │────────▶│              │         │          │

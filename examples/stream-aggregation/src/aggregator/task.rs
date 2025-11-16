@@ -9,8 +9,8 @@ use crate::domain::{AggregatedEvent, DataEvent, MetricData, SensorReading, Syste
 use crate::events_producer::EventsProducer;
 use crate::metrics_producer::MetricsProducer;
 use crate::sensor_producer::SensorProducer;
-use fluxion_rx::prelude::*;
 use fluxion_exec::SubscribeLatestAsyncExt;
+use fluxion_rx::prelude::*;
 use std::convert::Infallible;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -123,28 +123,21 @@ impl Aggregator {
         println!("🔄 Aggregator started\n");
 
         // Transform domain events to DataEvent (spawns transformation tasks internally)
-        let sensor_stream = sensor_rx
-            .into_fluxion_stream(|s| DataEvent::Sensor(s.clone()));
+        let sensor_stream = sensor_rx.into_fluxion_stream(|s| DataEvent::Sensor(s.clone()));
 
-        let metrics_stream = metrics_rx
-            .into_fluxion_stream(|m| DataEvent::Metric(m.clone()));
+        let metrics_stream = metrics_rx.into_fluxion_stream(|m| DataEvent::Metric(m.clone()));
 
-        let events_stream = events_rx
-            .into_fluxion_stream(|e| DataEvent::SystemEvent(e.clone()));
+        let events_stream = events_rx.into_fluxion_stream(|e| DataEvent::SystemEvent(e.clone()));
 
         // Combine the unified DataEvent streams
         let _ = sensor_stream
-            .combine_latest(
-                vec![
-                    metrics_stream,
-                    events_stream,
-                ],
-                |_| true,
-            )
+            .combine_latest(vec![metrics_stream, events_stream], |_| true)
             .map_ordered(create_aggregated_event)
             .filter_ordered(|agg| {
                 // Only process reasonable temperatures (150-300 represents 15.0-30.0°C)
-                agg.get().temperature.map_or(false, |t| t >= 150 && t <= 300)
+                agg.get()
+                    .temperature
+                    .is_some_and(|t| (150..=300).contains(&t))
             })
             .subscribe_latest_async(
                 move |agg, _token| {
@@ -155,10 +148,7 @@ impl Aggregator {
 
                         println!(
                             "\n  [Aggregator] @ {}: Temp={:.1}°C, Metric={:.1}, Alert={}",
-                            agg.timestamp,
-                            temp_display,
-                            metric_display,
-                            agg.has_alert
+                            agg.timestamp, temp_display, metric_display, agg.has_alert
                         );
                         let _ = tx.send(agg);
                         Ok::<(), Infallible>(())
@@ -166,7 +156,8 @@ impl Aggregator {
                 },
                 None::<fn(Infallible)>,
                 Some(cancel_token),
-            ).await;
+            )
+            .await;
 
         println!("\n🔄 Aggregator stopped");
     }

@@ -9,6 +9,7 @@ members = [
     "fluxion-exec",
     "fluxion-test-utils",
     "fluxion-merge",
+    "examples/stream-aggregation",
 ]
 
 [workspace.package]
@@ -43,6 +44,7 @@ rstest = "0.26.1"
 windows-sys = "0.61.2"
 
 # Internal workspace dependencies
+fluxion-rx = { version = "0.1.0", path = "fluxion" }
 fluxion-core = { version = "0.1.0", path = "fluxion-core" }
 fluxion-error = { version = "0.1.0", path = "fluxion-error" }
 fluxion-ordered-merge = { version = "0.1.0", path = "fluxion-ordered-merge" }

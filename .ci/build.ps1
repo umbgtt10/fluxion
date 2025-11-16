@@ -148,18 +148,7 @@ Invoke-StepAction "Build (all targets & features)" { cargo build --all-targets -
 Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-targets --all-features -- -D warnings }
 Invoke-StepAction "Run tests" { cargo test --all-features --all-targets --verbose }
 Invoke-StepAction "Run stream-aggregation example" {
-  Push-Location examples/stream-aggregation
-  try {
-    cargo run --release
-    $exitCode = $LASTEXITCODE
-    if ($exitCode -ne 0) {
-      Write-Color "stream-aggregation example failed with exit code $exitCode" Red
-      Pop-Location
-      exit $exitCode
-    }
-  } finally {
-    Pop-Location
-  }
+  cargo run --release --package rabbitmq-aggregator-example
 }
 
 Write-Color "Upgrade + build + test sequence completed successfully." Green
