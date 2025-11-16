@@ -6,9 +6,9 @@ use futures::{Stream, StreamExt};
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
-use crate::Ordered;
 use crate::ordered_merge::OrderedMergeExt;
 use crate::types::CombinedState;
+use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::safe_lock;
 use fluxion_core::{CompareByInner, OrderedWrapper};

@@ -4,7 +4,7 @@
 
 use fluxion_ordered_merge::OrderedMergeExt;
 use fluxion_test_utils::sequenced::Sequenced;
-use futures::stream::{Empty, Stream, StreamExt, empty};
+use futures::stream::{empty, Empty, Stream, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
 use std::marker::PhantomData;

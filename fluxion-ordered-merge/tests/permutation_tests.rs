@@ -5,8 +5,8 @@
 use fluxion_ordered_merge::OrderedMergeExt;
 use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
-    TestData, animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
-    plant_fern, plant_rose, plant_sunflower,
+    animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_fern,
+    plant_rose, plant_sunflower, TestData,
 };
 use futures::StreamExt;
 use rstest::rstest;

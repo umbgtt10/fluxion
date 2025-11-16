@@ -7,8 +7,8 @@ use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     test_data::{
-        TestData, animal, animal_ant, animal_cat, animal_dog, person, person_alice, person_bob,
-        person_charlie, person_dave,
+        animal, animal_ant, animal_cat, animal_dog, person, person_alice, person_bob,
+        person_charlie, person_dave, TestData,
     },
 };
 use futures::StreamExt;

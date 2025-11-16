@@ -9,8 +9,8 @@ use fluxion_test_utils::{
     person::Person,
     plant::Plant,
     test_data::{
-        TestData, animal_bird, animal_dog, animal_spider, person, person_alice, person_bob,
-        person_charlie, person_dave, plant_fern, plant_oak,
+        animal_bird, animal_dog, animal_spider, person, person_alice, person_bob, person_charlie,
+        person_dave, plant_fern, plant_oak, TestData,
     },
 };
 use futures::StreamExt;

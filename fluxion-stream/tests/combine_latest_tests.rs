@@ -3,19 +3,19 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::Ordered;
-use fluxion_stream::CombinedState;
 use fluxion_stream::combine_latest::CombineLatestExt;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     sequenced::Sequenced,
     test_data::{
-        DataVariant, TestData, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
-        person_diane, plant_rose, plant_sunflower,
+        animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_diane,
+        plant_rose, plant_sunflower, DataVariant, TestData,
     },
 };
 use futures::{Stream, StreamExt};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 

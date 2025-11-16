@@ -2,14 +2,14 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::CombinedState;
 use fluxion_stream::emit_when::EmitWhenExt;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     test_data::{
-        TestData, animal_ant, animal_bird, animal_cat, animal_dog, animal_spider, person_alice,
-        person_bob, person_charlie, person_dave, person_diane, plant_rose, plant_sunflower,
+        animal_ant, animal_bird, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
+        person_charlie, person_dave, person_diane, plant_rose, plant_sunflower, TestData,
     },
 };
 use futures::StreamExt;

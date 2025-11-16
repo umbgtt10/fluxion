@@ -5,8 +5,8 @@
 use fluxion_stream::{FluxionStream, Ordered};
 use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
-    TestData, animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_dave,
-    person_diane, plant_rose,
+    animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_dave, person_diane,
+    plant_rose, TestData,
 };
 use futures::StreamExt;
 use tokio::sync::mpsc;

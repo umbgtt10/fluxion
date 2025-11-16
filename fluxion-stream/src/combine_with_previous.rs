@@ -5,7 +5,7 @@
 use crate::fluxion_stream::FluxionStream;
 use crate::types::WithPrevious;
 use fluxion_core::Ordered;
-use futures::{Stream, StreamExt, future};
+use futures::{future, Stream, StreamExt};
 
 /// Extension trait providing the `combine_with_previous` operator for ordered streams.
 ///

@@ -6,8 +6,8 @@ use fluxion_ordered_merge::OrderedMergeExt;
 use fluxion_test_utils::helpers::expect_next_timestamped_unchecked;
 use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
-    TestData, animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_rose,
-    plant_sunflower,
+    animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_rose,
+    plant_sunflower, TestData,
 };
 use futures::StreamExt;
 use tokio::sync::mpsc;

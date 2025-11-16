@@ -3,11 +3,11 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::Ordered;
-use fluxion_stream::CombinedState;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
-    TestData, animal, animal_cat, animal_dog, person_alice, person_bob,
+    animal, animal_cat, animal_dog, person_alice, person_bob, TestData,
 };
 use fluxion_test_utils::with_timeout;
 use futures::{FutureExt, StreamExt};

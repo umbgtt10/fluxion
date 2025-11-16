@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::Ordered;
 use crate::types::CombinedState;
+use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::safe_lock;
 use fluxion_ordered_merge::OrderedMergeExt;

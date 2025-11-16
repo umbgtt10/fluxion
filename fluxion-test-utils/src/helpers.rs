@@ -5,8 +5,8 @@
 use crate::sequenced::Sequenced;
 use crate::test_data::TestData;
 use fluxion_error::{FluxionError, Result};
-use futures::Stream;
 use futures::stream::StreamExt;
+use futures::Stream;
 use std::time::Duration;
 use tokio::time::sleep;
 
