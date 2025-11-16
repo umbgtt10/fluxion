@@ -2,6 +2,19 @@
 
 This guide describes the three fundamental patterns for integrating events with Fluxion's ordered stream processing.
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Pattern 1: Intrinsic Ordering (Production)](#pattern-1-intrinsic-ordering-production)
+3. [Pattern 2: Extrinsic Ordering (Testing)](#pattern-2-extrinsic-ordering-testing)
+4. [Pattern 3: Wrapper Ordering (Integration)](#pattern-3-wrapper-ordering-integration)
+5. [Comparison Table](#comparison-table)
+6. [Choosing the Right Pattern](#choosing-the-right-pattern)
+7. [Best Practices](#best-practices)
+8. [Examples](#examples)
+
+---
+
 ## Overview
 
 Fluxion processes streams of ordered events. The `Ordered` trait is the core abstraction that defines how events are sequenced. There are three main patterns for providing ordering information:

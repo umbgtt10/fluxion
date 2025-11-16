@@ -263,7 +263,7 @@ let sequential = stream.concat_map(|item| async_operation(item));
 
 ## Community Requests
 
-This section will track operator requests from the community. 
+This section will track operator requests from the community.
 
 **How to request an operator:**
 1. Open an issue on GitHub with the `operator-request` label
@@ -336,6 +336,6 @@ We welcome contributions! 🎉
 
 ## See Also
 
-- **[Operators Summary](operators-summary.md)** - Currently implemented operators
+- **[Operators Summary](FLUXION_OPERATOR_SUMMARY.md)** - Currently implemented operators
 - **[ROADMAP.md](../ROADMAP.md)** - Overall project roadmap
 - **[CONTRIBUTING.md](../CONTRIBUTING.md)** - How to contribute

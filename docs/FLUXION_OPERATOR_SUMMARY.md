@@ -30,7 +30,7 @@ let merged = stream1.ordered_merge(vec![stream2, stream3]);
 - Emits items from all streams in temporal sequence order
 - No transformation—items pass through as-is
 - Foundation for multi-source event aggregation
-- [Full documentation →](operators/ordered_merge.md)
+- See API docs for detailed examples
 
 ---
 
@@ -47,7 +47,7 @@ let combined = stream1.combine_latest(vec![stream2], |state| {
 - Emits `CombinedState<T>` when **any** stream emits
 - Contains latest value from all streams
 - Useful for multi-source aggregation
-- [Full documentation →](operators/combine_latest.md)
+- See API docs for detailed examples
 
 ---
 
@@ -64,7 +64,7 @@ let combined = primary.with_latest_from(secondary, |state| {
 - Emissions occur **only when primary emits**
 - Samples latest from secondary stream(s)
 - Primary-driven combination pattern
-- [Full documentation →](operators/with_latest_from.md)
+- See API docs for detailed examples
 
 ---
 
@@ -81,7 +81,7 @@ let paired = stream.combine_with_previous();
 - First emission has `previous = None`
 - Subsequent emissions pair consecutive values
 - Useful for delta calculation and change detection
-- [Full documentation →](operators/combine_with_previous.md)
+- See API docs for detailed examples
 
 ---
 
@@ -99,7 +99,7 @@ let transformed = stream.map_ordered(|item| {
 - Maintains ordering guarantees (unlike `StreamExt::map`)
 - Preserves `FluxionStream` wrapper
 - Essential for operator chaining
-- [Full documentation →](operators/map_ordered.md)
+- See API docs for detailed examples
 
 ---
 
@@ -115,7 +115,7 @@ let filtered = stream.filter_ordered(|value| value % 2 == 0);
 - Maintains ordering guarantees (unlike `StreamExt::filter`)
 - Preserves `FluxionStream` wrapper
 - Filters based on source value only
-- [Full documentation →](operators/filter_ordered.md)
+- See API docs for detailed examples
 
 ---
 
@@ -129,7 +129,7 @@ let taken = stream.take_while_with(condition_stream, |cond| *cond > 0);
 - Emits source items while filter stream's value satisfies predicate
 - Stream completes when predicate returns false
 - Conditional flow control
-- [Full documentation →](operators/take_while_with.md)
+- See API docs for detailed examples
 
 ---
 
@@ -146,7 +146,7 @@ let sampled = stream.take_latest_when(trigger, |_| true);
 - Emits latest buffered value on trigger
 - After first trigger, source emits immediately
 - Rate limiting and event-driven sampling
-- [Full documentation →](operators/take_latest_when.md)
+- See API docs for detailed examples
 
 ---
 
@@ -163,7 +163,7 @@ let gated = source.emit_when(threshold, |state| {
 - Predicate evaluates both values
 - Emits source only when predicate is true
 - Dynamic threshold filtering
-- [Full documentation →](operators/emit_when.md)
+- See API docs for detailed examples
 
 ---
 
@@ -243,4 +243,4 @@ The `Sequenced<T>` wrapper (from `fluxion-test-utils`) provides this automatical
 - **[Integration Guide](../INTEGRATION.md)** - How to integrate events into Fluxion streams
 - **[stream-aggregation example](../examples/stream-aggregation/)** - Production-ready patterns
 - **[API Documentation](https://docs.rs/fluxion-rx)** - Complete API reference
-- **[Operators Roadmap](operators-roadmap.md)** - Planned future operators
+- **[Operators Roadmap](FLUXION_OPERATORS_ROADMAP.md)** - Planned future operators

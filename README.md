@@ -77,7 +77,7 @@ async fn main() {
 
 Fluxion operators can be chained to create complex processing pipelines. Here are two complete examples:
 
-**Example: `combine_latest` → `filter_ordered`**
+**Example: `take_latest_when` - Sampling on Trigger Events**
 
 ```rust
 use fluxion_rx::prelude::*;

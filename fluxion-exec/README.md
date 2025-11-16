@@ -1,5 +1,7 @@
 # fluxion-exec
 
+> **Part of [Fluxion](../README.md)** - A reactive stream processing library for Rust
+
 Async stream subscribers and execution utilities for fluxion.
 
 ## Features

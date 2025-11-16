@@ -4,6 +4,9 @@ Thank you for your interest in contributing to Fluxion! This document provides g
 
 ## Code of Conduct
 
+Please read our [Code of Conduct](CODE_OF_CONDUCT.md) for details on our community standards.
+
+**Key principles:**
 - Be respectful and constructive in all interactions
 - Focus on what is best for the project and community
 - Show empathy towards other community members
@@ -139,10 +142,10 @@ mod tests {
     async fn test_operator_basic_behavior() {
         // Arrange
         let stream = create_test_stream();
-        
+
         // Act
         let result = stream.operator().collect::<Vec<_>>().await;
-        
+
         // Assert
         assert_eq!(result, expected);
     }

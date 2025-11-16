@@ -1,5 +1,7 @@
 ## fluxion-test-utils
 
+> **Part of [Fluxion](../README.md)** - A reactive stream processing library for Rust
+
 Shared test utilities and fixtures used across the fluxion workspace. This crate contains helpers for creating sequenced streams, reusable test data, and common assertions to simplify unit and integration tests.
 
 ## What you'll find here
@@ -19,7 +21,7 @@ use fluxion_stream::FluxionStream;
 async fn example() {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     let stream = FluxionStream::from_unbounded_receiver(rx);
-    
+
     // Send sequenced values
     tx.send(Sequenced::with_sequence(1, 100)).unwrap();
     tx.send(Sequenced::with_sequence(2, 200)).unwrap();
