@@ -17,7 +17,7 @@ use fluxion_core::{CompareByInner, OrderedWrapper, StreamItem};
 ///
 /// This operator combines a primary stream with a secondary stream, emitting only
 /// when the primary stream emits, using the latest value from the secondary stream.
-pub trait WithLatestFromExt<T>: Stream<Item = T> + Sized
+pub trait WithLatestFromExt<T>: Stream<Item = fluxion_core::StreamItem<T>> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
@@ -117,7 +117,7 @@ where
         result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
     ) -> impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send
     where
-        IS: IntoStream<Item = T>,
+        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
         R: Clone + Debug + Ord + Send + Sync + 'static;
 }
@@ -126,7 +126,7 @@ impl<T, P> WithLatestFromExt<T> for P
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
-    P: Stream<Item = T> + Sized + Unpin + Send + Sync + 'static,
+    P: Stream<Item = fluxion_core::StreamItem<T>> + Sized + Unpin + Send + Sync + 'static,
 {
     fn with_latest_from<IS, R>(
         self,
@@ -134,14 +134,16 @@ where
         result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
     ) -> impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send
     where
-        IS: IntoStream<Item = T>,
+        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
         R: Clone + Debug + Ord + Send + Sync + 'static,
     {
-        type PinnedStream<T> = std::pin::Pin<Box<dyn Stream<Item = (T, usize)> + Send + Sync>>;
+        type PinnedStream<T> = std::pin::Pin<
+            Box<dyn Stream<Item = (fluxion_core::StreamItem<T>, usize)> + Send + Sync>,
+        >;
         let streams: Vec<PinnedStream<T>> = vec![
-            Box::pin(self.map(move |value| (value, 0))),
-            Box::pin(other.into_stream().map(move |value| (value, 1))),
+            Box::pin(self.map(move |item| (item, 0))),
+            Box::pin(other.into_stream().map(move |item| (item, 1))),
         ];
 
         let num_streams = streams.len();
@@ -152,40 +154,47 @@ where
             let state = Arc::clone(&state);
             let selector = Arc::clone(&selector);
 
-            move |(value, stream_index)| {
+            move |(item, stream_index)| {
                 let state = Arc::clone(&state);
                 let selector = Arc::clone(&selector);
-                let order = value.order();
 
                 async move {
-                    // Update state with new value
-                    match lock_or_error(&state, "with_latest_from state") {
-                        Ok(mut guard) => {
-                            guard.insert(stream_index, value);
+                    match item {
+                        StreamItem::Value(value) => {
+                            let order = value.order();
+                            // Update state with new value
+                            match lock_or_error(&state, "with_latest_from state") {
+                                Ok(mut guard) => {
+                                    guard.insert(stream_index, value);
 
-                            // Only emit if:
-                            // 1. Both streams have emitted at least once (is_complete)
-                            // 2. The PRIMARY stream (index 0) triggered this emission
-                            if guard.is_complete() && stream_index == 0 {
-                                let values = guard.get_values();
+                                    // Only emit if:
+                                    // 1. Both streams have emitted at least once (is_complete)
+                                    // 2. The PRIMARY stream (index 0) triggered this emission
+                                    if guard.is_complete() && stream_index == 0 {
+                                        let values = guard.get_values();
 
-                                // values[0] = primary, values[1] = secondary
-                                let combined_state = CombinedState::new(vec![
-                                    values[0].get().clone(),
-                                    values[1].get().clone(),
-                                ]);
+                                        // values[0] = primary, values[1] = secondary
+                                        let combined_state = CombinedState::new(vec![
+                                            values[0].get().clone(),
+                                            values[1].get().clone(),
+                                        ]);
 
-                                // Apply the result selector to transform the combined state
-                                let result = selector(&combined_state);
+                                        // Apply the result selector to transform the combined state
+                                        let result = selector(&combined_state);
 
-                                // Wrap result with the primary's order
-                                Some(StreamItem::Value(OrderedWrapper::with_order(result, order)))
-                            } else {
-                                // Secondary stream emitted, just update state but don't emit
-                                None
+                                        // Wrap result with the primary's order
+                                        Some(StreamItem::Value(OrderedWrapper::with_order(
+                                            result, order,
+                                        )))
+                                    } else {
+                                        // Secondary stream emitted, just update state but don't emit
+                                        None
+                                    }
+                                }
+                                Err(e) => Some(StreamItem::Error(e)),
                             }
                         }
-                        Err(e) => Some(StreamItem::Error(e)),
+                        StreamItem::Error(e) => Some(StreamItem::Error(e)),
                     }
                 }
             }

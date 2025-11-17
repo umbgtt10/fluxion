@@ -16,7 +16,7 @@ use std::sync::{Arc, Mutex};
 ///
 /// This operator samples the latest value from a source stream whenever a filter
 /// stream emits a value that passes a predicate.
-pub trait TakeLatestWhenExt<T>: Stream<Item = T> + Sized
+pub trait TakeLatestWhenExt<T>: Stream<Item = fluxion_core::StreamItem<T>> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
@@ -118,14 +118,15 @@ where
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
-        IS: IntoStream<Item = T>,
+        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
 }
 
-type IndexedStream<T> = Pin<Box<dyn Stream<Item = (T, usize)> + Send + Sync>>;
+type IndexedStream<T> =
+    Pin<Box<dyn Stream<Item = (fluxion_core::StreamItem<T>, usize)> + Send + Sync>>;
 impl<T, S> TakeLatestWhenExt<T> for S
 where
-    S: Stream<Item = T> + Send + Sync + 'static,
+    S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
@@ -135,11 +136,11 @@ where
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
-        IS: IntoStream<Item = T>,
+        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
     {
-        let source_stream = Box::pin(self.map(|value| (value, 0)));
-        let filter_stream = Box::pin(filter_stream.into_stream().map(|value| (value, 1)));
+        let source_stream = Box::pin(self.map(|item| (item, 0)));
+        let filter_stream = Box::pin(filter_stream.into_stream().map(|item| (item, 1)));
 
         let streams: Vec<IndexedStream<T>> = vec![source_stream, filter_stream];
 
@@ -147,15 +148,14 @@ where
         let filter_value = Arc::new(Mutex::new(None));
         let filter = Arc::new(filter);
 
-        Box::pin(
-            streams
-                .ordered_merge()
-                .filter_map(move |(ordered_value, index)| {
-                    let source_value = Arc::clone(&source_value);
-                    let filter_value = Arc::clone(&filter_value);
-                    let filter = Arc::clone(&filter);
-                    let order = ordered_value.order();
-                    async move {
+        Box::pin(streams.ordered_merge().filter_map(move |(item, index)| {
+            let source_value = Arc::clone(&source_value);
+            let filter_value = Arc::clone(&filter_value);
+            let filter = Arc::clone(&filter);
+            async move {
+                match item {
+                    StreamItem::Value(ordered_value) => {
+                        let order = ordered_value.order();
                         match index {
                             0 => {
                                 let mut source =
@@ -166,6 +166,7 @@ where
                                         }
                                     };
                                 *source = Some(ordered_value.get().clone());
+                                None
                             }
                             1 => {
                                 let mut filter_val =
@@ -176,40 +177,44 @@ where
                                         }
                                     };
                                 *filter_val = Some(ordered_value.get().clone());
+
+                                let source =
+                                    match lock_or_error(&source_value, "take_latest_when source") {
+                                        Ok(lock) => lock,
+                                        Err(e) => {
+                                            return Some(StreamItem::Error(e));
+                                        }
+                                    };
+
+                                if let Some(src) = source.as_ref() {
+                                    if let Some(filt) = filter_val.as_ref() {
+                                        if filter(filt) {
+                                            Some(StreamItem::Value(T::with_order(
+                                                src.clone(),
+                                                order,
+                                            )))
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
                             }
                             _ => {
                                 warn!(
                                     "take_latest_when: unexpected stream index {} – ignoring",
                                     index
                                 );
-                            }
-                        }
-
-                        let source = match lock_or_error(&source_value, "take_latest_when source") {
-                            Ok(lock) => lock,
-                            Err(e) => {
-                                return Some(StreamItem::Error(e));
-                            }
-                        };
-                        let filter_val =
-                            match lock_or_error(&filter_value, "take_latest_when filter") {
-                                Ok(lock) => lock,
-                                Err(e) => {
-                                    return Some(StreamItem::Error(e));
-                                }
-                            };
-
-                        if let (Some(src), Some(filt)) = (source.as_ref(), filter_val.as_ref()) {
-                            if filter(filt) {
-                                Some(StreamItem::Value(T::with_order(src.clone(), order)))
-                            } else {
                                 None
                             }
-                        } else {
-                            None
                         }
                     }
-                }),
-        )
+                    StreamItem::Error(e) => Some(StreamItem::Error(e)),
+                }
+            }
+        }))
     }
 }

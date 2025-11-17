@@ -6,8 +6,8 @@
 
 use crate::FluxionStream;
 use fluxion_core::Ordered;
+use futures::Stream;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// Extension trait for `UnboundedReceiver` to create FluxionStreams.
 pub trait UnboundedReceiverExt<T> {
@@ -65,7 +65,10 @@ pub trait UnboundedReceiverExt<T> {
     /// # drop(stream);
     /// # }
     /// ```
-    fn into_fluxion_stream<U, F>(self, mapper: F) -> FluxionStream<UnboundedReceiverStream<U>>
+    fn into_fluxion_stream<U, F>(
+        self,
+        mapper: F,
+    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<U>> + Send>
     where
         F: FnMut(T) -> U + Send + 'static,
         U: Send + 'static;
@@ -75,7 +78,10 @@ impl<T> UnboundedReceiverExt<T> for mpsc::UnboundedReceiver<T>
 where
     T: Ordered<Inner = T> + Clone + std::fmt::Debug + Ord + Send + Sync + Unpin + 'static,
 {
-    fn into_fluxion_stream<U, F>(self, mut mapper: F) -> FluxionStream<UnboundedReceiverStream<U>>
+    fn into_fluxion_stream<U, F>(
+        self,
+        mut mapper: F,
+    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<U>> + Send>
     where
         F: FnMut(T) -> U + Send + 'static,
         U: Send + 'static,
@@ -87,8 +93,12 @@ where
 
         // Create and spawn the transformation task
         let task = FluxionStream::from_unbounded_receiver(self).for_each(move |item| {
-            let transformed = mapper(item);
-            let _ = tx.send(transformed);
+            // Extract value from StreamItem
+            if let fluxion_core::StreamItem::Value(value) = item {
+                let transformed = mapper(value);
+                let _ = tx.send(transformed);
+            }
+            // Note: Errors are silently dropped. Consider logging or propagating them.
             async {}
         });
 

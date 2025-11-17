@@ -19,13 +19,14 @@ type PinnedItemStream<TItem, TFilter> =
 /// This operator conditionally emits elements from a source stream based on values
 /// from a separate filter stream. The stream terminates when the filter condition
 /// becomes false.
-pub trait TakeWhileExt<TItem, TFilter, S>: Stream<Item = TItem> + Sized
+pub trait TakeWhileExt<TItem, TFilter, S>:
+    Stream<Item = fluxion_core::StreamItem<TItem>> + Sized
 where
     TItem: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     TItem::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     TFilter: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     TFilter::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    S: Stream<Item = TFilter> + Send + Sync + 'static,
+    S: Stream<Item = fluxion_core::StreamItem<TFilter>> + Send + Sync + 'static,
 {
     /// Takes elements from the source stream while the filter predicate returns true.
     ///
@@ -117,12 +118,12 @@ where
 
 impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
 where
-    P: Stream<Item = TItem> + Send + Sync + Unpin + 'static,
+    P: Stream<Item = fluxion_core::StreamItem<TItem>> + Send + Sync + Unpin + 'static,
     TItem: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     TItem::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     TFilter: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     TFilter::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    S: Stream<Item = TFilter> + Send + Sync + 'static,
+    S: Stream<Item = fluxion_core::StreamItem<TFilter>> + Send + Sync + 'static,
 {
     fn take_while_with(
         self,
@@ -131,10 +132,19 @@ where
     ) -> impl Stream<Item = StreamItem<TItem::Inner>> + Send {
         let filter = Arc::new(filter);
 
-        // Tag each stream with its type
-        let source_stream = self.map(|value: TItem| Item::<TItem, TFilter>::Source(value));
-        let filter_stream =
-            filter_stream.map(|value: TFilter| Item::<TItem, TFilter>::Filter(value));
+        // Tag each stream with its type - unwrap StreamItem first
+        let source_stream = self.filter_map(|item| async move {
+            match item {
+                StreamItem::Value(value) => Some(Item::<TItem, TFilter>::Source(value)),
+                StreamItem::Error(_) => None, // Skip errors for now - could propagate
+            }
+        });
+        let filter_stream = filter_stream.filter_map(|item| async move {
+            match item {
+                StreamItem::Value(value) => Some(Item::<TItem, TFilter>::Filter(value)),
+                StreamItem::Error(_) => None, // Skip errors for now
+            }
+        });
 
         // Box the streams to make them the same type
         let streams: Vec<PinnedItemStream<TItem, TFilter>> =

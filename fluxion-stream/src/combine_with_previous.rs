@@ -12,7 +12,7 @@ use futures::{future::ready, Stream, StreamExt};
 ///
 /// This operator pairs each stream element with its predecessor, enabling
 /// stateful processing and change detection.
-pub trait CombineWithPreviousExt<T>: Stream<Item = T> + Sized
+pub trait CombineWithPreviousExt<T>: Stream<Item = fluxion_core::StreamItem<T>> + Sized
 where
     T: Ordered + Clone + Send + Sync + 'static,
 {
@@ -97,18 +97,21 @@ where
 
 impl<T, S> CombineWithPreviousExt<T> for S
 where
-    S: Stream<Item = T> + Send + Sized + 'static,
+    S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sized + 'static,
     T: Ordered + Clone + Send + Sync + 'static,
 {
     fn combine_with_previous(
         self,
     ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<WithPrevious<T>>>> {
-        let result = self.scan(None, |state: &mut Option<T>, current: T| {
-            let previous = state.take();
-            *state = Some(current.clone());
-            ready(Some(StreamItem::Value(WithPrevious::new(
-                previous, current,
-            ))))
+        let result = self.scan(None, |state: &mut Option<T>, item: StreamItem<T>| {
+            ready(Some(match item {
+                StreamItem::Value(current) => {
+                    let previous = state.take();
+                    *state = Some(current.clone());
+                    StreamItem::Value(WithPrevious::new(previous, current))
+                }
+                StreamItem::Error(e) => StreamItem::Error(e),
+            }))
         });
         FluxionStream::new(result)
     }

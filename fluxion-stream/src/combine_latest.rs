@@ -19,7 +19,7 @@ use fluxion_ordered_merge::OrderedMergeExt;
 /// This trait enables combining multiple streams where each emission waits for
 /// at least one value from all streams, then emits the combination of the latest
 /// values from each stream.
-pub trait CombineLatestExt<T>: Stream<Item = T> + Sized
+pub trait CombineLatestExt<T>: Stream<Item = fluxion_core::StreamItem<T>> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
@@ -115,17 +115,18 @@ where
            + Send
            + Unpin
     where
-        IS: IntoStream<Item = T>,
+        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
 }
 
-type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (T, usize)> + Send + Sync>>>;
+type PinnedStreams<T> =
+    Vec<Pin<Box<dyn Stream<Item = (fluxion_core::StreamItem<T>, usize)> + Send + Sync>>>;
 
 impl<T, S> CombineLatestExt<T> for S
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
-    S: Stream<Item = T> + Send + Sync + 'static,
+    S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
 {
     fn combine_latest<IS>(
         self,
@@ -135,17 +136,17 @@ where
            + Send
            + Unpin
     where
-        IS: IntoStream<Item = T>,
+        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
     {
         use fluxion_core::StreamItem;
         let mut streams: PinnedStreams<T> = vec![];
 
-        streams.push(Box::pin(self.map(move |value| (value, 0))));
+        streams.push(Box::pin(self.map(move |item| (item, 0))));
         for (index, into_stream) in others.into_iter().enumerate() {
             let idx = index + 1;
             let stream = into_stream.into_stream();
-            streams.push(Box::pin(stream.map(move |value| (value, idx))));
+            streams.push(Box::pin(stream.map(move |item| (item, idx))));
         }
 
         let num_streams = streams.len();
@@ -157,45 +158,59 @@ where
                 .filter_map({
                     let state = Arc::clone(&state);
 
-                    move |(value, index)| {
+                    move |(item, index)| {
                         let state = Arc::clone(&state);
-                        let order = value.order(); // Capture order of triggering value
                         async move {
-                            // Use safe_lock to handle potential lock errors
-                            match lock_or_error(&state, "combine_latest state") {
-                                Ok(mut guard) => {
-                                    guard.insert(index, value);
+                            match item {
+                                StreamItem::Value(value) => {
+                                    let order = value.order();
+                                    match lock_or_error(&state, "combine_latest state") {
+                                        Ok(mut guard) => {
+                                            guard.insert(index, value);
 
-                                    if guard.is_complete() {
-                                        Some((guard.clone(), order))
-                                    } else {
-                                        None
+                                            if guard.is_complete() {
+                                                Some(StreamItem::Value((guard.clone(), order)))
+                                            } else {
+                                                None
+                                            }
+                                        }
+                                        Err(e) => {
+                                            error!(
+                                                "Failed to acquire lock in combine_latest: {}",
+                                                e
+                                            );
+                                            Some(StreamItem::Error(e))
+                                        }
                                     }
                                 }
-                                Err(e) => {
-                                    error!("Failed to acquire lock in combine_latest: {}", e);
-                                    None
+                                StreamItem::Error(e) => {
+                                    // Propagate upstream errors immediately without state update
+                                    Some(StreamItem::Error(e))
                                 }
                             }
                         }
                     }
                 })
-                .map(|(state, order)| {
-                    // Extract the inner values to create CombinedState
-                    let inner_values: Vec<T::Inner> = state
-                        .get_ordered_values()
-                        .iter()
-                        .map(|ordered_val| ordered_val.get().clone())
-                        .collect();
-                    let combined = CombinedState::new(inner_values);
-                    StreamItem::Value(OrderedWrapper::with_order(combined, order))
+                .map(|item| {
+                    item.map(|(state, order)| {
+                        // Extract the inner values to create CombinedState
+                        let inner_values: Vec<T::Inner> = state
+                            .get_ordered_values()
+                            .iter()
+                            .map(|ordered_val| ordered_val.get().clone())
+                            .collect();
+                        let combined = CombinedState::new(inner_values);
+                        OrderedWrapper::with_order(combined, order)
+                    })
                 })
-                .filter(move |ordered_combined| {
-                    let StreamItem::Value(ordered_combined) = ordered_combined else {
-                        return ready(false);
-                    };
-                    let combined_state = ordered_combined.get();
-                    ready(filter(combined_state))
+                .filter(move |item| {
+                    match item {
+                        StreamItem::Value(ordered_combined) => {
+                            let combined_state = ordered_combined.get();
+                            ready(filter(combined_state))
+                        }
+                        StreamItem::Error(_) => ready(true), // Always emit errors
+                    }
                 }),
         )
     }
