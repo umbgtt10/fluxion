@@ -41,8 +41,8 @@ async fn test_with_latest_from_basic() {
         let combined_state = result.get();
 
         // CombinedState order: [primary (index 0), secondary (index 1)]
-        assert_eq!(combined_state.get_state()[0], animal_cat());
-        assert_eq!(combined_state.get_state()[1], person_alice());
+        assert_eq!(combined_state.values()[0], animal_cat());
+        assert_eq!(combined_state.values()[1], person_alice());
 
         // Act - primary emits again
         animal_tx.send(Sequenced::new(animal_dog())).unwrap();
@@ -50,8 +50,8 @@ async fn test_with_latest_from_basic() {
         // Assert - should emit with latest secondary (still Alice)
         let result = combined_stream.next().await.unwrap().unwrap();
         let combined_state = result.get();
-        assert_eq!(combined_state.get_state()[0], animal_dog());
-        assert_eq!(combined_state.get_state()[1], person_alice());
+        assert_eq!(combined_state.values()[0], animal_dog());
+        assert_eq!(combined_state.values()[1], person_alice());
 
         // Act - secondary emits Bob (should NOT emit because only primary triggers emissions)
         person_tx.send(Sequenced::new(person_bob())).unwrap();
@@ -85,12 +85,12 @@ async fn test_with_latest_from_ordering_preserved() {
 
         // Assert - should get two emissions in order
         let result1 = combined_stream.next().await.unwrap().unwrap();
-        assert_eq!(result1.get().get_state()[0], animal_cat());
-        assert_eq!(result1.get().get_state()[1], person_alice());
+        assert_eq!(result1.get().values()[0], animal_cat());
+        assert_eq!(result1.get().values()[1], person_alice());
 
         let result2 = combined_stream.next().await.unwrap().unwrap();
-        assert_eq!(result2.get().get_state()[0], animal_dog());
-        assert_eq!(result2.get().get_state()[1], person_alice());
+        assert_eq!(result2.get().values()[0], animal_dog());
+        assert_eq!(result2.get().values()[1], person_alice());
 
         // Verify result2 comes after result1
         assert!(
@@ -114,7 +114,7 @@ async fn test_with_latest_from_custom_selector() {
 
     // Custom selector that extracts just one field (e.g., the primary value as a String)
     let custom_selector = |state: &CombinedState<TestData>| {
-        format!("{:?}", state.get_state()[0]) // Primary value (index 0) as string
+        format!("{:?}", state.values()[0]) // Primary value (index 0) as string
     };
 
     let mut combined_stream = animal_stream.with_latest_from(person_stream, custom_selector);
@@ -174,16 +174,16 @@ async fn test_with_latest_from_secondary_completes_early() {
 
         // Assert - should still emit with latest secondary value (Alice)
         let result = combined_stream.next().await.unwrap().unwrap();
-        assert_eq!(result.get().get_state()[0], animal_cat());
-        assert_eq!(result.get().get_state()[1], person_alice());
+        assert_eq!(result.get().values()[0], animal_cat());
+        assert_eq!(result.get().values()[1], person_alice());
 
         // Primary emits again
         animal_tx.send(Sequenced::new(animal_dog())).unwrap();
 
         // Assert - should still emit with same secondary value
         let result = combined_stream.next().await.unwrap().unwrap();
-        assert_eq!(result.get().get_state()[0], animal_dog());
-        assert_eq!(result.get().get_state()[1], person_alice());
+        assert_eq!(result.get().values()[0], animal_dog());
+        assert_eq!(result.get().values()[1], person_alice());
     });
 }
 
@@ -205,8 +205,8 @@ async fn test_with_latest_from_primary_completes_early() {
 
         // Assert
         let result = combined_stream.next().await.unwrap().unwrap();
-        assert_eq!(result.get().get_state()[0], animal_cat());
-        assert_eq!(result.get().get_state()[1], person_alice());
+        assert_eq!(result.get().values()[0], animal_cat());
+        assert_eq!(result.get().values()[1], person_alice());
 
         // Act - primary completes
         drop(animal_tx);
@@ -247,8 +247,8 @@ async fn test_with_latest_from_large_number_of_emissions() {
         for i in 0..100 {
             let result = combined_stream.next().await.unwrap().unwrap();
             let state = result.get();
-            assert_eq!(state.get_state()[1], person_alice());
-            if let TestData::Animal(ref animal) = state.get_state()[0] {
+            assert_eq!(state.values()[1], person_alice());
+            if let TestData::Animal(ref animal) = state.values()[0] {
                 assert_eq!(animal.name, format!("Animal{}", i));
             } else {
                 panic!("Expected Animal");
@@ -296,8 +296,8 @@ async fn test_with_latest_from_secondary_updates_latest() {
 
         // Assert - first emission with Alice
         let result = combined_stream.next().await.unwrap().unwrap();
-        assert_eq!(result.get().get_state()[0], animal_cat());
-        assert_eq!(result.get().get_state()[1], person_alice());
+        assert_eq!(result.get().values()[0], animal_cat());
+        assert_eq!(result.get().values()[1], person_alice());
 
         // Act - secondary updates to Bob (no emission yet)
         person_tx.send(Sequenced::new(person_bob())).unwrap();
@@ -308,8 +308,8 @@ async fn test_with_latest_from_secondary_updates_latest() {
 
         // Assert - should emit with latest secondary (Bob)
         let result = combined_stream.next().await.unwrap().unwrap();
-        assert_eq!(result.get().get_state()[0], animal_dog());
-        assert_eq!(result.get().get_state()[1], person_bob());
+        assert_eq!(result.get().values()[0], animal_dog());
+        assert_eq!(result.get().values()[1], person_bob());
     });
 }
 
@@ -340,12 +340,12 @@ async fn test_with_latest_from_multiple_concurrent_streams() {
 
         // Assert stream1
         let result1 = stream1.next().await.unwrap().unwrap();
-        assert_eq!(result1.get().get_state()[0], animal_cat());
-        assert_eq!(result1.get().get_state()[1], person_alice());
+        assert_eq!(result1.get().values()[0], animal_cat());
+        assert_eq!(result1.get().values()[1], person_alice());
 
         // Assert stream2
         let result2 = stream2.next().await.unwrap().unwrap();
-        assert_eq!(result2.get().get_state()[0], animal_dog());
-        assert_eq!(result2.get().get_state()[1], person_bob());
+        assert_eq!(result2.get().values()[0], animal_dog());
+        assert_eq!(result2.get().values()[1], person_bob());
     });
 }

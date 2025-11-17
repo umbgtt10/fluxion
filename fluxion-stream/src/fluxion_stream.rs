@@ -521,7 +521,7 @@ where
     ///
     /// // Emit only when source value exceeds threshold
     /// let mut gated = source.emit_when(threshold, |state: &CombinedState<i32>| {
-    ///     let values = state.get_state();
+    ///     let values = state.values();
     ///     values[0] > values[1] // source > threshold
     /// });
     ///
@@ -594,7 +594,7 @@ where
     /// let secondary = FluxionStream::from_unbounded_receiver(secondary_rx);
     ///
     /// let mut combined = primary.with_latest_from(secondary, |state: &CombinedState<i32>| {
-    ///     let values = state.get_state();
+    ///     let values = state.values();
     ///     values[0] + values[1] // Sum primary and secondary
     /// });
     ///
@@ -680,14 +680,14 @@ where
     /// tx2.send(Sequenced::new(20)).unwrap();
     ///
     /// let result = combined.next().await.unwrap();
-    /// let state = result.get().get_state();
+    /// let state = result.get().values();
     /// assert_eq!(state[0], 10); // First stream's value
     /// assert_eq!(state[1], 20); // Second stream's value
     ///
     /// // When either stream updates, a new combined state is emitted
     /// tx1.send(Sequenced::new(30)).unwrap();
     /// let result = combined.next().await.unwrap();
-    /// let state = result.get().get_state();
+    /// let state = result.get().values();
     /// assert_eq!(state[0], 30); // Updated
     /// assert_eq!(state[1], 20); // Still latest from stream2
     /// # }

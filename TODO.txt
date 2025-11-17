@@ -2,12 +2,3 @@
 
 4) Add README to every crate
 7) double-check documentation, README, examples and overall docs structure
-
-
-
-
-3) Review overall code naming - DONE ✅ (No changes needed - naming is consistent and idiomatic)
-   Optional future improvements (not critical):
-   - CombinedState::get_state() → values() or items()
-   - WithPrevious::both() → as_pair() or pair()
-   - safe_lock → lock_or_error (minor clarity improvement)

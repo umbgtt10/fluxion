@@ -397,7 +397,7 @@ let guard = state.lock().unwrap(); // Panics if poisoned
 
 **After (propagates error):**
 ```rust
-match safe_lock(&state, "operation_name") {
+match lock_or_error(&state, "operation_name") {
     Ok(guard) => { /* process */ },
     Err(e) => return Some(StreamItem::Error(e)),
 }

@@ -2,13 +2,13 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::lock_utilities::{safe_lock, try_lock};
+use fluxion_core::lock_utilities::{lock_or_error, try_lock};
 use std::sync::{Arc, Mutex};
 
 #[test]
 fn test_safe_lock_success() {
     let mutex = Arc::new(Mutex::new(42));
-    let guard = safe_lock(&mutex, "test").unwrap();
+    let guard = lock_or_error(&mutex, "test").unwrap();
     assert_eq!(*guard, 42);
     drop(guard);
 }
@@ -18,12 +18,12 @@ fn test_safe_lock_normal_operation() {
     let mutex = Arc::new(Mutex::new(vec![1, 2, 3]));
 
     {
-        let guard = safe_lock(&mutex, "normal operation").unwrap();
+        let guard = lock_or_error(&mutex, "normal operation").unwrap();
         assert_eq!(*guard, vec![1, 2, 3]);
         drop(guard);
     }
 
-    let mut guard = safe_lock(&mutex, "second lock").unwrap();
+    let mut guard = lock_or_error(&mutex, "second lock").unwrap();
     guard.push(4);
     assert_eq!(*guard, vec![1, 2, 3, 4]);
     drop(guard);
@@ -41,8 +41,8 @@ fn test_safe_lock_recovers_from_poison() {
         panic!("Intentional panic to poison mutex");
     });
 
-    // safe_lock should recover from the poison
-    let guard = safe_lock(&mutex, "poisoned test").unwrap();
+    // lock_or_error should recover from the poison
+    let guard = lock_or_error(&mutex, "poisoned test").unwrap();
 
     // The data should still be accessible (the 4 was added before panic)
     assert_eq!(guard.len(), 4);
@@ -55,7 +55,7 @@ fn test_safe_lock_with_string_data() {
     let mutex = Arc::new(Mutex::new(String::from("hello")));
 
     {
-        let mut guard = safe_lock(&mutex, "string operation").unwrap();
+        let mut guard = lock_or_error(&mutex, "string operation").unwrap();
         guard.push_str(" world");
         assert_eq!(*guard, "hello world");
         drop(guard);
@@ -76,13 +76,13 @@ fn test_safe_lock_with_complex_type() {
     }));
 
     {
-        let mut guard = safe_lock(&mutex, "complex type").unwrap();
+        let mut guard = lock_or_error(&mutex, "complex type").unwrap();
         guard.id = 2;
         guard.name = "updated".to_string();
         drop(guard);
     }
 
-    let guard = safe_lock(&mutex, "verify update").unwrap();
+    let guard = lock_or_error(&mutex, "verify update").unwrap();
     assert_eq!(guard.id, 2);
     assert_eq!(guard.name, "updated");
     drop(guard);
@@ -110,7 +110,7 @@ async fn test_safe_lock_in_async_context() {
     let mutex_clone = Arc::clone(&mutex);
 
     let handle = tokio::spawn(async move {
-        let mut guard = safe_lock(&mutex_clone, "async task").unwrap();
+        let mut guard = lock_or_error(&mutex_clone, "async task").unwrap();
         guard.push(4);
         guard.len()
     });
@@ -118,7 +118,7 @@ async fn test_safe_lock_in_async_context() {
     let len = handle.await.unwrap();
     assert_eq!(len, 4);
 
-    let guard = safe_lock(&mutex, "main task").unwrap();
+    let guard = lock_or_error(&mutex, "main task").unwrap();
     assert_eq!(*guard, vec![1, 2, 3, 4]);
     drop(guard);
 }

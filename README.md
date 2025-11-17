@@ -124,7 +124,7 @@ async fn test_take_latest_when_int_bool() {
         .combine_latest(vec![str_stream], |_| true)
         .filter_ordered(|combined| {
             // Keep only if first value (int) is > 50
-            matches!(combined.get_state()[0], Value::Int(x) if x > 50)
+            matches!(combined.values()[0], Value::Int(x) if x > 50)
         });
 
     // Send initial values
@@ -136,17 +136,17 @@ async fn test_take_latest_when_int_bool() {
 
     // Results: seq 3 (Int 60), seq 4 (Int 60 + Str updated), seq 5 (Int 75)
     let result1 = pipeline.next().await.unwrap();
-    let combined1 = result1.get().get_state();
+    let combined1 = result1.get().values();
     assert!(matches!(combined1[0], Value::Int(60)));
     assert!(matches!(combined1[1], Value::Str(ref s) if s == "initial"));
 
     let result2 = pipeline.next().await.unwrap();
-    let combined2 = result2.get().get_state();
+    let combined2 = result2.get().values();
     assert!(matches!(combined2[0], Value::Int(60)));
     assert!(matches!(combined2[1], Value::Str(ref s) if s == "updated"));
 
     let result3 = pipeline.next().await.unwrap();
-    let combined3 = result3.get().get_state();
+    let combined3 = result3.get().values();
     assert!(matches!(combined3[0], Value::Int(75)));
     assert!(matches!(combined3[1], Value::Str(ref s) if s == "updated"));
 }

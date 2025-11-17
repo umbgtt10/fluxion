@@ -10,7 +10,7 @@ use crate::ordered_merge::OrderedMergeExt;
 use crate::types::CombinedState;
 use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::safe_lock;
+use fluxion_core::lock_utilities::lock_or_error;
 use fluxion_core::{CompareByInner, OrderedWrapper, StreamItem};
 
 /// Extension trait providing the `with_latest_from` operator for ordered streams.
@@ -92,7 +92,7 @@ where
     /// let mut combined = primary.with_latest_from(
     ///     secondary,
     ///     |state| {
-    ///         let values = state.get_state();
+    ///         let values = state.values();
     ///         values[0] + values[1]
     ///     }
     /// );
@@ -159,7 +159,7 @@ where
 
                 async move {
                     // Update state with new value
-                    match safe_lock(&state, "with_latest_from state") {
+                    match lock_or_error(&state, "with_latest_from state") {
                         Ok(mut guard) => {
                             guard.insert(stream_index, value);
 

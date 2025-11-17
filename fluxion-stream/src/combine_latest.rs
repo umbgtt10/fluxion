@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::safe_lock;
+use fluxion_core::lock_utilities::lock_or_error;
 use fluxion_core::{CompareByInner, Ordered, OrderedWrapper};
 use fluxion_ordered_merge::OrderedMergeExt;
 
@@ -89,7 +89,7 @@ where
     /// // Combine streams
     /// let mut combined = stream1.combine_latest(
     ///     vec![stream2],
-    ///     |state| state.get_state().len() == 2
+    ///     |state| state.values().len() == 2
     /// );
     ///
     /// // Send values
@@ -98,7 +98,7 @@ where
     ///
     /// // Assert
     /// let result = combined.next().await.unwrap();
-    /// let values = result.get().get_state();
+    /// let values = result.get().values();
     /// assert_eq!(values.len(), 2);
     /// # }
     /// ```
@@ -162,7 +162,7 @@ where
                         let order = value.order(); // Capture order of triggering value
                         async move {
                             // Use safe_lock to handle potential lock errors
-                            match safe_lock(&state, "combine_latest state") {
+                            match lock_or_error(&state, "combine_latest state") {
                                 Ok(mut guard) => {
                                     guard.insert(index, value);
 

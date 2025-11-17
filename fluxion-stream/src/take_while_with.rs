@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::lock_utilities::safe_lock;
+use fluxion_core::lock_utilities::lock_or_error;
 use fluxion_core::{Ordered, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::StreamExt;
@@ -152,7 +152,7 @@ where
 
                 async move {
                     // Restrict the mutex guard's lifetime to the smallest possible scope
-                    match safe_lock(&state, "take_while_with state") {
+                    match lock_or_error(&state, "take_while_with state") {
                         Ok(mut guard) => {
                             let (filter_state, terminated) = &mut *guard;
 

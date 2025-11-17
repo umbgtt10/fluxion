@@ -1,4 +1,4 @@
-﻿# fluxion-stream
+# fluxion-stream
 
 > **Part of [Fluxion](../README.md)** - A reactive stream processing library for Rust
 
@@ -95,13 +95,13 @@ use futures::StreamExt;
 // (after all have emitted at least once)
 let combined = stream1.combine_latest(
     vec![stream2, stream3],
-    |state| state.get_state().len() == 3  // Filter: all streams present
+    |state| state.values().len() == 3  // Filter: all streams present
 );
 ```
 
 ## Core modules
 
-- `fluxion_stream` — Main `FluxionStream` type with extension methods
+- `fluxion_stream` � Main `FluxionStream` type with extension methods
 - Operator modules: `combine_latest`, `ordered_merge`, `with_latest_from`, `take_latest_when`,
   `take_while_with`, `emit_when`, `combine_with_previous`
 

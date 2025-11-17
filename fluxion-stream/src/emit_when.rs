@@ -5,7 +5,7 @@
 use crate::types::CombinedState;
 use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::safe_lock;
+use fluxion_core::lock_utilities::lock_or_error;
 use fluxion_core::StreamItem;
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
@@ -66,7 +66,7 @@ where
     /// let mut gated = data_stream.emit_when(
     ///     enable_stream,
     ///     |state| {
-    ///         let values = state.get_state();
+    ///         let values = state.values();
     ///         values[1] > 0  // Enable when value > 0
     ///     }
     /// );
@@ -155,18 +155,18 @@ where
                     async move {
                         match index {
                             0 => {
-                                let mut source = match safe_lock(&source_value, "emit_when source")
-                                {
-                                    Ok(lock) => lock,
-                                    Err(e) => {
-                                        return Some(StreamItem::Error(e));
-                                    }
-                                };
+                                let mut source =
+                                    match lock_or_error(&source_value, "emit_when source") {
+                                        Ok(lock) => lock,
+                                        Err(e) => {
+                                            return Some(StreamItem::Error(e));
+                                        }
+                                    };
                                 *source = Some(ordered_value.get().clone());
                             }
                             1 => {
                                 let mut filter_val =
-                                    match safe_lock(&filter_value, "emit_when filter") {
+                                    match lock_or_error(&filter_value, "emit_when filter") {
                                         Ok(lock) => lock,
                                         Err(e) => {
                                             return Some(StreamItem::Error(e));
@@ -179,13 +179,13 @@ where
                             }
                         }
 
-                        let source = match safe_lock(&source_value, "emit_when source") {
+                        let source = match lock_or_error(&source_value, "emit_when source") {
                             Ok(lock) => lock,
                             Err(e) => {
                                 return Some(StreamItem::Error(e));
                             }
                         };
-                        let filter_val = match safe_lock(&filter_value, "emit_when filter") {
+                        let filter_val = match lock_or_error(&filter_value, "emit_when filter") {
                             Ok(lock) => lock,
                             Err(e) => {
                                 return Some(StreamItem::Error(e));

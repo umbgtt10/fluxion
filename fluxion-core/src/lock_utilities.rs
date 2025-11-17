@@ -43,10 +43,10 @@ macro_rules! warn {
 ///
 /// ```no_run
 /// use std::sync::{Arc, Mutex};
-/// use fluxion_core::lock_utilities::safe_lock;
+/// use fluxion_core::lock_utilities::lock_or_error;
 ///
 /// let state = Arc::new(Mutex::new(42));
-/// match safe_lock(&state, "counter state") {
+/// match lock_or_error(&state, "counter state") {
 ///     Ok(guard) => println!("Value: {}", *guard),
 ///     Err(e) => eprintln!("Failed to lock: {}", e),
 /// };
@@ -69,7 +69,7 @@ macro_rules! warn {
 /// 2. Attempts to extract the guard from the poison error
 /// 3. Returns the recovered guard if successful
 /// 4. Only returns an error if recovery is impossible
-pub fn safe_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<MutexGuard<'a, T>> {
+pub fn lock_or_error<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<MutexGuard<'a, T>> {
     mutex
         .lock()
         .map_err(|_poison_err: PoisonError<MutexGuard<T>>| {
@@ -91,9 +91,9 @@ pub fn safe_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<Mutex
 
 /// Attempt to acquire a lock with a timeout context
 ///
-/// This is a convenience wrapper around `safe_lock` that provides
+/// This is a convenience wrapper around `lock_or_error` that provides
 /// additional context about timeout scenarios. Currently, it functions
-/// identically to `safe_lock` but is provided for semantic clarity when
+/// identically to `lock_or_error` but is provided for semantic clarity when
 /// dealing with time-sensitive operations.
 ///
 /// # Arguments
@@ -108,7 +108,7 @@ pub fn safe_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<Mutex
 /// # Errors
 ///
 /// Returns `FluxionError::LockError` if the lock cannot be acquired.
-/// See [`safe_lock`] for detailed error conditions.
+/// See [`lock_or_error`] for detailed error conditions.
 ///
 /// # Examples
 ///
@@ -123,5 +123,5 @@ pub fn safe_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<Mutex
 /// };
 /// ```
 pub fn try_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, operation: &str) -> Result<MutexGuard<'a, T>> {
-    safe_lock(mutex, operation)
+    lock_or_error(mutex, operation)
 }

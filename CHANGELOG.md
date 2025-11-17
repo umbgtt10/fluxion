@@ -31,9 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed: `ChannelSendError`, `ChannelReceiveError`, `CallbackPanic`, `SubscriptionError`, `InvalidState`, `Timeout`, `UnexpectedStreamEnd`, `ResourceLimitExceeded`
   - Kept: `LockError`, `StreamProcessingError`, `UserError`, `MultipleErrors`
 - **BREAKING**: Merged `fluxion-error` crate into `fluxion-core` - import from `fluxion_core` instead of `fluxion_error`
+- **BREAKING**: API method naming improvements for better ergonomics:
+  - `WithPrevious::both()` → `as_pair()` (clearer semantic meaning)
+  - `CombinedState::get_state()` → `values()` (more idiomatic Rust)
+  - `safe_lock()` → `lock_or_error()` (explicit error handling intent)
+  - Updated 100+ call sites across codebase
 - **Code Quality**: Simplified `std::` imports across codebase (added targeted `use` statements)
 - **Documentation**: Updated `docs/ERROR-HANDLING.md` to reflect simplified error variants
 - **Documentation**: Updated operator documentation to remove references to deleted error variants
+- **Documentation**: Updated all documentation references for renamed methods
 - **Operators**: Lock errors now propagate as `StreamItem::Error` instead of silently dropping items
 - **API**: Standardized all operators to return `impl Stream<Item = StreamItem<...>>` (removed `FluxionStream` wrapper inconsistency)
 - **API**: Removed redundant `FluxionStream::from_stream()` method (use `::new()` instead)
@@ -45,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - **Documentation**: Removed `docs/REFACTORING_PLAN.md` (implementation complete, details preserved in git history)
 - **Workspace**: Removed `fluxion-error` crate (merged into `fluxion-core`)
+- **API**: Removed deprecated method names (`both()`, `get_state()`, `safe_lock()`) - use new names instead
 
 ### Fixed
 - **Error Handling**: Lock poisoning errors no longer cause silent data loss
@@ -69,7 +76,7 @@ let mut stream = stream1.combine_latest(vec![stream2], |_| true);
 let item = stream.next().await.unwrap();
 match item {
     StreamItem::Value(result) => {
-        let value = result.get();
+        let value = result.get().values();  // Changed from get_state()
         // Process value
     }
     StreamItem::Error(e) => {
@@ -92,6 +99,19 @@ use fluxion_error::{FluxionError, Result};
 
 // After
 use fluxion_core::{FluxionError, Result};
+```
+
+**Method name migration:**
+```rust
+// Before
+let state = combined.get_state();
+let pair = with_prev.both();
+let guard = safe_lock(&mutex, "context")?;
+
+// After
+let state = combined.values();
+let pair = with_prev.as_pair();
+let guard = lock_or_error(&mutex, "context")?;
 ```
 
 See [Error Handling Guide](docs/ERROR-HANDLING.md) for comprehensive patterns.

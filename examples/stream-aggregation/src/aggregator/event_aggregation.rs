@@ -13,7 +13,7 @@ pub fn create_aggregated_event(
     combined: OrderedWrapper<CombinedState<DataEvent>>,
 ) -> AggregatedEvent {
     let inner = combined.into_inner();
-    let state = inner.get_state();
+    let state = inner.values();
 
     // Extract latest of each type - state is Vec<DataEvent>
     let sensor = state

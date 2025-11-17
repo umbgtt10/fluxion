@@ -32,8 +32,8 @@ impl<T> WithPrevious<T> {
         self.previous.is_some()
     }
 
-    /// Returns a tuple of references to both values if previous exists.
-    pub fn both(&self) -> Option<(&T, &T)> {
+    /// Returns a tuple of references to (previous, current) if previous exists.
+    pub fn as_pair(&self) -> Option<(&T, &T)> {
         self.previous.as_ref().map(|prev| (prev, &self.current))
     }
 }
@@ -73,8 +73,8 @@ impl<T: Ordered> Ordered for WithPrevious<T> {
 /// use fluxion_stream::CombinedState;
 ///
 /// let state = CombinedState::new(vec![1, 2, 3]);
-/// assert_eq!(state.get_state().len(), 3);
-/// assert_eq!(state.get_state()[0], 1);
+/// assert_eq!(state.values().len(), 3);
+/// assert_eq!(state.values()[0], 1);
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CombinedState<V>
@@ -93,8 +93,8 @@ where
         Self { state }
     }
 
-    /// Returns a reference to the internal state vector.
-    pub fn get_state(&self) -> &Vec<V> {
+    /// Returns a reference to the internal values vector.
+    pub fn values(&self) -> &Vec<V> {
         &self.state
     }
 

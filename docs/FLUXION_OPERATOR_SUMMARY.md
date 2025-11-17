@@ -57,7 +57,7 @@ let combined = stream1.combine_latest(vec![stream2], |state| {
 ```rust
 let combined = primary.with_latest_from(secondary, |state| {
     // Transform combined state
-    state.get_state()[0] + state.get_state()[1]
+    state.values()[0] + state.values()[1]
 });
 ```
 
@@ -155,7 +155,7 @@ let sampled = stream.take_latest_when(trigger, |_| true);
 
 ```rust
 let gated = source.emit_when(threshold, |state| {
-    state.get_state()[0] > state.get_state()[1]
+    state.values()[0] > state.values()[1]
 });
 ```
 
@@ -183,7 +183,7 @@ let pipeline = stream1
 // Emit values only when they exceed a dynamic threshold
 let filtered = data_stream
     .emit_when(threshold_stream, |state| {
-        state.get_state()[0] > state.get_state()[1]
+        state.values()[0] > state.values()[1]
     });
 ```
 
@@ -193,7 +193,7 @@ let filtered = data_stream
 let enriched = data_stream
     .with_latest_from(config_stream, |state| {
         // Combine data with config
-        (state.get_state()[0].clone(), state.get_state()[1].clone())
+        (state.values()[0].clone(), state.values()[1].clone())
     })
     .filter_ordered(|(data, config)| validate(data, config));
 ```

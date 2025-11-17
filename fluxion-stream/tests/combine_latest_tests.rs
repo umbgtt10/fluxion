@@ -34,7 +34,7 @@ where
 {
     let item = stream.next().await.expect("expected next combined state");
     let state = item.unwrap();
-    let actual: Vec<TestData> = state.get().get_state().clone();
+    let actual: Vec<TestData> = state.get().values().clone();
     assert_eq!(actual, expected);
 }
 
@@ -141,19 +141,19 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues()
 
     // Assert
     let state = combined_stream.next().await.unwrap().unwrap();
-    let actual: Vec<TestData> = state.get().get_state().clone();
+    let actual: Vec<TestData> = state.get().values().clone();
     assert_eq!(actual, vec![person_alice(), animal_dog(), plant_rose()]);
 
     drop(plant_tx);
 
     person_tx.send(Sequenced::new(person_bob())).unwrap();
     let state = combined_stream.next().await.unwrap().unwrap();
-    let actual: Vec<TestData> = state.get().get_state().clone();
+    let actual: Vec<TestData> = state.get().values().clone();
     assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
 
     animal_tx.send(Sequenced::new(animal_spider())).unwrap();
     let state = combined_stream.next().await.unwrap().unwrap();
-    let actual: Vec<TestData> = state.get().get_state().clone();
+    let actual: Vec<TestData> = state.get().values().clone();
     assert_eq!(actual, vec![person_bob(), animal_spider(), plant_rose()]);
 }
 
@@ -204,7 +204,7 @@ async fn combine_latest_template_test(
     // Assert
 
     let state = combined_stream.next().await.unwrap().unwrap();
-    let actual: Vec<TestData> = state.get().get_state().clone();
+    let actual: Vec<TestData> = state.get().values().clone();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
@@ -338,7 +338,7 @@ async fn combine_latest_stream_order_test(
 
     // Assert
     let state = combined_stream.next().await.unwrap().unwrap();
-    let actual: Vec<TestData> = state.get().get_state().clone();
+    let actual: Vec<TestData> = state.get().values().clone();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
@@ -384,7 +384,7 @@ async fn test_combine_latest_filter_rejects_initial_state() {
 
     // Filter that rejects the initial state (when both Alice and Dog are present)
     let filter = |state: &CombinedState<TestData>| {
-        let values = state.get_state();
+        let values = state.values();
         if values.len() == 2 {
             // Reject if we have Alice and Dog
             !(values[0] == person_alice() && values[1] == animal_dog())
@@ -419,7 +419,7 @@ async fn test_combine_latest_filter_alternates_between_true_false() {
 
     // Filter that only allows emissions when person is Alice or Charlie (rejects Bob and Diane)
     let filter = |state: &CombinedState<TestData>| {
-        let values = state.get_state();
+        let values = state.values();
         if values.is_empty() {
             false
         } else {

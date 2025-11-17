@@ -224,7 +224,7 @@
 //!
 //! let enriched = clicks.with_latest_from(
 //!     configs,
-//!     |state| state.get_state().clone()
+//!     |state| state.values().clone()
 //! );
 //! let mut enriched = enriched;
 //!
@@ -325,7 +325,7 @@
 //!
 //! let notifications = events.emit_when(
 //!     enabled,
-//!     |state| state.get_state().get(1).map(|v| *v > 0).unwrap_or(false)
+//!     |state| state.values().get(1).map(|v| *v > 0).unwrap_or(false)
 //! );
 //! let mut notifications = notifications;
 //!
@@ -385,7 +385,7 @@
 //! // GOOD: Testable, reusable filter logic
 //! fn should_emit(state: &CombinedState<i32>) -> bool {
 //!     // Clear, testable logic
-//!     state.get_state().iter().all(|&v| v > 0)
+//!     state.values().iter().all(|&v| v > 0)
 //! }
 //!
 //! stream1.combine_latest(vec![stream2], should_emit);
@@ -485,7 +485,7 @@
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(item.current.get().get_state().len(), 2);
+//! assert_eq!(item.current.get().values().len(), 2);
 //! }
 //! ```
 //!
@@ -564,7 +564,7 @@
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(item.current.get().get_state().len(), 2);
+//! assert_eq!(item.current.get().values().len(), 2);
 //!
 //! tx1.send(Sequenced::new(3)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
@@ -603,7 +603,7 @@
 //! tx2.send(Sequenced::new(2)).unwrap();
 //!
 //! let item = composed.next().await.unwrap().unwrap();
-//! assert_eq!(item.get_state().len(), 2);
+//! assert_eq!(item.values().len(), 2);
 //! }
 //! ```
 //!

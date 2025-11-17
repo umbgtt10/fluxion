@@ -46,7 +46,7 @@ async fn test_emit_when_filter_compares_source_and_filter() {
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.get_state();
+        let values = state.values();
         let source_age = match &values[0] {
             TestData::Person(p) => p.age,
             _ => return false,
@@ -105,7 +105,7 @@ async fn test_emit_when_threshold_comparison() {
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.get_state();
+        let values = state.values();
         let source_height = match &values[0] {
             TestData::Plant(p) => p.height,
             _ => return false,
@@ -148,7 +148,7 @@ async fn test_emit_when_name_length_comparison() {
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.get_state();
+        let values = state.values();
         let source_name = match &values[0] {
             TestData::Person(p) => &p.name,
             _ => return false,
@@ -197,7 +197,7 @@ async fn test_emit_when_multiple_source_updates_with_comparison() {
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.get_state();
+        let values = state.values();
         let source_age = match &values[0] {
             TestData::Person(p) => p.age,
             _ => return false,
@@ -260,7 +260,7 @@ async fn test_emit_when_both_values_required() {
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         // Only emit when both are present and satisfy condition
-        let values = state.get_state();
+        let values = state.values();
         matches!(&values[0], TestData::Person(_)) && matches!(&values[1], TestData::Animal(_))
     };
 
@@ -294,7 +294,7 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() {
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.get_state();
+        let values = state.values();
         let source_age = match &values[0] {
             TestData::Person(p) => p.age,
             _ => return false,
@@ -340,7 +340,7 @@ async fn test_emit_when_delta_based_filtering() {
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.get_state();
+        let values = state.values();
         let source_age = match &values[0] {
             TestData::Person(p) => p.age,
             _ => return false,
@@ -389,7 +389,7 @@ async fn test_emit_when_cross_type_comparison() {
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.get_state();
+        let values = state.values();
         let source_legs = match &values[0] {
             TestData::Animal(a) => a.legs,
             _ => return false,
@@ -434,7 +434,7 @@ async fn test_emit_when_stateful_comparison() {
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.get_state();
+        let values = state.values();
         let source_age = match &values[0] {
             TestData::Person(p) => p.age,
             _ => return false,
@@ -506,7 +506,7 @@ async fn test_emit_when_filter_stream_closes() {
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.get_state();
+        let values = state.values();
         matches!(&values[0], TestData::Person(_)) && matches!(&values[1], TestData::Animal(_))
     };
 
@@ -614,7 +614,7 @@ async fn test_emit_when_complex_multi_condition() {
     let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.get_state();
+        let values = state.values();
         let source_age = match &values[0] {
             TestData::Person(p) => p.age,
             _ => return false,

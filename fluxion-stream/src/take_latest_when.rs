@@ -4,7 +4,7 @@
 
 use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::safe_lock;
+use fluxion_core::lock_utilities::lock_or_error;
 use fluxion_core::StreamItem;
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
@@ -159,7 +159,7 @@ where
                         match index {
                             0 => {
                                 let mut source =
-                                    match safe_lock(&source_value, "take_latest_when source") {
+                                    match lock_or_error(&source_value, "take_latest_when source") {
                                         Ok(lock) => lock,
                                         Err(e) => {
                                             return Some(StreamItem::Error(e));
@@ -169,7 +169,7 @@ where
                             }
                             1 => {
                                 let mut filter_val =
-                                    match safe_lock(&filter_value, "take_latest_when filter") {
+                                    match lock_or_error(&filter_value, "take_latest_when filter") {
                                         Ok(lock) => lock,
                                         Err(e) => {
                                             return Some(StreamItem::Error(e));
@@ -185,18 +185,19 @@ where
                             }
                         }
 
-                        let source = match safe_lock(&source_value, "take_latest_when source") {
+                        let source = match lock_or_error(&source_value, "take_latest_when source") {
                             Ok(lock) => lock,
                             Err(e) => {
                                 return Some(StreamItem::Error(e));
                             }
                         };
-                        let filter_val = match safe_lock(&filter_value, "take_latest_when filter") {
-                            Ok(lock) => lock,
-                            Err(e) => {
-                                return Some(StreamItem::Error(e));
-                            }
-                        };
+                        let filter_val =
+                            match lock_or_error(&filter_value, "take_latest_when filter") {
+                                Ok(lock) => lock,
+                                Err(e) => {
+                                    return Some(StreamItem::Error(e));
+                                }
+                            };
 
                         if let (Some(src), Some(filt)) = (source.as_ref(), filter_val.as_ref()) {
                             if filter(filt) {

@@ -85,7 +85,7 @@ async fn test_fluxion_stream_combine_latest_composition() {
     // Assert
     let mut combined = Box::pin(combined);
     let result = combined.next().await.unwrap().unwrap();
-    let state = result.get().get_state();
+    let state = result.get().values();
     assert_eq!(state.len(), 3);
     assert_eq!(state[0], person_alice());
     assert_eq!(state[1], animal_dog());
@@ -103,8 +103,8 @@ async fn test_fluxion_stream_with_latest_from() {
 
     // Custom selector: create a descriptive string combining both values
     let summary_selector = |state: &CombinedState<TestData>| -> String {
-        let primary = &state.get_state()[0];
-        let secondary = &state.get_state()[1];
+        let primary = &state.values()[0];
+        let secondary = &state.values()[1];
         format!("Primary: {:?}, Latest Secondary: {:?}", primary, secondary)
     };
 
@@ -238,7 +238,7 @@ async fn test_fluxion_stream_combine_latest_and_take_while() {
 
     let mut composed = Box::pin(composed);
     let result = composed.next().await.unwrap().unwrap();
-    let state = result.get_state();
+    let state = result.values();
     assert_eq!(state.len(), 3);
     assert_eq!(state[0], person_alice());
     assert_eq!(state[1], animal_dog());
@@ -246,7 +246,7 @@ async fn test_fluxion_stream_combine_latest_and_take_while() {
 
     person_tx.send(Sequenced::new(person_bob())).unwrap();
     let result = composed.next().await.unwrap().unwrap();
-    let state = result.get_state();
+    let state = result.values();
     assert_eq!(state[0], person_bob());
     assert_eq!(state[1], animal_dog());
     assert_eq!(state[2], plant_rose());
@@ -342,7 +342,7 @@ async fn test_combine_latest_then_combine_with_previous() {
     let item = composed.next().await.unwrap().unwrap();
     assert!(item.previous.is_none());
     let curr_binding = item.current.unwrap();
-    let curr_state = curr_binding.get().get_state();
+    let curr_state = curr_binding.get().values();
     assert_eq!(curr_state[0], person_alice());
     assert_eq!(curr_state[1], animal_dog());
 
@@ -350,11 +350,11 @@ async fn test_combine_latest_then_combine_with_previous() {
     let item = composed.next().await.unwrap().unwrap();
     let prev_seq = item.previous.unwrap();
     let prev_binding = prev_seq.unwrap();
-    let prev_state = prev_binding.get().get_state();
+    let prev_state = prev_binding.get().values();
     assert_eq!(prev_state[0], person_alice());
     assert_eq!(prev_state[1], animal_dog());
     let curr_binding = item.current.unwrap();
-    let curr_state = curr_binding.get().get_state();
+    let curr_state = curr_binding.get().values();
     assert_eq!(curr_state[0], person_bob());
     assert_eq!(curr_state[1], animal_dog());
 }
@@ -387,14 +387,14 @@ async fn test_combine_latest_then_take_latest_when() {
 
     let mut composed = Box::pin(composed);
     let result = composed.next().await.unwrap().unwrap();
-    let state = result.get().get_state();
+    let state = result.get().values();
     assert_eq!(state.len(), 2);
     assert_eq!(state[0], person_alice());
     assert_eq!(state[1], animal_dog());
 
     person_tx.send(Sequenced::new(person_bob())).unwrap();
     let result = composed.next().await.unwrap().unwrap();
-    let state = result.get().get_state();
+    let state = result.get().values();
     assert_eq!(state[0], person_bob());
     assert_eq!(state[1], animal_dog());
 }
@@ -454,14 +454,14 @@ async fn test_triple_composition_combine_latest_take_while_ordered_merge() {
 
     let mut composed = Box::pin(composed);
     let result = composed.next().await.unwrap().unwrap();
-    assert_eq!(result.get_state().len(), 2);
-    assert_eq!(result.get_state()[0], person_alice());
-    assert_eq!(result.get_state()[1], animal_dog());
+    assert_eq!(result.values().len(), 2);
+    assert_eq!(result.values()[0], person_alice());
+    assert_eq!(result.values()[1], animal_dog());
 
     person_tx.send(Sequenced::new(person_bob())).unwrap();
     let result = composed.next().await.unwrap().unwrap();
-    assert_eq!(result.get_state()[0], person_bob());
-    assert_eq!(result.get_state()[1], animal_dog());
+    assert_eq!(result.values()[0], person_bob());
+    assert_eq!(result.values()[1], animal_dog());
 
     filter_tx.send(Sequenced::new(false)).unwrap();
     person_tx.send(Sequenced::new(person_charlie())).unwrap();
@@ -564,7 +564,7 @@ async fn test_emit_when_composite_with_ordered_merge_and_combine_with_previous()
     let threshold_stream = UnboundedReceiverStream::new(threshold_rx);
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.get_state();
+        let values = state.values();
         // Extract the current person's age - note that emit_when unwraps to Inner type (TestData)
         let current_age = match &values[0] {
             TestData::Person(p) => p.age,
@@ -875,7 +875,7 @@ async fn test_map_ordered_with_combine_latest() {
         .map_ordered(|stream_item| {
             let item = stream_item.unwrap();
             let curr_binding = item.current.unwrap();
-            let curr_state = curr_binding.get().get_state();
+            let curr_state = curr_binding.get().values();
             let count = curr_state.len();
             StreamItem::Value(format!("Combined {} streams", count))
         });
@@ -948,7 +948,7 @@ async fn test_emit_when_with_map_ordered() {
         threshold_stream.map(|seq| StreamItem::Value(WithPrevious::new(None, seq)));
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.get_state();
+        let values = state.values();
         let current_age = match &values[0] {
             TestData::Person(p) => p.age,
             _ => return false,
@@ -1035,11 +1035,11 @@ async fn test_with_latest_from_then_map_ordered() {
 
     // Custom selector: compute age difference between two people
     let age_difference_selector = |state: &CombinedState<TestData>| -> String {
-        let primary_age = match &state.get_state()[0] {
+        let primary_age = match &state.values()[0] {
             TestData::Person(p) => p.age as i32,
             _ => 0,
         };
-        let secondary_age = match &state.get_state()[1] {
+        let secondary_age = match &state.values()[1] {
             TestData::Person(p) => p.age as i32,
             _ => 0,
         };
@@ -1178,7 +1178,7 @@ async fn test_combine_latest_with_previous_map_ordered_type_count() {
             >| async move {
                 let item = stream_item.unwrap();
                 let state_binding = item.current.unwrap();
-                let state = state_binding.get().get_state();
+                let state = state_binding.get().values();
                 let person_count = state
                     .iter()
                     .filter(|d| matches!(d, TestData::Person(_)))
@@ -1494,7 +1494,7 @@ async fn test_combine_latest_with_filter_ordered() {
         .filter_ordered(|wrapper| {
             // Filter: only emit when first item is a person with age > 30
             let state = wrapper.get();
-            match &state.get_state()[0] {
+            match &state.values()[0] {
                 TestData::Person(p) => p.age > 30,
                 _ => false,
             }
@@ -1508,13 +1508,13 @@ async fn test_combine_latest_with_filter_ordered() {
     p_tx.send(Sequenced::new(person_charlie())).unwrap(); // 35
     let mut stream = Box::pin(stream);
     let result = stream.next().await.unwrap().unwrap();
-    let state = result.get().get_state();
+    let state = result.get().values();
     assert_eq!(state[0], person_charlie());
     assert_eq!(state[1], animal_dog());
 
     p_tx.send(Sequenced::new(person_diane())).unwrap(); // 40
     let result = stream.next().await.unwrap().unwrap();
-    let state = result.get().get_state();
+    let state = result.get().values();
     assert_eq!(state[0], person_diane());
 }
 
@@ -1529,11 +1529,11 @@ async fn test_filter_ordered_with_latest_from() {
 
     // Custom selector: extract name from person and combine with secondary info
     let name_combiner = |state: &CombinedState<TestData>| -> String {
-        let person_name = match &state.get_state()[0] {
+        let person_name = match &state.values()[0] {
             TestData::Person(p) => p.name.clone(),
             _ => String::from("Unknown"),
         };
-        let secondary_info = match &state.get_state()[1] {
+        let secondary_info = match &state.values()[1] {
             TestData::Animal(a) => format!("with animal {} ({} legs)", a.name, a.legs),
             TestData::Person(p) => format!("with person {} (age {})", p.name, p.age),
             TestData::Plant(p) => format!("with plant {} (height {})", p.species, p.height),
@@ -1584,11 +1584,11 @@ async fn test_with_latest_from_in_middle_of_chain() {
 
     // Custom selector: combine ages
     let age_combiner = |state: &CombinedState<TestData>| -> u32 {
-        let primary_age = match &state.get_state()[0] {
+        let primary_age = match &state.values()[0] {
             TestData::Person(p) => p.age,
             _ => 0,
         };
-        let secondary_age = match &state.get_state()[1] {
+        let secondary_age = match &state.values()[1] {
             TestData::Person(p) => p.age,
             _ => 0,
         };

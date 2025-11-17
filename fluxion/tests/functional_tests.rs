@@ -37,8 +37,8 @@ async fn test_functional_combine_latest() {
     // Assert
     let state = combined.next().await.unwrap();
     let combined_state = state.get();
-    assert_eq!(combined_state.get_state()[0], person_alice());
-    assert_eq!(combined_state.get_state()[1], animal_dog());
+    assert_eq!(combined_state.values()[0], person_alice());
+    assert_eq!(combined_state.values()[1], animal_dog());
 }
 
 #[tokio::test]
@@ -174,12 +174,12 @@ async fn test_functional_with_latest_from() {
 
     // Assert - primary drives emissions, secondary provides latest value
     let result = combined.next().await.unwrap();
-    assert_eq!(result.get().get_state()[0], person_alice());
-    assert_eq!(result.get().get_state()[1], animal_dog());
+    assert_eq!(result.get().values()[0], person_alice());
+    assert_eq!(result.get().values()[1], animal_dog());
 
     let result = combined.next().await.unwrap();
-    assert_eq!(result.get().get_state()[0], person_bob());
-    assert_eq!(result.get().get_state()[1], animal_dog());
+    assert_eq!(result.get().values()[0], person_bob());
+    assert_eq!(result.get().values()[1], animal_dog());
 }
 
 #[tokio::test]
