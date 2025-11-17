@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_error;
-use fluxion_core::{CompareByInner, Ordered, OrderedWrapper};
+use fluxion_core::{CompareByInner, Ordered, OrderedWrapper, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 
 /// Extension trait providing the `combine_latest` operator for ordered streams.
@@ -19,7 +19,7 @@ use fluxion_ordered_merge::OrderedMergeExt;
 /// This trait enables combining multiple streams where each emission waits for
 /// at least one value from all streams, then emits the combination of the latest
 /// values from each stream.
-pub trait CombineLatestExt<T>: Stream<Item = fluxion_core::StreamItem<T>> + Sized
+pub trait CombineLatestExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
@@ -111,35 +111,30 @@ where
         self,
         others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = fluxion_core::StreamItem<OrderedWrapper<CombinedState<T::Inner>>>>
-           + Send
-           + Unpin
+    ) -> impl Stream<Item = StreamItem<OrderedWrapper<CombinedState<T::Inner>>>> + Send + Unpin
     where
-        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
+        IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
 }
 
-type PinnedStreams<T> =
-    Vec<Pin<Box<dyn Stream<Item = (fluxion_core::StreamItem<T>, usize)> + Send + Sync>>>;
+type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>>;
 
 impl<T, S> CombineLatestExt<T> for S
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
-    S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
+    S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
 {
     fn combine_latest<IS>(
         self,
         others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = fluxion_core::StreamItem<OrderedWrapper<CombinedState<T::Inner>>>>
-           + Send
-           + Unpin
+    ) -> impl Stream<Item = StreamItem<OrderedWrapper<CombinedState<T::Inner>>>> + Send + Unpin
     where
-        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
+        IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
     {
-        use fluxion_core::StreamItem;
+        use StreamItem;
         let mut streams: PinnedStreams<T> = vec![];
 
         streams.push(Box::pin(self.map(move |item| (item, 0))));

@@ -4,15 +4,14 @@
 
 use crate::fluxion_stream::FluxionStream;
 use crate::types::WithPrevious;
-use fluxion_core::Ordered;
-use fluxion_core::StreamItem;
+use fluxion_core::{Ordered, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
 
 /// Extension trait providing the `combine_with_previous` operator for ordered streams.
 ///
 /// This operator pairs each stream element with its predecessor, enabling
 /// stateful processing and change detection.
-pub trait CombineWithPreviousExt<T>: Stream<Item = fluxion_core::StreamItem<T>> + Sized
+pub trait CombineWithPreviousExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Ordered + Clone + Send + Sync + 'static,
 {
@@ -92,17 +91,17 @@ where
     /// - Duplicate filtering (skip if same as previous)
     fn combine_with_previous(
         self,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<WithPrevious<T>>>>;
+    ) -> FluxionStream<impl Stream<Item = StreamItem<WithPrevious<T>>>>;
 }
 
 impl<T, S> CombineWithPreviousExt<T> for S
 where
-    S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sized + 'static,
+    S: Stream<Item = StreamItem<T>> + Send + Sized + 'static,
     T: Ordered + Clone + Send + Sync + 'static,
 {
     fn combine_with_previous(
         self,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<WithPrevious<T>>>> {
+    ) -> FluxionStream<impl Stream<Item = StreamItem<WithPrevious<T>>>> {
         let result = self.scan(None, |state: &mut Option<T>, item: StreamItem<T>| {
             ready(Some(match item {
                 StreamItem::Value(current) => {

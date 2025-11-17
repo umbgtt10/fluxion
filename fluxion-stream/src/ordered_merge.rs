@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::pin::Pin;
 
 use crate::Ordered;
-use fluxion_core::into_stream::IntoStream;
+use fluxion_core::{into_stream::IntoStream, StreamItem};
 
 // Re-export low-level types from fluxion-ordered-merge
 pub use fluxion_ordered_merge::{OrderedMerge, OrderedMergeExt};
@@ -17,7 +17,7 @@ pub use fluxion_ordered_merge::{OrderedMerge, OrderedMergeExt};
 /// This trait merges multiple streams of ordered items, emitting all values from
 /// all streams in temporal order. Unlike `combine_latest`, this emits every value
 /// from every stream (not just when all have emitted).
-pub trait OrderedStreamExt<T>: Stream<Item = fluxion_core::StreamItem<T>> + Sized
+pub trait OrderedStreamExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Clone + Debug + Ordered + Ord + Send + Sync + Unpin + 'static,
 {
@@ -101,29 +101,22 @@ where
     ///
     /// - `ordered_merge`: Emits all values from all streams
     /// - `combine_latest`: Emits only when streams change, after all have initialized
-    fn ordered_merge<IS>(
-        self,
-        others: Vec<IS>,
-    ) -> impl Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync
+    fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
-        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
+        IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
 }
 
 impl<T, S> OrderedStreamExt<T> for S
 where
     T: Clone + Debug + Ordered + Ord + Send + Sync + Unpin + 'static,
-    S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
+    S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
 {
-    fn ordered_merge<IS>(
-        self,
-        others: Vec<IS>,
-    ) -> impl Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync
+    fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
-        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
+        IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
     {
-        use fluxion_core::StreamItem;
         let mut all_streams =
             vec![Box::pin(self) as Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>];
         for into_stream in others {

@@ -11,7 +11,7 @@ use crate::take_while_with::TakeWhileExt;
 use crate::types::{CombinedState, WithPrevious};
 use crate::with_latest_from::WithLatestFromExt;
 use crate::Ordered;
-use fluxion_core::{CompareByInner, OrderedWrapper};
+use fluxion_core::{CompareByInner, OrderedWrapper, StreamItem};
 use futures::Stream;
 use futures::StreamExt;
 use pin_project::pin_project;
@@ -73,10 +73,8 @@ impl FluxionStream<()> {
     /// ```
     pub fn from_unbounded_receiver<T>(
         receiver: tokio::sync::mpsc::UnboundedReceiver<T>,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<T>>> {
-        FluxionStream::new(
-            UnboundedReceiverStream::new(receiver).map(fluxion_core::StreamItem::Value),
-        )
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>>> {
+        FluxionStream::new(UnboundedReceiverStream::new(receiver).map(StreamItem::Value))
     }
 }
 
@@ -103,7 +101,7 @@ where
 
 impl<S, T> FluxionStream<S>
 where
-    S: Stream<Item = fluxion_core::StreamItem<T>>,
+    S: Stream<Item = StreamItem<T>>,
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
@@ -175,7 +173,7 @@ where
     pub fn map_ordered<U, F>(
         self,
         mut f: F,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<U>> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = StreamItem<U>> + Send + Sync>
     where
         S: Send + Sync + Unpin + 'static,
         U: Send + 'static,
@@ -254,12 +252,12 @@ where
     pub fn filter_ordered<F>(
         self,
         mut predicate: F,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
         S: Send + Sync + Unpin + 'static,
         F: FnMut(&T::Inner) -> bool + Send + Sync + 'static,
     {
-        use fluxion_core::StreamItem;
+        use StreamItem;
         let inner = self.into_inner();
         FluxionStream::new(inner.filter_map(move |item| {
             futures::future::ready(match item {
@@ -328,7 +326,7 @@ where
     /// - [`take_latest_when`](FluxionStream::take_latest_when) - Can be chained after this
     pub fn combine_with_previous(
         self,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<WithPrevious<T>>> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = StreamItem<WithPrevious<T>>> + Send + Sync>
     where
         S: Send + Sync + Unpin + 'static,
     {
@@ -392,12 +390,12 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<T::Inner>> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T::Inner>> + Send + Sync>
     where
-        S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + Unpin + 'static,
+        S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
         TFilter: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
         TFilter::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-        SF: Stream<Item = fluxion_core::StreamItem<TFilter>> + Send + Sync + 'static,
+        SF: Stream<Item = StreamItem<TFilter>> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
         FluxionStream::new(TakeWhileExt::take_while_with(inner, filter_stream, filter))
@@ -473,10 +471,10 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
-        S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
-        SF: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
+        S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
+        SF: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
         FluxionStream::new(TakeLatestWhenExt::take_latest_when(
@@ -552,10 +550,10 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
-        S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
-        SF: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
+        S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
+        SF: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
         FluxionStream::new(EmitWhenExt::emit_when(inner, filter_stream, filter))
@@ -625,10 +623,10 @@ where
         self,
         other: S2,
         result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<OrderedWrapper<R>>> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send + Sync>
     where
-        S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + Unpin + 'static,
-        S2: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
+        S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
+        S2: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
         T: CompareByInner,
         R: Clone + Debug + Ord + Send + Sync + 'static,
     {
@@ -710,12 +708,10 @@ where
         self,
         others: Vec<S2>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<
-        impl Stream<Item = fluxion_core::StreamItem<OrderedWrapper<CombinedState<T::Inner>>>> + Send,
-    >
+    ) -> FluxionStream<impl Stream<Item = StreamItem<OrderedWrapper<CombinedState<T::Inner>>>> + Send>
     where
-        S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
-        S2: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
+        S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
+        S2: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
         T: CompareByInner,
     {
         let inner = self.into_inner();
@@ -786,10 +782,10 @@ where
     pub fn ordered_merge<S2>(
         self,
         others: Vec<FluxionStream<S2>>,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
-        S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
-        S2: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
+        S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
+        S2: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
         let other_streams: Vec<S2> = others.into_iter().map(|fs| fs.into_inner()).collect();

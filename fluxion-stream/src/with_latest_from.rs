@@ -17,7 +17,7 @@ use fluxion_core::{CompareByInner, OrderedWrapper, StreamItem};
 ///
 /// This operator combines a primary stream with a secondary stream, emitting only
 /// when the primary stream emits, using the latest value from the secondary stream.
-pub trait WithLatestFromExt<T>: Stream<Item = fluxion_core::StreamItem<T>> + Sized
+pub trait WithLatestFromExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
@@ -117,7 +117,7 @@ where
         result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
     ) -> impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send
     where
-        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
+        IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
         R: Clone + Debug + Ord + Send + Sync + 'static;
 }
@@ -126,7 +126,7 @@ impl<T, P> WithLatestFromExt<T> for P
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
-    P: Stream<Item = fluxion_core::StreamItem<T>> + Sized + Unpin + Send + Sync + 'static,
+    P: Stream<Item = StreamItem<T>> + Sized + Unpin + Send + Sync + 'static,
 {
     fn with_latest_from<IS, R>(
         self,
@@ -134,12 +134,12 @@ where
         result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
     ) -> impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send
     where
-        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
+        IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
         R: Clone + Debug + Ord + Send + Sync + 'static,
     {
         type PinnedStream<T> = std::pin::Pin<
-            Box<dyn Stream<Item = (fluxion_core::StreamItem<T>, usize)> + Send + Sync>,
+            Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>,
         >;
         let streams: Vec<PinnedStream<T>> = vec![
             Box::pin(self.map(move |item| (item, 0))),

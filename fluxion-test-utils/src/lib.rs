@@ -109,6 +109,7 @@ pub mod plant;
 pub mod sequenced;
 pub mod test_data;
 
+use fluxion_core::StreamItem;
 use futures::{Stream, StreamExt};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -143,10 +144,10 @@ pub use test_data::{DataVariant, TestData};
 /// ```
 pub fn test_channel<T: Send + 'static>() -> (
     mpsc::UnboundedSender<T>,
-    impl Stream<Item = fluxion_core::StreamItem<T>> + Send,
+    impl Stream<Item = StreamItem<T>> + Send,
 ) {
     let (tx, rx) = mpsc::unbounded_channel();
-    let stream = UnboundedReceiverStream::new(rx).map(fluxion_core::StreamItem::Value);
+    let stream = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
     (tx, stream)
 }
 
@@ -176,8 +177,8 @@ pub fn test_channel<T: Send + 'static>() -> (
 /// # }
 /// ```
 pub fn test_channel_with_errors<T: Send + 'static>() -> (
-    mpsc::UnboundedSender<fluxion_core::StreamItem<T>>,
-    impl Stream<Item = fluxion_core::StreamItem<T>> + Send,
+    mpsc::UnboundedSender<StreamItem<T>>,
+    impl Stream<Item = StreamItem<T>> + Send,
 ) {
     let (tx, rx) = mpsc::unbounded_channel();
     let stream = UnboundedReceiverStream::new(rx);

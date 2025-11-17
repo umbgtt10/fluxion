@@ -2,10 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_error;
-use fluxion_core::StreamItem;
+use fluxion_core::{Ordered, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
@@ -16,7 +15,7 @@ use std::sync::{Arc, Mutex};
 ///
 /// This operator samples the latest value from a source stream whenever a filter
 /// stream emits a value that passes a predicate.
-pub trait TakeLatestWhenExt<T>: Stream<Item = fluxion_core::StreamItem<T>> + Sized
+pub trait TakeLatestWhenExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
@@ -118,15 +117,14 @@ where
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
-        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
+        IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
 }
 
-type IndexedStream<T> =
-    Pin<Box<dyn Stream<Item = (fluxion_core::StreamItem<T>, usize)> + Send + Sync>>;
+type IndexedStream<T> = Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;
 impl<T, S> TakeLatestWhenExt<T> for S
 where
-    S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
+    S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
@@ -136,7 +134,7 @@ where
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
     ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
-        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
+        IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
     {
         let source_stream = Box::pin(self.map(|item| (item, 0)));
