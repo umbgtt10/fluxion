@@ -42,8 +42,8 @@ futures = "0.3"
 ### Basic Usage
 
 ```rust
-use fluxion_rx::prelude::*;
-use fluxion_test_utils::Sequenced;
+use fluxion_rx::FluxionStream;
+use fluxion_test_utils::sequenced::Sequenced;
 use futures::StreamExt;
 
 #[tokio::main]
@@ -64,30 +64,36 @@ async fn main() {
 
     let mut pipeline = int_stream.take_latest_when(trigger_stream, |_| true);
 
-    // Send int values - they will be buffered
+    // Send int values first - they will be buffered
     tx_int.send(Sequenced::with_sequence(Value::Int(10), 1)).unwrap();
     tx_int.send(Sequenced::with_sequence(Value::Int(20), 2)).unwrap();
     tx_int.send(Sequenced::with_sequence(Value::Int(30), 3)).unwrap();
 
-    // Trigger with bool - should emit latest int value (30)
+    // Trigger with bool - should emit latest int value (30) with trigger's sequence
     tx_trigger.send(Sequenced::with_sequence(Value::Bool(true), 4)).unwrap();
 
-    let result1 = pipeline.next().await.unwrap();
+    let result1 = pipeline.next().await.unwrap().unwrap();
     assert!(matches!(result1.get(), Value::Int(30)));
     assert_eq!(result1.sequence(), 4);
 
-    // Send more int values - these will trigger emissions
+    // After first trigger, send more int values
     tx_int.send(Sequenced::with_sequence(Value::Int(40), 5)).unwrap();
 
-    let result2 = pipeline.next().await.unwrap();
+    // Need another trigger to emit the buffered value
+    tx_trigger.send(Sequenced::with_sequence(Value::Bool(true), 6)).unwrap();
+
+    let result2 = pipeline.next().await.unwrap().unwrap();
     assert!(matches!(result2.get(), Value::Int(40)));
-    assert_eq!(result2.sequence(), 5);
+    assert_eq!(result2.sequence(), 6);
 
-    tx_int.send(Sequenced::with_sequence(Value::Int(50), 6)).unwrap();
+    // Send another int and trigger
+    tx_int.send(Sequenced::with_sequence(Value::Int(50), 7)).unwrap();
 
-    let result3 = pipeline.next().await.unwrap();
+    tx_trigger.send(Sequenced::with_sequence(Value::Bool(true), 8)).unwrap();
+
+    let result3 = pipeline.next().await.unwrap().unwrap();
     assert!(matches!(result3.get(), Value::Int(50)));
-    assert_eq!(result3.sequence(), 6);
+    assert_eq!(result3.sequence(), 8);
 }
 ```
 
@@ -98,8 +104,8 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
 ```rust
-use fluxion_rx::prelude::*;
-use fluxion_test_utils::Sequenced;
+use fluxion_rx::FluxionStream;
+use fluxion_test_utils::sequenced::Sequenced;
 use futures::StreamExt;
 
 #[tokio::test]
