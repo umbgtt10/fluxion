@@ -1,7 +1,15 @@
 1) Add error propagation tests ins separate files
-2 Review overall code structure for misplaced files
-3) Review overall code naming
+
 4) Add README to every crate
 5) Merge error and core
-6) Move sequenced_tests to fluxion-test-fluxion_test_utils
 7) double-check documentation, README, examples and overall docs structure
+
+
+
+
+2) Review overall code structure for misplaced files - DONE ✅ (No changes needed)
+3) Review overall code naming - DONE ✅ (No changes needed - naming is consistent and idiomatic)
+   Optional future improvements (not critical):
+   - CombinedState::get_state() → values() or items()
+   - WithPrevious::both() → as_pair() or pair()
+   - safe_lock → lock_or_error (minor clarity improvement)
