@@ -53,26 +53,6 @@ impl<S> FluxionStream<S> {
     pub fn into_inner(self) -> S {
         self.inner
     }
-
-    /// Creates a `FluxionStream` from any existing stream.
-    ///
-    /// Use this when you have a stream from another library or source and want
-    /// to apply fluxion's extension methods.
-    ///
-    /// This is just an alias for `FluxionStream::new()` but may be more discoverable.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use fluxion_stream::FluxionStream;
-    /// use futures::stream;
-    ///
-    /// let existing_stream = stream::iter(vec![1, 2, 3]);
-    /// let stream = FluxionStream::from_stream(existing_stream);
-    /// ```
-    pub fn from_stream(stream: S) -> Self {
-        FluxionStream::new(stream)
-    }
 }
 
 // Separate impl for the constructor that changes the type parameter
@@ -145,15 +125,15 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream::{FluxionStream, CombineWithPreviousExt, Ordered};
+    /// use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
-    /// use tokio_stream::wrappers::UnboundedReceiverStream;
     ///
-    /// async fn example() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let stream = UnboundedReceiverStream::new(rx);
+    /// let stream = FluxionStream::from_unbounded_receiver(rx);
     ///
     /// // Transform ordered stream to strings
     /// let mut mapped = stream
@@ -165,8 +145,26 @@ where
     ///
     /// tx.send(Sequenced::new(42)).unwrap();
     /// assert_eq!(mapped.next().await.unwrap().unwrap(), "Value: 42");
-    /// }
+    /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// This operator does not produce errors under normal operation. The mapping function is applied
+    /// to unwrapped values, and any errors from upstream are passed through unchanged.
+    ///
+    /// If your mapping function can fail, consider using a pattern like:
+    ///
+    /// ```rust,ignore
+    /// stream.map_ordered(|item| {
+    ///     match process(item) {
+    ///         Ok(result) => StreamItem::Value(result),
+    ///         Err(e) => StreamItem::Error(FluxionError::UserError(e.to_string())),
+    ///     }
+    /// })
+    /// ```
+    ///
+    /// See the [Error Handling Guide](../docs/ERROR-HANDLING.md) for comprehensive error handling patterns.
     ///
     /// # See Also
     ///
@@ -190,8 +188,71 @@ where
 
     /// Filters items based on a predicate while preserving temporal ordering.
     ///
-    /// This operator filters the stream using the provided predicate function,
-    /// wrapping results in `StreamItem::Value`.
+    /// This operator selectively emits items from the stream based on a predicate function
+    /// that evaluates the inner value. Items that satisfy the predicate are emitted, while
+    /// others are filtered out. Temporal ordering is maintained across filtered items.
+    ///
+    /// # Behavior
+    ///
+    /// - Predicate receives a reference to the **inner value** (`&T::Inner`), not the full ordered wrapper
+    /// - Only items where predicate returns `true` are emitted
+    /// - Filtered items preserve their original temporal order
+    /// - Emitted items are wrapped in `StreamItem::Value`
+    ///
+    /// # Arguments
+    ///
+    /// * `predicate` - A function that takes `&T::Inner` and returns `true` to keep the item
+    ///
+    /// # Returns
+    ///
+    /// A stream of `StreamItem<T>` containing only items that passed the filter
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_test_utils::Sequenced;
+    /// use futures::StreamExt;
+    /// use tokio::sync::mpsc;
+    ///
+    /// # async fn example() {
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let stream = FluxionStream::from_unbounded_receiver(rx);
+    ///
+    /// // Filter for even numbers
+    /// let mut evens = stream.filter_ordered(|&n| n % 2 == 0);
+    ///
+    /// tx.send(Sequenced::new(1)).unwrap();
+    /// tx.send(Sequenced::new(2)).unwrap();
+    /// tx.send(Sequenced::new(3)).unwrap();
+    /// tx.send(Sequenced::new(4)).unwrap();
+    ///
+    /// assert_eq!(evens.next().await.unwrap().unwrap().get(), &2);
+    /// assert_eq!(evens.next().await.unwrap().unwrap().get(), &4);
+    /// # }
+    /// ```
+    ///
+    /// # Use Cases
+    ///
+    /// - **Threshold Filtering**: Remove values outside acceptable ranges
+    /// - **Type-Based Filtering**: Select specific enum variants
+    /// - **Conditional Processing**: Process only relevant events
+    /// - **Noise Reduction**: Remove unwanted data from streams
+    ///
+    /// # Errors
+    ///
+    /// This operator does not produce errors under normal operation. The predicate function receives
+    /// unwrapped values, and any errors from upstream are passed through unchanged.
+    ///
+    /// If your predicate function can panic, ensure it handles edge cases gracefully, or the panic
+    /// will be propagated as `FluxionError::CallbackPanic`. See the [Error Handling Guide](../docs/ERROR-HANDLING.md)
+    /// for patterns on defensive filtering.
+    ///
+    /// # See Also
+    ///
+    /// - [`map_ordered`](FluxionStream::map_ordered) - Transform items while preserving order
+    /// - [`emit_when`](FluxionStream::emit_when) - Filter based on secondary stream conditions
+    /// - [`take_while_with`](FluxionStream::take_while_with) - Filter until condition fails, then stop
     pub fn filter_ordered<F>(
         self,
         mut predicate: F,

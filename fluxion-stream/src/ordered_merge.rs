@@ -42,6 +42,18 @@ where
     ///
     /// A stream of `T` where all values from all input streams are emitted in temporal order.
     ///
+    /// # Errors
+    ///
+    /// This operator may produce `StreamItem::Error` in the following cases:
+    ///
+    /// - **Channel Errors**: When sending to or receiving from internal channels fails.
+    ///   These typically indicate the other end was dropped.
+    /// - **Callback Errors**: If the `on_all_streams_closed` callback panics, it's caught and propagated as `FluxionError::CallbackPanic`.
+    ///
+    /// Channel errors typically indicate abnormal stream termination. Callback errors are captured to prevent
+    /// stream corruption. See the [Error Handling Guide](../docs/ERROR-HANDLING.md) for patterns on handling
+    /// these errors in your application.
+    ///
     /// # See Also
     ///
     /// - [`combine_latest`](crate::CombineLatestExt::combine_latest) - Emits latest values when any stream emits

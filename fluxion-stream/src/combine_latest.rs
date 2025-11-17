@@ -49,11 +49,19 @@ where
     /// A stream of `OrderedWrapper<CombinedState<T::Inner>>` where each emission contains
     /// the latest values from all streams, preserving the temporal order of the triggering value.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// This function uses internal locks to maintain shared state. If a thread panics while
-    /// holding a lock, subsequent operations will log a warning and continue by recovering
-    /// the poisoned lock. Individual emissions may be skipped if lock acquisition fails.
+    /// This operator emits `StreamItem::Error` in the following cases:
+    ///
+    /// - **Lock acquisition failure**: If the internal mutex becomes poisoned (a thread panicked
+    ///   while holding the lock), a `FluxionError::LockError` is emitted. The stream continues
+    ///   processing subsequent items.
+    ///
+    /// These errors flow through the stream as `StreamItem::Error` values and can be handled
+    /// using standard stream methods like `filter_map` or pattern matching.
+    ///
+    /// See the [Error Handling Guide](https://github.com/umbgtt10/fluxion/blob/main/docs/ERROR-HANDLING.md)
+    /// for patterns and best practices.
     ///
     /// # See Also
     ///

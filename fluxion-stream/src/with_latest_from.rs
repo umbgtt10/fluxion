@@ -51,11 +51,19 @@ where
     /// * `IS` - Type that can be converted into a stream compatible with this stream
     /// * `R` - Result type produced by the `result_selector` function
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Uses internal locks to maintain the latest value from the secondary stream. If a thread
-    /// panics while holding a lock, subsequent operations will log a warning and recover the
-    /// poisoned lock. Individual emissions may be skipped if lock acquisition fails.
+    /// This operator emits `StreamItem::Error` when:
+    ///
+    /// - **Lock acquisition fails**: If the internal state mutex becomes poisoned, a
+    ///   `FluxionError::LockError` is emitted and that item is skipped. The stream continues
+    ///   processing.
+    ///
+    /// Errors are emitted as `StreamItem::Error` values in the output stream, allowing
+    /// downstream operators to handle them appropriately.
+    ///
+    /// See the [Error Handling Guide](https://github.com/umbgtt10/fluxion/blob/main/docs/ERROR-HANDLING.md)
+    /// for recovery patterns.
     ///
     /// # See Also
     ///

@@ -93,6 +93,17 @@ where
     /// subsequent operations will log a warning and recover the poisoned lock. Affected
     /// emissions are skipped if lock acquisition fails.
     ///
+    /// # Errors
+    ///
+    /// Emits `StreamItem::Error` when lock acquisition fails:
+    ///
+    /// - **Combined state lock error**: If the internal state mutex becomes poisoned,
+    ///   a `FluxionError::LockError` is emitted for that item
+    ///
+    /// Lock errors are transient - the stream continues processing subsequent items.
+    ///
+    /// See the [Error Handling Guide](https://github.com/umbgtt10/fluxion/blob/main/docs/ERROR-HANDLING.md).
+    ///
     /// # See Also
     ///
     /// - [`take_latest_when`](crate::TakeLatestWhenExt::take_latest_when) - Similar but samples latest instead of gating

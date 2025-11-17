@@ -51,6 +51,17 @@ where
     /// A `FluxionStream` of unwrapped source elements (`TItem::Inner`) that are emitted
     /// while the filter condition remains true. Stream terminates when condition becomes false.
     ///
+    /// # Errors
+    ///
+    /// This operator may produce `StreamItem::Error` in the following cases:
+    ///
+    /// - **Lock Errors**: When acquiring the combined state lock fails (e.g., due to lock poisoning).
+    ///   These are transient errors - the stream continues processing and may succeed on subsequent items.
+    ///
+    /// Lock errors are typically non-fatal and indicate temporary contention. The operator will continue
+    /// processing subsequent items. See the [Error Handling Guide](../docs/ERROR-HANDLING.md) for patterns
+    /// on handling these errors in your application.
+    ///
     /// # See Also
     ///
     /// - [`emit_when`](crate::EmitWhenExt::emit_when) - Gates emissions but doesn't terminate

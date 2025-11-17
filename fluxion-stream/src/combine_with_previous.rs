@@ -34,6 +34,17 @@ where
     /// A `FluxionStream` of `WithPrevious<T>` where each item contains the current
     /// and previous values.
     ///
+    /// # Errors
+    ///
+    /// This operator may produce `StreamItem::Error` in the following cases:
+    ///
+    /// - **Lock Errors**: When acquiring the previous value buffer lock fails (e.g., due to lock poisoning).
+    ///   These are transient errors - the stream continues processing and may succeed on subsequent items.
+    ///
+    /// Lock errors are typically non-fatal and indicate temporary contention. The operator will continue
+    /// processing subsequent items. See the [Error Handling Guide](../docs/ERROR-HANDLING.md) for patterns
+    /// on handling these errors in your application.
+    ///
     /// # See Also
     ///
     /// - [`combine_latest`](crate::CombineLatestExt::combine_latest) - Combines multiple streams

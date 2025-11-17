@@ -91,6 +91,22 @@ where
     /// holding a lock, subsequent operations will log a warning and recover the poisoned
     /// lock. The affected emission is skipped if lock acquisition fails.
     ///
+    /// # Errors
+    ///
+    /// Emits `StreamItem::Error` when internal lock acquisition fails:
+    ///
+    /// - **Source buffer lock error**: Returns `FluxionError::LockError` if the source buffer
+    ///   mutex is poisoned
+    /// - **Filter state lock error**: Returns `FluxionError::LockError` if the filter state
+    ///   mutex is poisoned
+    /// - **Emit flag lock error**: Returns `FluxionError::LockError` if the emission flag
+    ///   mutex is poisoned
+    ///
+    /// All errors are non-fatal - the stream continues processing subsequent items.
+    ///
+    /// See the [Error Handling Guide](https://github.com/umbgtt10/fluxion/blob/main/docs/ERROR-HANDLING.md)
+    /// for handling strategies.
+    ///
     /// # See Also
     ///
     /// - [`emit_when`](crate::EmitWhenExt::emit_when) - Gates source emissions rather than sampling

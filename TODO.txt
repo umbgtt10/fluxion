@@ -1,8 +1,8 @@
-1) Review Fluxion_stream entry points: some have dyn!
-2) Move sequenced_tests to fluxion-test-fluxion_test_utils
-3) Review all endpoints for semplification
+
+6) Add error propagation tests ins separate files
 4) Review overall code structure for misplaced files
 5) Review overall code naming
-6) Add error propagation tests ins separate files
-7) double-check documentation, README, examples and overall docs structure
-8) Review REFACTORING_PLAN
+7) Add README to every crate
+8) Merge error and core
+2) Move sequenced_tests to fluxion-test-fluxion_test_utils
+9) double-check documentation, README, examples and overall docs structure
