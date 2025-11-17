@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_error::{FluxionError, Result, ResultExt};
+use std::{io, mem::size_of};
 
 #[test]
 fn test_result_context_adds_information() {
@@ -19,21 +20,17 @@ fn test_error_classification_recoverable() {
     let lock_err = FluxionError::lock_error("test mutex");
     assert!(lock_err.is_recoverable());
     assert!(!lock_err.is_permanent());
-
-    let timeout_err = FluxionError::timeout("operation", std::time::Duration::from_secs(5));
-    assert!(timeout_err.is_recoverable());
-    assert!(!timeout_err.is_permanent());
 }
 
 #[test]
 fn test_error_classification_permanent() {
-    let channel_err = FluxionError::ChannelSendError;
-    assert!(!channel_err.is_recoverable());
-    assert!(channel_err.is_permanent());
+    let stream_err = FluxionError::stream_error("stream closed");
+    assert!(!stream_err.is_recoverable());
+    assert!(stream_err.is_permanent());
 
-    let invalid_state = FluxionError::invalid_state("stream closed");
-    assert!(!invalid_state.is_recoverable());
-    assert!(invalid_state.is_permanent());
+    let user_err = FluxionError::user_error(io::Error::other("io error"));
+    assert!(!user_err.is_recoverable());
+    assert!(user_err.is_permanent());
 }
 
 #[test]
@@ -41,7 +38,7 @@ fn test_multiple_errors_aggregation() {
     let errors = vec![
         FluxionError::lock_error("mutex1"),
         FluxionError::lock_error("mutex2"),
-        FluxionError::ChannelSendError,
+        FluxionError::stream_error("processing failed"),
     ];
 
     let multi_error = FluxionError::MultipleErrors { count: 3, errors };
@@ -53,38 +50,17 @@ fn test_multiple_errors_aggregation() {
 }
 
 #[test]
-fn test_callback_panic_error() {
-    let panic_err = FluxionError::CallbackPanic {
-        context: "user callback panicked".to_string(),
-    };
-    // CallbackPanic is neither recoverable nor permanent (unclassified)
-    assert!(!panic_err.is_recoverable());
-    assert!(!panic_err.is_permanent());
-    assert!(panic_err.to_string().contains("user callback panicked"));
-}
-
-#[test]
 fn test_stream_processing_error() {
     let stream_err = FluxionError::stream_error("failed to process item");
-    // StreamProcessingError is neither recoverable nor permanent (unclassified)
+    // StreamProcessingError is permanent
     assert!(!stream_err.is_recoverable());
-    assert!(!stream_err.is_permanent());
+    assert!(stream_err.is_permanent());
     assert!(stream_err.to_string().contains("failed to process item"));
-}
-
-#[test]
-fn test_resource_limit_exceeded() {
-    let limit_err = FluxionError::resource_limit("buffer", 1000);
-    assert!(limit_err.is_recoverable());
-    assert!(limit_err.to_string().contains("buffer"));
-    assert!(limit_err.to_string().contains("1000"));
 }
 
 #[test]
 fn test_error_type_sizes() {
     // Ensure error types are reasonably sized
-    use std::mem::size_of;
-
     let error_size = size_of::<FluxionError>();
     // FluxionError should be reasonably sized (less than 128 bytes)
     assert!(

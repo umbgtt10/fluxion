@@ -42,6 +42,18 @@ where
     ///
     /// A stream of `T` where all values from all input streams are emitted in temporal order.
     ///
+    /// # Errors
+    ///
+    /// This operator may produce `StreamItem::Error` in the following cases:
+    ///
+    /// - **Internal Processing Errors**: When stream processing encounters an issue, it will emit
+    ///   `FluxionError::StreamProcessingError`.
+    /// - **Callback Errors**: If the `on_all_streams_closed` callback panics, the panic is caught
+    ///   and wrapped in `FluxionError::UserError`.
+    ///
+    /// These errors typically indicate abnormal stream termination. See the [Error Handling Guide](../docs/ERROR-HANDLING.md)
+    /// for patterns on handling these errors in your application.
+    ///
     /// # See Also
     ///
     /// - [`combine_latest`](crate::CombineLatestExt::combine_latest) - Emits latest values when any stream emits
@@ -73,9 +85,9 @@ where
     /// tx1.send(Sequenced::with_sequence(3, 300)).unwrap();
     ///
     /// // Assert - values emitted in temporal order
-    /// assert_eq!(merged.next().await.unwrap().value, 1);
-    /// assert_eq!(merged.next().await.unwrap().value, 2);
-    /// assert_eq!(merged.next().await.unwrap().value, 3);
+    /// assert_eq!(merged.next().await.unwrap().unwrap().value, 1);
+    /// assert_eq!(merged.next().await.unwrap().unwrap().value, 2);
+    /// assert_eq!(merged.next().await.unwrap().unwrap().value, 3);
     /// # }
     /// ```
     ///

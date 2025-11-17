@@ -2,9 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::fluxion_stream::FluxionStream;
 use fluxion_core::lock_utilities::safe_lock;
-use fluxion_core::Ordered;
+use fluxion_core::{Ordered, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::StreamExt;
 use futures::Stream;
@@ -52,6 +51,17 @@ where
     /// A `FluxionStream` of unwrapped source elements (`TItem::Inner`) that are emitted
     /// while the filter condition remains true. Stream terminates when condition becomes false.
     ///
+    /// # Errors
+    ///
+    /// This operator may produce `StreamItem::Error` in the following cases:
+    ///
+    /// - **Lock Errors**: When acquiring the combined state lock fails (e.g., due to lock poisoning).
+    ///   These are transient errors - the stream continues processing and may succeed on subsequent items.
+    ///
+    /// Lock errors are typically non-fatal and indicate temporary contention. The operator will continue
+    /// processing subsequent items. See the [Error Handling Guide](../docs/ERROR-HANDLING.md) for patterns
+    /// on handling these errors in your application.
+    ///
     /// # See Also
     ///
     /// - [`emit_when`](crate::EmitWhenExt::emit_when) - Gates emissions but doesn't terminate
@@ -84,7 +94,7 @@ where
     /// tx_data.send(Sequenced::with_sequence(1, 2)).unwrap();
     ///
     /// // Assert
-    /// assert_eq!(gated.next().await.unwrap(), 1);
+    /// assert_eq!(gated.next().await.unwrap().unwrap(), 1);
     /// # }
     /// ```
     ///
@@ -102,7 +112,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = TItem::Inner> + Send>;
+    ) -> impl Stream<Item = StreamItem<TItem::Inner>> + Send;
 }
 
 impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
@@ -118,7 +128,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = TItem::Inner> + Send> {
+    ) -> impl Stream<Item = StreamItem<TItem::Inner>> + Send {
         let filter = Arc::new(filter);
 
         // Tag each stream with its type
@@ -134,7 +144,7 @@ where
         let state = Arc::new(Mutex::new((None::<TFilter::Inner>, false)));
 
         // Use ordered_merge and process items in order
-        let result = streams.ordered_merge().filter_map({
+        streams.ordered_merge().filter_map({
             let state = Arc::clone(&state);
             move |item| {
                 let state = Arc::clone(&state);
@@ -159,7 +169,7 @@ where
                                     || None,
                                     |fval| {
                                         if filter(fval) {
-                                            Some(source_val.get().clone())
+                                            Some(StreamItem::Value(source_val.get().clone()))
                                         } else {
                                             *terminated = true;
                                             None
@@ -168,16 +178,11 @@ where
                                 ),
                             }
                         }
-                        Err(e) => {
-                            error!("Failed to acquire lock in take_while_with: {}", e);
-                            None
-                        }
+                        Err(e) => Some(StreamItem::Error(e)),
                     }
                 }
             }
-        });
-
-        FluxionStream::new(result)
+        })
     }
 }
 

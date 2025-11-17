@@ -7,6 +7,8 @@ pub mod compare_by_inner;
 pub mod into_stream;
 pub mod lock_utilities;
 pub mod ordered;
+pub mod stream_item;
 
 pub use self::compare_by_inner::CompareByInner;
 pub use self::ordered::{Ordered, OrderedWrapper};
+pub use self::stream_item::StreamItem;

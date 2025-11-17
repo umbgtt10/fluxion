@@ -20,7 +20,7 @@ A reactive stream processing library for Rust with temporal ordering guarantees,
 - 🔄 **Rx-Style Operators**: Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, etc.)
 - ⏱️ **Temporal Ordering**: Guaranteed ordering semantics with `Sequenced<T>` wrapper
 - ⚡ **Async Execution**: Efficient async processing with `subscribe_async` and `subscribe_latest_async`
-- 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `Result` types
+- 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation through `StreamItem<T>` - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
 - ✅ **Well Tested**: 1,500+ tests with comprehensive coverage
 
@@ -215,6 +215,7 @@ stream
 ### 📚 Guides
 
 - **[Integration Guide](INTEGRATION.md)** - Learn the three patterns for integrating events (intrinsic, extrinsic, wrapper ordering)
+- **[Error Handling Guide](docs/ERROR-HANDLING.md)** - Comprehensive guide to error propagation and recovery strategies
 - **[fluxion-stream](fluxion-stream/README.md)** - Stream operators and composition patterns
 - **[fluxion-exec](fluxion-exec/README.md)** - Async execution and subscription utilities
 

@@ -6,6 +6,7 @@ use crate::types::CombinedState;
 use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::safe_lock;
+use fluxion_core::StreamItem;
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
@@ -75,7 +76,7 @@ where
     /// tx_data.send(Sequenced::with_sequence(42, 2)).unwrap();
     ///
     /// // Assert - data emits when enabled
-    /// let result = gated.next().await.unwrap();
+    /// let result = gated.next().await.unwrap().unwrap();
     /// assert_eq!(*result.get(), 42);
     /// # }
     /// ```
@@ -92,6 +93,17 @@ where
     /// subsequent operations will log a warning and recover the poisoned lock. Affected
     /// emissions are skipped if lock acquisition fails.
     ///
+    /// # Errors
+    ///
+    /// Emits `StreamItem::Error` when lock acquisition fails:
+    ///
+    /// - **Combined state lock error**: If the internal state mutex becomes poisoned,
+    ///   a `FluxionError::LockError` is emitted for that item
+    ///
+    /// Lock errors are transient - the stream continues processing subsequent items.
+    ///
+    /// See the [Error Handling Guide](https://github.com/umbgtt10/fluxion/blob/main/docs/ERROR-HANDLING.md).
+    ///
     /// # See Also
     ///
     /// - [`take_latest_when`](crate::TakeLatestWhenExt::take_latest_when) - Similar but samples latest instead of gating
@@ -101,7 +113,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = T> + Send + Sync>>
+    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static;
@@ -118,7 +130,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = T> + Send + Sync>>
+    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static,
@@ -147,8 +159,7 @@ where
                                 {
                                     Ok(lock) => lock,
                                     Err(e) => {
-                                        error!("Failed to acquire lock in emit_when: {}", e);
-                                        return None;
+                                        return Some(StreamItem::Error(e));
                                     }
                                 };
                                 *source = Some(ordered_value.get().clone());
@@ -158,8 +169,7 @@ where
                                     match safe_lock(&filter_value, "emit_when filter") {
                                         Ok(lock) => lock,
                                         Err(e) => {
-                                            error!("Failed to acquire lock in emit_when: {}", e);
-                                            return None;
+                                            return Some(StreamItem::Error(e));
                                         }
                                     };
                                 *filter_val = Some(ordered_value.get().clone());
@@ -172,15 +182,13 @@ where
                         let source = match safe_lock(&source_value, "emit_when source") {
                             Ok(lock) => lock,
                             Err(e) => {
-                                error!("Failed to acquire lock in emit_when: {}", e);
-                                return None;
+                                return Some(StreamItem::Error(e));
                             }
                         };
                         let filter_val = match safe_lock(&filter_value, "emit_when filter") {
                             Ok(lock) => lock,
                             Err(e) => {
-                                error!("Failed to acquire lock in emit_when: {}", e);
-                                return None;
+                                return Some(StreamItem::Error(e));
                             }
                         };
 
@@ -188,7 +196,7 @@ where
                             let combined_state =
                                 CombinedState::new(vec![src.clone(), filt.clone()]);
                             if filter(&combined_state) {
-                                Some(T::with_order(src.clone(), order))
+                                Some(StreamItem::Value(T::with_order(src.clone(), order)))
                             } else {
                                 None
                             }

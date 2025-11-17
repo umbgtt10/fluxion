@@ -2,9 +2,13 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
-use fluxion_core::Ordered;
+use fluxion_core::ordered::Ordered;
+use std::{
+    cmp::Ordering,
+    fmt,
+    ops::{Deref, DerefMut},
+    sync::atomic::{AtomicU64, Ordering::SeqCst},
+};
 
 static GLOBAL_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
@@ -31,7 +35,7 @@ impl<T> Sequenced<T> {
     pub fn new(value: T) -> Self {
         Self {
             value,
-            sequence: GLOBAL_SEQUENCE.fetch_add(1, Ordering::SeqCst),
+            sequence: GLOBAL_SEQUENCE.fetch_add(1, SeqCst),
         }
     }
 
@@ -61,18 +65,18 @@ impl<T> Sequenced<T> {
 }
 
 impl<T: PartialEq> PartialOrd for Sequenced<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.sequence.partial_cmp(&other.sequence)
     }
 }
 
 impl<T: Eq> Ord for Sequenced<T> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.sequence.cmp(&other.sequence)
     }
 }
 
-impl<T> std::ops::Deref for Sequenced<T> {
+impl<T> Deref for Sequenced<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -80,14 +84,14 @@ impl<T> std::ops::Deref for Sequenced<T> {
     }
 }
 
-impl<T> std::ops::DerefMut for Sequenced<T> {
+impl<T> DerefMut for Sequenced<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.value
     }
 }
 
-impl<T: std::fmt::Display> std::fmt::Display for Sequenced<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<T: fmt::Display> fmt::Display for Sequenced<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.value)
     }
 }
@@ -113,7 +117,7 @@ impl<T: Clone> Ordered for Sequenced<T> {
 }
 
 impl<T: Ord> fluxion_core::CompareByInner for Sequenced<T> {
-    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp_inner(&self, other: &Self) -> Ordering {
         self.value.cmp(&other.value)
     }
 }

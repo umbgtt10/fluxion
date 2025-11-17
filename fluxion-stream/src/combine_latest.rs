@@ -49,11 +49,19 @@ where
     /// A stream of `OrderedWrapper<CombinedState<T::Inner>>` where each emission contains
     /// the latest values from all streams, preserving the temporal order of the triggering value.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// This function uses internal locks to maintain shared state. If a thread panics while
-    /// holding a lock, subsequent operations will log a warning and continue by recovering
-    /// the poisoned lock. Individual emissions may be skipped if lock acquisition fails.
+    /// This operator emits `StreamItem::Error` in the following cases:
+    ///
+    /// - **Lock acquisition failure**: If the internal mutex becomes poisoned (a thread panicked
+    ///   while holding the lock), a `FluxionError::LockError` is emitted. The stream continues
+    ///   processing subsequent items.
+    ///
+    /// These errors flow through the stream as `StreamItem::Error` values and can be handled
+    /// using standard stream methods like `filter_map` or pattern matching.
+    ///
+    /// See the [Error Handling Guide](https://github.com/umbgtt10/fluxion/blob/main/docs/ERROR-HANDLING.md)
+    /// for patterns and best practices.
     ///
     /// # See Also
     ///
@@ -103,7 +111,9 @@ where
         self,
         others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = OrderedWrapper<CombinedState<T::Inner>>> + Send + Unpin
+    ) -> impl Stream<Item = fluxion_core::StreamItem<OrderedWrapper<CombinedState<T::Inner>>>>
+           + Send
+           + Unpin
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static;
@@ -121,11 +131,14 @@ where
         self,
         others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = OrderedWrapper<CombinedState<T::Inner>>> + Send + Unpin
+    ) -> impl Stream<Item = fluxion_core::StreamItem<OrderedWrapper<CombinedState<T::Inner>>>>
+           + Send
+           + Unpin
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static,
     {
+        use fluxion_core::StreamItem;
         let mut streams: PinnedStreams<T> = vec![];
 
         streams.push(Box::pin(self.map(move |value| (value, 0))));
@@ -175,9 +188,12 @@ where
                         .map(|ordered_val| ordered_val.get().clone())
                         .collect();
                     let combined = CombinedState::new(inner_values);
-                    OrderedWrapper::with_order(combined, order)
+                    StreamItem::Value(OrderedWrapper::with_order(combined, order))
                 })
                 .filter(move |ordered_combined| {
+                    let StreamItem::Value(ordered_combined) = ordered_combined else {
+                        return ready(false);
+                    };
                     let combined_state = ordered_combined.get();
                     ready(filter(combined_state))
                 }),

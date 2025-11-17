@@ -37,7 +37,7 @@ async fn test_with_latest_from_basic() {
         animal_tx.send(Sequenced::new(animal_cat())).unwrap();
 
         // Assert - should get combined state with both values
-        let result = combined_stream.next().await.unwrap();
+        let result = combined_stream.next().await.unwrap().unwrap();
         let combined_state = result.get();
 
         // CombinedState order: [primary (index 0), secondary (index 1)]
@@ -48,7 +48,7 @@ async fn test_with_latest_from_basic() {
         animal_tx.send(Sequenced::new(animal_dog())).unwrap();
 
         // Assert - should emit with latest secondary (still Alice)
-        let result = combined_stream.next().await.unwrap();
+        let result = combined_stream.next().await.unwrap().unwrap();
         let combined_state = result.get();
         assert_eq!(combined_state.get_state()[0], animal_dog());
         assert_eq!(combined_state.get_state()[1], person_alice());
@@ -84,11 +84,11 @@ async fn test_with_latest_from_ordering_preserved() {
         secondary_tx.send(Sequenced::new(person_bob())).unwrap(); // should NOT emit
 
         // Assert - should get two emissions in order
-        let result1 = combined_stream.next().await.unwrap();
+        let result1 = combined_stream.next().await.unwrap().unwrap();
         assert_eq!(result1.get().get_state()[0], animal_cat());
         assert_eq!(result1.get().get_state()[1], person_alice());
 
-        let result2 = combined_stream.next().await.unwrap();
+        let result2 = combined_stream.next().await.unwrap().unwrap();
         assert_eq!(result2.get().get_state()[0], animal_dog());
         assert_eq!(result2.get().get_state()[1], person_alice());
 
@@ -124,7 +124,7 @@ async fn test_with_latest_from_custom_selector() {
     animal_tx.send(Sequenced::new(animal_cat())).unwrap();
 
     // Assert - should get a String result
-    let result = combined_stream.next().await.unwrap();
+    let result = combined_stream.next().await.unwrap().unwrap();
     let string_result = result.get();
 
     // The result should be the string representation of animal_cat
@@ -173,7 +173,7 @@ async fn test_with_latest_from_secondary_completes_early() {
         animal_tx.send(Sequenced::new(animal_cat())).unwrap();
 
         // Assert - should still emit with latest secondary value (Alice)
-        let result = combined_stream.next().await.unwrap();
+        let result = combined_stream.next().await.unwrap().unwrap();
         assert_eq!(result.get().get_state()[0], animal_cat());
         assert_eq!(result.get().get_state()[1], person_alice());
 
@@ -181,7 +181,7 @@ async fn test_with_latest_from_secondary_completes_early() {
         animal_tx.send(Sequenced::new(animal_dog())).unwrap();
 
         // Assert - should still emit with same secondary value
-        let result = combined_stream.next().await.unwrap();
+        let result = combined_stream.next().await.unwrap().unwrap();
         assert_eq!(result.get().get_state()[0], animal_dog());
         assert_eq!(result.get().get_state()[1], person_alice());
     });
@@ -204,7 +204,7 @@ async fn test_with_latest_from_primary_completes_early() {
         animal_tx.send(Sequenced::new(animal_cat())).unwrap();
 
         // Assert
-        let result = combined_stream.next().await.unwrap();
+        let result = combined_stream.next().await.unwrap().unwrap();
         assert_eq!(result.get().get_state()[0], animal_cat());
         assert_eq!(result.get().get_state()[1], person_alice());
 
@@ -245,7 +245,7 @@ async fn test_with_latest_from_large_number_of_emissions() {
 
         // Assert - should get 100 emissions, all with Alice
         for i in 0..100 {
-            let result = combined_stream.next().await.unwrap();
+            let result = combined_stream.next().await.unwrap().unwrap();
             let state = result.get();
             assert_eq!(state.get_state()[1], person_alice());
             if let TestData::Animal(ref animal) = state.get_state()[0] {
@@ -295,7 +295,7 @@ async fn test_with_latest_from_secondary_updates_latest() {
         animal_tx.send(Sequenced::new(animal_cat())).unwrap();
 
         // Assert - first emission with Alice
-        let result = combined_stream.next().await.unwrap();
+        let result = combined_stream.next().await.unwrap().unwrap();
         assert_eq!(result.get().get_state()[0], animal_cat());
         assert_eq!(result.get().get_state()[1], person_alice());
 
@@ -307,7 +307,7 @@ async fn test_with_latest_from_secondary_updates_latest() {
         animal_tx.send(Sequenced::new(animal_dog())).unwrap();
 
         // Assert - should emit with latest secondary (Bob)
-        let result = combined_stream.next().await.unwrap();
+        let result = combined_stream.next().await.unwrap().unwrap();
         assert_eq!(result.get().get_state()[0], animal_dog());
         assert_eq!(result.get().get_state()[1], person_bob());
     });
@@ -339,12 +339,12 @@ async fn test_with_latest_from_multiple_concurrent_streams() {
         animal_tx2.send(Sequenced::new(animal_dog())).unwrap();
 
         // Assert stream1
-        let result1 = stream1.next().await.unwrap();
+        let result1 = stream1.next().await.unwrap().unwrap();
         assert_eq!(result1.get().get_state()[0], animal_cat());
         assert_eq!(result1.get().get_state()[1], person_alice());
 
         // Assert stream2
-        let result2 = stream2.next().await.unwrap();
+        let result2 = stream2.next().await.unwrap().unwrap();
         assert_eq!(result2.get().get_state()[0], animal_dog());
         assert_eq!(result2.get().get_state()[1], person_bob());
     });
