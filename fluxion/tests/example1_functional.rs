@@ -24,7 +24,7 @@ async fn test_take_latest_when_int_bool() {
 
     let mut pipeline = int_stream.take_latest_when(trigger_stream, |_| true);
 
-    // Send int values - they will be buffered
+    // Send int values first - they will be buffered
     tx_int
         .send(Sequenced::with_sequence(Value::Int(10), 1))
         .unwrap();
@@ -35,7 +35,7 @@ async fn test_take_latest_when_int_bool() {
         .send(Sequenced::with_sequence(Value::Int(30), 3))
         .unwrap();
 
-    // Trigger with bool - should emit latest int value (30)
+    // Trigger with bool - should emit latest int value (30) with trigger's sequence
     tx_trigger
         .send(Sequenced::with_sequence(Value::Bool(true), 4))
         .unwrap();
@@ -44,20 +44,30 @@ async fn test_take_latest_when_int_bool() {
     assert!(matches!(result1.get(), Value::Int(30)));
     assert_eq!(result1.sequence(), 4);
 
-    // Send more int values - these will trigger emissions
+    // After first trigger, send more int values
     tx_int
         .send(Sequenced::with_sequence(Value::Int(40), 5))
+        .unwrap();
+    
+    // Need another trigger to emit the buffered value
+    tx_trigger
+        .send(Sequenced::with_sequence(Value::Bool(true), 6))
         .unwrap();
 
     let result2 = pipeline.next().await.unwrap().unwrap();
     assert!(matches!(result2.get(), Value::Int(40)));
-    assert_eq!(result2.sequence(), 5);
+    assert_eq!(result2.sequence(), 6);
 
+    // Send another int and trigger
     tx_int
-        .send(Sequenced::with_sequence(Value::Int(50), 6))
+        .send(Sequenced::with_sequence(Value::Int(50), 7))
+        .unwrap();
+    
+    tx_trigger
+        .send(Sequenced::with_sequence(Value::Bool(true), 8))
         .unwrap();
 
     let result3 = pipeline.next().await.unwrap().unwrap();
     assert!(matches!(result3.get(), Value::Int(50)));
-    assert_eq!(result3.sequence(), 6);
+    assert_eq!(result3.sequence(), 8);
 }
