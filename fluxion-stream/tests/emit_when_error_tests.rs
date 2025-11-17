@@ -4,146 +4,209 @@
 
 //! Error propagation tests for `emit_when` operator.
 
-use fluxion_core::StreamItem;
-use fluxion_stream::{CombinedState, EmitWhenExt};
-use fluxion_test_utils::{sequenced::Sequenced, ErrorInjectingStream};
-use futures::{stream, StreamExt};
+use fluxion_core::{FluxionError, StreamItem};
+use fluxion_stream::EmitWhenExt;
+use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
+use futures::StreamExt;
 
 #[tokio::test]
 async fn test_emit_when_propagates_source_error() {
-    let source = vec![
-        Sequenced::with_sequence(10, 1),
-        Sequenced::with_sequence(20, 2),
-        Sequenced::with_sequence(30, 3),
-    ];
-    let filter = vec![Sequenced::with_sequence(15, 4)];
-
-    // Error at position 1 in source
-    let source_stream = ErrorInjectingStream::new(stream::iter(source), 1);
-    let filter_stream = stream::iter(filter).map(StreamItem::Value);
+    let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 
-    let mut has_error = false;
-    let mut has_value = false;
+    // Send filter value first
+    filter_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(15, 1)))
+        .unwrap();
 
-    while let Some(item) = result.next().await {
-        match item {
-            StreamItem::Error(_) => has_error = true,
-            StreamItem::Value(_) => has_value = true,
-        }
-    }
+    // Send source value
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(10, 2)))
+        .unwrap();
 
-    assert!(has_error, "Should propagate source error");
-    assert!(has_value, "Should emit values");
+    // Send error in source
+    source_tx
+        .send(StreamItem::Error(FluxionError::stream_error(
+            "Source error",
+        )))
+        .unwrap();
+
+    let result1 = result.next().await.unwrap();
+    assert!(matches!(result1, StreamItem::Error(_)));
+
+    // Continue with value
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(30, 3)))
+        .unwrap();
+
+    let result2 = result.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Value(_)));
+
+    drop(source_tx);
+    drop(filter_tx);
 }
 
 #[tokio::test]
 async fn test_emit_when_propagates_filter_error() {
-    let source = vec![
-        Sequenced::with_sequence(10, 1),
-        Sequenced::with_sequence(20, 3),
-    ];
-    let filter = vec![
-        Sequenced::with_sequence(5, 2),
-        Sequenced::with_sequence(15, 4),
-    ];
-
-    let source_stream = stream::iter(source).map(StreamItem::Value);
-    // Error in filter
-    let filter_stream = ErrorInjectingStream::new(stream::iter(filter), 1);
+    let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 
-    let mut error_count = 0;
-    let mut value_count = 0;
+    // Send filter value
+    filter_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(5, 1)))
+        .unwrap();
 
-    while let Some(item) = result.next().await {
-        match item {
-            StreamItem::Error(_) => error_count += 1,
-            StreamItem::Value(_) => value_count += 1,
-        }
-    }
+    // Send source value
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(10, 2)))
+        .unwrap();
 
-    assert!(error_count >= 1, "Should propagate filter error");
-    assert!(value_count >= 1, "Should emit values");
+    let result1 = result.next().await.unwrap();
+    assert!(matches!(result1, StreamItem::Value(_)));
+
+    // Send error in filter
+    filter_tx
+        .send(StreamItem::Error(FluxionError::stream_error(
+            "Filter error",
+        )))
+        .unwrap();
+
+    let result2 = result.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Error(_)));
+
+    // Continue
+    filter_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(15, 4)))
+        .unwrap();
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(20, 3)))
+        .unwrap();
+
+    let result3 = result.next().await.unwrap();
+    assert!(matches!(result3, StreamItem::Value(_)));
+
+    drop(source_tx);
+    drop(filter_tx);
 }
 
 #[tokio::test]
 async fn test_emit_when_predicate_continues_after_error() {
-    let source = vec![
-        Sequenced::with_sequence(10, 1),
-        Sequenced::with_sequence(20, 3),
-        Sequenced::with_sequence(30, 5),
-    ];
-    let filter = vec![
-        Sequenced::with_sequence(15, 2),
-        Sequenced::with_sequence(25, 4),
-    ];
-
-    // Error in source
-    let source_stream = ErrorInjectingStream::new(stream::iter(source), 1);
-    let filter_stream = stream::iter(filter).map(StreamItem::Value);
+    let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Only emit when source > filter
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 
-    let items: Vec<_> = result.collect().await;
+    // Send filter value
+    filter_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(15, 1)))
+        .unwrap();
 
-    let has_error = items.iter().any(|i| matches!(i, StreamItem::Error(_)));
-    let has_value = items.iter().any(|i| matches!(i, StreamItem::Value(_)));
+    // Send source value (doesn't pass predicate)
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(10, 2)))
+        .unwrap();
 
-    assert!(has_error, "Should have error");
-    assert!(has_value, "Predicate should still evaluate after error");
+    // Send error in source
+    source_tx
+        .send(StreamItem::Error(FluxionError::stream_error("Error")))
+        .unwrap();
+
+    let result1 = result.next().await.unwrap();
+    assert!(matches!(result1, StreamItem::Error(_)));
+
+    // Send value that passes predicate
+    filter_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(25, 4)))
+        .unwrap();
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(30, 5)))
+        .unwrap();
+
+    let result2 = result.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Value(_)));
+
+    drop(source_tx);
+    drop(filter_tx);
 }
 
 #[tokio::test]
 async fn test_emit_when_both_streams_have_errors() {
-    let source = vec![
-        Sequenced::with_sequence(10, 1),
-        Sequenced::with_sequence(20, 3),
-    ];
-    let filter = vec![
-        Sequenced::with_sequence(5, 2),
-        Sequenced::with_sequence(15, 4),
-    ];
-
-    // Both have errors
-    let source_stream = ErrorInjectingStream::new(stream::iter(source), 1);
-    let filter_stream = ErrorInjectingStream::new(stream::iter(filter), 1);
+    let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 
-    let mut error_count = 0;
+    // Send initial values
+    filter_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(5, 1)))
+        .unwrap();
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(10, 2)))
+        .unwrap();
 
-    while let Some(item) = result.next().await {
-        if matches!(item, StreamItem::Error(_)) {
-            error_count += 1;
-        }
-    }
+    let result1 = result.next().await.unwrap();
+    assert!(matches!(result1, StreamItem::Value(_)));
 
-    assert!(
-        error_count >= 2,
-        "Should propagate errors from both streams"
-    );
+    // Error from source
+    source_tx
+        .send(StreamItem::Error(FluxionError::stream_error(
+            "Source error",
+        )))
+        .unwrap();
+
+    let result2 = result.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Error(_)));
+
+    // Error from filter
+    filter_tx
+        .send(StreamItem::Error(FluxionError::stream_error(
+            "Filter error",
+        )))
+        .unwrap();
+
+    let result3 = result.next().await.unwrap();
+    assert!(matches!(result3, StreamItem::Error(_)));
+
+    drop(source_tx);
+    drop(filter_tx);
 }
 
 #[tokio::test]
 async fn test_emit_when_error_before_filter_ready() {
-    let source = vec![Sequenced::with_sequence(10, 1)];
-    let filter = vec![Sequenced::with_sequence(5, 2)];
-
-    // Error immediately before filter has value
-    let source_stream = ErrorInjectingStream::new(stream::iter(source), 0);
-    let filter_stream = stream::iter(filter).map(StreamItem::Value);
+    let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 
+    // Error immediately before filter has value
+    source_tx
+        .send(StreamItem::Error(FluxionError::stream_error("Early error")))
+        .unwrap();
+
     let first = result.next().await.unwrap();
     assert!(matches!(first, StreamItem::Error(_)));
+
+    // Continue
+    filter_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(5, 2)))
+        .unwrap();
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(10, 1)))
+        .unwrap();
+
+    let result2 = result.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Value(_)));
+
+    drop(source_tx);
+    drop(filter_tx);
 }

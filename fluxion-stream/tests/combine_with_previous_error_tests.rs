@@ -4,53 +4,57 @@
 
 //! Error propagation tests for `combine_with_previous` operator.
 
-use fluxion_core::StreamItem;
+use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::CombineWithPreviousExt;
-use fluxion_test_utils::{sequenced::Sequenced, ErrorInjectingStream};
-use futures::{stream, StreamExt};
+use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
+use futures::StreamExt;
 
 #[tokio::test]
 async fn test_combine_with_previous_propagates_errors() {
-    let items = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 2),
-        Sequenced::with_sequence(3, 3),
-        Sequenced::with_sequence(4, 4),
-    ];
-
-    // Inject error at position 2
-    let stream = ErrorInjectingStream::new(stream::iter(items), 2);
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
 
     // First item - no previous
+    tx.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
+
     let item1 = result.next().await.unwrap();
     assert!(matches!(item1, StreamItem::Value(_)));
 
     // Second item - has previous
+    tx.send(StreamItem::Value(Sequenced::with_sequence(2, 2)))
+        .unwrap();
+
     let item2 = result.next().await.unwrap();
     assert!(matches!(item2, StreamItem::Value(_)));
 
     // Third item - error
+    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))
+        .unwrap();
+
     let item3 = result.next().await.unwrap();
     assert!(matches!(item3, StreamItem::Error(_)));
 
     // Fourth item - continues after error
+    tx.send(StreamItem::Value(Sequenced::with_sequence(4, 4)))
+        .unwrap();
+
     let item4 = result.next().await.unwrap();
     assert!(matches!(item4, StreamItem::Value(_)));
+
+    drop(tx);
 }
 
 #[tokio::test]
 async fn test_combine_with_previous_error_at_first_item() {
-    let items = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 2),
-    ];
-
-    // Error immediately
-    let stream = ErrorInjectingStream::new(stream::iter(items), 0);
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
+
+    // Error immediately
+    tx.send(StreamItem::Error(FluxionError::stream_error("First error")))
+        .unwrap();
 
     let first = result.next().await.unwrap();
     assert!(
@@ -58,78 +62,108 @@ async fn test_combine_with_previous_error_at_first_item() {
         "First item should be error"
     );
 
+    // Continue with value
+    tx.send(StreamItem::Value(Sequenced::with_sequence(2, 2)))
+        .unwrap();
+
     let second = result.next().await.unwrap();
     assert!(matches!(second, StreamItem::Value(_)), "Should continue");
+
+    drop(tx);
 }
 
 #[tokio::test]
 async fn test_combine_with_previous_multiple_errors() {
-    let items = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 2),
-        Sequenced::with_sequence(3, 3),
-        Sequenced::with_sequence(4, 4),
-        Sequenced::with_sequence(5, 5),
-    ];
-
-    // We can only inject one error with ErrorInjectingStream, but we can test the behavior
-    let stream = ErrorInjectingStream::new(stream::iter(items), 1);
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
 
-    let mut error_count = 0;
-    let mut value_count = 0;
+    // First value
+    tx.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
 
-    while let Some(item) = result.next().await {
-        match item {
-            StreamItem::Error(_) => error_count += 1,
-            StreamItem::Value(_) => value_count += 1,
-        }
-    }
+    let result1 = result.next().await.unwrap();
+    assert!(matches!(result1, StreamItem::Value(_)));
 
-    assert_eq!(error_count, 1, "Should have exactly one error");
-    assert!(value_count >= 3, "Should have multiple values");
+    // First error
+    tx.send(StreamItem::Error(FluxionError::stream_error("Error 1")))
+        .unwrap();
+
+    let result2 = result.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Error(_)));
+
+    // Value
+    tx.send(StreamItem::Value(Sequenced::with_sequence(3, 3)))
+        .unwrap();
+
+    let result3 = result.next().await.unwrap();
+    assert!(matches!(result3, StreamItem::Value(_)));
+
+    // Second error
+    tx.send(StreamItem::Error(FluxionError::stream_error("Error 2")))
+        .unwrap();
+
+    let result4 = result.next().await.unwrap();
+    assert!(matches!(result4, StreamItem::Error(_)));
+
+    // Value
+    tx.send(StreamItem::Value(Sequenced::with_sequence(5, 5)))
+        .unwrap();
+
+    let result5 = result.next().await.unwrap();
+    assert!(matches!(result5, StreamItem::Value(_)));
+
+    drop(tx);
 }
 
 #[tokio::test]
 async fn test_combine_with_previous_preserves_pairing_after_error() {
-    let items = vec![
-        Sequenced::with_sequence(10, 1),
-        Sequenced::with_sequence(20, 2),
-        Sequenced::with_sequence(30, 3),
-        Sequenced::with_sequence(40, 4),
-    ];
-
-    let stream = ErrorInjectingStream::new(stream::iter(items), 1);
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
 
-    let items: Vec<_> = result.collect().await;
+    // First value
+    tx.send(StreamItem::Value(Sequenced::with_sequence(10, 1)))
+        .unwrap();
 
-    // Should have values before and after error
-    let values: Vec<_> = items
-        .iter()
-        .filter_map(|item| match item {
-            StreamItem::Value(v) => Some(v),
-            _ => None,
-        })
-        .collect();
+    let item1 = result.next().await.unwrap();
+    assert!(matches!(item1, StreamItem::Value(_)));
 
-    // After error, pairing should still work correctly
-    assert!(values.len() >= 2, "Should have multiple value pairs");
+    // Error
+    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))
+        .unwrap();
+
+    let item2 = result.next().await.unwrap();
+    assert!(matches!(item2, StreamItem::Error(_)));
+
+    // More values - pairing should still work
+    tx.send(StreamItem::Value(Sequenced::with_sequence(30, 3)))
+        .unwrap();
+
+    let item3 = result.next().await.unwrap();
+    assert!(matches!(item3, StreamItem::Value(_)));
+
+    tx.send(StreamItem::Value(Sequenced::with_sequence(40, 4)))
+        .unwrap();
+
+    let item4 = result.next().await.unwrap();
+    assert!(matches!(item4, StreamItem::Value(_)));
+
+    drop(tx);
 }
 
 #[tokio::test]
 async fn test_combine_with_previous_single_item_stream_with_error() {
-    let items = vec![Sequenced::with_sequence(1, 1)];
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let stream = ErrorInjectingStream::new(stream::iter(items), 0);
+    let mut result = stream.combine_with_previous();
 
-    let result = stream.combine_with_previous();
+    // Error first
+    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))
+        .unwrap();
 
-    let items: Vec<_> = result.collect().await;
+    let item1 = result.next().await.unwrap();
+    assert!(matches!(item1, StreamItem::Error(_)));
 
-    // Should have error and the value after
-    let has_error = items.iter().any(|i| matches!(i, StreamItem::Error(_)));
-    assert!(has_error, "Should have error");
+    drop(tx);
 }

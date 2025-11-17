@@ -32,6 +32,51 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ Zero compiler warnings
 - ✅ Doc tests passing
 
+## 🚀 Version 0.2.0 - Error Propagation
+
+**Status:** Not published to crates.io
+
+**Goal:** Provide a consolidated foundation supporting error propagation
+
+**Essential Features:**
+- ✅ Consolidated interface fully supporting chaining
+- ✅ Change stream operators to return `Stream<Item = StreamItem<T>>`
+- ✅ All exsisting operators support error propagation
+- ✅ Full test coverage for each and every operator (happy case)
+- ✅ Full test coverage for each and every operator (error case)
+- ✅ Full test coverage for operator chaining (happy case)
+- [ ] Full test coverage for operator chaining (error case)
+- ✅ 1 fully functional example application showing the intrinsic integration path
+- [ ] 1 fully functional example application showing the wrapped integration path
+
+**Documentation:**
+- ✅ Provide exaustive integration guide with options
+- ✅ Provide exaustive error handling documentation
+- ✅ Integration guide with options
+- ✅ Roadmap document
+- ✅ Crate-level documentation for all modules
+- ✅ Operator comparison tables and selection guides
+
+**Quality Gates:**
+- ✅ All tests passing
+- ✅ Zero clippy warnings
+- ✅ Zero compiler warnings
+- ✅ Doc tests passing
+- ✅ CI green
+
+## 🚀 Version 0.3.0 - Test & Bench
+**Essential Features:**
+- [ ] At least one error operator implemented, documented and tested
+- [ ] Code coverage complete
+- [ ] Code coverage integrated in the CI
+- [ ] Benches exaustive
+
+**Documentation:**
+- [ ] `Subscribe` and `SubscribeLatest` documented
+
+**Quality Gates:**
+- [ ] performance table available and comprehensible
+
 ## 🚀 Version 1.0.0 - Production Ready
 
 **Essential Features:**
@@ -41,14 +86,8 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 #### 1. Complete Error Handling (Phase 2 & 3)
 
 **Phase 2: Stream Operator Error Propagation**
-- [ ] Change stream operators to return `Stream<Item = Result<T, FluxionError>>`
-- [ ] `combine_latest` propagates lock errors instead of dropping items
-- [ ] `with_latest_from` propagates errors
-- [ ] `ordered_merge` propagates errors
-- [ ] All operators handle and propagate internal failures
-- [ ] Update all operator tests to handle `Result` streams
-- [ ] Add specific error-triggering tests (lock poisoning, etc.)
-- [ ] All standard Rx operators supported
+
+- [ ] All standard Rx operators supported along with chaining and error propagation
 
 **Phase 3: Documentation & Finalization**
 - [ ] Create `docs/error-handling.md` guide
@@ -170,7 +209,9 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ Library compiles and all tests pass
 - ✅ Documentation covers all public APIs
 - ✅ Published to crates.io
-- ✅ Example projects demonstrate usage
+
+### 0.2.x Achievements
+- Example project demonstrate usage
 
 ### 1.0.0 Success Criteria
 - Zero critical bugs for 30+ days
@@ -197,17 +238,12 @@ This document outlines the release plan for Fluxion, a reactive stream processin
    - Address issues and questions
    - Add missing examples
 
-2. **Phase 2 Error Handling** (2-3 weeks)
-   - Implement stream operator error propagation
-   - Update all tests
-   - Validate with real scenarios
-
-3. **Performance Baseline** (1 week)
+2. **Performance Baseline** (1 week)
    - Create comprehensive benchmark suite
    - Establish baseline metrics
    - Identify optimization opportunities
 
-4. **Community Preparation** (1 week)
+3. **Community Preparation** (1 week)
    - Add contribution guidelines
    - Set up issue/PR templates
    - Prepare announcement materials
@@ -221,4 +257,4 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - Breaking changes are only introduced in major versions (post-1.0)
 - Security fixes may be backported to previous minor versions
 
-**Last Updated:** November 15, 2025
+**Last Updated:** November 17, 2025

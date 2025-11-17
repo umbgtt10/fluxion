@@ -4,163 +4,206 @@
 
 //! Error propagation tests for `combine_latest` operator.
 
-use fluxion_core::StreamItem;
+use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::CombineLatestExt;
-use fluxion_test_utils::{sequenced::Sequenced, ErrorInjectingStream};
-use futures::{stream, StreamExt};
+use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
+use futures::StreamExt;
 
 #[tokio::test]
 async fn test_combine_latest_propagates_error_from_primary_stream() {
-    let items1 = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 3),
-        Sequenced::with_sequence(3, 5),
-    ];
-    let items2 = vec![
-        Sequenced::with_sequence(10, 2),
-        Sequenced::with_sequence(20, 4),
-    ];
-
-    // Inject error at position 1 in primary stream
-    let stream1 = ErrorInjectingStream::new(stream::iter(items1), 1);
-    let stream2 = stream::iter(items2).map(StreamItem::Value);
+    let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut combined = stream1.combine_latest(vec![stream2], |_| true);
 
-    // Collect all items
-    let items: Vec<_> = combined.collect().await;
+    // Send initial values
+    tx1.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
+    tx2.send(StreamItem::Value(Sequenced::with_sequence(10, 2)))
+        .unwrap();
 
-    let has_error = items.iter().any(|i| matches!(i, StreamItem::Error(_)));
-    let has_value = items.iter().any(|i| matches!(i, StreamItem::Value(_)));
+    // First emission combines both values
+    let result1 = combined.next().await.unwrap();
+    assert!(matches!(result1, StreamItem::Value(_)));
 
-    assert!(has_error, "Should propagate error from primary stream");
-    assert!(has_value, "Should also emit values");
+    // Send error from primary stream
+    tx1.send(StreamItem::Error(FluxionError::stream_error(
+        "Primary error",
+    )))
+    .unwrap();
+
+    // Should propagate error
+    let result2 = combined.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Error(_)));
+
+    // Continue with more values
+    tx1.send(StreamItem::Value(Sequenced::with_sequence(3, 5)))
+        .unwrap();
+    tx2.send(StreamItem::Value(Sequenced::with_sequence(20, 4)))
+        .unwrap();
+
+    // Should emit value after error
+    let result3 = combined.next().await.unwrap();
+    assert!(matches!(result3, StreamItem::Value(_)));
+
+    drop(tx1);
+    drop(tx2);
 }
 
 #[tokio::test]
 async fn test_combine_latest_propagates_error_from_secondary_stream() {
-    let items1 = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 2),
-    ];
-    let items2 = vec![
-        Sequenced::with_sequence(10, 3),
-        Sequenced::with_sequence(20, 4),
-        Sequenced::with_sequence(30, 5),
-    ];
-
-    let stream1 = stream::iter(items1).map(StreamItem::Value);
-    // Inject error at position 1 in secondary stream
-    let stream2 = ErrorInjectingStream::new(stream::iter(items2), 1);
+    let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut combined = stream1.combine_latest(vec![stream2], |_| true);
+
+    // Send initial values
+    tx1.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
+    tx2.send(StreamItem::Value(Sequenced::with_sequence(10, 3)))
+        .unwrap();
 
     // First emission should succeed
     let result1 = combined.next().await.unwrap();
     assert!(matches!(result1, StreamItem::Value(_)));
 
-    // Second should be the error from secondary
+    // Send error from secondary stream
+    tx2.send(StreamItem::Error(FluxionError::stream_error(
+        "Secondary error",
+    )))
+    .unwrap();
+
+    // Should propagate error from secondary
     let result2 = combined.next().await.unwrap();
     assert!(matches!(result2, StreamItem::Error(_)));
+
+    // Continue with more values
+    tx2.send(StreamItem::Value(Sequenced::with_sequence(30, 5)))
+        .unwrap();
 
     // Stream should continue after error
     let result3 = combined.next().await.unwrap();
     assert!(matches!(result3, StreamItem::Value(_)));
+
+    drop(tx1);
+    drop(tx2);
 }
 
 #[tokio::test]
 async fn test_combine_latest_multiple_errors_from_different_streams() {
-    let items1 = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 3),
-    ];
-    let items2 = vec![
-        Sequenced::with_sequence(10, 2),
-        Sequenced::with_sequence(20, 4),
-    ];
-
-    // Both streams inject errors
-    let stream1 = ErrorInjectingStream::new(stream::iter(items1), 1);
-    let stream2 = ErrorInjectingStream::new(stream::iter(items2), 1);
+    let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut combined = stream1.combine_latest(vec![stream2], |_| true);
 
-    let mut error_count = 0;
-    let mut value_count = 0;
+    // Send initial values
+    tx1.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
+    tx2.send(StreamItem::Value(Sequenced::with_sequence(10, 2)))
+        .unwrap();
 
-    while let Some(item) = combined.next().await {
-        match item {
-            StreamItem::Value(_) => value_count += 1,
-            StreamItem::Error(_) => error_count += 1,
-        }
-    }
+    let result1 = combined.next().await.unwrap();
+    assert!(matches!(result1, StreamItem::Value(_)));
 
-    // Should see errors from both streams
-    assert!(
-        error_count >= 2,
-        "Expected at least 2 errors, got {}",
-        error_count
-    );
-    assert!(
-        value_count >= 1,
-        "Expected at least 1 value, got {}",
-        value_count
-    );
+    // Error from first stream
+    tx1.send(StreamItem::Error(FluxionError::stream_error("Error 1")))
+        .unwrap();
+
+    let result2 = combined.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Error(_)));
+
+    // Error from second stream
+    tx2.send(StreamItem::Error(FluxionError::stream_error("Error 2")))
+        .unwrap();
+
+    let result3 = combined.next().await.unwrap();
+    assert!(matches!(result3, StreamItem::Error(_)));
+
+    // Continue with values
+    tx1.send(StreamItem::Value(Sequenced::with_sequence(2, 3)))
+        .unwrap();
+
+    let result4 = combined.next().await.unwrap();
+    assert!(matches!(result4, StreamItem::Value(_)));
+
+    drop(tx1);
+    drop(tx2);
 }
 
 #[tokio::test]
 async fn test_combine_latest_error_at_start() {
-    let items1 = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 2),
-    ];
-    let items2 = vec![Sequenced::with_sequence(10, 3)];
-
-    // Inject error immediately
-    let stream1 = ErrorInjectingStream::new(stream::iter(items1), 0);
-    let stream2 = stream::iter(items2).map(StreamItem::Value);
+    let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut combined = stream1.combine_latest(vec![stream2], |_| true);
+
+    // Send error immediately
+    tx1.send(StreamItem::Error(FluxionError::stream_error(
+        "Immediate error",
+    )))
+    .unwrap();
 
     // First item should be the error
     let result1 = combined.next().await.unwrap();
     assert!(matches!(result1, StreamItem::Error(_)));
 
+    // Send values
+    tx1.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
+    tx2.send(StreamItem::Value(Sequenced::with_sequence(10, 3)))
+        .unwrap();
+
     // Should continue processing
     let result2 = combined.next().await.unwrap();
     assert!(matches!(result2, StreamItem::Value(_)));
+
+    drop(tx1);
+    drop(tx2);
 }
 
 #[tokio::test]
 async fn test_combine_latest_filter_predicate_continues_after_error() {
-    let items1 = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 2),
-        Sequenced::with_sequence(3, 3),
-    ];
-    let items2 = vec![Sequenced::with_sequence(10, 4)];
-
-    let stream1 = ErrorInjectingStream::new(stream::iter(items1), 1);
-    let stream2 = stream::iter(items2).map(StreamItem::Value);
+    let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Filter predicate should still be evaluated after error
     let mut combined = stream1.combine_latest(vec![stream2], |state| {
         state.values()[0] > 1 // Only pass values > 1
     });
 
-    let mut results = vec![];
-    while let Some(item) = combined.next().await {
-        results.push(item);
-    }
+    // Send initial values (won't pass filter)
+    tx1.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
+    tx2.send(StreamItem::Value(Sequenced::with_sequence(10, 4)))
+        .unwrap();
 
-    // Should have error and filtered values
-    let has_error = results
-        .iter()
-        .any(|item| matches!(item, StreamItem::Error(_)));
-    let has_value = results
-        .iter()
-        .any(|item| matches!(item, StreamItem::Value(_)));
+    // Send error
+    tx1.send(StreamItem::Error(FluxionError::stream_error(
+        "Error in middle",
+    )))
+    .unwrap();
 
-    assert!(has_error, "Should have at least one error");
-    assert!(has_value, "Should have at least one value after filtering");
+    let result1 = combined.next().await.unwrap();
+    assert!(matches!(result1, StreamItem::Error(_)));
+
+    // Send value that passes filter
+    tx1.send(StreamItem::Value(Sequenced::with_sequence(2, 2)))
+        .unwrap();
+
+    let result2 = combined.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Value(_)));
+
+    // Send value that doesn't pass filter
+    tx1.send(StreamItem::Value(Sequenced::with_sequence(0, 3)))
+        .unwrap();
+
+    // Send another value that passes
+    tx1.send(StreamItem::Value(Sequenced::with_sequence(3, 5)))
+        .unwrap();
+
+    let result3 = combined.next().await.unwrap();
+    assert!(matches!(result3, StreamItem::Value(_)));
+
+    drop(tx1);
+    drop(tx2);
 }

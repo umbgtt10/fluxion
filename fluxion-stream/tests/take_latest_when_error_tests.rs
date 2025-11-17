@@ -4,131 +4,181 @@
 
 //! Error propagation tests for `take_latest_when` operator.
 
-use fluxion_core::StreamItem;
+use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::TakeLatestWhenExt;
-use fluxion_test_utils::{sequenced::Sequenced, ErrorInjectingStream};
-use futures::{stream, StreamExt};
+use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
+use futures::StreamExt;
 
 #[tokio::test]
 async fn test_take_latest_when_propagates_source_error() {
-    let source = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 2),
-        Sequenced::with_sequence(3, 3),
-    ];
-    let trigger = vec![
-        Sequenced::with_sequence(10, 4),
-        Sequenced::with_sequence(20, 5),
-    ];
-
-    // Error at position 1 in source
-    let source_stream = ErrorInjectingStream::new(stream::iter(source), 1);
-    let trigger_stream = stream::iter(trigger).map(StreamItem::Value);
+    let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = source_stream.take_latest_when(trigger_stream, |_| true);
 
-    // Should get error when it appears in source
-    let mut has_error = false;
-    let mut has_value = false;
+    // Send source values
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(2, 2)))
+        .unwrap();
 
-    while let Some(item) = result.next().await {
-        match item {
-            StreamItem::Error(_) => has_error = true,
-            StreamItem::Value(_) => has_value = true,
-        }
-    }
+    // Send trigger
+    trigger_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(10, 4)))
+        .unwrap();
 
-    assert!(has_error, "Should propagate source error");
-    assert!(has_value, "Should also emit values");
+    let result1 = result.next().await.unwrap();
+    assert!(matches!(result1, StreamItem::Value(_)));
+
+    // Send error in source
+    source_tx
+        .send(StreamItem::Error(FluxionError::stream_error(
+            "Source error",
+        )))
+        .unwrap();
+
+    let result2 = result.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Error(_)));
+
+    // Continue with values
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(3, 3)))
+        .unwrap();
+    trigger_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(20, 5)))
+        .unwrap();
+
+    let result3 = result.next().await.unwrap();
+    assert!(matches!(result3, StreamItem::Value(_)));
+
+    drop(source_tx);
+    drop(trigger_tx);
 }
 
 #[tokio::test]
 async fn test_take_latest_when_propagates_trigger_error() {
-    let source = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 2),
-    ];
-    let trigger = vec![
-        Sequenced::with_sequence(10, 3),
-        Sequenced::with_sequence(20, 4),
-        Sequenced::with_sequence(30, 5),
-    ];
-
-    let source_stream = stream::iter(source).map(StreamItem::Value);
-    // Error at position 1 in trigger
-    let trigger_stream = ErrorInjectingStream::new(stream::iter(trigger), 1);
+    let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = source_stream.take_latest_when(trigger_stream, |_| true);
 
-    let mut error_count = 0;
-    let mut value_count = 0;
+    // Send source values
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(2, 2)))
+        .unwrap();
 
-    while let Some(item) = result.next().await {
-        match item {
-            StreamItem::Error(_) => error_count += 1,
-            StreamItem::Value(_) => value_count += 1,
-        }
-    }
+    // Send trigger
+    trigger_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(10, 3)))
+        .unwrap();
 
-    assert!(error_count >= 1, "Should propagate trigger error");
-    assert!(value_count >= 1, "Should emit values");
+    let result1 = result.next().await.unwrap();
+    assert!(matches!(result1, StreamItem::Value(_)));
+
+    // Send error in trigger
+    trigger_tx
+        .send(StreamItem::Error(FluxionError::stream_error(
+            "Trigger error",
+        )))
+        .unwrap();
+
+    let result2 = result.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Error(_)));
+
+    // Continue
+    trigger_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(30, 5)))
+        .unwrap();
+
+    let result3 = result.next().await.unwrap();
+    assert!(matches!(result3, StreamItem::Value(_)));
+
+    drop(source_tx);
+    drop(trigger_tx);
 }
 
 #[tokio::test]
 async fn test_take_latest_when_filter_predicate_after_error() {
-    let source = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 2),
-        Sequenced::with_sequence(3, 3),
-    ];
-    let trigger = vec![
-        Sequenced::with_sequence(10, 4),
-        Sequenced::with_sequence(100, 5),
-    ];
-
-    // Error in source
-    let source_stream = ErrorInjectingStream::new(stream::iter(source), 1);
-    let trigger_stream = stream::iter(trigger).map(StreamItem::Value);
+    let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Only emit when trigger is > 50
     let mut result = source_stream.take_latest_when(trigger_stream, |t| *t > 50);
 
-    let items: Vec<_> = result.collect().await;
+    // Send source values
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(2, 2)))
+        .unwrap();
 
-    let has_error = items.iter().any(|i| matches!(i, StreamItem::Error(_)));
-    let has_value = items.iter().any(|i| matches!(i, StreamItem::Value(_)));
+    // Send error in source
+    source_tx
+        .send(StreamItem::Error(FluxionError::stream_error("Error")))
+        .unwrap();
 
-    assert!(has_error, "Should have error");
-    assert!(has_value, "Predicate should still work after error");
+    let result1 = result.next().await.unwrap();
+    assert!(matches!(result1, StreamItem::Error(_)));
+
+    // Send value and trigger that passes filter
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(3, 3)))
+        .unwrap();
+    trigger_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(100, 5)))
+        .unwrap();
+
+    let result2 = result.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Value(_)));
+
+    drop(source_tx);
+    drop(trigger_tx);
 }
 
 #[tokio::test]
 async fn test_take_latest_when_both_streams_have_errors() {
-    let source = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 3),
-    ];
-    let trigger = vec![
-        Sequenced::with_sequence(10, 2),
-        Sequenced::with_sequence(20, 4),
-    ];
-
-    // Both streams have errors
-    let source_stream = ErrorInjectingStream::new(stream::iter(source), 1);
-    let trigger_stream = ErrorInjectingStream::new(stream::iter(trigger), 1);
+    let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = source_stream.take_latest_when(trigger_stream, |_| true);
 
-    let mut error_count = 0;
+    // Send initial values
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
+    trigger_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(10, 2)))
+        .unwrap();
 
-    while let Some(item) = result.next().await {
-        if matches!(item, StreamItem::Error(_)) {
-            error_count += 1;
-        }
-    }
+    let result1 = result.next().await.unwrap();
+    assert!(matches!(result1, StreamItem::Value(_)));
 
-    assert!(
-        error_count >= 2,
-        "Should propagate errors from both streams"
-    );
+    // Error from source
+    source_tx
+        .send(StreamItem::Error(FluxionError::stream_error(
+            "Source error",
+        )))
+        .unwrap();
+
+    let result2 = result.next().await.unwrap();
+    assert!(matches!(result2, StreamItem::Error(_)));
+
+    // Error from trigger
+    trigger_tx
+        .send(StreamItem::Error(FluxionError::stream_error(
+            "Trigger error",
+        )))
+        .unwrap();
+
+    let result3 = result.next().await.unwrap();
+    assert!(matches!(result3, StreamItem::Error(_)));
+
+    drop(source_tx);
+    drop(trigger_tx);
 }

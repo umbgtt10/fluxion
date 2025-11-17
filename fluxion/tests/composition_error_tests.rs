@@ -4,190 +4,215 @@
 
 //! Error propagation tests for composed stream operations.
 
-use fluxion_core::{Ordered, StreamItem};
+use fluxion_core::{FluxionError, Ordered, StreamItem};
 use fluxion_stream::{CombineLatestExt, EmitWhenExt, FluxionStream, TakeLatestWhenExt};
-use fluxion_test_utils::{sequenced::Sequenced, ErrorInjectingStream};
-use futures::{stream, StreamExt};
+use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
+use futures::StreamExt;
 
 #[tokio::test]
 async fn test_error_propagation_through_multiple_operators() {
-    // Create a stream with error injection
-    let items = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 2),
-        Sequenced::with_sequence(3, 3),
-        Sequenced::with_sequence(4, 4),
-        Sequenced::with_sequence(5, 5),
-    ];
-
-    // Inject error at position 2
-    let stream = ErrorInjectingStream::new(stream::iter(items), 2);
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Chain multiple operators
-    let result = FluxionStream::new(stream)
+    let mut result = FluxionStream::new(stream)
         .filter_ordered(|x| *x > 1) // Filter out first item
         .combine_with_previous()
         .map_ordered(|x| x.current.get() * 10);
 
-    let items: Vec<_> = result.collect().await;
+    // Send value (filtered out)
+    tx.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
 
-    // Should have error and transformed values
-    let has_error = items.iter().any(|i| matches!(i, StreamItem::Error(_)));
-    let has_values = items.iter().any(|i| matches!(i, StreamItem::Value(_)));
+    // Send value (passes)
+    tx.send(StreamItem::Value(Sequenced::with_sequence(2, 2)))
+        .unwrap();
 
-    assert!(has_error, "Error should propagate through operator chain");
-    assert!(has_values, "Values should be transformed correctly");
+    let item1 = result.next().await.unwrap();
+    assert!(matches!(item1, StreamItem::Value(20)));
 
-    // Check that transformations work before and after error
-    let values: Vec<_> = items
-        .iter()
-        .filter_map(|item| match item {
-            StreamItem::Value(v) => Some(*v),
-            _ => None,
-        })
-        .collect();
+    // Send error
+    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))
+        .unwrap();
 
-    assert!(!values.is_empty(), "Should have transformed values");
-    // Values should be multiplied by 10
-    assert!(
-        values.iter().all(|&v| v % 10 == 0),
-        "All values should be multiples of 10"
-    );
+    let item2 = result.next().await.unwrap();
+    assert!(matches!(item2, StreamItem::Error(_)));
+
+    // Continue
+    tx.send(StreamItem::Value(Sequenced::with_sequence(4, 4)))
+        .unwrap();
+
+    let item3 = result.next().await.unwrap();
+    assert!(matches!(item3, StreamItem::Value(40)));
+
+    tx.send(StreamItem::Value(Sequenced::with_sequence(5, 5)))
+        .unwrap();
+
+    let item4 = result.next().await.unwrap();
+    assert!(matches!(item4, StreamItem::Value(50)));
+
+    drop(tx);
 }
 
 #[tokio::test]
 async fn test_error_in_long_operator_chain() {
-    let items = vec![
-        Sequenced::with_sequence(10, 1),
-        Sequenced::with_sequence(20, 2),
-        Sequenced::with_sequence(30, 3),
-        Sequenced::with_sequence(40, 4),
-    ];
-
-    // Inject error at position 1
-    let stream = ErrorInjectingStream::new(stream::iter(items), 1);
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Long chain: filter -> combine_with_previous -> map
-    let result = FluxionStream::new(stream)
+    let mut result = FluxionStream::new(stream)
         .filter_ordered(|x| *x >= 10)
         .combine_with_previous()
         .map_ordered(|x| x.current.get() + 5);
 
-    let items: Vec<_> = result.collect().await;
+    // Send value
+    tx.send(StreamItem::Value(Sequenced::with_sequence(10, 1)))
+        .unwrap();
 
-    let error_count = items
-        .iter()
-        .filter(|i| matches!(i, StreamItem::Error(_)))
-        .count();
-    let value_count = items
-        .iter()
-        .filter(|i| matches!(i, StreamItem::Value(_)))
-        .count();
+    let item1 = result.next().await.unwrap();
+    assert!(matches!(item1, StreamItem::Value(15)));
 
-    assert_eq!(error_count, 1, "Should have exactly one error");
-    assert!(
-        value_count >= 1,
-        "Should have transformed and filtered values"
-    );
+    // Send error
+    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))
+        .unwrap();
+
+    let item2 = result.next().await.unwrap();
+    assert!(matches!(item2, StreamItem::Error(_)));
+
+    // Continue
+    tx.send(StreamItem::Value(Sequenced::with_sequence(30, 3)))
+        .unwrap();
+
+    let item3 = result.next().await.unwrap();
+    assert!(matches!(item3, StreamItem::Value(35)));
+
+    tx.send(StreamItem::Value(Sequenced::with_sequence(40, 4)))
+        .unwrap();
+
+    let item4 = result.next().await.unwrap();
+    assert!(matches!(item4, StreamItem::Value(45)));
+
+    drop(tx);
 }
 
 #[tokio::test]
 async fn test_multiple_errors_through_composition() {
-    let items1 = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 2),
-        Sequenced::with_sequence(3, 3),
-    ];
-    let items2 = vec![
-        Sequenced::with_sequence(10, 4),
-        Sequenced::with_sequence(20, 5),
-    ];
-
-    // Inject errors in primary stream
-    let stream1 = ErrorInjectingStream::new(stream::iter(items1), 1);
-    let stream2 = stream::iter(items2).map(StreamItem::Value);
+    let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Combine then transform
-    let result = stream1
+    let mut result = stream1
         .combine_latest(vec![stream2], |_| true)
         .combine_with_previous()
-        .map_ordered(|x| format!("Combined: {:?}", x.current.get().values()));
+        .map_ordered(|x| {
+            let state = x.current.get();
+            format!("Combined: {:?}", state.values())
+        });
 
-    let items: Vec<_> = result.collect().await;
+    // Send initial values
+    tx1.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))
+        .unwrap();
+    tx2.send(StreamItem::Value(Sequenced::with_sequence(10, 4)))
+        .unwrap();
 
-    let has_error = items.iter().any(|i| matches!(i, StreamItem::Error(_)));
-    let has_string_values = items
-        .iter()
-        .any(|i| matches!(i, StreamItem::Value(s) if s.contains("Combined")));
+    let item1 = result.next().await.unwrap();
+    assert!(matches!(item1, StreamItem::Value(ref s) if s.contains("Combined")));
 
-    assert!(
-        has_error,
-        "Should propagate errors through combined operators"
-    );
-    assert!(has_string_values, "Should format combined values correctly");
+    // Send error
+    tx1.send(StreamItem::Error(FluxionError::stream_error("Error")))
+        .unwrap();
+
+    let item2 = result.next().await.unwrap();
+    assert!(matches!(item2, StreamItem::Error(_)));
+
+    // Continue
+    tx1.send(StreamItem::Value(Sequenced::with_sequence(3, 3)))
+        .unwrap();
+
+    let item3 = result.next().await.unwrap();
+    assert!(matches!(item3, StreamItem::Value(ref s) if s.contains("Combined")));
+
+    drop(tx1);
+    drop(tx2);
 }
 
 #[tokio::test]
 async fn test_error_recovery_in_composed_streams() {
-    let source = vec![
-        Sequenced::with_sequence(5, 1),
-        Sequenced::with_sequence(10, 2),
-        Sequenced::with_sequence(15, 3),
-        Sequenced::with_sequence(20, 4),
-    ];
-    let trigger = vec![
-        Sequenced::with_sequence(100, 5),
-        Sequenced::with_sequence(200, 6),
-    ];
-
-    // Error in source
-    let source_stream = ErrorInjectingStream::new(stream::iter(source), 1);
-    let trigger_stream = stream::iter(trigger).map(StreamItem::Value);
+    let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Complex composition
-    let result = source_stream
+    let mut result = source_stream
         .take_latest_when(trigger_stream, |_| true)
         .combine_with_previous()
         .map_ordered(|x| *x.current.get());
 
-    let items: Vec<_> = result.collect().await;
+    // Send source values
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(5, 1)))
+        .unwrap();
 
-    // Stream should complete and process values despite error
-    let has_error = items.iter().any(|i| matches!(i, StreamItem::Error(_)));
+    // Send error
+    source_tx
+        .send(StreamItem::Error(FluxionError::stream_error("Error")))
+        .unwrap();
 
-    assert!(
-        has_error || items.is_empty(),
-        "Should handle error gracefully"
-    );
+    let item1 = result.next().await.unwrap();
+    assert!(matches!(item1, StreamItem::Error(_)));
+
+    // Continue
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(15, 3)))
+        .unwrap();
+    trigger_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(100, 5)))
+        .unwrap();
+
+    let item2 = result.next().await.unwrap();
+    assert!(matches!(item2, StreamItem::Value(15)));
+
+    drop(source_tx);
+    drop(trigger_tx);
 }
 
 #[tokio::test]
 async fn test_error_with_emit_when_composition() {
-    let source = vec![
-        Sequenced::with_sequence(5, 1),
-        Sequenced::with_sequence(15, 2),
-        Sequenced::with_sequence(25, 3),
-    ];
-    let filter = vec![
-        Sequenced::with_sequence(10, 4),
-        Sequenced::with_sequence(20, 5),
-    ];
-
-    let source_stream = ErrorInjectingStream::new(stream::iter(source), 1);
-    let filter_stream = stream::iter(filter).map(StreamItem::Value);
+    let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // emit_when + map composition
-    let result = source_stream
+    let mut result = source_stream
         .emit_when(filter_stream, |state| state.values()[0] > state.values()[1])
         .combine_with_previous()
         .map_ordered(|x| x.current.get() * 2);
 
-    let items: Vec<_> = result.collect().await;
+    // Send filter value first
+    filter_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(10, 1)))
+        .unwrap();
 
-    let has_error = items.iter().any(|i| matches!(i, StreamItem::Error(_)));
+    // Send source value (doesn't pass predicate)
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(5, 2)))
+        .unwrap();
 
-    assert!(
-        has_error,
-        "Should propagate error through emit_when composition"
-    );
+    // Send error
+    source_tx
+        .send(StreamItem::Error(FluxionError::stream_error("Error")))
+        .unwrap();
+
+    let item1 = result.next().await.unwrap();
+    assert!(matches!(item1, StreamItem::Error(_)));
+
+    // Send value that passes
+    filter_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(20, 4)))
+        .unwrap();
+    source_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(25, 3)))
+        .unwrap();
+
+    let item2 = result.next().await.unwrap();
+    assert!(matches!(item2, StreamItem::Value(50)));
+
+    drop(source_tx);
+    drop(filter_tx);
 }

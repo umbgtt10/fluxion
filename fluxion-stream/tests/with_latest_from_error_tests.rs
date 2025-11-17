@@ -4,119 +4,167 @@
 
 //! Error propagation tests for `with_latest_from` operator.
 
-use fluxion_core::StreamItem;
+use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::WithLatestFromExt;
-use fluxion_test_utils::{sequenced::Sequenced, ErrorInjectingStream};
-use futures::{stream, StreamExt};
+use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
+use futures::StreamExt;
 
 #[tokio::test]
 async fn test_with_latest_from_propagates_primary_error() {
-    let primary = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 3),
-        Sequenced::with_sequence(3, 5),
-    ];
-    let secondary = vec![
-        Sequenced::with_sequence(10, 2),
-        Sequenced::with_sequence(20, 4),
-    ];
+    let (primary_tx, primary_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (secondary_tx, secondary_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    // Inject error at position 1 in primary
-    let primary_stream = ErrorInjectingStream::new(stream::iter(primary), 1);
-    let secondary_stream = stream::iter(secondary).map(StreamItem::Value);
+    let mut result = primary_stream.with_latest_from(secondary_stream, |_| true);
 
-    let result = primary_stream.with_latest_from(secondary_stream, |_| true);
+    // Send secondary first (required for with_latest_from)
+    secondary_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(10, 1)))
+        .unwrap();
 
-    let items: Vec<_> = result.collect().await;
+    // Send primary value
+    primary_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(1, 2)))
+        .unwrap();
 
-    let has_error = items.iter().any(|i| matches!(i, StreamItem::Error(_)));
-    let has_value = items.iter().any(|i| matches!(i, StreamItem::Value(_)));
+    let item1 = result.next().await.unwrap();
+    assert!(matches!(item1, StreamItem::Value(_)));
 
-    assert!(has_error, "Should propagate error from primary stream");
-    assert!(has_value, "Should also emit values");
+    // Send error in primary
+    primary_tx
+        .send(StreamItem::Error(FluxionError::stream_error(
+            "Primary error",
+        )))
+        .unwrap();
+
+    let item2 = result.next().await.unwrap();
+    assert!(
+        matches!(item2, StreamItem::Error(_)),
+        "Should propagate error from primary stream"
+    );
+
+    // Continue with more values
+    primary_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(3, 4)))
+        .unwrap();
+
+    let item3 = result.next().await.unwrap();
+    assert!(matches!(item3, StreamItem::Value(_)));
+
+    drop(primary_tx);
+    drop(secondary_tx);
 }
 
 #[tokio::test]
 async fn test_with_latest_from_propagates_secondary_error() {
-    let primary = vec![
-        Sequenced::with_sequence(1, 2),
-        Sequenced::with_sequence(2, 4),
-    ];
-    let secondary = vec![
-        Sequenced::with_sequence(10, 1),
-        Sequenced::with_sequence(20, 3),
-        Sequenced::with_sequence(30, 5),
-    ];
-
-    let primary_stream = stream::iter(primary).map(StreamItem::Value);
-    // Inject error in secondary
-    let secondary_stream = ErrorInjectingStream::new(stream::iter(secondary), 1);
+    let (primary_tx, primary_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (secondary_tx, secondary_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = primary_stream.with_latest_from(secondary_stream, |_| true);
 
-    // Should get error when secondary emits it
-    let mut has_error = false;
-    let mut has_value = false;
+    // Send secondary value first
+    secondary_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(10, 1)))
+        .unwrap();
 
-    while let Some(item) = result.next().await {
-        match item {
-            StreamItem::Error(_) => has_error = true,
-            StreamItem::Value(_) => has_value = true,
-        }
-    }
+    // Send primary value
+    primary_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(1, 2)))
+        .unwrap();
 
-    assert!(has_error, "Should propagate error from secondary");
-    assert!(has_value, "Should have values");
+    let item1 = result.next().await.unwrap();
+    assert!(matches!(item1, StreamItem::Value(_)));
+
+    // Send error in secondary
+    secondary_tx
+        .send(StreamItem::Error(FluxionError::stream_error(
+            "Secondary error",
+        )))
+        .unwrap();
+
+    let item2 = result.next().await.unwrap();
+    assert!(
+        matches!(item2, StreamItem::Error(_)),
+        "Should propagate error from secondary"
+    );
+
+    // Update secondary with new value
+    secondary_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(30, 5)))
+        .unwrap();
+
+    // Send primary value
+    primary_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(2, 6)))
+        .unwrap();
+
+    let item3 = result.next().await.unwrap();
+    assert!(matches!(item3, StreamItem::Value(_)));
+
+    drop(primary_tx);
+    drop(secondary_tx);
 }
 
 #[tokio::test]
 async fn test_with_latest_from_error_before_secondary_ready() {
-    let primary = vec![Sequenced::with_sequence(1, 1)];
-    let secondary = vec![Sequenced::with_sequence(10, 2)];
-
-    // Error immediately in primary, before secondary has value
-    let primary_stream = ErrorInjectingStream::new(stream::iter(primary), 0);
-    let secondary_stream = stream::iter(secondary).map(StreamItem::Value);
+    let (primary_tx, primary_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (secondary_tx, secondary_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = primary_stream.with_latest_from(secondary_stream, |_| true);
 
+    // Send error in primary before secondary has value
+    primary_tx
+        .send(StreamItem::Error(FluxionError::stream_error("Early error")))
+        .unwrap();
+
     let item = result.next().await.unwrap();
     assert!(matches!(item, StreamItem::Error(_)));
+
+    drop(primary_tx);
+    drop(secondary_tx);
 }
 
 #[tokio::test]
 async fn test_with_latest_from_selector_continues_after_error() {
-    let primary = vec![
-        Sequenced::with_sequence(1, 1),
-        Sequenced::with_sequence(2, 3),
-        Sequenced::with_sequence(3, 5),
-    ];
-    let secondary = vec![
-        Sequenced::with_sequence(100, 2),
-        Sequenced::with_sequence(200, 4),
-    ];
-
-    let primary_stream = ErrorInjectingStream::new(stream::iter(primary), 1);
-    let secondary_stream = stream::iter(secondary).map(StreamItem::Value);
+    let (primary_tx, primary_stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (secondary_tx, secondary_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Custom selector - pass through combined state
     let mut result = primary_stream.with_latest_from(secondary_stream, |combined| combined.clone());
 
-    let mut items = vec![];
-    while let Some(item) = result.next().await {
-        items.push(item);
-    }
+    // Send secondary first
+    secondary_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(100, 1)))
+        .unwrap();
 
-    // Should have error and some values
-    let error_count = items
-        .iter()
-        .filter(|i| matches!(i, StreamItem::Error(_)))
-        .count();
-    let value_count = items
-        .iter()
-        .filter(|i| matches!(i, StreamItem::Value(_)))
-        .count();
+    // Send primary value
+    primary_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(1, 2)))
+        .unwrap();
 
-    assert_eq!(error_count, 1, "Should have exactly one error");
-    assert!(value_count >= 1, "Should have at least one value");
+    let item1 = result.next().await.unwrap();
+    assert!(matches!(item1, StreamItem::Value(_)));
+
+    // Send error in primary
+    primary_tx
+        .send(StreamItem::Error(FluxionError::stream_error("Error")))
+        .unwrap();
+
+    let item2 = result.next().await.unwrap();
+    assert!(matches!(item2, StreamItem::Error(_)));
+
+    // Update secondary
+    secondary_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(200, 4)))
+        .unwrap();
+
+    // Send primary value
+    primary_tx
+        .send(StreamItem::Value(Sequenced::with_sequence(3, 5)))
+        .unwrap();
+
+    let item3 = result.next().await.unwrap();
+    assert!(matches!(item3, StreamItem::Value(_)));
+
+    drop(primary_tx);
+    drop(secondary_tx);
 }
