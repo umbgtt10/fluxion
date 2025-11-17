@@ -33,6 +33,10 @@ A reactive stream processing library for Rust with temporal ordering guarantees,
 - **[GEMINI](assessments/ASSESSMENT_GEMINI.md)**
 - **[CLAUDE](assessments/ASSESSMENT_CLAUDE.md)**
 
+### 📋 Unwrap and Expect Assessment
+
+- **[Assessment](assessments/ASSESSMENT_CLAUDE.md)**
+
 ## Quick Start
 
 Add Fluxion to your `Cargo.toml`:
