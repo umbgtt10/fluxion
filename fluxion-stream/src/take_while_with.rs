@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use crate::FluxionStream;
 use fluxion_core::lock_utilities::lock_or_error;
 use fluxion_core::{Ordered, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
@@ -39,7 +40,7 @@ where
     /// - Source values are emitted only when latest filter passes the predicate
     /// - Filter stream updates change the gating condition
     /// - Stream terminates immediately when filter predicate returns `false`
-    /// - Emitted values are unwrapped (returns `TItem::Inner`, not `TItem`)
+    /// - Emitted values maintain their ordered wrapper
     ///
     /// # Arguments
     ///
@@ -48,8 +49,8 @@ where
     ///
     /// # Returns
     ///
-    /// A `FluxionStream` of unwrapped source elements (`TItem::Inner`) that are emitted
-    /// while the filter condition remains true. Stream terminates when condition becomes false.
+    /// A `FluxionStream` of source elements that are emitted while the filter condition
+    /// remains true. Stream terminates when condition becomes false.
     ///
     /// # Errors
     ///
@@ -94,7 +95,7 @@ where
     /// tx_data.send(Sequenced::with_sequence(1, 2)).unwrap();
     ///
     /// // Assert
-    /// assert_eq!(gated.next().await.unwrap().unwrap(), 1);
+    /// assert_eq!(gated.next().await.unwrap().unwrap().get(), &1);
     /// # }
     /// ```
     ///
@@ -112,7 +113,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<TItem::Inner>> + Send;
+    ) -> FluxionStream<impl Stream<Item = StreamItem<TItem>> + Send>;
 }
 
 impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
@@ -128,7 +129,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<TItem::Inner>> + Send {
+    ) -> FluxionStream<impl Stream<Item = StreamItem<TItem>> + Send> {
         let filter = Arc::new(filter);
 
         // Tag each stream with its type - unwrap StreamItem first
@@ -153,7 +154,7 @@ where
         let state = Arc::new(Mutex::new((None::<TFilter::Inner>, false)));
 
         // Use ordered_merge and process items in order
-        streams.ordered_merge().filter_map({
+        let result = streams.ordered_merge().filter_map({
             let state = Arc::clone(&state);
             move |item| {
                 let state = Arc::clone(&state);
@@ -178,7 +179,7 @@ where
                                     || None,
                                     |fval| {
                                         if filter(fval) {
-                                            Some(StreamItem::Value(source_val.get().clone()))
+                                            Some(StreamItem::Value(source_val.clone()))
                                         } else {
                                             *terminated = true;
                                             None
@@ -191,7 +192,10 @@ where
                     }
                 }
             }
-        })
+        });
+
+        let boxed = Box::pin(result);
+        FluxionStream::new(boxed)
     }
 }
 

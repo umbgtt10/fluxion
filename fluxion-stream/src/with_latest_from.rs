@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use crate::FluxionStream;
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
@@ -115,11 +116,11 @@ where
         self,
         other: IS,
         result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send
+    ) -> FluxionStream<impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
-        R: Clone + Debug + Ord + Send + Sync + 'static;
+        R: Clone + Debug + Send + Sync + 'static;
 }
 
 impl<T, P> WithLatestFromExt<T> for P
@@ -132,11 +133,11 @@ where
         self,
         other: IS,
         result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send
+    ) -> FluxionStream<impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
-        R: Clone + Debug + Ord + Send + Sync + 'static,
+        R: Clone + Debug + Send + Sync + 'static,
     {
         type PinnedStream<T> =
             std::pin::Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;
@@ -149,7 +150,7 @@ where
         let state = Arc::new(Mutex::new(IntermediateState::new(num_streams)));
         let selector = Arc::new(result_selector);
 
-        Box::pin(streams.ordered_merge().filter_map({
+        let combined_stream = streams.ordered_merge().filter_map({
             let state = Arc::clone(&state);
             let selector = Arc::clone(&selector);
 
@@ -197,7 +198,10 @@ where
                     }
                 }
             }
-        }))
+        });
+
+        let result = Box::pin(combined_stream);
+        FluxionStream::new(result)
     }
 }
 

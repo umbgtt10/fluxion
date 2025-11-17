@@ -376,8 +376,8 @@ where
     /// source_tx.send(Sequenced::new(200)).unwrap();
     ///
     /// let mut taken = Box::pin(taken);
-    /// assert_eq!(taken.next().await.unwrap().unwrap(), 100);
-    /// assert_eq!(taken.next().await.unwrap().unwrap(), 200);
+    /// assert_eq!(taken.next().await.unwrap().unwrap().get(), &100);
+    /// assert_eq!(taken.next().await.unwrap().unwrap().get(), &200);
     /// # }
     /// ```
     ///
@@ -390,7 +390,7 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<T::Inner>> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
         S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
         TFilter: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,

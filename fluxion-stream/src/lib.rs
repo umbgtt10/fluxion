@@ -553,7 +553,7 @@
 //! Combine streams and continue only while a condition holds:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, CombineLatestExt, TakeWhileExt};
+//! use fluxion_stream::{FluxionStream, CombineLatestExt, TakeWhileExt, Ordered};
 //! use fluxion_test_utils::{Sequenced, test_channel};
 //! use futures::StreamExt;
 //!
@@ -571,8 +571,8 @@
 //! tx1.send(Sequenced::new(1)).unwrap();
 //! tx2.send(Sequenced::new(2)).unwrap();
 //!
-//! let item = composed.next().await.unwrap().unwrap();
-//! assert_eq!(item.values().len(), 2);
+//! let combined = composed.next().await.unwrap().unwrap();
+//! assert_eq!(combined.get().values().len(), 2);
 //! }
 //! ```
 //!
@@ -598,11 +598,11 @@
 //! filter_tx.send(Sequenced::new(true)).unwrap();
 //! tx1.send(Sequenced::new(1)).unwrap();
 //!
-//! let item = composed.next().await.unwrap().unwrap();
+//! let item = composed.next().await.unwrap().unwrap().get().clone();
 //! assert_eq!(item, 1);
 //!
 //! tx2.send(Sequenced::new(2)).unwrap();
-//! let item = composed.next().await.unwrap().unwrap();
+//! let item = composed.next().await.unwrap().unwrap().get().clone();
 //! assert_eq!(item, 2);
 //! }
 //! ```

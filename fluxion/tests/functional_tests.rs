@@ -128,18 +128,20 @@ async fn test_functional_take_while_with() {
 
     // Act
     predicate_tx.send(Sequenced::new(person_alice())).unwrap();
-    source_tx.send(Sequenced::new(person_bob())).unwrap();
-    source_tx.send(Sequenced::new(person_charlie())).unwrap();
+    let bob = Sequenced::new(person_bob());
+    let charlie = Sequenced::new(person_charlie());
+    source_tx.send(bob.clone()).unwrap();
+    source_tx.send(charlie.clone()).unwrap();
 
     // Assert
     let mut taken = Box::pin(taken);
     assert_eq!(
         taken.next().await.unwrap(),
-        fluxion_core::stream_item::StreamItem::Value(person_bob())
+        fluxion_core::stream_item::StreamItem::Value(bob)
     );
     assert_eq!(
         taken.next().await.unwrap(),
-        fluxion_core::stream_item::StreamItem::Value(person_charlie())
+        fluxion_core::stream_item::StreamItem::Value(charlie)
     );
 }
 

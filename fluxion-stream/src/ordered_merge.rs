@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use crate::FluxionStream;
 use futures::Stream;
 use std::fmt::Debug;
 use std::pin::Pin;
@@ -101,7 +102,7 @@ where
     ///
     /// - `ordered_merge`: Emits all values from all streams
     /// - `combine_latest`: Emits only when streams change, after all have initialized
-    fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = StreamItem<T>> + Send + Sync
+    fn ordered_merge<IS>(self, others: Vec<IS>) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
@@ -112,7 +113,10 @@ where
     T: Clone + Debug + Ordered + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
 {
-    fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = StreamItem<T>> + Send + Sync
+    fn ordered_merge<IS>(
+        self,
+        others: Vec<IS>,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -124,6 +128,7 @@ where
             all_streams.push(Box::pin(stream));
         }
 
-        OrderedMerge::new(all_streams)
+        let result = OrderedMerge::new(all_streams);
+        FluxionStream::new(result)
     }
 }

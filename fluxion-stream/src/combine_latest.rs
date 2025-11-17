@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use crate::FluxionStream;
 use futures::future::ready;
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
@@ -111,7 +112,9 @@ where
         self,
         others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<OrderedWrapper<CombinedState<T::Inner>>>> + Send + Unpin
+    ) -> FluxionStream<
+        impl Stream<Item = StreamItem<OrderedWrapper<CombinedState<T::Inner>>>> + Send + Unpin,
+    >
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
@@ -129,7 +132,9 @@ where
         self,
         others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<OrderedWrapper<CombinedState<T::Inner>>>> + Send + Unpin
+    ) -> FluxionStream<
+        impl Stream<Item = StreamItem<OrderedWrapper<CombinedState<T::Inner>>>> + Send + Unpin,
+    >
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -147,7 +152,7 @@ where
         let num_streams = streams.len();
         let state = Arc::new(Mutex::new(IntermediateState::new(num_streams)));
 
-        Box::pin(
+        let result = Box::pin(
             streams
                 .ordered_merge()
                 .filter_map({
@@ -207,7 +212,9 @@ where
                         StreamItem::Error(_) => ready(true), // Always emit errors
                     }
                 }),
-        )
+        );
+
+        FluxionStream::new(result)
     }
 }
 

@@ -27,7 +27,7 @@ async fn test_take_while_basic() {
         .next()
         .await
         .expect("expected first item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_cat());
 
     source_tx.send(Sequenced::new(animal_dog())).unwrap();
@@ -35,7 +35,7 @@ async fn test_take_while_basic() {
         .next()
         .await
         .expect("expected second item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_dog());
 
     source_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -43,7 +43,7 @@ async fn test_take_while_basic() {
         .next()
         .await
         .expect("expected third item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, person_alice());
 
     filter_tx.send(Sequenced::new(false)).unwrap();
@@ -84,7 +84,7 @@ async fn test_take_while_always_true() {
         .next()
         .await
         .expect("expected first item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_cat());
 
     source_tx.send(Sequenced::new(animal_dog())).unwrap();
@@ -92,7 +92,7 @@ async fn test_take_while_always_true() {
         .next()
         .await
         .expect("expected second item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_dog());
 
     source_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -100,7 +100,7 @@ async fn test_take_while_always_true() {
         .next()
         .await
         .expect("expected third item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, person_alice());
 }
 
@@ -121,7 +121,7 @@ async fn test_take_while_complex_predicate() {
         .next()
         .await
         .expect("expected first item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_cat());
 
     source_tx.send(Sequenced::new(animal_dog())).unwrap();
@@ -129,7 +129,7 @@ async fn test_take_while_complex_predicate() {
         .next()
         .await
         .expect("expected second item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_dog());
 
     filter_tx.send(Sequenced::new(10)).unwrap();
@@ -154,7 +154,7 @@ async fn test_take_while_interleaved_updates() {
         .next()
         .await
         .expect("expected first item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_cat());
 
     filter_tx.send(Sequenced::new(true)).unwrap();
@@ -163,7 +163,7 @@ async fn test_take_while_interleaved_updates() {
         .next()
         .await
         .expect("expected second item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_dog());
 
     filter_tx.send(Sequenced::new(true)).unwrap();
@@ -172,7 +172,7 @@ async fn test_take_while_interleaved_updates() {
         .next()
         .await
         .expect("expected third item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, person_alice());
 
     filter_tx.send(Sequenced::new(false)).unwrap();
@@ -201,7 +201,7 @@ async fn test_take_while_no_filter_value() {
         .next()
         .await
         .expect("expected first item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, person_alice());
 
     source_tx.send(Sequenced::new(person_bob())).unwrap();
@@ -209,7 +209,7 @@ async fn test_take_while_no_filter_value() {
         .next()
         .await
         .expect("expected second item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, person_bob());
 }
 
@@ -263,7 +263,7 @@ async fn test_take_while_filter_changes_back_to_true() {
         .next()
         .await
         .expect("expected first item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_cat());
 
     filter_tx.send(Sequenced::new(false)).unwrap();
@@ -291,7 +291,7 @@ async fn test_take_while_multiple_source_items_same_filter() {
         .next()
         .await
         .expect("expected first item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_cat());
 
     source_tx.send(Sequenced::new(animal_dog())).unwrap();
@@ -299,7 +299,7 @@ async fn test_take_while_multiple_source_items_same_filter() {
         .next()
         .await
         .expect("expected second item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_dog());
 
     source_tx.send(Sequenced::new(person_alice())).unwrap();
@@ -307,7 +307,7 @@ async fn test_take_while_multiple_source_items_same_filter() {
         .next()
         .await
         .expect("expected third item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, person_alice());
 
     source_tx.send(Sequenced::new(person_bob())).unwrap();
@@ -315,7 +315,7 @@ async fn test_take_while_multiple_source_items_same_filter() {
         .next()
         .await
         .expect("expected fourth item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, person_bob());
 
     filter_tx.send(Sequenced::new(false)).unwrap();
@@ -345,7 +345,7 @@ async fn test_take_while_filter_updates_without_source() {
         .next()
         .await
         .expect("expected first item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_cat());
 
     source_tx.send(Sequenced::new(animal_dog())).unwrap();
@@ -353,6 +353,6 @@ async fn test_take_while_filter_updates_without_source() {
         .next()
         .await
         .expect("expected second item")
-        .unwrap();
+        .unwrap().get().clone();
     assert_eq!(item, animal_dog());
 }

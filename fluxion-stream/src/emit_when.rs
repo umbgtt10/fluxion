@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::types::CombinedState;
+use crate::FluxionStream;
 use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_error;
@@ -113,7 +114,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
         IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
@@ -131,7 +132,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
         IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -145,7 +146,7 @@ where
         let filter_value: Arc<Mutex<Option<T::Inner>>> = Arc::new(Mutex::new(None));
         let filter = Arc::new(filter);
 
-        Box::pin(streams.ordered_merge().filter_map(move |(item, index)| {
+        let combined_stream = streams.ordered_merge().filter_map(move |(item, index)| {
             let source_value = Arc::clone(&source_value);
             let filter_value = Arc::clone(&filter_value);
             let filter = Arc::clone(&filter);
@@ -244,6 +245,9 @@ where
                     StreamItem::Error(e) => Some(StreamItem::Error(e)),
                 }
             }
-        }))
+        });
+
+        let result = Box::pin(combined_stream);
+        FluxionStream::new(result)
     }
 }
