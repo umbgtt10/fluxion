@@ -40,16 +40,14 @@ where
     let item = stream
         .next()
         .await
-        .ok_or_else(|| FluxionError::InvalidState {
-            message: "Expected next item but stream ended".to_string(),
-        })?;
+        .ok_or_else(|| FluxionError::stream_error("Expected next item but stream ended"))?;
 
     if item == expected {
         Ok(())
     } else {
-        Err(FluxionError::InvalidState {
-            message: format!("Expected {expected:?}, got {item:?}"),
-        })
+        Err(FluxionError::stream_error(format!(
+            "Expected {expected:?}, got {item:?}"
+        )))
     }
 }
 
@@ -73,19 +71,17 @@ pub async fn expect_next_timestamped<S>(stream: &mut S, expected: TestData) -> R
 where
     S: Stream<Item = Sequenced<TestData>> + Unpin,
 {
-    let item = stream
-        .next()
-        .await
-        .ok_or_else(|| FluxionError::InvalidState {
-            message: "Expected next timestamped item but stream ended".to_string(),
-        })?;
+    let item = stream.next().await.ok_or_else(|| {
+        FluxionError::stream_error("Expected next timestamped item but stream ended")
+    })?;
 
     if item.value == expected {
         Ok(())
     } else {
-        Err(FluxionError::InvalidState {
-            message: format!("Expected {expected:?}, got {:?}", item.value),
-        })
+        Err(FluxionError::stream_error(format!(
+            "Expected {expected:?}, got {:?}",
+            item.value
+        )))
     }
 }
 
@@ -116,19 +112,15 @@ where
     let (left, right) = stream
         .next()
         .await
-        .ok_or_else(|| FluxionError::InvalidState {
-            message: "Expected next pair but stream ended".to_string(),
-        })?;
+        .ok_or_else(|| FluxionError::stream_error("Expected next pair but stream ended"))?;
 
     if left.value == expected_left && right.value == expected_right {
         Ok(())
     } else {
-        Err(FluxionError::InvalidState {
-            message: format!(
-                "Expected ({expected_left:?}, {expected_right:?}), got ({:?}, {:?})",
-                left.value, right.value
-            ),
-        })
+        Err(FluxionError::stream_error(format!(
+            "Expected ({expected_left:?}, {expected_right:?}), got ({:?}, {:?})",
+            left.value, right.value
+        )))
     }
 }
 

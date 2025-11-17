@@ -1,8 +1,7 @@
-
-6) Add error propagation tests ins separate files
-4) Review overall code structure for misplaced files
-5) Review overall code naming
-7) Add README to every crate
-8) Merge error and core
-2) Move sequenced_tests to fluxion-test-fluxion_test_utils
-9) double-check documentation, README, examples and overall docs structure
+1) Add error propagation tests ins separate files
+2 Review overall code structure for misplaced files
+3) Review overall code naming
+4) Add README to every crate
+5) Merge error and core
+6) Move sequenced_tests to fluxion-test-fluxion_test_utils
+7) double-check documentation, README, examples and overall docs structure

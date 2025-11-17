@@ -16,9 +16,7 @@
 //!
 //! fn process_data() -> Result<()> {
 //!     // Operation that might fail
-//!     Err(FluxionError::InvalidState {
-//!         message: "Stream not ready".to_string(),
-//!     })
+//!     Err(FluxionError::stream_error("Stream not ready"))
 //! }
 //! ```
 
@@ -38,22 +36,6 @@ pub enum FluxionError {
         context: String,
     },
 
-    /// Channel send operation failed
-    ///
-    /// This occurs when attempting to send to a channel whose receiver
-    /// has been dropped.
-    #[error("Channel send failed: receiver dropped")]
-    ChannelSendError,
-
-    /// Channel receive operation failed
-    ///
-    /// This can occur when the channel is closed, empty, or in an invalid state.
-    #[error("Channel receive failed: {reason}")]
-    ChannelReceiveError {
-        /// Specific reason for the receive failure
-        reason: String,
-    },
-
     /// Stream processing encountered an error
     ///
     /// This is a general error for stream operations that don't fit
@@ -62,69 +44,6 @@ pub enum FluxionError {
     StreamProcessingError {
         /// Description of what went wrong during stream processing
         context: String,
-    },
-
-    /// User-provided callback function panicked
-    ///
-    /// When a user-supplied closure or function panics during stream processing,
-    /// it's caught and converted to this error variant.
-    #[error("User callback panicked: {context}")]
-    CallbackPanic {
-        /// Information about the panic location and cause
-        context: String,
-    },
-
-    /// Subscription operation failed
-    ///
-    /// This encompasses errors during `subscribe_async` or `subscribe_latest_async`
-    /// operations, including user callback errors when no error handler is provided.
-    #[error("Subscription error: {context}")]
-    SubscriptionError {
-        /// Details about the subscription failure
-        context: String,
-    },
-
-    /// Invalid state encountered
-    ///
-    /// This indicates that an operation was attempted when the stream or channel
-    /// was in an inappropriate state.
-    #[error("Invalid state: {message}")]
-    InvalidState {
-        /// Description of the invalid state
-        message: String,
-    },
-
-    /// Timeout occurred while waiting for an operation
-    ///
-    /// Used when operations have time limits and they expire.
-    #[error("Operation timed out after {duration:?}: {operation}")]
-    Timeout {
-        /// The operation that timed out
-        operation: String,
-        /// How long we waited
-        duration: std::time::Duration,
-    },
-
-    /// Stream unexpectedly ended
-    ///
-    /// This occurs when more items were expected but the stream terminated.
-    #[error("Stream ended unexpectedly: expected {expected}, got {actual}")]
-    UnexpectedStreamEnd {
-        /// Number of items expected
-        expected: usize,
-        /// Number of items actually received
-        actual: usize,
-    },
-
-    /// Resource limit exceeded
-    ///
-    /// This indicates that a buffer, queue, or other bounded resource is full.
-    #[error("Resource limit exceeded: {resource} (limit: {limit})")]
-    ResourceLimitExceeded {
-        /// Name of the resource that hit its limit
-        resource: String,
-        /// The limit that was exceeded
-        limit: usize,
     },
 
     /// Custom error from user code
@@ -159,49 +78,6 @@ impl FluxionError {
     pub fn stream_error(context: impl Into<String>) -> Self {
         Self::StreamProcessingError {
             context: context.into(),
-        }
-    }
-
-    /// Create an invalid state error with the given message
-    pub fn invalid_state(message: impl Into<String>) -> Self {
-        Self::InvalidState {
-            message: message.into(),
-        }
-    }
-
-    /// Create a subscription error with the given context
-    pub fn subscription_error(context: impl Into<String>) -> Self {
-        Self::SubscriptionError {
-            context: context.into(),
-        }
-    }
-
-    /// Create a channel receive error with the given reason
-    pub fn channel_receive_error(reason: impl Into<String>) -> Self {
-        Self::ChannelReceiveError {
-            reason: reason.into(),
-        }
-    }
-
-    /// Create a timeout error
-    pub fn timeout(operation: impl Into<String>, duration: std::time::Duration) -> Self {
-        Self::Timeout {
-            operation: operation.into(),
-            duration,
-        }
-    }
-
-    /// Create an unexpected stream end error
-    #[must_use]
-    pub const fn unexpected_end(expected: usize, actual: usize) -> Self {
-        Self::UnexpectedStreamEnd { expected, actual }
-    }
-
-    /// Create a resource limit exceeded error
-    pub fn resource_limit(resource: impl Into<String>, limit: usize) -> Self {
-        Self::ResourceLimitExceeded {
-            resource: resource.into(),
-            limit,
         }
     }
 
@@ -255,18 +131,17 @@ impl FluxionError {
     /// Some errors indicate transient failures that could succeed on retry.
     #[must_use]
     pub const fn is_recoverable(&self) -> bool {
-        matches!(
-            self,
-            Self::LockError { .. } | Self::Timeout { .. } | Self::ResourceLimitExceeded { .. }
-        )
+        matches!(self, Self::LockError { .. })
     }
 
     /// Check if this error indicates a permanent failure
+    ///
+    /// User errors and stream processing errors are considered permanent.
     #[must_use]
     pub const fn is_permanent(&self) -> bool {
         matches!(
             self,
-            Self::ChannelSendError | Self::ChannelReceiveError { .. } | Self::InvalidState { .. }
+            Self::StreamProcessingError { .. } | Self::UserError(_)
         )
     }
 }
@@ -368,36 +243,8 @@ impl Clone for FluxionError {
             Self::LockError { context } => Self::LockError {
                 context: context.clone(),
             },
-            Self::ChannelSendError => Self::ChannelSendError,
-            Self::ChannelReceiveError { reason } => Self::ChannelReceiveError {
-                reason: reason.clone(),
-            },
             Self::StreamProcessingError { context } => Self::StreamProcessingError {
                 context: context.clone(),
-            },
-            Self::CallbackPanic { context } => Self::CallbackPanic {
-                context: context.clone(),
-            },
-            Self::SubscriptionError { context } => Self::SubscriptionError {
-                context: context.clone(),
-            },
-            Self::Timeout {
-                operation,
-                duration,
-            } => Self::Timeout {
-                operation: operation.clone(),
-                duration: *duration,
-            },
-            Self::InvalidState { message } => Self::InvalidState {
-                message: message.clone(),
-            },
-            Self::UnexpectedStreamEnd { expected, actual } => Self::UnexpectedStreamEnd {
-                expected: *expected,
-                actual: *actual,
-            },
-            Self::ResourceLimitExceeded { resource, limit } => Self::ResourceLimitExceeded {
-                resource: resource.clone(),
-                limit: *limit,
             },
             // For UserError, we can't clone the boxed error, so convert to string
             Self::UserError(e) => Self::StreamProcessingError {

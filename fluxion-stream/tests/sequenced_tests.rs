@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_test_utils::Sequenced;
+use std::cmp::Ordering;
 
 #[test]
 fn test_sequenced_ordering() {
@@ -116,7 +117,7 @@ fn test_sequenced_partial_ord() {
     let comparison = first.partial_cmp(&second);
 
     // Assert
-    assert_eq!(comparison, Some(std::cmp::Ordering::Less));
+    assert_eq!(comparison, Some(Ordering::Less));
 }
 
 #[test]
@@ -127,7 +128,7 @@ fn test_sequenced_ord_consistent_with_sequence() {
 
     // Assert
     assert!(early < late);
-    assert_eq!(early.cmp(&late), std::cmp::Ordering::Less);
+    assert_eq!(early.cmp(&late), Ordering::Less);
 }
 
 #[test]

@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `filter_ordered` → `Stream<Item = StreamItem<T>>`
   - `ordered_merge` → `Stream<Item = StreamItem<T>>`
 - **BREAKING**: `fluxion-error::FluxionError` now implements `Clone` trait
+- **BREAKING**: Simplified `fluxion-error::FluxionError` from 12 variants to 4 actually-used variants
+  - Removed: `ChannelSendError`, `ChannelReceiveError`, `CallbackPanic`, `SubscriptionError`, `InvalidState`, `Timeout`, `UnexpectedStreamEnd`, `ResourceLimitExceeded`
+  - Kept: `LockError`, `StreamProcessingError`, `UserError`, `MultipleErrors`
+- **Code Quality**: Simplified `std::` imports across codebase (added targeted `use` statements)
+- **Documentation**: Updated `docs/ERROR-HANDLING.md` to reflect simplified error variants
+- **Documentation**: Updated operator documentation to remove references to deleted error variants
 - **Operators**: Lock errors now propagate as `StreamItem::Error` instead of silently dropping items
 - **API**: Standardized all operators to return `impl Stream<Item = StreamItem<...>>` (removed `FluxionStream` wrapper inconsistency)
 - **API**: Removed redundant `FluxionStream::from_stream()` method (use `::new()` instead)

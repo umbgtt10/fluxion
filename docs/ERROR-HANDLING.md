@@ -35,19 +35,18 @@ The root error type encompasses all failure modes in Fluxion:
 ```rust
 pub enum FluxionError {
     LockError { context: String },
-    ChannelSendError,
-    ChannelReceiveError { reason: String },
     StreamProcessingError { context: String },
-    CallbackPanic { context: String },
-    SubscriptionError { context: String },
-    InvalidState { message: String },
-    Timeout { operation: String, duration: Duration },
-    UnexpectedStreamEnd { expected: usize, actual: usize },
-    ResourceLimitExceeded { resource: String, limit: usize },
     UserError(Box<dyn Error + Send + Sync>),
     MultipleErrors { count: usize, errors: Vec<FluxionError> },
 }
 ```
+
+**Variant descriptions:**
+
+- **`LockError`**: Lock acquisition failed (poisoned mutex). Usually transient and recoverable.
+- **`StreamProcessingError`**: Internal stream processing error. Usually permanent, indicates serious issue.
+- **`UserError`**: User-provided callback or operation failed. Wrap your domain errors here.
+- **`MultipleErrors`**: Multiple errors occurred (e.g., in `subscribe_async`). Check the `errors` vector for details.
 
 See the [FluxionError API documentation](https://docs.rs/fluxion-error) for detailed descriptions of each variant.
 
@@ -81,7 +80,7 @@ while let Some(item) = combined.next().await {
 
 ### Channel Failures
 
-When channels close unexpectedly or send operations fail, appropriate errors are emitted:
+When channels close unexpectedly or send operations fail, stream processing continues gracefully:
 
 ```rust
 use fluxion_rx::prelude::*;
@@ -90,7 +89,7 @@ let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 let stream = FluxionStream::from_unbounded_receiver(rx);
 
 // If tx is dropped, stream will end gracefully
-// If send fails, ChannelSendError may be propagated
+// Channel errors are handled internally by the stream
 ```
 
 ### User Callback Errors

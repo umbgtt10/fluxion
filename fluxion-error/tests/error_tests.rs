@@ -3,14 +3,18 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_error::{FluxionError, Result, ResultExt};
+use std::io;
 
 #[test]
 fn test_error_display() {
     let err = FluxionError::lock_error("test mutex");
     assert_eq!(err.to_string(), "Failed to acquire lock: test mutex");
 
-    let err = FluxionError::ChannelSendError;
-    assert_eq!(err.to_string(), "Channel send failed: receiver dropped");
+    let err = FluxionError::stream_error("processing failed");
+    assert_eq!(
+        err.to_string(),
+        "Stream processing error: processing failed"
+    );
 }
 
 #[test]
@@ -25,14 +29,14 @@ fn test_error_constructors() {
 #[test]
 fn test_is_recoverable() {
     assert!(FluxionError::lock_error("test").is_recoverable());
-    assert!(FluxionError::timeout("test", std::time::Duration::from_secs(1)).is_recoverable());
-    assert!(!FluxionError::ChannelSendError.is_recoverable());
+    assert!(!FluxionError::stream_error("test").is_recoverable());
+    assert!(!FluxionError::user_error(io::Error::other("test")).is_recoverable());
 }
 
 #[test]
 fn test_is_permanent() {
-    assert!(FluxionError::ChannelSendError.is_permanent());
-    assert!(FluxionError::invalid_state("test").is_permanent());
+    assert!(FluxionError::stream_error("test").is_permanent());
+    assert!(FluxionError::user_error(io::Error::other("test")).is_permanent());
     assert!(!FluxionError::lock_error("test").is_permanent());
 }
 

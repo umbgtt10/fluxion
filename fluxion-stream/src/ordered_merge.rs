@@ -46,13 +46,13 @@ where
     ///
     /// This operator may produce `StreamItem::Error` in the following cases:
     ///
-    /// - **Channel Errors**: When sending to or receiving from internal channels fails.
-    ///   These typically indicate the other end was dropped.
-    /// - **Callback Errors**: If the `on_all_streams_closed` callback panics, it's caught and propagated as `FluxionError::CallbackPanic`.
+    /// - **Internal Processing Errors**: When stream processing encounters an issue, it will emit
+    ///   `FluxionError::StreamProcessingError`.
+    /// - **Callback Errors**: If the `on_all_streams_closed` callback panics, the panic is caught
+    ///   and wrapped in `FluxionError::UserError`.
     ///
-    /// Channel errors typically indicate abnormal stream termination. Callback errors are captured to prevent
-    /// stream corruption. See the [Error Handling Guide](../docs/ERROR-HANDLING.md) for patterns on handling
-    /// these errors in your application.
+    /// These errors typically indicate abnormal stream termination. See the [Error Handling Guide](../docs/ERROR-HANDLING.md)
+    /// for patterns on handling these errors in your application.
     ///
     /// # See Also
     ///

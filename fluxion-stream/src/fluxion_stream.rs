@@ -244,9 +244,8 @@ where
     /// This operator does not produce errors under normal operation. The predicate function receives
     /// unwrapped values, and any errors from upstream are passed through unchanged.
     ///
-    /// If your predicate function can panic, ensure it handles edge cases gracefully, or the panic
-    /// will be propagated as `FluxionError::CallbackPanic`. See the [Error Handling Guide](../docs/ERROR-HANDLING.md)
-    /// for patterns on defensive filtering.
+    /// If your predicate function can panic, ensure it handles edge cases gracefully. See the
+    /// [Error Handling Guide](../docs/ERROR-HANDLING.md) for patterns on defensive filtering.
     ///
     /// # See Also
     ///
