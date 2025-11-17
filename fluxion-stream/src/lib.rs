@@ -563,9 +563,9 @@
 //! let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 //!
 //! // Combine latest values, but stop when filter becomes false
-//! let mut composed = Box::pin(stream1
+//! let mut composed = stream1
 //!     .combine_latest(vec![stream2], |_| true)
-//!     .take_while_with(filter_stream, |f| *f));
+//!     .take_while_with(filter_stream, |f| *f);
 //!
 //! filter_tx.send(Sequenced::new(true)).unwrap();
 //! tx1.send(Sequenced::new(1)).unwrap();
@@ -591,9 +591,9 @@
 //! let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 //!
 //! // Merge all values in order, but stop when filter says so
-//! let mut composed = Box::pin(stream1
+//! let mut composed = stream1
 //!     .ordered_merge(vec![FluxionStream::new(stream2)])
-//!     .take_while_with(filter_stream, |f| *f));
+//!     .take_while_with(filter_stream, |f| *f);
 //!
 //! filter_tx.send(Sequenced::new(true)).unwrap();
 //! tx1.send(Sequenced::new(1)).unwrap();
