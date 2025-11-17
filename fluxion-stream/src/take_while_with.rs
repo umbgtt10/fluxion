@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::fluxion_stream::FluxionStream;
 use fluxion_core::lock_utilities::safe_lock;
 use fluxion_core::{Ordered, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
@@ -102,7 +101,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<TItem::Inner>> + Send>;
+    ) -> impl Stream<Item = StreamItem<TItem::Inner>> + Send;
 }
 
 impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
@@ -118,7 +117,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<TItem::Inner>> + Send> {
+    ) -> impl Stream<Item = StreamItem<TItem::Inner>> + Send {
         let filter = Arc::new(filter);
 
         // Tag each stream with its type
@@ -134,7 +133,7 @@ where
         let state = Arc::new(Mutex::new((None::<TFilter::Inner>, false)));
 
         // Use ordered_merge and process items in order
-        let result = streams.ordered_merge().filter_map({
+        streams.ordered_merge().filter_map({
             let state = Arc::clone(&state);
             move |item| {
                 let state = Arc::clone(&state);
@@ -172,9 +171,7 @@ where
                     }
                 }
             }
-        });
-
-        FluxionStream::new(result)
+        })
     }
 }
 

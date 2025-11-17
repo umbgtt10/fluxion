@@ -5,7 +5,8 @@
 use crate::fluxion_stream::FluxionStream;
 use crate::types::WithPrevious;
 use fluxion_core::Ordered;
-use futures::{future, Stream, StreamExt};
+use fluxion_core::StreamItem;
+use futures::{future::ready, Stream, StreamExt};
 
 /// Extension trait providing the `combine_with_previous` operator for ordered streams.
 ///
@@ -91,11 +92,10 @@ where
     fn combine_with_previous(
         self,
     ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<WithPrevious<T>>>> {
-        use fluxion_core::StreamItem;
         let result = self.scan(None, |state: &mut Option<T>, current: T| {
             let previous = state.take();
             *state = Some(current.clone());
-            future::ready(Some(StreamItem::Value(WithPrevious::new(
+            ready(Some(StreamItem::Value(WithPrevious::new(
                 previous, current,
             ))))
         });

@@ -339,7 +339,7 @@ where
         SF: Stream<Item = TFilter> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
-        TakeWhileExt::take_while_with(inner, filter_stream, filter)
+        FluxionStream::new(TakeWhileExt::take_while_with(inner, filter_stream, filter))
     }
 
     /// Emits the latest value from the source stream when the trigger stream emits.

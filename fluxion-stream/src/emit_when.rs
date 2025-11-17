@@ -102,7 +102,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
+    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static;
@@ -119,7 +119,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
+    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static,
