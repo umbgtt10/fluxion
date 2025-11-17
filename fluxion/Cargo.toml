@@ -8,7 +8,7 @@ repository.workspace = true
 description = "A reactive stream processing library with ordered semantics, friendly interface, and bullet-proof, state-of-the art test coverage and examples"
 keywords = ["stream", "reactive", "async", "ordered"]
 categories = ["asynchronous", "data-structures"]
-readme = "../README.md"
+readme = "README.md"
 
 [dependencies]
 fluxion-core = { workspace = true }

@@ -24,7 +24,6 @@ A reactive stream processing library for Rust with temporal ordering guarantees,
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
 - ✅ **Well Tested**: 1,500+ tests with comprehensive coverage
 
-
 [![Crates.io](https://img.shields.io/crates/v/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
 [![Documentation](https://docs.rs/fluxion-rx/badge.svg)](https://docs.rs/fluxion-rx)
 
@@ -34,8 +33,8 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.1.0"
-fluxion-test-utils = "0.1.0"
+fluxion-rx = "0.2.0"
+fluxion-test-utils = "0.2.0"
 tokio = { version = "1.48", features = ["full"] }
 futures = "0.3"
 ```
@@ -216,8 +215,16 @@ stream
 
 - **[Integration Guide](INTEGRATION.md)** - Learn the three patterns for integrating events (intrinsic, extrinsic, wrapper ordering)
 - **[Error Handling Guide](docs/ERROR-HANDLING.md)** - Comprehensive guide to error propagation and recovery strategies
+
+### 📦 Crate Documentation
+
+- **[fluxion-rx](fluxion/README.md)** - Main convenience crate (re-exports all operators)
 - **[fluxion-stream](fluxion-stream/README.md)** - Stream operators and composition patterns
 - **[fluxion-exec](fluxion-exec/README.md)** - Async execution and subscription utilities
+- **[fluxion-core](fluxion-core/README.md)** - Core traits, types, and utilities
+- **[fluxion-merge](fluxion-merge/README.md)** - Stream merging operators
+- **[fluxion-ordered-merge](fluxion-ordered-merge/README.md)** - Generic ordered merging
+- **[fluxion-test-utils](fluxion-test-utils/README.md)** - Testing helpers and fixtures
 
 ### 💡 Complete Example
 
@@ -267,14 +274,17 @@ cargo doc --package fluxion-exec --open
 
 ### Workspace Structure
 
-- **`fluxion-rx`** - Main crate (re-exports from other crates)
-- **`fluxion-stream`** - Stream operators and combinators
-- **`fluxion-exec`** - Execution utilities and subscriptions
-- **`fluxion-core`** - Core utilities and traits
-- **`fluxion-core`** - Core traits, types, and error handling
-- **`fluxion-test-utils`** - Test helpers and fixtures
-- **`fluxion-merge`** - Stream merging utilities
-- **`fluxion-ordered-merge`** - Ordered merging implementation
+This repository is organized as a Cargo workspace with the following crates:
+
+- **[fluxion-rx](fluxion/README.md)** - Main convenience crate (re-exports from other crates)
+- **[fluxion-stream](fluxion-stream/README.md)** - Stream operators and combinators
+- **[fluxion-exec](fluxion-exec/README.md)** - Execution utilities and subscriptions
+- **[fluxion-core](fluxion-core/README.md)** - Core traits, types, and utilities
+- **[fluxion-merge](fluxion-merge/README.md)** - Stream merging operators
+- **[fluxion-ordered-merge](fluxion-ordered-merge/README.md)** - Generic ordered merging implementation
+- **[fluxion-test-utils](fluxion-test-utils/README.md)** - Test helpers and fixtures
+
+See individual crate READMEs for detailed documentation.
 
 ### Development Notes
 

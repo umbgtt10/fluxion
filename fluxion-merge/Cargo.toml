@@ -8,7 +8,7 @@ repository.workspace = true
 description = "Merge multiple Fluxion streams with ordering guarantees"
 keywords = ["async", "stream", "merge", "ordered", "reactive"]
 categories = ["asynchronous", "concurrency"]
-readme = "../README.md"
+readme = "README.md"
 
 [[bench]]
 name = "benchmarks"

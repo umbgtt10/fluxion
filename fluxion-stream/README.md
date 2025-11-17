@@ -69,6 +69,10 @@ async fn main() {
     let stream1 = FluxionStream::from_unbounded_receiver(rx1);
     let stream2 = FluxionStream::from_unbounded_receiver(rx2);
 
+    // Merge streams in temporal order
+    let merged = stream1.ordered_merge(vec![stream2]);
+    let values: Vec<_> = merged.map(|s| s.value).collect().await;
+
     // Send ordered values
     tx1.send(Sequenced::with_sequence(1, 1)).unwrap();  // (value, sequence)
     tx2.send(Sequenced::with_sequence(2, 2)).unwrap();
@@ -76,10 +80,6 @@ async fn main() {
 
     drop(tx1);
     drop(tx2);
-
-    // Merge streams in temporal order
-    let merged = stream1.ordered_merge(vec![stream2]);
-    let values: Vec<_> = merged.map(|s| s.value).collect().await;
 
     println!("{:?}", values); // [1, 2, 3] - ordered by sequence number
 }
@@ -101,7 +101,7 @@ let combined = stream1.combine_latest(
 
 ## Core modules
 
-- `fluxion_stream` — Main `FluxionStream` type with extension methods
+- `fluxion_stream` ï¿½ Main `FluxionStream` type with extension methods
 - Operator modules: `combine_latest`, `ordered_merge`, `with_latest_from`, `take_latest_when`,
   `take_while_with`, `emit_when`, `combine_with_previous`
 

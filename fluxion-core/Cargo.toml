@@ -9,7 +9,7 @@ repository.workspace = true
 description = "Core traits and types for ordered stream processing"
 keywords = ["async", "stream", "ordered", "trait", "core"]
 categories = ["asynchronous", "concurrency"]
-readme = "../README.md"
+readme = "README.md"
 
 [dependencies]
 futures = { workspace = true }

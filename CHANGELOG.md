@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Error Handling**: Comprehensive error propagation through `StreamItem<T>` enum in all operators
 - **Documentation**: Added `docs/ERROR-HANDLING.md` - complete error handling guide with patterns and examples
 - **Documentation**: Added `# Errors` sections to all 9 stream operators with links to error handling guide
+- **Documentation**: Added README.md files to all workspace crates (`fluxion-core`, `fluxion-rx`, `fluxion-merge`, `fluxion-ordered-merge`, `examples/stream-aggregation`)
+- **Documentation**: Main README now references all individual crate READMEs in "Crate Documentation" and "Workspace Structure" sections
 - **API**: Implemented `CompareByInner` trait for `StreamItem<T>` to enable `with_latest_from` operator
 - **Core**: New `fluxion-core::StreamItem<T>` enum for error propagation (`Value(T)` | `Error(FluxionError)`)
 - **Core**: Merged `fluxion-error` into `fluxion-core` - error types now in `fluxion-core::error` module
