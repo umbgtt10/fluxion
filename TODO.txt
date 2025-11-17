@@ -2,14 +2,3 @@
 2) Check examples in README
 3) Ensure unwrap or expect not in productive code
 4) Find a better way to handle double-wrapping!
-
-
-**Why this is problematic:**
-
-1. **Multiple lock acquisitions per event** - We're locking, unlocking, then locking again on every single event. This is inefficient.
-
-2. **Order attribute confusion** - We use the `order` from whichever stream just updated for the emitted value. But:
-   - For `take_latest_when`: If the filter stream updates, we emit the source with the filter's order - semantically questionable => propose
-   - For `emit_when`: Same issue - the order might not match the actual source value's temporal position => propose
-
-3. **Race condition potential** - Between dropping the write lock and acquiring the read locks, another event could arrive and modify state.

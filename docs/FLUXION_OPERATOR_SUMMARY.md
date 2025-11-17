@@ -238,6 +238,107 @@ The `Sequenced<T>` wrapper (from `fluxion-test-utils`) provides this automatical
 
 ---
 
+## Order Attribute Semantics
+
+Every item in a Fluxion stream has an `order` attribute (accessed via `.order()`) that represents its temporal position in the event sequence. Understanding which order is preserved in emitted values is crucial for correct stream processing.
+
+### Rules by Operator
+
+| Operator | Order of Emitted Values | Rationale |
+|----------|-------------------------|-----------|
+| `ordered_merge` | Original source order | Pass-through operator |
+| `map_ordered` | Original source order | Transformation preserves timing |
+| `filter_ordered` | Original source order | Filtering preserves timing |
+| `combine_with_previous` | Current value's order | Window driven by current item |
+| `combine_latest` | Triggering stream's order | Event occurred when any stream updated |
+| `with_latest_from` | **Primary stream's order** | Emission driven by primary |
+| `take_latest_when` | **Trigger stream's order** | Emission driven by trigger |
+| `emit_when` | **Source stream's order** | Source value emitted, not filter |
+| `take_while_with` | Source stream's order | Source-driven with filter check |
+
+### Event-Driven Semantics
+
+For operators that combine multiple streams, the order represents **when the emission event occurred**, not when the underlying data was originally created.
+
+#### ✅ Correct: `take_latest_when` and `with_latest_from`
+
+These operators use the **triggering stream's order** because:
+
+1. **Event-driven semantics**: The order represents when the emission *event* occurred
+2. **Causal accuracy**: The trigger caused the emission at that moment
+3. **Ordering guarantees**: Prevents violations in downstream operators
+4. **Consistency**: Matches the "sampling" semantic model
+
+**Example:**
+```rust
+// Sensor readings sampled by timer ticks
+let sensor_stream = ...;  // order = when reading was taken (e.g., seq 1, 2, 3)
+let timer_stream = ...;   // order = when tick occurred (e.g., seq 4, 5, 6)
+let sampled = sensor_stream.take_latest_when(timer_stream, |_| true);
+// First emission: sensor value from seq 3, but order = 4 (when tick occurred)
+// This is correct - order represents "when we sampled", not "when data was created"
+```
+
+#### ✅ Also Correct: `emit_when` uses source order
+
+While `emit_when` also involves a filter stream, it uses the **source stream's order** because:
+
+1. **Source-driven**: The source value itself is being emitted (just conditionally)
+2. **Filter is a gate**: The filter doesn't trigger emission, it just allows/blocks it
+3. **Data identity**: The emitted value is the source value with its original timing
+
+**Example:**
+```rust
+// Emit data only when it exceeds a threshold
+let data_stream = ...;     // order = when data arrived
+let threshold_stream = ...; // order = when threshold changed
+let filtered = data_stream.emit_when(threshold_stream, |state| {
+    state.values()[0] > state.values()[1]
+});
+// Emissions use data_stream's order - the data's original timestamp
+```
+
+### Why This Matters
+
+**Downstream ordering**: Operators downstream expect monotonically increasing orders. Using the source's order when the trigger is newer could cause:
+```rust
+// ❌ HYPOTHETICAL PROBLEM (if we used source order in take_latest_when):
+sensor.take_latest_when(timer, |_| true)  // Emits sensor order
+    .combine_with_previous()  // Expects monotonic order
+// Could emit: seq 10 (timer), then seq 3 (old sensor) → ordering violation!
+```
+
+**Correct behavior** (current implementation):
+```rust
+// ✅ CURRENT BEHAVIOR:
+sensor.take_latest_when(timer, |_| true)  // Emits timer order
+    .combine_with_previous()  // Receives monotonic order
+// Emits: seq 10, seq 11, seq 12... → correct ordering!
+```
+
+### Time-Series Data Considerations
+
+If you need to preserve the original timestamp of source data for provenance:
+
+1. **Include timestamp in data**: Embed the original timestamp as part of your value type
+2. **Use metadata**: Carry original timing information in your data structure
+3. **Document semantics**: Clearly document that `order` represents emission time, not data time
+
+```rust
+// Pattern: Preserve original timestamp in data
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+struct TimestampedData {
+    value: i32,
+    original_timestamp: u64,  // Data's creation time
+}
+
+let sampled = stream.take_latest_when(timer, |_| true);
+// Emission order = timer's order (when we sampled)
+// But original_timestamp preserved in data (when data was created)
+```
+
+---
+
 ## See Also
 
 - **[Integration Guide](../INTEGRATION.md)** - How to integrate events into Fluxion streams
