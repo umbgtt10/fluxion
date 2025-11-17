@@ -170,6 +170,7 @@ where
                             }
                             1 => {
                                 // Filter stream update - check if we should sample the source
+                                // Lock both values once to avoid multiple lock acquisitions
                                 let mut filter_val =
                                     match lock_or_error(&filter_value, "take_latest_when filter") {
                                         Ok(lock) => lock,
@@ -177,9 +178,6 @@ where
                                             return Some(StreamItem::Error(e));
                                         }
                                     };
-                                *filter_val = Some(ordered_value.get().clone());
-
-                                // Now check the condition and potentially emit
                                 let source =
                                     match lock_or_error(&source_value, "take_latest_when source") {
                                         Ok(lock) => lock,
@@ -188,6 +186,10 @@ where
                                         }
                                     };
 
+                                // Update filter value
+                                *filter_val = Some(ordered_value.get().clone());
+
+                                // Now check the condition and potentially emit
                                 if let Some(filt) = filter_val.as_ref() {
                                     if let Some(src) = source.as_ref() {
                                         if filter(filt) {

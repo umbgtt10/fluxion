@@ -157,6 +157,7 @@ where
                         match index {
                             0 => {
                                 // Source stream update
+                                // Lock both values once to avoid multiple lock acquisitions
                                 let mut source =
                                     match lock_or_error(&source_value, "emit_when source") {
                                         Ok(lock) => lock,
@@ -164,9 +165,6 @@ where
                                             return Some(StreamItem::Error(e));
                                         }
                                     };
-                                *source = Some(ordered_value.get().clone());
-
-                                // Check if we should emit with current filter state
                                 let filter_val =
                                     match lock_or_error(&filter_value, "emit_when filter") {
                                         Ok(lock) => lock,
@@ -174,6 +172,9 @@ where
                                             return Some(StreamItem::Error(e));
                                         }
                                     };
+
+                                // Update source value
+                                *source = Some(ordered_value.get().clone());
 
                                 if let Some(src) = source.as_ref() {
                                     if let Some(filt) = filter_val.as_ref() {
@@ -196,6 +197,7 @@ where
                             }
                             1 => {
                                 // Filter stream update
+                                // Lock both values once to avoid multiple lock acquisitions
                                 let mut filter_val =
                                     match lock_or_error(&filter_value, "emit_when filter") {
                                         Ok(lock) => lock,
@@ -203,9 +205,6 @@ where
                                             return Some(StreamItem::Error(e));
                                         }
                                     };
-                                *filter_val = Some(ordered_value.get().clone());
-
-                                // Check if we should emit with current source state
                                 let source = match lock_or_error(&source_value, "emit_when source")
                                 {
                                     Ok(lock) => lock,
@@ -213,6 +212,9 @@ where
                                         return Some(StreamItem::Error(e));
                                     }
                                 };
+
+                                // Update filter value
+                                *filter_val = Some(ordered_value.get().clone());
 
                                 if let Some(src) = source.as_ref() {
                                     if let Some(filt) = filter_val.as_ref() {

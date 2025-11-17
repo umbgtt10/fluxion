@@ -4,39 +4,6 @@
 4) Find a better way to handle double-wrapping!
 
 
-Let me carefully analyze the current implementations of both operators to assess if they're sound:
-
-Read [](file:///c%3A/Projects/fluxion/fluxion-stream/src/take_latest_when.rs#150-150), lines 150 to 221
-
-Read [](file:///c%3A/Projects/fluxion/fluxion-stream/src/emit_when.rs#135-135), lines 135 to 205
-
-After analyzing both implementations, I see **a critical soundness issue**:
-
-## The Problem: Lock Acquisition Deadlock Risk
-
-Both operators acquire **two locks sequentially** on every event:
-1. First lock to update the state
-2. Second lock (and third in `emit_when`) to read both states
-
-This creates a potential issue:
-
-```rust
-// Current pattern (PROBLEMATIC):
-match index {
-    0 => {
-        let mut source = lock(&source_value)?;  // Lock 1 acquired
-        *source = Some(...);
-        // Lock 1 dropped here
-    }
-    // ...
-}
-
-// Then immediately:
-let source = lock(&source_value)?;     // Lock 1 re-acquired
-let filter_val = lock(&filter_value)?; // Lock 2 acquired
-// Check condition and potentially emit
-```
-
 **Why this is problematic:**
 
 1. **Multiple lock acquisitions per event** - We're locking, unlocking, then locking again on every single event. This is inefficient.
