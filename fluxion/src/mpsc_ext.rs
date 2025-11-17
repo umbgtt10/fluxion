@@ -6,13 +6,11 @@
 
 use crate::FluxionStream;
 use fluxion_core::{Ordered, StreamItem};
-use futures::stream::Map;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// Type alias for the stream returned by `into_fluxion_stream`
-type FluxionStreamFromReceiver<U> =
-    FluxionStream<Map<UnboundedReceiverStream<U>, fn(U) -> StreamItem<U>>>;
+type FluxionStreamFromReceiver<U> = FluxionStream<UnboundedReceiverStream<StreamItem<U>>>;
 
 /// Extension trait for `UnboundedReceiver` to create FluxionStreams.
 pub trait UnboundedReceiverExt<T> {
@@ -95,7 +93,8 @@ where
             // Extract value from StreamItem
             if let StreamItem::Value(value) = item {
                 let transformed = mapper(value);
-                let _ = tx.send(transformed);
+                // Wrap in StreamItem::Value before sending
+                let _ = tx.send(StreamItem::Value(transformed));
             }
             // Note: Errors are silently dropped. Consider logging or propagating them.
             async {}
@@ -104,8 +103,6 @@ where
         tokio::spawn(task);
 
         // Return the stream from the intermediate channel with concrete type
-        FluxionStream::new(
-            UnboundedReceiverStream::new(rx).map(StreamItem::Value as fn(U) -> StreamItem<U>),
-        )
+        FluxionStream::new(UnboundedReceiverStream::new(rx))
     }
 }

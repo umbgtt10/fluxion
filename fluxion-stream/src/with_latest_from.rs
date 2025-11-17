@@ -138,9 +138,8 @@ where
         IS::Stream: Send + Sync + 'static,
         R: Clone + Debug + Ord + Send + Sync + 'static,
     {
-        type PinnedStream<T> = std::pin::Pin<
-            Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>,
-        >;
+        type PinnedStream<T> =
+            std::pin::Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;
         let streams: Vec<PinnedStream<T>> = vec![
             Box::pin(self.map(move |item| (item, 0))),
             Box::pin(other.into_stream().map(move |item| (item, 1))),

@@ -19,8 +19,7 @@ type PinnedItemStream<TItem, TFilter> =
 /// This operator conditionally emits elements from a source stream based on values
 /// from a separate filter stream. The stream terminates when the filter condition
 /// becomes false.
-pub trait TakeWhileExt<TItem, TFilter, S>:
-    Stream<Item = StreamItem<TItem>> + Sized
+pub trait TakeWhileExt<TItem, TFilter, S>: Stream<Item = StreamItem<TItem>> + Sized
 where
     TItem: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     TItem::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
