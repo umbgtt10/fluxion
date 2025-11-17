@@ -12,6 +12,5 @@ categories = ["development-tools::testing"]
 
 [dependencies]
 fluxion-core = { workspace = true }
-fluxion-error = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }

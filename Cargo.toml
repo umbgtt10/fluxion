@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "fluxion",
     "fluxion-core",
-    "fluxion-error",
     "fluxion-ordered-merge",
     "fluxion-stream",
     "fluxion-exec",
@@ -46,7 +45,6 @@ windows-sys = "0.61.2"
 # Internal workspace dependencies
 fluxion-rx = { version = "0.1.0", path = "fluxion" }
 fluxion-core = { version = "0.1.0", path = "fluxion-core" }
-fluxion-error = { version = "0.1.0", path = "fluxion-error" }
 fluxion-ordered-merge = { version = "0.1.0", path = "fluxion-ordered-merge" }
 fluxion-stream = { version = "0.1.0", path = "fluxion-stream" }
 fluxion-exec = { version = "0.1.0", path = "fluxion-exec" }

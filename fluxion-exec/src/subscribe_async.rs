@@ -9,7 +9,7 @@ use std::future::Future;
 use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
 
-use fluxion_error::{FluxionError, Result};
+use fluxion_core::{FluxionError, Result};
 
 /// Extension trait providing async subscription capabilities for streams.
 ///

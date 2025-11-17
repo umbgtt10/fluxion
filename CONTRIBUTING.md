@@ -218,7 +218,7 @@ Describe the tests you ran and how to reproduce them
 fluxion/
 ├── fluxion/              # Main crate re-exporting types
 ├── fluxion-core/         # Core traits and utilities
-├── fluxion-error/        # Error types
+├── fluxion-core/         # Core traits, types, and errors
 ├── fluxion-stream/       # Stream operators
 ├── fluxion-exec/         # Execution utilities
 ├── fluxion-merge/        # Merge operations

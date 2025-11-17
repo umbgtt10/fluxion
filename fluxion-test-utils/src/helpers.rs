@@ -4,7 +4,7 @@
 
 use crate::sequenced::Sequenced;
 use crate::test_data::TestData;
-use fluxion_error::{FluxionError, Result};
+use fluxion_core::{FluxionError, Result};
 use futures::stream::StreamExt;
 use futures::Stream;
 use std::time::Duration;

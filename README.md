@@ -271,7 +271,7 @@ cargo doc --package fluxion-exec --open
 - **`fluxion-stream`** - Stream operators and combinators
 - **`fluxion-exec`** - Execution utilities and subscriptions
 - **`fluxion-core`** - Core utilities and traits
-- **`fluxion-error`** - Error types and handling
+- **`fluxion-core`** - Core traits, types, and error handling
 - **`fluxion-test-utils`** - Test helpers and fixtures
 - **`fluxion-merge`** - Stream merging utilities
 - **`fluxion-ordered-merge`** - Ordered merging implementation

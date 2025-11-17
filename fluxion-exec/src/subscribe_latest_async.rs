@@ -8,7 +8,7 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, Notify};
 use tokio_util::sync::CancellationToken;
 
-use fluxion_error::{FluxionError, Result};
+use fluxion_core::{FluxionError, Result};
 
 /// Extension trait providing async subscription with automatic cancellation of outdated work.
 ///

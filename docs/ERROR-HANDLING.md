@@ -48,7 +48,7 @@ pub enum FluxionError {
 - **`UserError`**: User-provided callback or operation failed. Wrap your domain errors here.
 - **`MultipleErrors`**: Multiple errors occurred (e.g., in `subscribe_async`). Check the `errors` vector for details.
 
-See the [FluxionError API documentation](https://docs.rs/fluxion-error) for detailed descriptions of each variant.
+See the [FluxionError API documentation](https://docs.rs/fluxion-core) for detailed descriptions of each variant.
 
 ## Common Error Scenarios
 
@@ -411,7 +411,7 @@ This change allows your application to:
 
 ## See Also
 
-- [FluxionError API Documentation](https://docs.rs/fluxion-error)
+- [FluxionError API Documentation](https://docs.rs/fluxion-core)
 - [Refactoring Plan](REFACTORING_PLAN.md) - Technical details of error handling implementation
 - [Stream Operators](FLUXION_OPERATOR_SUMMARY.md) - Complete operator reference
 - [Examples](../examples/) - Working code showing error handling patterns

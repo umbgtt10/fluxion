@@ -11,7 +11,7 @@ keywords = ["async", "stream", "reactive", "subscribe", "executor"]
 categories = ["asynchronous", "concurrency"]
 
 [dependencies]
-fluxion-error = { workspace = true }
+fluxion-core = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }

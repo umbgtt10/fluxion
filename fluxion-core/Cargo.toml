@@ -12,8 +12,8 @@ categories = ["asynchronous", "concurrency"]
 readme = "../README.md"
 
 [dependencies]
-fluxion-error = { workspace = true }
 futures = { workspace = true }
+thiserror = { workspace = true }
 tracing = { workspace = true, optional = true }
 
 [features]

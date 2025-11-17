@@ -786,7 +786,7 @@ async fn test_subscribe_latest_async_error_aggregation_without_callback() {
 
     let err = result.unwrap_err();
     match err {
-        fluxion_error::FluxionError::MultipleErrors { count, errors } => {
+        fluxion_core::FluxionError::MultipleErrors { count, errors } => {
             assert_eq!(count, 2, "Expected 2 errors");
             assert_eq!(errors.len(), 2, "Expected 2 error entries");
         }

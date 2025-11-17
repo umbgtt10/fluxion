@@ -5,14 +5,14 @@
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 //! Error types for Fluxion reactive streaming library
 //!
-//! This crate provides a comprehensive error handling system for all Fluxion operations.
+//! This module provides a comprehensive error handling system for all Fluxion operations.
 //! It defines a root [`FluxionError`] type with specific variants for different failure modes,
 //! allowing library users to handle errors appropriately.
 //!
 //! # Examples
 //!
 //! ```
-//! use fluxion_error::{FluxionError, Result};
+//! use fluxion_core::{FluxionError, Result};
 //!
 //! fn process_data() -> Result<()> {
 //!     // Operation that might fail
@@ -94,7 +94,7 @@ impl FluxionError {
     /// # Examples
     ///
     /// ```
-    /// use fluxion_error::FluxionError;
+    /// use fluxion_core::FluxionError;
     ///
     /// #[derive(Debug, thiserror::Error)]
     /// #[error("Custom error: {msg}")]
@@ -154,7 +154,7 @@ impl FluxionError {
 /// # Examples
 ///
 /// ```
-/// use fluxion_error::Result;
+/// use fluxion_core::Result;
 ///
 /// fn process() -> Result<String> {
 ///     Ok("processed".to_string())

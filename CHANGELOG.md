@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: Added `# Errors` sections to all 9 stream operators with links to error handling guide
 - **API**: Implemented `CompareByInner` trait for `StreamItem<T>` to enable `with_latest_from` operator
 - **Core**: New `fluxion-core::StreamItem<T>` enum for error propagation (`Value(T)` | `Error(FluxionError)`)
+- **Core**: Merged `fluxion-error` into `fluxion-core` - error types now in `fluxion-core::error` module
 
 ### Changed
 - **BREAKING**: All stream operators now return `StreamItem<T>` instead of bare `T` values
@@ -25,10 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `map_ordered` → `Stream<Item = StreamItem<U>>`
   - `filter_ordered` → `Stream<Item = StreamItem<T>>`
   - `ordered_merge` → `Stream<Item = StreamItem<T>>`
-- **BREAKING**: `fluxion-error::FluxionError` now implements `Clone` trait
-- **BREAKING**: Simplified `fluxion-error::FluxionError` from 12 variants to 4 actually-used variants
+- **BREAKING**: `fluxion-core::FluxionError` now implements `Clone` trait
+- **BREAKING**: Simplified `fluxion-core::FluxionError` from 12 variants to 4 actually-used variants
   - Removed: `ChannelSendError`, `ChannelReceiveError`, `CallbackPanic`, `SubscriptionError`, `InvalidState`, `Timeout`, `UnexpectedStreamEnd`, `ResourceLimitExceeded`
   - Kept: `LockError`, `StreamProcessingError`, `UserError`, `MultipleErrors`
+- **BREAKING**: Merged `fluxion-error` crate into `fluxion-core` - import from `fluxion_core` instead of `fluxion_error`
 - **Code Quality**: Simplified `std::` imports across codebase (added targeted `use` statements)
 - **Documentation**: Updated `docs/ERROR-HANDLING.md` to reflect simplified error variants
 - **Documentation**: Updated operator documentation to remove references to deleted error variants
@@ -38,9 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: Enhanced `filter_ordered` documentation with comprehensive examples and use cases
 - **Documentation**: Updated README.md to reference error handling guide in features and guides sections
 - **Tests**: Updated all 186 tests across workspace to handle `StreamItem<T>` wrapper
+- **Tests**: Moved `sequenced_tests.rs` to `fluxion-test-utils/tests/` for better organization
 
 ### Removed
 - **Documentation**: Removed `docs/REFACTORING_PLAN.md` (implementation complete, details preserved in git history)
+- **Workspace**: Removed `fluxion-error` crate (merged into `fluxion-core`)
 
 ### Fixed
 - **Error Handling**: Lock poisoning errors no longer cause silent data loss
@@ -50,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Before (v0.1.x):**
 ```rust
+use fluxion_error::FluxionError;
+
 let mut stream = stream1.combine_latest(vec![stream2], |_| true);
 let result = stream.next().await.unwrap();
 let value = result.get();
@@ -57,6 +63,8 @@ let value = result.get();
 
 **After (v0.2.0):**
 ```rust
+use fluxion_core::FluxionError;  // Changed from fluxion_error
+
 let mut stream = stream1.combine_latest(vec![stream2], |_| true);
 let item = stream.next().await.unwrap();
 match item {
@@ -75,6 +83,15 @@ match item {
 ```rust
 // Add .unwrap() to extract values when errors are not expected
 let value = stream.next().await.unwrap().unwrap();
+```
+
+**Error import migration:**
+```rust
+// Before
+use fluxion_error::{FluxionError, Result};
+
+// After
+use fluxion_core::{FluxionError, Result};
 ```
 
 See [Error Handling Guide](docs/ERROR-HANDLING.md) for comprehensive patterns.
