@@ -9,39 +9,39 @@
 ### 📊 By The Numbers
 
 | Metric | Value | Industry Standard | Our Achievement |
-|--------|-------|------------------|-----------------|
-| **Test-to-Code Ratio** | **3.5:1** | 1:1 | ⭐ **3.5x better** |
-| **Total Tests** | **1,554** | Varies | Comprehensive coverage |
+|--------|-------|------------------|------------------|
+| **Test-to-Code Ratio** | **3.4:1** | 1:1 | ⭐ **3.4x better** |
+| **Total Tests** | **1,523** | Varies | Comprehensive coverage |
 | **Test Success Rate** | **100%** | ~95% | Zero failures |
 | **Code Quality** | **Zero warnings** | Some acceptable | Clippy + compiler clean |
 | **Documentation** | **All public APIs** | Partial | 100% documented |
 | **Code Examples** | **Multiple per API** | Few | All compile & run |
-| **Doc Tests** | **29 passing** | Few | Examples always current |
+| **Doc Tests** | **58 passing** | Few | Examples always current |
 
 ### 🎯 Exceptional Quality Metrics
 
-#### 1. **Unparalleled Test Coverage (3.5:1 ratio)**
+#### 1. **Unparalleled Test Coverage (3.4:1 ratio)**
 
-- **8,670 lines of test code** vs **2,451 lines of production code**
+- **8,288 lines of test code** vs **2,438 lines of production code** (excluding comments & examples)
 - Most production codebases aim for 1:1 (equal test and code)
-- We have **3.5 lines of test for every line of code**
+- We have **3.4 lines of test for every line of code**
 - This means:
   - Every edge case is tested
   - Refactoring is safe and confident
   - Bugs are caught before users see them
   - Code behavior is well-documented through tests
 
-#### 2. **Comprehensive Test Suite (1,554 tests)**
+#### 2. **Comprehensive Test Suite (1,523 tests)**
 
-Breaking down our 1,554 tests:
+Breaking down our 1,523 tests:
 - **1,296 integration tests** - Real-world usage validation
-- **229 unit tests** - Component-level verification
-- **29 doc tests** - Ensures all code examples compile and run
+- **169 unit tests** - Component-level verification
+- **58 doc tests** - Ensures all code examples compile and run
 
 **What this means:**
 - Every operator tested in isolation and composition
 - Concurrency scenarios thoroughly validated
-- Error conditions explicitly tested
+- Error conditions explicitly tested with 42 error propagation tests
 - Ordering guarantees proven with permutation tests
 
 #### 3. **Production-Ready Code Quality**
@@ -78,9 +78,9 @@ Breaking down our 1,554 tests:
 
 **Code organization:**
 ```
-2,451 lines of source    (21%) - Lean, focused implementation
-8,670 lines of tests     (75%) - Exhaustive validation
-  439 lines of benchmarks (4%)  - Performance monitoring
+2,438 lines of source    (22%) - Lean, focused implementation
+8,288 lines of tests     (76%) - Exhaustive validation
+  388 lines of benchmarks (2%)  - Performance monitoring
 ```
 
 ### 🏆 What Makes This Exceptional
@@ -88,9 +88,9 @@ Breaking down our 1,554 tests:
 #### Industry Comparison
 
 | Aspect | Typical Project | Fluxion |
-|--------|----------------|---------|
-| Test coverage | "We have tests" | 3.5:1 ratio with 1,554 tests |
-| Documentation | "See the examples/" | Every API + multiple examples + 29 doc tests |
+|--------|----------------|---------||
+| Test coverage | "We have tests" | 3.4:1 ratio with 1,523 tests |
+| Documentation | "See the examples/" | Every API + multiple examples + 58 doc tests |
 | Warnings | "We'll fix them later" | Absolute zero tolerance |
 | Error handling | Panic or unwrap | Type-safe Result propagation |
 | Concurrency safety | "It works on my machine" | Lock poisoning recovery built-in |
@@ -116,7 +116,7 @@ Breaking down our 1,554 tests:
 This isn't just a library - it's a **reference implementation** of Rust best practices:
 
 1. **How to structure a multi-crate workspace** (8 crates with clear responsibilities)
-2. **How to write comprehensive tests** (3.5:1 ratio shows it's possible)
+2. **How to write comprehensive tests** (3.4:1 ratio shows it's possible)
 3. **How to document APIs effectively** (every public item with examples)
 4. **How to handle errors properly** (no panics, no unwraps in public APIs)
 5. **How to maintain zero warnings** (strict quality standards)

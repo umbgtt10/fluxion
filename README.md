@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml/badge.svg)](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Crates.io](https://img.shields.io/crates/v/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
+[![Documentation](https://docs.rs/fluxion-rx/badge.svg)](https://docs.rs/fluxion-rx)
 
 A reactive stream processing library for Rust with temporal ordering guarantees, efficient async execution and friendly fluent API.
 
@@ -9,6 +11,7 @@ A reactive stream processing library for Rust with temporal ordering guarantees,
 
 ## Table of Contents
 - [Features](#features)
+- [Reviews](#reviews)
 - [Quick Start](#quick-start)
 - [Operator Documentation](#-operator-documentation)
 - [Core Concepts](#core-concepts)
@@ -24,8 +27,11 @@ A reactive stream processing library for Rust with temporal ordering guarantees,
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
 - ✅ **Well Tested**: 1,500+ tests with comprehensive coverage
 
-[![Crates.io](https://img.shields.io/crates/v/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
-[![Documentation](https://docs.rs/fluxion-rx/badge.svg)](https://docs.rs/fluxion-rx)
+### 📋 Independent Code Reviews
+
+- **[CHATGPT](assessments/ASSESSMENT_CHATGPT.md)**
+- **[GEMINI](assessments/ASSESSMENT_GEMINI.md)**
+- **[CLAUDE](assessments/ASSESSMENT_CLAUDE.md)**
 
 ## Quick Start
 

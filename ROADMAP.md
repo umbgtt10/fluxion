@@ -48,6 +48,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - [ ] Full test coverage for operator chaining (error case)
 - ✅ 1 fully functional example application showing the intrinsic integration path
 - [ ] 1 fully functional example application showing the wrapped integration path
+- [ ] Remove ordocument unwrap/expect in productive code
 
 **Documentation:**
 - ✅ Provide exaustive integration guide with options
@@ -68,7 +69,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 **Essential Features:**
 - [ ] At least one error operator implemented, documented and tested
 - [ ] Code coverage complete
-- [ ] Code coverage integrated in the CI
+- [ ] Code coverage integrated in the CI with badge
 - [ ] Benches exaustive
 
 **Documentation:**
@@ -76,6 +77,15 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 **Quality Gates:**
 - [ ] performance table available and comprehensible
+
+## 🚀 Version 0.4.0 - Wasm & Runtime abstraction
+**Essential Features:**
+- [ ] IMplement runtime abstraction
+
+**Documentation:**
+
+**Quality Gates:**
+
 
 ## 🚀 Version 1.0.0 - Production Ready
 
