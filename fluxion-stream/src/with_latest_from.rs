@@ -11,7 +11,7 @@ use crate::types::CombinedState;
 use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::safe_lock;
-use fluxion_core::{CompareByInner, OrderedWrapper};
+use fluxion_core::{CompareByInner, OrderedWrapper, StreamItem};
 
 /// Extension trait providing the `with_latest_from` operator for ordered streams.
 ///
@@ -94,7 +94,7 @@ where
     /// tx_primary.send(Sequenced::with_sequence(1, 2)).unwrap();
     ///
     /// // Assert
-    /// let result = combined.next().await.unwrap();
+    /// let result = combined.next().await.unwrap().unwrap();
     /// assert_eq!(*result.get(), 11);
     /// # }
     /// ```
@@ -107,7 +107,7 @@ where
         self,
         other: IS,
         result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
-    ) -> impl Stream<Item = OrderedWrapper<R>> + Send
+    ) -> impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static,
@@ -124,7 +124,7 @@ where
         self,
         other: IS,
         result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
-    ) -> impl Stream<Item = OrderedWrapper<R>> + Send
+    ) -> impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static,
@@ -171,16 +171,13 @@ where
                                 let result = selector(&combined_state);
 
                                 // Wrap result with the primary's order
-                                Some(OrderedWrapper::with_order(result, order))
+                                Some(StreamItem::Value(OrderedWrapper::with_order(result, order)))
                             } else {
                                 // Secondary stream emitted, just update state but don't emit
                                 None
                             }
                         }
-                        Err(e) => {
-                            error!("Failed to acquire lock in with_latest_from: {}", e);
-                            None
-                        }
+                        Err(e) => Some(StreamItem::Error(e)),
                     }
                 }
             }

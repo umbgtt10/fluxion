@@ -73,9 +73,9 @@ where
     /// tx1.send(Sequenced::with_sequence(3, 300)).unwrap();
     ///
     /// // Assert - values emitted in temporal order
-    /// assert_eq!(merged.next().await.unwrap().value, 1);
-    /// assert_eq!(merged.next().await.unwrap().value, 2);
-    /// assert_eq!(merged.next().await.unwrap().value, 3);
+    /// assert_eq!(merged.next().await.unwrap().unwrap().value, 1);
+    /// assert_eq!(merged.next().await.unwrap().unwrap().value, 2);
+    /// assert_eq!(merged.next().await.unwrap().unwrap().value, 3);
     /// # }
     /// ```
     ///

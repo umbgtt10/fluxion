@@ -361,3 +361,52 @@ where
         })
     }
 }
+
+impl Clone for FluxionError {
+    fn clone(&self) -> Self {
+        match self {
+            Self::LockError { context } => Self::LockError {
+                context: context.clone(),
+            },
+            Self::ChannelSendError => Self::ChannelSendError,
+            Self::ChannelReceiveError { reason } => Self::ChannelReceiveError {
+                reason: reason.clone(),
+            },
+            Self::StreamProcessingError { context } => Self::StreamProcessingError {
+                context: context.clone(),
+            },
+            Self::CallbackPanic { context } => Self::CallbackPanic {
+                context: context.clone(),
+            },
+            Self::SubscriptionError { context } => Self::SubscriptionError {
+                context: context.clone(),
+            },
+            Self::Timeout {
+                operation,
+                duration,
+            } => Self::Timeout {
+                operation: operation.clone(),
+                duration: *duration,
+            },
+            Self::InvalidState { message } => Self::InvalidState {
+                message: message.clone(),
+            },
+            Self::UnexpectedStreamEnd { expected, actual } => Self::UnexpectedStreamEnd {
+                expected: *expected,
+                actual: *actual,
+            },
+            Self::ResourceLimitExceeded { resource, limit } => Self::ResourceLimitExceeded {
+                resource: resource.clone(),
+                limit: *limit,
+            },
+            // For UserError, we can't clone the boxed error, so convert to string
+            Self::UserError(e) => Self::StreamProcessingError {
+                context: format!("User error: {}", e),
+            },
+            Self::MultipleErrors { count, errors } => Self::MultipleErrors {
+                count: *count,
+                errors: errors.clone(),
+            },
+        }
+    }
+}

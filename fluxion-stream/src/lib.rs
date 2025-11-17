@@ -72,7 +72,7 @@
 //! tx1.send(Sequenced::with_sequence(200, 2)).unwrap();
 //!
 //! // Items are emitted in temporal order (seq 1, then seq 2)
-//! let first = merged.next().await.unwrap();
+//! let first = merged.next().await.unwrap().unwrap();
 //! assert_eq!(first.value, 100); // seq=1 arrives first despite being sent second
 //! # }
 //! ```
@@ -232,7 +232,7 @@
 //! config_tx.send(Sequenced::with_sequence("theme=dark".to_string(), 1)).unwrap();
 //! click_tx.send(Sequenced::with_sequence("button1".to_string(), 2)).unwrap();
 //!
-//! let result = enriched.next().await.unwrap();
+//! let result = enriched.next().await.unwrap().unwrap();
 //! assert_eq!(result.get().len(), 2); // Has both click and config
 //! # }
 //! ```
@@ -262,7 +262,7 @@
 //! service1_tx.send(Sequenced::with_sequence("service1: started".to_string(), 1)).unwrap();
 //! service2_tx.send(Sequenced::with_sequence("service2: ready".to_string(), 2)).unwrap();
 //!
-//! let first = unified_log.next().await.unwrap();
+//! let first = unified_log.next().await.unwrap().unwrap();
 //! assert_eq!(first.value, "service1: started");
 //! # }
 //! ```
@@ -291,14 +291,14 @@
 //! tx.send(Sequenced::with_sequence(1, 2)).unwrap(); // Same value
 //! tx.send(Sequenced::with_sequence(2, 3)).unwrap(); // Changed!
 //!
-//! let result = paired.next().await.unwrap();
+//! let result = paired.next().await.unwrap().unwrap();
 //! assert!(result.previous.is_none()); // First has no previous
 //!
-//! let result = paired.next().await.unwrap();
+//! let result = paired.next().await.unwrap().unwrap();
 //! let changed = result.previous.as_ref().unwrap().value != result.current.value;
 //! assert!(!changed); // 1 == 1, no change
 //!
-//! let result = paired.next().await.unwrap();
+//! let result = paired.next().await.unwrap().unwrap();
 //! let changed = result.previous.as_ref().unwrap().value != result.current.value;
 //! assert!(changed); // 1 != 2, changed!
 //! # }
@@ -334,7 +334,7 @@
 //! // Send event
 //! event_tx.send(Sequenced::with_sequence(999, 2)).unwrap();
 //!
-//! let result = notifications.next().await.unwrap();
+//! let result = notifications.next().await.unwrap().unwrap();
 //! assert_eq!(*result.get(), 999);
 //! # }
 //! ```
@@ -413,15 +413,16 @@
 //! let source_stream = UnboundedReceiverStream::new(source_rx);
 //! let filter_stream = UnboundedReceiverStream::new(filter_rx);
 //!
-//! // Chain: sample when filter emits, then pair with previous value
+//! // Chain: sample when filter emits, unwrap the result, then pair with previous value
 //! let mut composed = FluxionStream::new(source_stream)
 //!     .take_latest_when(filter_stream, |_| true)
+//!     .map(|item| item.unwrap())
 //!     .combine_with_previous();
 //!
 //! filter_tx.send(Sequenced::new(1)).unwrap();
 //! source_tx.send(Sequenced::new(42)).unwrap();
 //!
-//! let item = composed.next().await.unwrap();
+//! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
 //! assert_eq!(item.current.get(), &42);
 //! }
@@ -446,12 +447,12 @@
 //! // Chain: filter positives, map to string
 //! let mut composed = FluxionStream::new(stream)
 //!     .filter_ordered(|n| *n > 0)
-//!     .map_ordered(|item| format!("Value: {}", item.get()));
+//!     .map_ordered(|stream_item| format!("Value: {}", stream_item.unwrap().get()));
 //!
 //! tx.send(Sequenced::new(-1)).unwrap();
 //! tx.send(Sequenced::new(5)).unwrap();
 //!
-//! let result = composed.next().await.unwrap();
+//! let result = composed.next().await.unwrap().unwrap();
 //! assert_eq!(result, "Value: 5");
 //! }
 //! ```
@@ -482,7 +483,7 @@
 //! tx1.send(Sequenced::new(1)).unwrap();
 //! tx2.send(Sequenced::new(2)).unwrap();
 //!
-//! let item = composed.next().await.unwrap();
+//! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
 //! assert_eq!(item.current.get().get_state().len(), 2);
 //! }
@@ -524,12 +525,12 @@
 //!     .combine_with_previous();
 //!
 //! tx1.send(Sequenced::new(1)).unwrap();
-//! let item = composed.next().await.unwrap();
+//! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
 //! assert_eq!(item.current.get(), &1);
 //!
 //! tx2.send(Sequenced::new(2)).unwrap();
-//! let item = composed.next().await.unwrap();
+//! let item = composed.next().await.unwrap().unwrap();
 //! assert_eq!(item.previous.unwrap().get(), &1);
 //! assert_eq!(item.current.get(), &2);
 //! }
@@ -561,12 +562,12 @@
 //! tx1.send(Sequenced::new(1)).unwrap();
 //! tx2.send(Sequenced::new(2)).unwrap();
 //!
-//! let item = composed.next().await.unwrap();
+//! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
 //! assert_eq!(item.current.get().get_state().len(), 2);
 //!
 //! tx1.send(Sequenced::new(3)).unwrap();
-//! let item = composed.next().await.unwrap();
+//! let item = composed.next().await.unwrap().unwrap();
 //! // Previous state had [1, 2], current has [3, 2]
 //! assert!(item.previous.is_some());
 //! }
@@ -601,7 +602,7 @@
 //! tx1.send(Sequenced::new(1)).unwrap();
 //! tx2.send(Sequenced::new(2)).unwrap();
 //!
-//! let item = composed.next().await.unwrap();
+//! let item = composed.next().await.unwrap().unwrap();
 //! assert_eq!(item.get_state().len(), 2);
 //! }
 //! ```
@@ -634,11 +635,11 @@
 //! filter_tx.send(Sequenced::new(true)).unwrap();
 //! tx1.send(Sequenced::new(1)).unwrap();
 //!
-//! let item = composed.next().await.unwrap();
+//! let item = composed.next().await.unwrap().unwrap();
 //! assert_eq!(item, 1);
 //!
 //! tx2.send(Sequenced::new(2)).unwrap();
-//! let item = composed.next().await.unwrap();
+//! let item = composed.next().await.unwrap().unwrap();
 //! assert_eq!(item, 2);
 //! }
 //! ```
@@ -661,20 +662,21 @@
 //! let source_stream = UnboundedReceiverStream::new(source_rx);
 //! let filter_stream = UnboundedReceiverStream::new(filter_rx);
 //!
-//! // Sample source when filter emits, then track consecutive samples
+//! // Sample source when filter emits, unwrap the result, then track consecutive samples
 //! let mut composed = FluxionStream::new(source_stream)
 //!     .take_latest_when(filter_stream, |_| true)
+//!     .map(|item| item.unwrap())
 //!     .combine_with_previous();
 //!
 //! filter_tx.send(Sequenced::new(0)).unwrap();
 //! source_tx.send(Sequenced::new(42)).unwrap();
 //!
-//! let item = composed.next().await.unwrap();
+//! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
 //! assert_eq!(item.current.get(), &42);
 //!
 //! source_tx.send(Sequenced::new(99)).unwrap();
-//! let item = composed.next().await.unwrap();
+//! let item = composed.next().await.unwrap().unwrap();
 //! assert_eq!(item.previous.unwrap().get(), &42);
 //! assert_eq!(item.current.get(), &99);
 //! }

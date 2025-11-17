@@ -103,7 +103,9 @@ where
         self,
         others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = OrderedWrapper<CombinedState<T::Inner>>> + Send + Unpin
+    ) -> impl Stream<Item = fluxion_core::StreamItem<OrderedWrapper<CombinedState<T::Inner>>>>
+           + Send
+           + Unpin
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static;
@@ -121,11 +123,14 @@ where
         self,
         others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = OrderedWrapper<CombinedState<T::Inner>>> + Send + Unpin
+    ) -> impl Stream<Item = fluxion_core::StreamItem<OrderedWrapper<CombinedState<T::Inner>>>>
+           + Send
+           + Unpin
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static,
     {
+        use fluxion_core::StreamItem;
         let mut streams: PinnedStreams<T> = vec![];
 
         streams.push(Box::pin(self.map(move |value| (value, 0))));
@@ -175,9 +180,12 @@ where
                         .map(|ordered_val| ordered_val.get().clone())
                         .collect();
                     let combined = CombinedState::new(inner_values);
-                    OrderedWrapper::with_order(combined, order)
+                    StreamItem::Value(OrderedWrapper::with_order(combined, order))
                 })
                 .filter(move |ordered_combined| {
+                    let StreamItem::Value(ordered_combined) = ordered_combined else {
+                        return ready(false);
+                    };
                     let combined_state = ordered_combined.get();
                     ready(filter(combined_state))
                 }),

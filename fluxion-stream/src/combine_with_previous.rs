@@ -61,12 +61,12 @@ where
     /// tx.send(Sequenced::with_sequence(2, 2)).unwrap();
     ///
     /// // Assert - first has no previous
-    /// let first = paired.next().await.unwrap();
+    /// let first = paired.next().await.unwrap().unwrap();
     /// assert_eq!(first.previous, None);
     /// assert_eq!(*first.current.get(), 1);
     ///
     /// // Assert - second has previous
-    /// let second = paired.next().await.unwrap();
+    /// let second = paired.next().await.unwrap().unwrap();
     /// assert_eq!(*second.previous.as_ref().unwrap().get(), 1);
     /// assert_eq!(*second.current.get(), 2);
     /// # }
@@ -78,7 +78,9 @@ where
     /// - Delta calculation (computing differences)
     /// - State transitions (analyzing previous → current)
     /// - Duplicate filtering (skip if same as previous)
-    fn combine_with_previous(self) -> FluxionStream<impl Stream<Item = WithPrevious<T>>>;
+    fn combine_with_previous(
+        self,
+    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<WithPrevious<T>>>>;
 }
 
 impl<T, S> CombineWithPreviousExt<T> for S
@@ -86,11 +88,16 @@ where
     S: Stream<Item = T> + Send + Sized + 'static,
     T: Ordered + Clone + Send + Sync + 'static,
 {
-    fn combine_with_previous(self) -> FluxionStream<impl Stream<Item = WithPrevious<T>>> {
+    fn combine_with_previous(
+        self,
+    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<WithPrevious<T>>>> {
+        use fluxion_core::StreamItem;
         let result = self.scan(None, |state: &mut Option<T>, current: T| {
             let previous = state.take();
             *state = Some(current.clone());
-            future::ready(Some(WithPrevious::new(previous, current)))
+            future::ready(Some(StreamItem::Value(WithPrevious::new(
+                previous, current,
+            ))))
         });
         FluxionStream::new(result)
     }

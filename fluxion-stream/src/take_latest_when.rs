@@ -5,6 +5,7 @@
 use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::safe_lock;
+use fluxion_core::StreamItem;
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
@@ -73,7 +74,7 @@ where
     /// tx_trigger.send(Sequenced::with_sequence(1, 2)).unwrap();  // Trigger
     ///
     /// // Assert - trigger emits the latest data value
-    /// let result = sampled.next().await.unwrap();
+    /// let result = sampled.next().await.unwrap().unwrap();
     /// assert_eq!(*result.get(), 100);
     /// # }
     /// ```
@@ -99,7 +100,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = T> + Send + Sync>>
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static;
@@ -116,7 +117,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = T> + Send + Sync>>
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
     where
         IS: IntoStream<Item = T>,
         IS::Stream: Send + Sync + 'static,
@@ -145,11 +146,7 @@ where
                                     match safe_lock(&source_value, "take_latest_when source") {
                                         Ok(lock) => lock,
                                         Err(e) => {
-                                            error!(
-                                                "Failed to acquire lock in take_latest_when: {}",
-                                                e
-                                            );
-                                            return None;
+                                            return Some(StreamItem::Error(e));
                                         }
                                     };
                                 *source = Some(ordered_value.get().clone());
@@ -159,11 +156,7 @@ where
                                     match safe_lock(&filter_value, "take_latest_when filter") {
                                         Ok(lock) => lock,
                                         Err(e) => {
-                                            error!(
-                                                "Failed to acquire lock in take_latest_when: {}",
-                                                e
-                                            );
-                                            return None;
+                                            return Some(StreamItem::Error(e));
                                         }
                                     };
                                 *filter_val = Some(ordered_value.get().clone());
@@ -179,21 +172,19 @@ where
                         let source = match safe_lock(&source_value, "take_latest_when source") {
                             Ok(lock) => lock,
                             Err(e) => {
-                                error!("Failed to acquire lock in take_latest_when: {}", e);
-                                return None;
+                                return Some(StreamItem::Error(e));
                             }
                         };
                         let filter_val = match safe_lock(&filter_value, "take_latest_when filter") {
                             Ok(lock) => lock,
                             Err(e) => {
-                                error!("Failed to acquire lock in take_latest_when: {}", e);
-                                return None;
+                                return Some(StreamItem::Error(e));
                             }
                         };
 
                         if let (Some(src), Some(filt)) = (source.as_ref(), filter_val.as_ref()) {
                             if filter(filt) {
-                                Some(T::with_order(src.clone(), order))
+                                Some(StreamItem::Value(T::with_order(src.clone(), order)))
                             } else {
                                 None
                             }

@@ -132,7 +132,7 @@ impl Aggregator {
         // Combine the unified DataEvent streams
         let _ = sensor_stream
             .combine_latest(vec![metrics_stream, events_stream], |_| true)
-            .map_ordered(create_aggregated_event)
+            .map_ordered(|stream_item| create_aggregated_event(stream_item.unwrap()))
             .filter_ordered(|agg| {
                 // Only process reasonable temperatures (150-300 represents 15.0-30.0°C)
                 agg.get()
@@ -140,7 +140,8 @@ impl Aggregator {
                     .is_some_and(|t| (150..=300).contains(&t))
             })
             .subscribe_latest_async(
-                move |agg, _token| {
+                move |stream_item, _token| {
+                    let agg = stream_item.unwrap().unwrap();
                     let tx = output_tx.clone();
                     async move {
                         let temp_display = agg.temperature.map(|t| t as f64 / 10.0).unwrap_or(0.0);

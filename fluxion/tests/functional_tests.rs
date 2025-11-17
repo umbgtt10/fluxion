@@ -56,15 +56,15 @@ async fn test_functional_combine_with_previous() {
     tx.send(Sequenced::new(person_charlie())).unwrap();
 
     // Assert
-    let item = with_previous.next().await.unwrap();
+    let item = with_previous.next().await.unwrap().unwrap();
     assert!(item.previous.is_none());
     assert_eq!(item.current.get(), &person_alice());
 
-    let item = with_previous.next().await.unwrap();
+    let item = with_previous.next().await.unwrap().unwrap();
     assert_eq!(item.previous.unwrap().get(), &person_alice());
     assert_eq!(item.current.get(), &person_bob());
 
-    let item = with_previous.next().await.unwrap();
+    let item = with_previous.next().await.unwrap().unwrap();
     assert_eq!(item.previous.unwrap().get(), &person_bob());
     assert_eq!(item.current.get(), &person_charlie());
 }
@@ -144,8 +144,14 @@ async fn test_functional_take_while_with() {
 
     // Assert
     let mut taken = Box::pin(taken);
-    assert_eq!(taken.next().await.unwrap(), person_bob());
-    assert_eq!(taken.next().await.unwrap(), person_charlie());
+    assert_eq!(
+        taken.next().await.unwrap(),
+        fluxion_core::stream_item::StreamItem::Value(person_bob())
+    );
+    assert_eq!(
+        taken.next().await.unwrap(),
+        fluxion_core::stream_item::StreamItem::Value(person_charlie())
+    );
 }
 
 #[tokio::test]
@@ -198,9 +204,9 @@ async fn test_functional_chained_operations() {
     filter_tx.send(Sequenced::new(person_alice())).unwrap();
 
     // Assert
-    let item = composed.next().await.unwrap();
+    let item = composed.next().await.unwrap().unwrap();
     assert!(item.previous.is_none());
-    assert_eq!(item.current.get(), &person_charlie());
+    assert_eq!(item.current.unwrap().get(), &person_charlie());
 }
 
 #[tokio::test]

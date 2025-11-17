@@ -4,7 +4,7 @@
 
 use crate::fluxion_stream::FluxionStream;
 use fluxion_core::lock_utilities::safe_lock;
-use fluxion_core::Ordered;
+use fluxion_core::{Ordered, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::StreamExt;
 use futures::Stream;
@@ -84,7 +84,7 @@ where
     /// tx_data.send(Sequenced::with_sequence(1, 2)).unwrap();
     ///
     /// // Assert
-    /// assert_eq!(gated.next().await.unwrap(), 1);
+    /// assert_eq!(gated.next().await.unwrap().unwrap(), 1);
     /// # }
     /// ```
     ///
@@ -102,7 +102,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = TItem::Inner> + Send>;
+    ) -> FluxionStream<impl Stream<Item = StreamItem<TItem::Inner>> + Send>;
 }
 
 impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
@@ -118,7 +118,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = TItem::Inner> + Send> {
+    ) -> FluxionStream<impl Stream<Item = StreamItem<TItem::Inner>> + Send> {
         let filter = Arc::new(filter);
 
         // Tag each stream with its type
@@ -159,7 +159,7 @@ where
                                     || None,
                                     |fval| {
                                         if filter(fval) {
-                                            Some(source_val.get().clone())
+                                            Some(StreamItem::Value(source_val.get().clone()))
                                         } else {
                                             *terminated = true;
                                             None
@@ -168,10 +168,7 @@ where
                                 ),
                             }
                         }
-                        Err(e) => {
-                            error!("Failed to acquire lock in take_while_with: {}", e);
-                            None
-                        }
+                        Err(e) => Some(StreamItem::Error(e)),
                     }
                 }
             }

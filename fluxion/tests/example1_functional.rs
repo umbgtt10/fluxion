@@ -40,7 +40,7 @@ async fn test_take_latest_when_int_bool() {
         .send(Sequenced::with_sequence(Value::Bool(true), 4))
         .unwrap();
 
-    let result1 = pipeline.next().await.unwrap();
+    let result1 = pipeline.next().await.unwrap().unwrap();
     assert!(matches!(result1.get(), Value::Int(30)));
     assert_eq!(result1.sequence(), 4);
 
@@ -49,7 +49,7 @@ async fn test_take_latest_when_int_bool() {
         .send(Sequenced::with_sequence(Value::Int(40), 5))
         .unwrap();
 
-    let result2 = pipeline.next().await.unwrap();
+    let result2 = pipeline.next().await.unwrap().unwrap();
     assert!(matches!(result2.get(), Value::Int(40)));
     assert_eq!(result2.sequence(), 5);
 
@@ -57,7 +57,7 @@ async fn test_take_latest_when_int_bool() {
         .send(Sequenced::with_sequence(Value::Int(50), 6))
         .unwrap();
 
-    let result3 = pipeline.next().await.unwrap();
+    let result3 = pipeline.next().await.unwrap().unwrap();
     assert!(matches!(result3.get(), Value::Int(50)));
     assert_eq!(result3.sequence(), 6);
 }

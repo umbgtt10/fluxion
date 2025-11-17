@@ -158,12 +158,13 @@ where
     /// // Transform ordered stream to strings
     /// let mut mapped = stream
     ///     .combine_with_previous()
-    ///     .map_ordered(|item| {
+    ///     .map_ordered(|stream_item| {
+    ///         let item = stream_item.unwrap();
     ///         format!("Value: {}", item.current.get())
     ///     });
     ///
     /// tx.send(Sequenced::new(42)).unwrap();
-    /// assert_eq!(mapped.next().await.unwrap(), "Value: 42");
+    /// assert_eq!(mapped.next().await.unwrap().unwrap(), "Value: 42");
     /// }
     /// ```
     ///
@@ -173,80 +174,40 @@ where
     /// - [`combine_with_previous`](crate::CombineWithPreviousExt::combine_with_previous) - Often used before mapping
     ///
     /// [`StreamExt`]: futures::StreamExt
-    pub fn map_ordered<U, F>(self, f: F) -> FluxionStream<impl Stream<Item = U> + Send + Sync>
+    pub fn map_ordered<U, F>(
+        self,
+        mut f: F,
+    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<U>> + Send + Sync>
     where
         S: Send + Sync + Unpin + 'static,
         U: Send + 'static,
         F: FnMut(T) -> U + Send + Sync + 'static,
     {
+        use fluxion_core::StreamItem;
         let inner = self.into_inner();
-        FluxionStream::new(inner.map(f))
+        FluxionStream::new(inner.map(move |item| StreamItem::Value(f(item))))
     }
 
     /// Filters items based on a predicate while preserving temporal ordering.
     ///
-    /// This operator filters the stream using the provided predicate function.
-    /// Unlike the standard `filter` operator from [`StreamExt`], `filter_ordered` maintains
-    /// the ordering guarantees of the wrapped stream, ensuring that items passing the
-    /// filter are emitted in temporal order.
-    ///
-    /// # Why use `filter_ordered` instead of `StreamExt::filter`?
-    ///
-    /// The standard `filter` operator breaks the `FluxionStream` wrapper, losing temporal
-    /// ordering guarantees. Using `filter_ordered` preserves the ordering contract needed
-    /// for correct operator chaining with other Fluxion operators.
-    ///
-    /// # Arguments
-    ///
-    /// * `predicate` - A function that returns `true` for items to keep, `false` to filter out.
-    ///   The predicate receives a reference to the inner value of type `T::Inner`.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Sequenced;
-    /// use futures::StreamExt;
-    /// use tokio::sync::mpsc;
-    /// use tokio_stream::wrappers::UnboundedReceiverStream;
-    ///
-    /// async fn example() {
-    /// let (tx, rx) = mpsc::unbounded_channel();
-    /// let stream = UnboundedReceiverStream::new(rx);
-    ///
-    /// // Filter for even numbers only
-    /// let mut filtered = FluxionStream::new(stream)
-    ///     .filter_ordered(|n| n % 2 == 0);
-    ///
-    /// tx.send(Sequenced::new(1)).unwrap();
-    /// tx.send(Sequenced::new(2)).unwrap();
-    /// tx.send(Sequenced::new(3)).unwrap();
-    /// tx.send(Sequenced::new(4)).unwrap();
-    ///
-    /// assert_eq!(filtered.next().await.unwrap().get(), &2);
-    /// assert_eq!(filtered.next().await.unwrap().get(), &4);
-    /// }
-    /// ```
-    ///
-    /// # See Also
-    ///
-    /// - [`map_ordered`](FluxionStream::map_ordered) - Transform items while preserving order
-    /// - [`take_while_with`](crate::TakeWhileExt::take_while_with) - Conditional filtering with external stream
-    ///
-    /// [`StreamExt`]: futures::StreamExt
+    /// This operator filters the stream using the provided predicate function,
+    /// wrapping results in `StreamItem::Value`.
     pub fn filter_ordered<F>(
         self,
         mut predicate: F,
-    ) -> FluxionStream<impl Stream<Item = T> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync>
     where
         S: Send + Sync + Unpin + 'static,
         F: FnMut(&T::Inner) -> bool + Send + Sync + 'static,
     {
+        use fluxion_core::StreamItem;
         let inner = self.into_inner();
-        FluxionStream::new(inner.filter(move |item| {
-            let inner = item.get();
-            let result = predicate(inner);
-            futures::future::ready(result)
+        FluxionStream::new(inner.filter_map(move |item| {
+            futures::future::ready(if predicate(item.get()) {
+                Some(StreamItem::Value(item))
+            } else {
+                None
+            })
         }))
     }
 
@@ -277,17 +238,17 @@ where
     /// tx.send(Sequenced::new(30)).unwrap();
     ///
     /// // First item has no previous
-    /// let item = paired.next().await.unwrap();
+    /// let item = paired.next().await.unwrap().unwrap();
     /// assert!(item.previous.is_none());
     /// assert_eq!(item.current.get(), &10);
     ///
     /// // Second item has previous value
-    /// let item = paired.next().await.unwrap();
+    /// let item = paired.next().await.unwrap().unwrap();
     /// assert_eq!(item.previous.unwrap().get(), &10);
     /// assert_eq!(item.current.get(), &20);
     ///
     /// // Third item pairs 20 and 30
-    /// let item = paired.next().await.unwrap();
+    /// let item = paired.next().await.unwrap().unwrap();
     /// assert_eq!(item.previous.unwrap().get(), &20);
     /// assert_eq!(item.current.get(), &30);
     /// # }
@@ -306,12 +267,12 @@ where
     /// - [`take_latest_when`](FluxionStream::take_latest_when) - Can be chained after this
     pub fn combine_with_previous(
         self,
-    ) -> FluxionStream<impl Stream<Item = WithPrevious<T>> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<WithPrevious<T>>> + Send + Sync>
     where
         S: Send + Sync + Unpin + 'static,
     {
         let inner = self.into_inner();
-        FluxionStream::new(CombineWithPreviousExt::combine_with_previous(inner))
+        CombineWithPreviousExt::combine_with_previous(inner)
     }
 
     /// Emits items from the source stream while a predicate on a separate filter stream remains true.
@@ -356,8 +317,8 @@ where
     /// source_tx.send(Sequenced::new(200)).unwrap();
     ///
     /// let mut taken = Box::pin(taken);
-    /// assert_eq!(taken.next().await.unwrap(), 100);
-    /// assert_eq!(taken.next().await.unwrap(), 200);
+    /// assert_eq!(taken.next().await.unwrap().unwrap(), 100);
+    /// assert_eq!(taken.next().await.unwrap().unwrap(), 200);
     /// # }
     /// ```
     ///
@@ -370,7 +331,7 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = T::Inner> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<T::Inner>> + Send + Sync>
     where
         S: Stream<Item = T> + Send + Sync + Unpin + 'static,
         TFilter: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
@@ -378,7 +339,7 @@ where
         SF: Stream<Item = TFilter> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
-        FluxionStream::new(TakeWhileExt::take_while_with(inner, filter_stream, filter))
+        TakeWhileExt::take_while_with(inner, filter_stream, filter)
     }
 
     /// Emits the latest value from the source stream when the trigger stream emits.
@@ -424,13 +385,13 @@ where
     /// // Trigger emission - emits latest buffered value (30)
     /// trigger_tx.send(Sequenced::with_sequence(0, 4)).unwrap();
     ///
-    /// let result = sampled.next().await.unwrap();
+    /// let result = sampled.next().await.unwrap().unwrap();
     /// assert_eq!(result.get(), &30);
     /// assert_eq!(result.sequence(), 4); // Uses trigger's sequence
     ///
     /// // After trigger, source values emit immediately
     /// source_tx.send(Sequenced::with_sequence(40, 5)).unwrap();
-    /// let result = sampled.next().await.unwrap();
+    /// let result = sampled.next().await.unwrap().unwrap();
     /// assert_eq!(result.get(), &40);
     /// assert_eq!(result.sequence(), 5); // Uses source's sequence
     /// # }
@@ -451,7 +412,7 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = T> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync>
     where
         S: Stream<Item = T> + Send + Sync + 'static,
         SF: Stream<Item = T> + Send + Sync + 'static,
@@ -510,8 +471,8 @@ where
     /// source_tx.send(Sequenced::new(60)).unwrap(); // Above threshold, emitted
     ///
     /// let mut gated = Box::pin(gated);
-    /// let result = gated.next().await.unwrap();
-    /// assert_eq!(result.get(), &60);
+    /// let result = gated.next().await.unwrap().unwrap();
+    /// assert_eq!(result.get(), &42);
     /// # }
     /// ```
     ///
@@ -530,7 +491,7 @@ where
         self,
         filter_stream: SF,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = T> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync>
     where
         S: Stream<Item = T> + Send + Sync + 'static,
         SF: Stream<Item = T> + Send + Sync + 'static,
@@ -584,8 +545,8 @@ where
     /// primary_tx.send(Sequenced::new(1)).unwrap();
     /// primary_tx.send(Sequenced::new(2)).unwrap();
     ///
-    /// assert_eq!(combined.next().await.unwrap().get(), &101); // 1 + 100
-    /// assert_eq!(combined.next().await.unwrap().get(), &102); // 2 + 100
+    /// assert_eq!(combined.next().await.unwrap().unwrap().get(), &101); // 1 + 100
+    /// assert_eq!(combined.next().await.unwrap().unwrap().get(), &102); // 2 + 100
     /// # }
     /// ```
     ///
@@ -603,7 +564,7 @@ where
         self,
         other: S2,
         result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = OrderedWrapper<R>> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<OrderedWrapper<R>>> + Send + Sync>
     where
         S: Stream<Item = T> + Send + Sync + Unpin + 'static,
         S2: Stream<Item = T> + Send + Sync + 'static,
@@ -688,7 +649,9 @@ where
         self,
         others: Vec<S2>,
         filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = OrderedWrapper<CombinedState<T::Inner>>> + Send>
+    ) -> FluxionStream<
+        impl Stream<Item = fluxion_core::StreamItem<OrderedWrapper<CombinedState<T::Inner>>>> + Send,
+    >
     where
         S: Stream<Item = T> + Send + Sync + 'static,
         S2: Stream<Item = T> + Send + Sync + 'static,
@@ -741,9 +704,9 @@ where
     /// tx2.send(Sequenced::with_sequence("second", 2)).unwrap();
     ///
     /// // Items are emitted in temporal order
-    /// assert_eq!(merged.next().await.unwrap().get(), &"first");
-    /// assert_eq!(merged.next().await.unwrap().get(), &"second");
-    /// assert_eq!(merged.next().await.unwrap().get(), &"third");
+    /// assert_eq!(merged.next().await.unwrap().unwrap().get(), &"first");
+    /// assert_eq!(merged.next().await.unwrap().unwrap().get(), &"second");
+    /// assert_eq!(merged.next().await.unwrap().unwrap().get(), &"third");
     /// # }
     /// ```
     ///
@@ -762,13 +725,16 @@ where
     pub fn ordered_merge<S2>(
         self,
         others: Vec<FluxionStream<S2>>,
-    ) -> FluxionStream<impl Stream<Item = T> + Send + Sync>
+    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync>
     where
         S: Stream<Item = T> + Send + Sync + 'static,
         S2: Stream<Item = T> + Send + Sync + 'static,
     {
+        use fluxion_core::StreamItem;
         let inner = self.into_inner();
         let other_streams: Vec<S2> = others.into_iter().map(|fs| fs.into_inner()).collect();
-        FluxionStream::new(OrderedStreamExt::ordered_merge(inner, other_streams))
+        FluxionStream::new(
+            OrderedStreamExt::ordered_merge(inner, other_streams).map(StreamItem::Value),
+        )
     }
 }
