@@ -9,6 +9,7 @@ use fluxion_test_utils::test_data::{
     animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_dave, person_diane,
     plant_rose, TestData,
 };
+use fluxion_test_utils::unwrap_value;
 use futures::StreamExt;
 
 #[tokio::test]
@@ -20,13 +21,13 @@ async fn test_filter_ordered_basic_predicate() {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap();
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(result.get(), &person_alice());
 
     tx.send(Sequenced::new(animal_dog())).unwrap();
     tx.send(Sequenced::new(person_bob())).unwrap();
 
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(result.get(), &person_bob()); // Animal filtered out
 }
 
@@ -46,10 +47,10 @@ async fn test_filter_ordered_age_threshold() {
     tx.send(Sequenced::new(person_diane())).unwrap(); // 40 - kept
 
     // Assert
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(result.get(), &person_charlie());
 
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(result.get(), &person_diane());
 }
 
@@ -94,9 +95,9 @@ async fn test_filter_ordered_none_filtered() {
     tx.send(Sequenced::new(plant_rose())).unwrap();
 
     // Assert
-    assert_eq!(stream.next().await.unwrap().unwrap().get(), &person_alice());
-    assert_eq!(stream.next().await.unwrap().unwrap().get(), &animal_dog());
-    assert_eq!(stream.next().await.unwrap().unwrap().get(), &plant_rose());
+    assert_eq!(unwrap_value(stream.next().await).get(), &person_alice());
+    assert_eq!(unwrap_value(stream.next().await).get(), &animal_dog());
+    assert_eq!(unwrap_value(stream.next().await).get(), &plant_rose());
 }
 
 #[tokio::test]
@@ -118,9 +119,9 @@ async fn test_filter_ordered_preserves_ordering() {
     tx.send(Sequenced::new(person_dave())).unwrap(); // 28 - even, kept
 
     // Assert - ordering preserved for kept items
-    let r1 = stream.next().await.unwrap().unwrap();
-    let r2 = stream.next().await.unwrap().unwrap();
-    let r3 = stream.next().await.unwrap().unwrap();
+    let r1 = unwrap_value(stream.next().await);
+    let r2 = unwrap_value(stream.next().await);
+    let r3 = unwrap_value(stream.next().await);
 
     assert_eq!(r1.get(), &person_bob());
     assert_eq!(r2.get(), &person_diane());
@@ -146,10 +147,10 @@ async fn test_filter_ordered_multiple_types() {
     tx.send(Sequenced::new(person_bob())).unwrap();
 
     // Assert
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(result.get(), &animal_dog());
 
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(result.get(), &animal_spider());
 }
 
@@ -171,9 +172,9 @@ async fn test_filter_ordered_complex_predicate() {
     tx.send(Sequenced::new(person_diane())).unwrap(); // 40 - kept
 
     // Assert
-    assert_eq!(stream.next().await.unwrap().unwrap().get(), &person_bob());
-    assert_eq!(stream.next().await.unwrap().unwrap().get(), &animal_dog());
-    assert_eq!(stream.next().await.unwrap().unwrap().get(), &person_diane());
+    assert_eq!(unwrap_value(stream.next().await).get(), &person_bob());
+    assert_eq!(unwrap_value(stream.next().await).get(), &animal_dog());
+    assert_eq!(unwrap_value(stream.next().await).get(), &person_diane());
 }
 
 #[tokio::test]
@@ -188,7 +189,7 @@ async fn test_filter_ordered_single_item() {
     drop(tx);
 
     // Assert
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(result.get(), &person_alice());
     assert!(stream.next().await.is_none());
 }
@@ -210,9 +211,9 @@ async fn test_filter_ordered_with_pattern_matching() {
     tx.send(Sequenced::new(person_diane())).unwrap(); // Diane - kept
 
     // Assert
-    assert_eq!(stream.next().await.unwrap().unwrap().get(), &person_alice());
-    assert_eq!(stream.next().await.unwrap().unwrap().get(), &person_dave());
-    assert_eq!(stream.next().await.unwrap().unwrap().get(), &person_diane());
+    assert_eq!(unwrap_value(stream.next().await).get(), &person_alice());
+    assert_eq!(unwrap_value(stream.next().await).get(), &person_dave());
+    assert_eq!(unwrap_value(stream.next().await).get(), &person_diane());
 }
 
 #[tokio::test]
@@ -238,9 +239,6 @@ async fn test_filter_ordered_alternating_pattern() {
     tx.send(Sequenced::new(person_diane())).unwrap(); // 4th person - filtered
 
     // Assert
-    assert_eq!(stream.next().await.unwrap().unwrap().get(), &person_alice());
-    assert_eq!(
-        stream.next().await.unwrap().unwrap().get(),
-        &person_charlie()
-    );
+    assert_eq!(unwrap_value(stream.next().await).get(), &person_alice());
+    assert_eq!(unwrap_value(stream.next().await).get(), &person_charlie());
 }

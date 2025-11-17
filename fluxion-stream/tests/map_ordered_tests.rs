@@ -8,6 +8,7 @@ use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_dave, TestData,
 };
+use fluxion_test_utils::unwrap_value;
 use futures::StreamExt;
 
 #[tokio::test]
@@ -24,21 +25,21 @@ async fn test_map_ordered_basic_transformation() {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap();
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         "Previous: None, Current: Person[name=Alice, age=25]"
     );
 
     tx.send(Sequenced::new(person_bob())).unwrap();
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         "Previous: Some(\"Person[name=Alice, age=25]\"), Current: Person[name=Bob, age=30]"
     );
 
     tx.send(Sequenced::new(person_charlie())).unwrap();
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         "Previous: Some(\"Person[name=Bob, age=30]\"), Current: Person[name=Charlie, age=35]"
@@ -78,7 +79,7 @@ async fn test_map_ordered_to_struct() {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         AgeComparison {
@@ -89,7 +90,7 @@ async fn test_map_ordered_to_struct() {
     );
 
     tx.send(Sequenced::new(person_bob())).unwrap(); // Age 30
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         AgeComparison {
@@ -100,7 +101,7 @@ async fn test_map_ordered_to_struct() {
     );
 
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25 again
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         AgeComparison {
@@ -111,7 +112,7 @@ async fn test_map_ordered_to_struct() {
     );
 
     tx.send(Sequenced::new(person_charlie())).unwrap(); // Age 35
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         AgeComparison {
@@ -145,19 +146,19 @@ async fn test_map_ordered_extract_age_difference() {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(result, 0); // No previous
 
     tx.send(Sequenced::new(person_bob())).unwrap(); // Age 30
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(result, 5); // 30 - 25 = 5
 
     tx.send(Sequenced::new(person_dave())).unwrap(); // Age 28
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(result, -2); // 28 - 30 = -2
 
     tx.send(Sequenced::new(person_charlie())).unwrap(); // Age 35
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(result, 7); // 35 - 28 = 7
 }
 
@@ -171,7 +172,7 @@ async fn test_map_ordered_single_value() {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap();
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(result, "Person[name=Alice, age=25]");
 }
 
@@ -209,10 +210,10 @@ async fn test_map_ordered_preserves_ordering() {
     tx.send(Sequenced::new(person_dave())).unwrap();
 
     // Assert - order should be preserved
-    assert_eq!(stream.next().await.unwrap().unwrap(), "Alice");
-    assert_eq!(stream.next().await.unwrap().unwrap(), "Bob");
-    assert_eq!(stream.next().await.unwrap().unwrap(), "Charlie");
-    assert_eq!(stream.next().await.unwrap().unwrap(), "Dave");
+    assert_eq!(unwrap_value(stream.next().await), "Alice");
+    assert_eq!(unwrap_value(stream.next().await), "Bob");
+    assert_eq!(unwrap_value(stream.next().await), "Charlie");
+    assert_eq!(unwrap_value(stream.next().await), "Dave");
 }
 
 #[tokio::test]
@@ -229,13 +230,13 @@ async fn test_map_ordered_multiple_transformations() {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap();
-    assert_eq!(stream.next().await.unwrap().unwrap(), 25);
+    assert_eq!(unwrap_value(stream.next().await), 25);
 
     tx.send(Sequenced::new(person_bob())).unwrap();
-    assert_eq!(stream.next().await.unwrap().unwrap(), 30);
+    assert_eq!(unwrap_value(stream.next().await), 30);
 
     tx.send(Sequenced::new(person_charlie())).unwrap();
-    assert_eq!(stream.next().await.unwrap().unwrap(), 35);
+    assert_eq!(unwrap_value(stream.next().await), 35);
 }
 
 #[tokio::test]
@@ -280,7 +281,7 @@ async fn test_map_ordered_with_complex_closure() {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         PersonSummary {
@@ -291,7 +292,7 @@ async fn test_map_ordered_with_complex_closure() {
     );
 
     tx.send(Sequenced::new(person_bob())).unwrap(); // Age 30
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         PersonSummary {
@@ -302,7 +303,7 @@ async fn test_map_ordered_with_complex_closure() {
     );
 
     tx.send(Sequenced::new(person_bob())).unwrap(); // Same person
-    let result = stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         PersonSummary {
@@ -334,17 +335,17 @@ async fn test_map_ordered_boolean_logic() {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
-    assert!(!stream.next().await.unwrap().unwrap()); // No previous
+    assert!(!unwrap_value(stream.next().await)); // No previous
 
     tx.send(Sequenced::new(person_bob())).unwrap(); // Age 30
-    assert!(stream.next().await.unwrap().unwrap()); // 30 > 25
+    assert!(unwrap_value(stream.next().await)); // 30 > 25
 
     tx.send(Sequenced::new(person_charlie())).unwrap(); // Age 35
-    assert!(stream.next().await.unwrap().unwrap()); // 35 > 30
+    assert!(unwrap_value(stream.next().await)); // 35 > 30
 
     tx.send(Sequenced::new(person_dave())).unwrap(); // Age 28
-    assert!(!stream.next().await.unwrap().unwrap()); // 28 < 35
+    assert!(!unwrap_value(stream.next().await)); // 28 < 35
 
     tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
-    assert!(!stream.next().await.unwrap().unwrap()); // 25 < 28
+    assert!(!unwrap_value(stream.next().await)); // 25 < 28
 }

@@ -28,6 +28,7 @@ tracing = ["dep:tracing"]
 [dev-dependencies]
 fluxion-test-utils = { workspace = true }
 criterion = { workspace = true }
+anyhow = { workspace = true }
 
 [[bench]]
 name = "benchmarks"

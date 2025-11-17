@@ -11,6 +11,7 @@ use fluxion_test_utils::{
         animal, animal_ant, animal_cat, animal_dog, person, person_alice, person_bob,
         person_charlie, person_dave, TestData,
     },
+    unwrap_value,
 };
 use futures::StreamExt;
 
@@ -81,7 +82,7 @@ async fn test_take_latest_when_filter_satisfied_emits() {
     filter_tx.send(Sequenced::new(animal_ant())).unwrap();
 
     // Assert
-    let emitted_item = output_stream.next().await.unwrap().unwrap();
+    let emitted_item = unwrap_value(output_stream.next().await);
     assert_eq!(
         emitted_item.get(),
         &person_alice(),
@@ -112,7 +113,7 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
 
     // Assert
 
-    let first_item = output_stream.next().await.unwrap().unwrap();
+    let first_item = unwrap_value(output_stream.next().await);
     assert_eq!(
         first_item.get(),
         &person_alice(),
@@ -124,7 +125,7 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() {
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // Trigger filter again to sample Bob
 
     // Assert
-    let second_item = output_stream.next().await.unwrap().unwrap();
+    let second_item = unwrap_value(output_stream.next().await);
     assert_eq!(
         second_item.get(),
         &person_bob(),
@@ -155,7 +156,7 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() {
 
     // Assert
 
-    let first_item = output_stream.next().await.unwrap().unwrap();
+    let first_item = unwrap_value(output_stream.next().await);
     assert_eq!(
         first_item.get(),
         &person_charlie(),
@@ -190,7 +191,7 @@ async fn test_take_latest_when_filter_toggle_emissions() {
     // Act: source first, then filter triggers -> emit
     source_tx.send(Sequenced::new(person_alice())).unwrap();
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true, triggers emission
-    let first = output_stream.next().await.unwrap().unwrap();
+    let first = unwrap_value(output_stream.next().await);
     assert_eq!(
         first.get(),
         &person_alice(),
@@ -204,7 +205,7 @@ async fn test_take_latest_when_filter_toggle_emissions() {
 
     // Act: filter true again -> should emit the latest buffered source (Bob)
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // true
-    let third = output_stream.next().await.unwrap().unwrap();
+    let third = unwrap_value(output_stream.next().await);
     assert_eq!(
         third.get(),
         &person_bob(),
@@ -216,7 +217,7 @@ async fn test_take_latest_when_filter_toggle_emissions() {
 
     // Act: filter triggers again -> should sample Charlie
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // true
-    let fourth = output_stream.next().await.unwrap().unwrap();
+    let fourth = unwrap_value(output_stream.next().await);
     assert_eq!(
         fourth.get(),
         &person_charlie(),
@@ -242,7 +243,7 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() {
     // Prime both streams so a first emission can happen
     source_tx.send(Sequenced::new(person_alice())).unwrap();
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // true - triggers emission of Alice
-    let first = output_stream.next().await.unwrap().unwrap();
+    let first = unwrap_value(output_stream.next().await);
     assert_eq!(
         first.get(),
         &person_alice(),
@@ -290,7 +291,7 @@ async fn test_take_latest_when_source_publishes_before_filter() {
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true
 
     // Assert: Now we get the buffered source value
-    let first = output_stream.next().await.unwrap().unwrap();
+    let first = unwrap_value(output_stream.next().await);
     assert_eq!(
         first.get(),
         &person_alice(),
@@ -308,7 +309,7 @@ async fn test_take_latest_when_source_publishes_before_filter() {
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true
 
     // Assert: Emits the buffered Bob
-    let second = output_stream.next().await.unwrap().unwrap();
+    let second = unwrap_value(output_stream.next().await);
     assert_eq!(
         second.get(),
         &person_bob(),
@@ -347,7 +348,7 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true
 
     // Assert: Only the LATEST source value (Dave) is emitted, not all previous ones
-    let first = output_stream.next().await.unwrap().unwrap();
+    let first = unwrap_value(output_stream.next().await);
     assert_eq!(
         first.get(),
         &person_dave(),
@@ -362,7 +363,7 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() {
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // Trigger filter to sample Alice
 
     // Assert: Emits when filter triggers
-    let second = output_stream.next().await.unwrap().unwrap();
+    let second = unwrap_value(output_stream.next().await);
     assert_eq!(
         second.get(),
         &person_alice(),
@@ -402,7 +403,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true
 
     // Assert: Only the LATEST value is emitted (Person9999)
-    let first = output_stream.next().await.unwrap().unwrap();
+    let first = unwrap_value(output_stream.next().await);
     assert_eq!(first.get(), &person(String::from("Person9999"), 9999u32));
 
     // Assert: No additional emissions (buffer only held the latest, not all 10000)
@@ -423,7 +424,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() {
     filter_tx.send(Sequenced::new(animal_ant())).unwrap(); // legs 6 -> true
 
     // Assert: Only the latest from the second batch (Person19999)
-    let second = output_stream.next().await.unwrap().unwrap();
+    let second = unwrap_value(output_stream.next().await);
     assert_eq!(second.get(), &person(String::from("Person19999"), 19999u32));
 
     // This test validates that the buffer doesn't grow unbounded - it only keeps
@@ -451,7 +452,7 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() {
         .unwrap();
 
     // Assert: Should emit the boundary value
-    let result = output_stream.next().await.unwrap().unwrap();
+    let result = unwrap_value(output_stream.next().await);
     assert_eq!(
         result.get(),
         &person(String::new(), 0),
@@ -463,7 +464,7 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() {
     filter_tx.send(Sequenced::new(animal_dog())).unwrap();
 
     // Assert: Should emit normal value
-    let result2 = output_stream.next().await.unwrap().unwrap();
+    let result2 = unwrap_value(output_stream.next().await);
     assert_eq!(result2.get(), &person_alice());
 }
 
@@ -490,7 +491,7 @@ async fn test_take_latest_when_boundary_maximum_concurrent_streams() {
                 .unwrap();
 
             // Assert: Should emit
-            let result = output_stream.next().await.unwrap().unwrap();
+            let result = unwrap_value(output_stream.next().await);
             assert_eq!(result.get(), &person(format!("Person{i}"), i));
 
             // Act: Update source and trigger again
@@ -498,7 +499,7 @@ async fn test_take_latest_when_boundary_maximum_concurrent_streams() {
             filter_tx.send(Sequenced::new(animal_cat())).unwrap();
 
             // Assert: Should emit updated value
-            let result2 = output_stream.next().await.unwrap().unwrap();
+            let result2 = unwrap_value(output_stream.next().await);
             assert_eq!(result2.get(), &person_bob());
         });
 

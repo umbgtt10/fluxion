@@ -7,6 +7,7 @@ use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     animal_dog, person_alice, person_bob, person_charlie, plant_rose, TestData,
 };
+use fluxion_test_utils::unwrap_value;
 use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
 
@@ -52,15 +53,15 @@ async fn test_functional_combine_with_previous() {
     tx.send(Sequenced::new(person_charlie())).unwrap();
 
     // Assert
-    let item = with_previous.next().await.unwrap().unwrap();
+    let item = unwrap_value(with_previous.next().await);
     assert!(item.previous.is_none());
     assert_eq!(item.current.get(), &person_alice());
 
-    let item = with_previous.next().await.unwrap().unwrap();
+    let item = unwrap_value(with_previous.next().await);
     assert_eq!(item.previous.unwrap().get(), &person_alice());
     assert_eq!(item.current.get(), &person_bob());
 
-    let item = with_previous.next().await.unwrap().unwrap();
+    let item = unwrap_value(with_previous.next().await);
     assert_eq!(item.previous.unwrap().get(), &person_bob());
     assert_eq!(item.current.get(), &person_charlie());
 }
@@ -191,7 +192,7 @@ async fn test_functional_chained_operations() {
     filter_tx.send(Sequenced::new(person_alice())).unwrap();
 
     // Assert
-    let item = composed.next().await.unwrap().unwrap();
+    let item = unwrap_value(composed.next().await);
     assert!(item.previous.is_none());
     assert_eq!(item.current.get(), &person_charlie());
 }
@@ -208,7 +209,7 @@ async fn test_functional_from_unbounded_receiver() {
     drop(tx);
 
     // Assert
-    assert_eq!(stream.next().await.unwrap().unwrap(), person_alice());
-    assert_eq!(stream.next().await.unwrap().unwrap(), person_bob());
+    assert_eq!(unwrap_value(stream.next().await), person_alice());
+    assert_eq!(unwrap_value(stream.next().await), person_bob());
     assert!(stream.next().await.is_none());
 }

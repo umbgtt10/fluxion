@@ -4,11 +4,110 @@
 
 use crate::sequenced::Sequenced;
 use crate::test_data::TestData;
-use fluxion_core::{FluxionError, Result};
+use fluxion_core::{FluxionError, Result, StreamItem};
 use futures::stream::StreamExt;
 use futures::Stream;
 use std::time::Duration;
+use tokio::sync::mpsc;
 use tokio::time::sleep;
+use tokio_stream::wrappers::UnboundedReceiverStream;
+
+/// Unwraps a `StreamItem::Value`, panicking if it's an error.
+///
+/// This helper eliminates the common `.unwrap().unwrap()` pattern in tests
+/// where you need to extract the value from both the `Option` and `StreamItem`.
+///
+/// # Panics
+///
+/// Panics if the `StreamItem` is an `Error` variant.
+///
+/// # Example
+///
+/// ```rust
+/// use fluxion_test_utils::{test_channel, unwrap_value, Sequenced};
+/// use fluxion_test_utils::test_data::person_alice;
+/// use futures::StreamExt;
+///
+/// # async fn example() {
+/// let (tx, mut stream) = test_channel();
+/// tx.send(Sequenced::new(person_alice())).unwrap();
+///
+/// // Instead of: let item = stream.next().await.unwrap().unwrap();
+/// let item = unwrap_value(stream.next().await);
+/// # }
+/// ```
+pub fn unwrap_value<T>(item: Option<StreamItem<T>>) -> T {
+    match item {
+        Some(StreamItem::Value(value)) => value,
+        Some(StreamItem::Error(e)) => panic!("Expected Value but got Error: {}", e),
+        None => panic!("Expected Value but stream ended"),
+    }
+}
+
+/// Creates a test channel that automatically wraps values in `StreamItem::Value`.
+///
+/// This helper simplifies test setup by handling the `StreamItem` wrapping automatically,
+/// allowing tests to send plain values while the stream receives `StreamItem<T>`.
+///
+/// # Example
+///
+/// ```rust
+/// use fluxion_test_utils::{test_channel, Sequenced};
+/// use fluxion_test_utils::test_data::person_alice;
+/// use futures::StreamExt;
+///
+/// # async fn example() {
+/// let (tx, mut stream) = test_channel();
+///
+/// // Send plain values
+/// tx.send(Sequenced::new(person_alice())).unwrap();
+///
+/// // Receive StreamItem-wrapped values
+/// let item = stream.next().await.unwrap().unwrap(); // Option -> StreamItem -> Value
+/// # }
+/// ```
+pub fn test_channel<T: Send + 'static>() -> (
+    mpsc::UnboundedSender<T>,
+    impl Stream<Item = StreamItem<T>> + Send,
+) {
+    let (tx, rx) = mpsc::unbounded_channel();
+    let stream = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
+    (tx, stream)
+}
+
+/// Creates a test channel that accepts `StreamItem<T>` for testing error propagation.
+///
+/// This helper allows tests to explicitly send both values and errors through the stream,
+/// enabling comprehensive error handling tests.
+///
+/// # Example
+///
+/// ```rust
+/// use fluxion_test_utils::test_channel_with_errors;
+/// use fluxion_core::{StreamItem, FluxionError};
+/// use futures::StreamExt;
+///
+/// # async fn example() {
+/// let (tx, mut stream) = test_channel_with_errors();
+///
+/// // Send values
+/// tx.send(StreamItem::Value(42)).unwrap();
+///
+/// // Send errors
+/// tx.send(StreamItem::Error(FluxionError::stream_error("test error"))).unwrap();
+///
+/// let value = stream.next().await.unwrap();
+/// let error = stream.next().await.unwrap();
+/// # }
+/// ```
+pub fn test_channel_with_errors<T: Send + 'static>() -> (
+    mpsc::UnboundedSender<StreamItem<T>>,
+    impl Stream<Item = StreamItem<T>> + Send,
+) {
+    let (tx, rx) = mpsc::unbounded_channel();
+    let stream = UnboundedReceiverStream::new(rx);
+    (tx, stream)
+}
 
 /// Assert that no element is emitted within the given timeout.
 ///

@@ -13,6 +13,7 @@ use fluxion_test_utils::{
         animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_diane,
         plant_rose, plant_sunflower, DataVariant, TestData,
     },
+    unwrap_value,
 };
 use futures::{Stream, StreamExt};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -128,19 +129,19 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues()
     plant_tx.send(Sequenced::new(plant_rose())).unwrap();
 
     // Assert
-    let state = combined_stream.next().await.unwrap().unwrap();
+    let state = unwrap_value(combined_stream.next().await);
     let actual: Vec<TestData> = state.get().values().clone();
     assert_eq!(actual, vec![person_alice(), animal_dog(), plant_rose()]);
 
     drop(plant_tx);
 
     person_tx.send(Sequenced::new(person_bob())).unwrap();
-    let state = combined_stream.next().await.unwrap().unwrap();
+    let state = unwrap_value(combined_stream.next().await);
     let actual: Vec<TestData> = state.get().values().clone();
     assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
 
     animal_tx.send(Sequenced::new(animal_spider())).unwrap();
-    let state = combined_stream.next().await.unwrap().unwrap();
+    let state = unwrap_value(combined_stream.next().await);
     let actual: Vec<TestData> = state.get().values().clone();
     assert_eq!(actual, vec![person_bob(), animal_spider(), plant_rose()]);
 }
@@ -188,7 +189,7 @@ async fn combine_latest_template_test(
 
     // Assert
 
-    let state = combined_stream.next().await.unwrap().unwrap();
+    let state = unwrap_value(combined_stream.next().await);
     let actual: Vec<TestData> = state.get().values().clone();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
@@ -316,7 +317,7 @@ async fn combine_latest_stream_order_test(
     plant_tx.send(Sequenced::new(plant_rose())).unwrap();
 
     // Assert
-    let state = combined_stream.next().await.unwrap().unwrap();
+    let state = unwrap_value(combined_stream.next().await);
     let actual: Vec<TestData> = state.get().values().clone();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
@@ -462,7 +463,7 @@ async fn test_combine_latest_filter_function_panics() {
     // Act: First emission should succeed
     person_tx.send(Sequenced::new(person_alice())).unwrap();
     animal_tx.send(Sequenced::new(animal_dog())).unwrap();
-    let _first = combined_stream.next().await.unwrap().unwrap();
+    let _first = unwrap_value(combined_stream.next().await);
 
     // Act: Second emission triggers panic in filter
     person_tx.send(Sequenced::new(person_bob())).unwrap();
