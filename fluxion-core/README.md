@@ -59,9 +59,9 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-core = "0.8"
+fluxion-core = "0.1.1"
 ```
 
 ## License
 
-MIT
+Apache-2.0

@@ -163,7 +163,7 @@ mod tests {
 - Provide meaningful error context using `FluxionError` variants
 - Document all error conditions in function docs
 - Avoid panics in library code; return errors instead
-- Use `safe_lock` for mutex operations to handle poisoned locks gracefully
+- Use `lock_or_error` for mutex operations to handle poisoned locks gracefully
 
 ### Performance Considerations
 

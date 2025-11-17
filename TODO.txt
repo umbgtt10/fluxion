@@ -1,4 +1,4 @@
 1) Add error propagation tests in separate files
-
-4) Add README to every crate
-7) double-check documentation, README, examples and overall docs structure
+2) Check examples in README
+3) Ensure unwrap or expect not in productive code
+4) Find a better way to handle double-wrapping!

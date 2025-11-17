@@ -78,4 +78,4 @@ See [benchmarks](benches/) for detailed performance characteristics.
 
 ## License
 
-MIT
+Apache-2.0

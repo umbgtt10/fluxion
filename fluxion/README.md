@@ -19,7 +19,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.8"
+fluxion-rx = "0.1.1"
 ```
 
 ## Example
@@ -61,4 +61,4 @@ For detailed documentation, see:
 
 ## License
 
-MIT
+Apache-2.0

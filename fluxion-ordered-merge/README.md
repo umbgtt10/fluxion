@@ -66,4 +66,4 @@ This ensures temporal ordering even when upstream streams emit at different rate
 
 ## License
 
-MIT
+Apache-2.0

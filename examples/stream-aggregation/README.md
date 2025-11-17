@@ -50,7 +50,7 @@ let aggregated = sensor_stream
 ## Running the Example
 
 ```bash
-cargo run --example stream-aggregation
+cargo run --package rabbitmq-aggregator-example
 ```
 
 ## Use Cases
@@ -63,4 +63,4 @@ This pattern is useful for:
 
 ## License
 
-MIT
+Apache-2.0

@@ -33,8 +33,8 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.2.0"
-fluxion-test-utils = "0.2.0"
+fluxion-rx = "0.1.1"
+fluxion-test-utils = "0.1.1"
 tokio = { version = "1.48", features = ["full"] }
 futures = "0.3"
 ```
@@ -242,7 +242,7 @@ The **[stream-aggregation](examples/stream-aggregation/)** example demonstrates 
 - Illustrates proper resource management and cancellation
 - Serves as a template for building your own event processing systems
 
-Run it with: `cargo run --example stream-aggregation`
+Run it with: `cargo run --package rabbitmq-aggregator-example`
 
 ### 🔧 API Documentation
 
