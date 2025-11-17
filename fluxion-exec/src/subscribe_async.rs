@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use futures::stream::Stream;
 use futures::stream::StreamExt;
 use std::future::Future;
-use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc::unbounded_channel;
 use tokio_util::sync::CancellationToken;
 
 use fluxion_core::{FluxionError, Result};
@@ -153,7 +153,7 @@ where
         E: std::error::Error + Send + Sync + 'static,
     {
         let cancellation_token = cancellation_token.unwrap_or_default();
-        let errors: Arc<Mutex<Vec<E>>> = Arc::new(Mutex::new(Vec::new()));
+        let (error_tx, mut error_rx) = unbounded_channel();
 
         while let Some(item) = self.next().await {
             if cancellation_token.is_cancelled() {
@@ -163,7 +163,7 @@ where
             let on_next_func = on_next_func.clone();
             let cancellation_token = cancellation_token.clone();
             let on_error_callback = on_error_callback.clone();
-            let errors = errors.clone();
+            let error_tx = error_tx.clone();
 
             tokio::spawn(async move {
                 let result = on_next_func(item.clone(), cancellation_token).await;
@@ -173,19 +173,20 @@ where
                         on_error_callback(error);
                     } else {
                         // Collect error for later aggregation
-                        if let Ok(mut errs) = errors.lock() {
-                            errs.push(error);
-                        }
+                        let _ = error_tx.send(error);
                     }
                 }
             });
         }
 
-        // Check if any errors were collected
-        let collected_errors = {
-            let mut guard = errors.lock().unwrap_or_else(|e| e.into_inner());
-            std::mem::take(&mut *guard)
-        };
+        // Drop the original sender so the channel closes
+        drop(error_tx);
+
+        // Collect all errors from the channel
+        let mut collected_errors = Vec::new();
+        while let Some(error) = error_rx.recv().await {
+            collected_errors.push(error);
+        }
 
         if !collected_errors.is_empty() {
             Err(FluxionError::from_user_errors(collected_errors))

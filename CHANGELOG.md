@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Documentation**: Comprehensive unwrap/expect assessment (`assessments/UNWRAP_EXPECT_ASSESSMENT.md`) - Grade A+ with only 1 expect() in production code
 - **Error Handling**: Comprehensive error propagation through `StreamItem<T>` enum in all operators
 - **Documentation**: Added `docs/ERROR-HANDLING.md` - complete error handling guide with patterns and examples
 - **Documentation**: Added `# Errors` sections to all 9 stream operators with links to error handling guide
@@ -56,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **API**: Removed deprecated method names (`both()`, `get_state()`, `safe_lock()`) - use new names instead
 
 ### Fixed
+- **Code Quality**: Replaced unsafe `unwrap()` with documented `expect()` in `fluxion-ordered-merge` explaining safety invariant
 - **Error Handling**: Lock poisoning errors no longer cause silent data loss
 - **API Consistency**: `take_while_with` now matches other operators' return type pattern
 

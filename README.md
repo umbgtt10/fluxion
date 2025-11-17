@@ -33,9 +33,10 @@ A reactive stream processing library for Rust with temporal ordering guarantees,
 - **[GEMINI](assessments/ASSESSMENT_GEMINI.md)**
 - **[CLAUDE](assessments/ASSESSMENT_CLAUDE.md)**
 
-### 📋 Unwrap and Expect Assessment
+### 📋 Other Assesssments
 
-- **[Assessment](assessments/ASSESSMENT_CLAUDE.md)**
+- **[Unwrap](assessments/UNWRAP_EXPECT_ASSESSMENT.md)**
+- **[Mutex](assessments/RWLOCK_VS_MUTEX_ASSESSMENT.md)**
 
 ## Quick Start
 
