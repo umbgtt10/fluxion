@@ -10,6 +10,10 @@ use futures::stream::Map;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+/// Type alias for the stream returned by `into_fluxion_stream`
+type FluxionStreamFromReceiver<U> =
+    FluxionStream<Map<UnboundedReceiverStream<U>, fn(U) -> fluxion_core::StreamItem<U>>>;
+
 /// Extension trait for `UnboundedReceiver` to create FluxionStreams.
 pub trait UnboundedReceiverExt<T> {
     /// Converts an `UnboundedReceiver<T>` into a `FluxionStream<U>` by applying a transformation.
@@ -66,10 +70,7 @@ pub trait UnboundedReceiverExt<T> {
     /// # drop(stream);
     /// # }
     /// ```
-    fn into_fluxion_stream<U, F>(
-        self,
-        mapper: F,
-    ) -> FluxionStream<Map<UnboundedReceiverStream<U>, fn(U) -> fluxion_core::StreamItem<U>>>
+    fn into_fluxion_stream<U, F>(self, mapper: F) -> FluxionStreamFromReceiver<U>
     where
         F: FnMut(T) -> U + Send + 'static,
         U: Ordered<Inner = U> + Clone + std::fmt::Debug + Ord + Send + Sync + Unpin + 'static;
@@ -79,10 +80,7 @@ impl<T> UnboundedReceiverExt<T> for mpsc::UnboundedReceiver<T>
 where
     T: Ordered<Inner = T> + Clone + std::fmt::Debug + Ord + Send + Sync + Unpin + 'static,
 {
-    fn into_fluxion_stream<U, F>(
-        self,
-        mut mapper: F,
-    ) -> FluxionStream<Map<UnboundedReceiverStream<U>, fn(U) -> fluxion_core::StreamItem<U>>>
+    fn into_fluxion_stream<U, F>(self, mut mapper: F) -> FluxionStreamFromReceiver<U>
     where
         F: FnMut(T) -> U + Send + 'static,
         U: Ordered<Inner = U> + Clone + std::fmt::Debug + Ord + Send + Sync + Unpin + 'static,

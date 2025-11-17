@@ -182,7 +182,7 @@ where
         F: FnMut(T) -> U + Send + Sync + 'static,
     {
         let inner = self.into_inner();
-        FluxionStream::new(inner.map(move |item| item.map(|value| f(value))))
+        FluxionStream::new(inner.map(move |item| item.map(&mut f)))
     }
 
     /// Filters items based on a predicate while preserving temporal ordering.
