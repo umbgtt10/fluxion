@@ -159,7 +159,7 @@ pub fn test_channel<T: Send + 'static>() -> (
 ///
 /// ```rust
 /// use fluxion_test_utils::test_channel_with_errors;
-/// use fluxion_core::StreamItem;
+/// use fluxion_core::{StreamItem, FluxionError};
 /// use futures::StreamExt;
 ///
 /// # async fn example() {
@@ -169,7 +169,7 @@ pub fn test_channel<T: Send + 'static>() -> (
 /// tx.send(StreamItem::Value(42)).unwrap();
 ///
 /// // Send errors
-/// tx.send(StreamItem::Error("test error".into())).unwrap();
+/// tx.send(StreamItem::Error(FluxionError::stream_error("test error"))).unwrap();
 ///
 /// let value = stream.next().await.unwrap();
 /// let error = stream.next().await.unwrap();

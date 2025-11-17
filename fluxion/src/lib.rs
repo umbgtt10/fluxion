@@ -41,8 +41,10 @@
 //!     tx.send(3).unwrap();
 //!     drop(tx);
 //!
-//!     // Process the stream
-//!     let sum: i32 = stream.fold(0, |acc, x| async move { acc + x }).await;
+//!     // Process the stream (unwrap StreamItem values)
+//!     let sum: i32 = stream.fold(0, |acc, x| async move {
+//!         acc + x.unwrap()
+//!     }).await;
 //!     println!("Sum: {}", sum);  // Prints: Sum: 6
 //! }
 //! ```

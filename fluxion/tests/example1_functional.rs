@@ -48,7 +48,7 @@ async fn test_take_latest_when_int_bool() {
     tx_int
         .send(Sequenced::with_sequence(Value::Int(40), 5))
         .unwrap();
-    
+
     // Need another trigger to emit the buffered value
     tx_trigger
         .send(Sequenced::with_sequence(Value::Bool(true), 6))
@@ -62,7 +62,7 @@ async fn test_take_latest_when_int_bool() {
     tx_int
         .send(Sequenced::with_sequence(Value::Int(50), 7))
         .unwrap();
-    
+
     tx_trigger
         .send(Sequenced::with_sequence(Value::Bool(true), 8))
         .unwrap();
