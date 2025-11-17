@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `with_latest_from` → `Stream<Item = StreamItem<OrderedWrapper<R>>>`
   - `take_latest_when` → `Stream<Item = StreamItem<T>>`
   - `emit_when` → `Stream<Item = StreamItem<T>>`
-  - `take_while_with` → `Stream<Item = StreamItem<T::Inner>>`
+  - `take_while_with` → `Stream<Item = StreamItem<T>>`
   - `combine_with_previous` → `Stream<Item = StreamItem<WithPrevious<T>>>`
   - `map_ordered` → `Stream<Item = StreamItem<U>>`
   - `filter_ordered` → `Stream<Item = StreamItem<T>>`

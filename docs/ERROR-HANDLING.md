@@ -211,7 +211,7 @@ Implement retry logic for transient failures:
 ```rust
 use tokio::time::{sleep, Duration};
 
-let mut stream = Box::pin(stream.combine_latest(vec![other], |_| true));
+let mut stream = stream.combine_latest(vec![other], |_| true);
 
 while let Some(item) = stream.next().await {
     let mut attempts = 0;
