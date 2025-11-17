@@ -102,7 +102,10 @@ where
     ///
     /// - `ordered_merge`: Emits all values from all streams
     /// - `combine_latest`: Emits only when streams change, after all have initialized
-    fn ordered_merge<IS>(self, others: Vec<IS>) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
+    fn ordered_merge<IS>(
+        self,
+        others: Vec<IS>,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
