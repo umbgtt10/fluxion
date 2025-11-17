@@ -6,8 +6,9 @@
 
 use crate::FluxionStream;
 use fluxion_core::Ordered;
-use futures::Stream;
+use futures::stream::Map;
 use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// Extension trait for `UnboundedReceiver` to create FluxionStreams.
 pub trait UnboundedReceiverExt<T> {
@@ -68,10 +69,10 @@ pub trait UnboundedReceiverExt<T> {
     fn into_fluxion_stream<U, F>(
         self,
         mapper: F,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<U>> + Send>
+    ) -> FluxionStream<Map<UnboundedReceiverStream<U>, fn(U) -> fluxion_core::StreamItem<U>>>
     where
         F: FnMut(T) -> U + Send + 'static,
-        U: Send + 'static;
+        U: Ordered<Inner = U> + Clone + std::fmt::Debug + Ord + Send + Sync + Unpin + 'static;
 }
 
 impl<T> UnboundedReceiverExt<T> for mpsc::UnboundedReceiver<T>
@@ -81,10 +82,10 @@ where
     fn into_fluxion_stream<U, F>(
         self,
         mut mapper: F,
-    ) -> FluxionStream<impl Stream<Item = fluxion_core::StreamItem<U>> + Send>
+    ) -> FluxionStream<Map<UnboundedReceiverStream<U>, fn(U) -> fluxion_core::StreamItem<U>>>
     where
         F: FnMut(T) -> U + Send + 'static,
-        U: Send + 'static,
+        U: Ordered<Inner = U> + Clone + std::fmt::Debug + Ord + Send + Sync + Unpin + 'static,
     {
         use futures::StreamExt;
 
@@ -104,7 +105,10 @@ where
 
         tokio::spawn(task);
 
-        // Return the stream from the intermediate channel
-        FluxionStream::from_unbounded_receiver(rx)
+        // Return the stream from the intermediate channel with concrete type
+        FluxionStream::new(
+            UnboundedReceiverStream::new(rx)
+                .map(fluxion_core::StreamItem::Value as fn(U) -> fluxion_core::StreamItem<U>),
+        )
     }
 }
