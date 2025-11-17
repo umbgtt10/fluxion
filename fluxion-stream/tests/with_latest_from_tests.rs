@@ -6,13 +6,12 @@ use fluxion_core::Ordered;
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_stream::CombinedState;
 use fluxion_test_utils::sequenced::Sequenced;
+use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     animal, animal_cat, animal_dog, person_alice, person_bob, TestData,
 };
 use fluxion_test_utils::with_timeout;
 use futures::{FutureExt, StreamExt};
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 // Identity selector for testing - returns the CombinedState as-is
 fn result_selector(state: &CombinedState<TestData>) -> CombinedState<TestData> {
@@ -23,11 +22,8 @@ fn result_selector(state: &CombinedState<TestData>) -> CombinedState<TestData> {
 async fn test_with_latest_from_basic() {
     with_timeout!({
         // Arrange
-        let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-        let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-        let animal_stream = UnboundedReceiverStream::new(animal_rx);
-        let person_stream = UnboundedReceiverStream::new(person_rx);
+        let (animal_tx, animal_stream) = test_channel();
+        let (person_tx, person_stream) = test_channel();
 
         let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
@@ -68,11 +64,8 @@ async fn test_with_latest_from_basic() {
 async fn test_with_latest_from_ordering_preserved() {
     with_timeout!({
         // Arrange
-        let (primary_tx, primary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-        let (secondary_tx, secondary_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-        let primary_stream = UnboundedReceiverStream::new(primary_rx);
-        let secondary_stream = UnboundedReceiverStream::new(secondary_rx);
+        let (primary_tx, primary_stream) = test_channel();
+        let (secondary_tx, secondary_stream) = test_channel();
 
         let mut combined_stream =
             primary_stream.with_latest_from(secondary_stream, result_selector);
@@ -106,11 +99,8 @@ async fn test_with_latest_from_ordering_preserved() {
 #[tokio::test]
 async fn test_with_latest_from_custom_selector() {
     // Arrange
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-    let animal_stream = UnboundedReceiverStream::new(animal_rx);
-    let person_stream = UnboundedReceiverStream::new(person_rx);
+    let (animal_tx, animal_stream) = test_channel();
+    let (person_tx, person_stream) = test_channel();
 
     // Custom selector that extracts just one field (e.g., the primary value as a String)
     let custom_selector = |state: &CombinedState<TestData>| {
@@ -138,11 +128,8 @@ async fn test_with_latest_from_custom_selector() {
 #[tokio::test]
 async fn test_with_latest_from_secondary_emits_first_no_output() {
     // Arrange
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (_person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-    let animal_stream = UnboundedReceiverStream::new(animal_rx);
-    let person_stream = UnboundedReceiverStream::new(person_rx);
+    let (animal_tx, animal_stream) = test_channel();
+    let (_person_tx, person_stream) = test_channel();
 
     let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
@@ -157,11 +144,8 @@ async fn test_with_latest_from_secondary_emits_first_no_output() {
 async fn test_with_latest_from_secondary_completes_early() {
     with_timeout!({
         // Arrange
-        let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-        let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-        let animal_stream = UnboundedReceiverStream::new(animal_rx);
-        let person_stream = UnboundedReceiverStream::new(person_rx);
+        let (animal_tx, animal_stream) = test_channel();
+        let (person_tx, person_stream) = test_channel();
 
         let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
@@ -191,11 +175,8 @@ async fn test_with_latest_from_secondary_completes_early() {
 async fn test_with_latest_from_primary_completes_early() {
     with_timeout!({
         // Arrange
-        let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-        let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-        let animal_stream = UnboundedReceiverStream::new(animal_rx);
-        let person_stream = UnboundedReceiverStream::new(person_rx);
+        let (animal_tx, animal_stream) = test_channel();
+        let (person_tx, person_stream) = test_channel();
 
         let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
@@ -225,11 +206,8 @@ async fn test_with_latest_from_primary_completes_early() {
 async fn test_with_latest_from_large_number_of_emissions() {
     with_timeout!({
         // Arrange
-        let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-        let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-        let animal_stream = UnboundedReceiverStream::new(animal_rx);
-        let person_stream = UnboundedReceiverStream::new(person_rx);
+        let (animal_tx, animal_stream) = test_channel();
+        let (person_tx, person_stream) = test_channel();
 
         let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
@@ -261,11 +239,8 @@ async fn test_with_latest_from_large_number_of_emissions() {
 async fn test_with_latest_from_both_streams_close_before_emission() {
     with_timeout!({
         // Arrange
-        let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-        let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-        let animal_stream = UnboundedReceiverStream::new(animal_rx);
-        let person_stream = UnboundedReceiverStream::new(person_rx);
+        let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
+        let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
 
         let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
@@ -282,11 +257,8 @@ async fn test_with_latest_from_both_streams_close_before_emission() {
 async fn test_with_latest_from_secondary_updates_latest() {
     with_timeout!({
         // Arrange
-        let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-        let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-        let animal_stream = UnboundedReceiverStream::new(animal_rx);
-        let person_stream = UnboundedReceiverStream::new(person_rx);
+        let (animal_tx, animal_stream) = test_channel();
+        let (person_tx, person_stream) = test_channel();
 
         let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
@@ -317,15 +289,13 @@ async fn test_with_latest_from_secondary_updates_latest() {
 async fn test_with_latest_from_multiple_concurrent_streams() {
     with_timeout!({
         // Test that multiple independent with_latest_from streams work correctly
-        let (animal_tx1, animal_rx1) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-        let (person_tx1, person_rx1) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-        let (animal_tx2, animal_rx2) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-        let (person_tx2, person_rx2) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+        let (animal_tx1, animal_stream1) = test_channel();
+        let (person_tx1, person_stream1) = test_channel();
+        let (animal_tx2, animal_stream2) = test_channel();
+        let (person_tx2, person_stream2) = test_channel();
 
-        let stream1 = UnboundedReceiverStream::new(animal_rx1)
-            .with_latest_from(UnboundedReceiverStream::new(person_rx1), result_selector);
-        let stream2 = UnboundedReceiverStream::new(animal_rx2)
-            .with_latest_from(UnboundedReceiverStream::new(person_rx2), result_selector);
+        let stream1 = animal_stream1.with_latest_from(person_stream1, result_selector);
+        let stream2 = animal_stream2.with_latest_from(person_stream2, result_selector);
 
         let mut stream1 = stream1;
         let mut stream2 = stream2;

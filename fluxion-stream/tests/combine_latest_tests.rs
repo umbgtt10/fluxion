@@ -8,6 +8,7 @@ use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
     sequenced::Sequenced,
+    test_channel,
     test_data::{
         animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_diane,
         plant_rose, plant_sunflower, DataVariant, TestData,
@@ -17,7 +18,6 @@ use futures::{Stream, StreamExt};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 fn send_variant(variant: &DataVariant, senders: &[mpsc::UnboundedSender<Sequenced<TestData>>]) {
     match variant {
@@ -43,12 +43,9 @@ static FILTER: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestDat
 #[tokio::test]
 async fn test_combine_latest_empty_streams() {
     // Arrange
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let person_stream = UnboundedReceiverStream::new(person_rx);
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let animal_stream = UnboundedReceiverStream::new(animal_rx);
-    let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let plant_stream = UnboundedReceiverStream::new(plant_rx);
+    let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
+    let (plant_tx, plant_stream) = test_channel::<Sequenced<TestData>>();
 
     let mut combined_stream =
         person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
@@ -69,12 +66,9 @@ async fn test_combine_latest_empty_streams() {
 #[tokio::test]
 async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
     // Arrange
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let person_stream = UnboundedReceiverStream::new(person_rx);
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let animal_stream = UnboundedReceiverStream::new(animal_rx);
-    let (_plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let plant_stream = UnboundedReceiverStream::new(plant_rx);
+    let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
+    let (_plant_tx, plant_stream) = test_channel::<Sequenced<TestData>>();
 
     let mut combined_stream =
         person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
@@ -95,12 +89,9 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
 #[tokio::test]
 async fn test_combine_latest_stream_closes_before_publish_no_output() {
     // Arrange
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let person_stream = UnboundedReceiverStream::new(person_rx);
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let animal_stream = UnboundedReceiverStream::new(animal_rx);
-    let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let plant_stream = UnboundedReceiverStream::new(plant_rx);
+    let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
+    let (plant_tx, plant_stream) = test_channel::<Sequenced<TestData>>();
 
     let mut combined_stream =
         person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
@@ -124,12 +115,9 @@ async fn test_combine_latest_stream_closes_before_publish_no_output() {
 #[tokio::test]
 async fn test_combine_latest_secondary_closes_after_initial_emission_continues() {
     // Arrange
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let person_stream = UnboundedReceiverStream::new(person_rx);
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let animal_stream = UnboundedReceiverStream::new(animal_rx);
-    let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let plant_stream = UnboundedReceiverStream::new(plant_rx);
+    let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
+    let (plant_tx, plant_stream) = test_channel::<Sequenced<TestData>>();
 
     let mut combined_stream =
         person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
@@ -184,12 +172,9 @@ async fn combine_latest_template_test(
     order3: DataVariant,
 ) {
     // Arrange
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let person_stream = UnboundedReceiverStream::new(person_rx);
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let animal_stream = UnboundedReceiverStream::new(animal_rx);
-    let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let plant_stream = UnboundedReceiverStream::new(plant_rx);
+    let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
+    let (plant_tx, plant_stream) = test_channel::<Sequenced<TestData>>();
 
     let senders = vec![person_tx, animal_tx, plant_tx];
 
@@ -213,12 +198,9 @@ async fn combine_latest_template_test(
 #[tokio::test]
 async fn test_combine_latest_all_streams_have_published_emits_updates() {
     // Arrange
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let person_stream = UnboundedReceiverStream::new(person_rx);
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let animal_stream = UnboundedReceiverStream::new(animal_rx);
-    let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let plant_stream = UnboundedReceiverStream::new(plant_rx);
+    let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
+    let (plant_tx, plant_stream) = test_channel::<Sequenced<TestData>>();
 
     let mut combined_stream =
         person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
@@ -294,12 +276,9 @@ async fn combine_latest_stream_order_test(
     stream3: DataVariant,
 ) {
     // Arrange
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let person_stream = UnboundedReceiverStream::new(person_rx);
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let animal_stream = UnboundedReceiverStream::new(animal_rx);
-    let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let plant_stream = UnboundedReceiverStream::new(plant_rx);
+    let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
+    let (plant_tx, plant_stream) = test_channel::<Sequenced<TestData>>();
 
     let mut registered_streams = vec![
         (DataVariant::Person, person_stream),
@@ -347,10 +326,8 @@ async fn combine_latest_stream_order_test(
 #[tokio::test]
 async fn test_combine_latest_with_identical_streams_emits_updates() {
     // Arrange
-    let (stream1_tx, stream1_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream1 = UnboundedReceiverStream::new(stream1_rx);
-    let (stream2_tx, stream2_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream2 = UnboundedReceiverStream::new(stream2_rx);
+    let (stream1_tx, stream1) = test_channel::<Sequenced<TestData>>();
+    let (stream2_tx, stream2) = test_channel::<Sequenced<TestData>>();
 
     let mut combined_stream = stream1.combine_latest(vec![stream2], FILTER);
 
@@ -377,10 +354,8 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
 #[tokio::test]
 async fn test_combine_latest_filter_rejects_initial_state() {
     // Arrange
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let person_stream = UnboundedReceiverStream::new(person_rx);
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let animal_stream = UnboundedReceiverStream::new(animal_rx);
+    let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
 
     // Filter that rejects the initial state (when both Alice and Dog are present)
     let filter = |state: &CombinedState<TestData>| {
@@ -412,10 +387,8 @@ async fn test_combine_latest_filter_rejects_initial_state() {
 #[tokio::test]
 async fn test_combine_latest_filter_alternates_between_true_false() {
     // Arrange
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let person_stream = UnboundedReceiverStream::new(person_rx);
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let animal_stream = UnboundedReceiverStream::new(animal_rx);
+    let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
 
     // Filter that only allows emissions when person is Alice or Charlie (rejects Bob and Diane)
     let filter = |state: &CombinedState<TestData>| {
@@ -471,10 +444,8 @@ async fn test_combine_latest_filter_alternates_between_true_false() {
 #[should_panic(expected = "Filter function panicked on purpose")]
 async fn test_combine_latest_filter_function_panics() {
     // Arrange
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let person_stream = UnboundedReceiverStream::new(person_rx);
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let animal_stream = UnboundedReceiverStream::new(animal_rx);
+    let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
 
     // Filter that panics on the second evaluation
     let call_count = Arc::new(AtomicUsize::new(0));

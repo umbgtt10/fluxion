@@ -156,8 +156,10 @@ where
                 match item {
                     StreamItem::Value(ordered_value) => {
                         let order = ordered_value.order();
+
                         match index {
                             0 => {
+                                // Source stream update - just cache the value, don't emit
                                 let mut source =
                                     match lock_or_error(&source_value, "take_latest_when source") {
                                         Ok(lock) => lock,
@@ -169,6 +171,7 @@ where
                                 None
                             }
                             1 => {
+                                // Filter stream update - check if we should sample the source
                                 let mut filter_val =
                                     match lock_or_error(&filter_value, "take_latest_when filter") {
                                         Ok(lock) => lock,
@@ -178,6 +181,7 @@ where
                                     };
                                 *filter_val = Some(ordered_value.get().clone());
 
+                                // Now check the condition and potentially emit
                                 let source =
                                     match lock_or_error(&source_value, "take_latest_when source") {
                                         Ok(lock) => lock,
@@ -186,8 +190,8 @@ where
                                         }
                                     };
 
-                                if let Some(src) = source.as_ref() {
-                                    if let Some(filt) = filter_val.as_ref() {
+                                if let Some(filt) = filter_val.as_ref() {
+                                    if let Some(src) = source.as_ref() {
                                         if filter(filt) {
                                             Some(StreamItem::Value(T::with_order(
                                                 src.clone(),

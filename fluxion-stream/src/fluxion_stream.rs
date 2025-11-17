@@ -128,21 +128,19 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, test_channel};
     /// use futures::StreamExt;
-    /// use tokio::sync::mpsc;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let stream = FluxionStream::from_unbounded_receiver(rx);
+    /// let (tx, stream) = test_channel::<Sequenced<i32>>();
+    /// let stream = FluxionStream::new(stream);
     ///
     /// // Transform ordered stream to strings
     /// let mut mapped = stream
     ///     .combine_with_previous()
-    ///     .map_ordered(|stream_item| {
-    ///         let item = stream_item.unwrap();
-    ///         format!("Value: {}", item.current.get())
+    ///     .map_ordered(|with_previous| {
+    ///         format!("Value: {}", with_previous.current.get())
     ///     });
     ///
     /// tx.send(Sequenced::new(42)).unwrap();

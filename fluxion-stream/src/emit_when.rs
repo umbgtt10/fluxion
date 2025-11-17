@@ -141,8 +141,8 @@ where
 
         let streams: Vec<IndexedStream<T>> = vec![source_stream, filter_stream];
 
-        let source_value = Arc::new(Mutex::new(None));
-        let filter_value = Arc::new(Mutex::new(None));
+        let source_value: Arc<Mutex<Option<T::Inner>>> = Arc::new(Mutex::new(None));
+        let filter_value: Arc<Mutex<Option<T::Inner>>> = Arc::new(Mutex::new(None));
         let filter = Arc::new(filter);
 
         Box::pin(streams.ordered_merge().filter_map(move |(item, index)| {
@@ -153,8 +153,10 @@ where
                 match item {
                     StreamItem::Value(ordered_value) => {
                         let order = ordered_value.order();
+
                         match index {
                             0 => {
+                                // Source stream update
                                 let mut source =
                                     match lock_or_error(&source_value, "emit_when source") {
                                         Ok(lock) => lock,
@@ -163,9 +165,37 @@ where
                                         }
                                     };
                                 *source = Some(ordered_value.get().clone());
-                                None
+
+                                // Check if we should emit with current filter state
+                                let filter_val =
+                                    match lock_or_error(&filter_value, "emit_when filter") {
+                                        Ok(lock) => lock,
+                                        Err(e) => {
+                                            return Some(StreamItem::Error(e));
+                                        }
+                                    };
+
+                                if let Some(src) = source.as_ref() {
+                                    if let Some(filt) = filter_val.as_ref() {
+                                        let combined_state =
+                                            CombinedState::new(vec![src.clone(), filt.clone()]);
+                                        if filter(&combined_state) {
+                                            Some(StreamItem::Value(T::with_order(
+                                                src.clone(),
+                                                order,
+                                            )))
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
                             }
                             1 => {
+                                // Filter stream update
                                 let mut filter_val =
                                     match lock_or_error(&filter_value, "emit_when filter") {
                                         Ok(lock) => lock,
@@ -175,6 +205,7 @@ where
                                     };
                                 *filter_val = Some(ordered_value.get().clone());
 
+                                // Check if we should emit with current source state
                                 let source = match lock_or_error(&source_value, "emit_when source")
                                 {
                                     Ok(lock) => lock,

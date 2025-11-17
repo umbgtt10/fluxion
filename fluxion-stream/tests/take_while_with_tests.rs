@@ -5,21 +5,17 @@
 use fluxion_stream::take_while_with::TakeWhileExt;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::sequenced::Sequenced;
+use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, person_alice, person_bob, person_charlie,
 };
 use futures::StreamExt;
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_take_while_basic() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
     let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
@@ -59,11 +55,8 @@ async fn test_take_while_basic() {
 #[tokio::test]
 async fn test_take_while_filter_false_immediately() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
     let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
@@ -78,11 +71,8 @@ async fn test_take_while_filter_false_immediately() {
 #[tokio::test]
 async fn test_take_while_always_true() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
     let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
@@ -117,11 +107,8 @@ async fn test_take_while_always_true() {
 #[tokio::test]
 async fn test_take_while_complex_predicate() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<i32>>();
 
     let result_stream =
         source_stream.take_while_with(filter_stream, |filter_val: &i32| *filter_val < 10);
@@ -154,11 +141,8 @@ async fn test_take_while_complex_predicate() {
 #[tokio::test]
 async fn test_take_while_interleaved_updates() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
     let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
@@ -200,11 +184,8 @@ async fn test_take_while_interleaved_updates() {
 #[tokio::test]
 async fn test_take_while_no_filter_value() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
     let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
@@ -235,11 +216,8 @@ async fn test_take_while_no_filter_value() {
 #[tokio::test]
 async fn test_take_while_empty_source() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+    let (source_tx, source_stream) = test_channel::<Sequenced<bool>>();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
     let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
@@ -255,11 +233,8 @@ async fn test_take_while_empty_source() {
 #[tokio::test]
 async fn test_take_while_empty_filter() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel();
-    let (_filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+    let (source_tx, source_stream) = test_channel();
+    let (_filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
     let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
@@ -275,11 +250,8 @@ async fn test_take_while_empty_filter() {
 #[tokio::test]
 async fn test_take_while_filter_changes_back_to_true() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
     let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
@@ -306,11 +278,8 @@ async fn test_take_while_filter_changes_back_to_true() {
 #[tokio::test]
 async fn test_take_while_multiple_source_items_same_filter() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
     let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);
@@ -358,11 +327,8 @@ async fn test_take_while_multiple_source_items_same_filter() {
 #[tokio::test]
 async fn test_take_while_filter_updates_without_source() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
     let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
     let mut result_stream = Box::pin(result_stream);

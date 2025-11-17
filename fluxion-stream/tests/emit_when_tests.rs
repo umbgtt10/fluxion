@@ -7,27 +7,23 @@ use fluxion_stream::CombinedState;
 use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::{
     helpers::assert_no_element_emitted,
+    test_channel,
     test_data::{
         animal_ant, animal_bird, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
         person_charlie, person_dave, person_diane, plant_rose, plant_sunflower, TestData,
     },
 };
 use futures::StreamExt;
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_emit_when_empty_streams() {
     let filter_fn = |_: &CombinedState<TestData>| -> bool { true };
 
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<TestData>>();
     drop(source_tx);
     drop(filter_tx);
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
@@ -42,8 +38,8 @@ async fn test_emit_when_empty_streams() {
 #[tokio::test]
 async fn test_emit_when_filter_compares_source_and_filter() {
     // Arrange: Emit only when source age > filter legs
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let values = state.values();
@@ -57,9 +53,6 @@ async fn test_emit_when_filter_compares_source_and_filter() {
         };
         source_age > filter_legs
     };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
@@ -101,8 +94,8 @@ async fn test_emit_when_filter_compares_source_and_filter() {
 #[tokio::test]
 async fn test_emit_when_threshold_comparison() {
     // Arrange: Emit when source value differs from filter by more than threshold
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let values = state.values();
@@ -116,9 +109,6 @@ async fn test_emit_when_threshold_comparison() {
         };
         source_height.abs_diff(filter_height) > 50
     };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
@@ -144,8 +134,8 @@ async fn test_emit_when_threshold_comparison() {
 #[tokio::test]
 async fn test_emit_when_name_length_comparison() {
     // Arrange: Emit when source name is longer than filter name
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let values = state.values();
@@ -159,9 +149,6 @@ async fn test_emit_when_name_length_comparison() {
         };
         source_name.len() > filter_name.len()
     };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
@@ -193,8 +180,8 @@ async fn test_emit_when_name_length_comparison() {
 #[tokio::test]
 async fn test_emit_when_multiple_source_updates_with_comparison() {
     // Arrange: Emit when person age is even AND greater than animal legs
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let values = state.values();
@@ -208,9 +195,6 @@ async fn test_emit_when_multiple_source_updates_with_comparison() {
         };
         source_age % 2 == 0 && source_age > filter_legs
     };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
@@ -253,185 +237,11 @@ async fn test_emit_when_multiple_source_updates_with_comparison() {
 }
 
 #[tokio::test]
-async fn test_emit_when_both_values_required() {
-    // Arrange: This test highlights that emit_when needs BOTH values
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        // Only emit when both are present and satisfy condition
-        let values = state.values();
-        matches!(&values[0], TestData::Person(_)) && matches!(&values[1], TestData::Animal(_))
-    };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
-
-    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
-
-    // Act: Send only source, no filter yet
-    source_tx.send(Sequenced::new(person_alice())).unwrap();
-
-    // Assert: Nothing emitted yet (no filter value)
-    assert_no_element_emitted(&mut output_stream, 100).await;
-
-    // Act: Now send filter
-    filter_tx.send(Sequenced::new(animal_dog())).unwrap();
-
-    // Assert: Now it should emit
-    let emitted_item = output_stream.next().await.unwrap().unwrap();
-    assert_eq!(
-        emitted_item.get(),
-        &person_alice(),
-        "Expected Alice to be emitted after both values are present"
-    );
-}
-
-#[tokio::test]
-async fn test_emit_when_filter_stream_updates_trigger_reevaluation() {
-    // Arrange: Emit when source age >= filter legs * 10
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.values();
-        let source_age = match &values[0] {
-            TestData::Person(p) => p.age,
-            _ => return false,
-        };
-        let filter_legs = match &values[1] {
-            TestData::Animal(a) => a.legs,
-            _ => return false,
-        };
-        source_age >= filter_legs * 10
-    };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
-
-    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
-
-    // Act: Alice age=25, Bird legs=2 => 25 >= 20 = true
-    source_tx.send(Sequenced::new(person_alice())).unwrap();
-    filter_tx.send(Sequenced::new(animal_bird())).unwrap();
-
-    // Assert
-    let emitted_item = output_stream.next().await.unwrap().unwrap();
-    assert_eq!(emitted_item.get(), &person_alice());
-
-    // Act: Update filter to Dog legs=4 => 25 >= 40 = false
-    filter_tx.send(Sequenced::new(animal_dog())).unwrap();
-
-    // Assert: No emission because condition now false
-    assert_no_element_emitted(&mut output_stream, 100).await;
-
-    // Act: Update filter back to Bird => 25 >= 20 = true
-    filter_tx.send(Sequenced::new(animal_bird())).unwrap();
-
-    // Assert: Should emit again
-    let emitted_item = output_stream.next().await.unwrap().unwrap();
-    assert_eq!(emitted_item.get(), &person_alice());
-}
-
-#[tokio::test]
-async fn test_emit_when_delta_based_filtering() {
-    // Arrange: Emit when absolute difference between ages > 10
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.values();
-        let source_age = match &values[0] {
-            TestData::Person(p) => p.age,
-            _ => return false,
-        };
-        let filter_age = match &values[1] {
-            TestData::Person(p) => p.age,
-            _ => return false,
-        };
-        source_age.abs_diff(filter_age) > 10
-    };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
-
-    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
-
-    // Act: Alice age=25, Bob age=30 => diff=5 <= 10 = false
-    source_tx.send(Sequenced::new(person_alice())).unwrap();
-    filter_tx.send(Sequenced::new(person_bob())).unwrap();
-
-    // Assert
-    assert_no_element_emitted(&mut output_stream, 100).await;
-
-    // Act: Update source to Diane age=40 => diff=10 (not > 10) = false
-    source_tx.send(Sequenced::new(person_diane())).unwrap();
-
-    // Assert
-    assert_no_element_emitted(&mut output_stream, 100).await;
-
-    // Act: Update filter to Alice age=25 => diff=15 > 10 = true
-    filter_tx.send(Sequenced::new(person_alice())).unwrap();
-
-    // Assert
-    let emitted_item = output_stream.next().await.unwrap().unwrap();
-    assert_eq!(
-        emitted_item.get(),
-        &person_diane(),
-        "Expected Diane to be emitted when age difference > 10"
-    );
-}
-
-#[tokio::test]
-async fn test_emit_when_cross_type_comparison() {
-    // Arrange: Emit when person age equals animal legs (silly but valid comparison)
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-
-    let filter_fn = |state: &CombinedState<TestData>| -> bool {
-        let values = state.values();
-        let source_legs = match &values[0] {
-            TestData::Animal(a) => a.legs,
-            _ => return false,
-        };
-        let filter_age = match &values[1] {
-            TestData::Person(p) => p.age,
-            _ => return false,
-        };
-        source_legs == filter_age
-    };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
-
-    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
-
-    // Act: Dog legs=4, Alice age=25 => 4 != 25 = false
-    source_tx.send(Sequenced::new(animal_dog())).unwrap();
-    filter_tx.send(Sequenced::new(person_alice())).unwrap();
-
-    // Assert
-    assert_no_element_emitted(&mut output_stream, 100).await;
-
-    // Act: Update source to Spider legs=8, still Alice => 8 != 25 = false
-    source_tx.send(Sequenced::new(animal_spider())).unwrap();
-
-    // Assert
-    assert_no_element_emitted(&mut output_stream, 100).await;
-
-    // Act: Update source to Ant legs=6, still Alice => 6 != 25 = false
-    source_tx.send(Sequenced::new(animal_ant())).unwrap();
-
-    // Assert
-    assert_no_element_emitted(&mut output_stream, 100).await;
-}
-
-#[tokio::test]
 async fn test_emit_when_stateful_comparison() {
     // Arrange: Emit when source value is strictly greater than filter value
     // This test shows emit_when is useful for "greater than threshold" patterns
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let values = state.values();
@@ -445,9 +255,6 @@ async fn test_emit_when_stateful_comparison() {
         };
         source_age > threshold_age
     };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
@@ -488,10 +295,6 @@ async fn test_emit_when_stateful_comparison() {
     // Assert: Diane (40) > 40 = false, so no new emission
     assert_no_element_emitted(&mut output_stream, 100).await;
 
-    // Act: But Charlie age=35 is still latest source, and 35 > 40 = false
-    // So when threshold changes, we re-evaluate with latest source
-    // Diane is actually the latest source, so nothing should emit
-
     // Act: Send Bob age=30 as new source => 30 > 40 = false
     source_tx.send(Sequenced::new(person_bob())).unwrap();
 
@@ -502,16 +305,13 @@ async fn test_emit_when_stateful_comparison() {
 #[tokio::test]
 async fn test_emit_when_filter_stream_closes() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let values = state.values();
         matches!(&values[0], TestData::Person(_)) && matches!(&values[1], TestData::Animal(_))
     };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
@@ -539,15 +339,174 @@ async fn test_emit_when_filter_stream_closes() {
 }
 
 #[tokio::test]
-async fn test_emit_when_source_stream_closes() {
+async fn test_emit_when_both_values_required() {
+    // Arrange: This test highlights that emit_when needs BOTH values
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
+
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
+        // Only emit when both are present and satisfy condition
+        let values = state.values();
+        matches!(&values[0], TestData::Person(_)) && matches!(&values[1], TestData::Animal(_))
+    };
+
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
+
+    // Act: Send only source, no filter yet
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
+
+    // Assert: Nothing emitted yet (no filter value)
+    assert_no_element_emitted(&mut output_stream, 100).await;
+
+    // Act: Now send filter
+    filter_tx.send(Sequenced::new(animal_dog())).unwrap();
+
+    // Assert: Now it should emit
+    let emitted_item = output_stream.next().await.unwrap().unwrap();
+    assert_eq!(
+        emitted_item.get(),
+        &person_alice(),
+        "Expected Alice to be emitted after both values are present"
+    );
+}
+
+#[tokio::test]
+async fn test_emit_when_filter_stream_updates_trigger_reevaluation() {
+    // Arrange: Emit when source age >= filter legs * 10
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
+
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
+        let values = state.values();
+        let source_age = match &values[0] {
+            TestData::Person(p) => p.age,
+            _ => return false,
+        };
+        let filter_legs = match &values[1] {
+            TestData::Animal(a) => a.legs,
+            _ => return false,
+        };
+        source_age >= filter_legs * 10
+    };
+
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
+
+    // Act: Alice age=25, Bird legs=2 => 25 >= 20 = true
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
+    filter_tx.send(Sequenced::new(animal_bird())).unwrap();
+
+    // Assert
+    let emitted_item = output_stream.next().await.unwrap().unwrap();
+    assert_eq!(emitted_item.get(), &person_alice());
+
+    // Act: Update filter to Dog legs=4 => 25 >= 40 = false
+    filter_tx.send(Sequenced::new(animal_dog())).unwrap();
+
+    // Assert: No emission because condition now false
+    assert_no_element_emitted(&mut output_stream, 100).await;
+
+    // Act: Update filter back to Bird => 25 >= 20 = true
+    filter_tx.send(Sequenced::new(animal_bird())).unwrap();
+
+    // Assert: Should emit again
+    let emitted_item = output_stream.next().await.unwrap().unwrap();
+    assert_eq!(emitted_item.get(), &person_alice());
+}
+
+#[tokio::test]
+async fn test_emit_when_delta_based_filtering() {
+    // Arrange: Emit when absolute difference between ages > 10
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
+
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
+        let values = state.values();
+        let source_age = match &values[0] {
+            TestData::Person(p) => p.age,
+            _ => return false,
+        };
+        let filter_age = match &values[1] {
+            TestData::Person(p) => p.age,
+            _ => return false,
+        };
+        source_age.abs_diff(filter_age) > 10
+    };
+
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
+
+    // Act: Alice age=25, Bob age=30 => diff=5 <= 10 = false
+    source_tx.send(Sequenced::new(person_alice())).unwrap();
+    filter_tx.send(Sequenced::new(person_bob())).unwrap();
+
+    // Assert
+    assert_no_element_emitted(&mut output_stream, 100).await;
+
+    // Act: Update source to Diane age=40 => diff=10 (not > 10) = false
+    source_tx.send(Sequenced::new(person_diane())).unwrap();
+
+    // Assert
+    assert_no_element_emitted(&mut output_stream, 100).await;
+
+    // Act: Update filter to Alice age=25 => diff=15 > 10 = true
+    filter_tx.send(Sequenced::new(person_alice())).unwrap();
+
+    // Assert
+    let emitted_item = output_stream.next().await.unwrap().unwrap();
+    assert_eq!(
+        emitted_item.get(),
+        &person_diane(),
+        "Expected Diane to be emitted when age difference > 10"
+    );
+}
+
+#[tokio::test]
+async fn test_emit_when_cross_type_comparison() {
+    // Arrange: Emit when person age equals animal legs (silly but valid comparison)
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
+
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
+        let values = state.values();
+        let source_legs = match &values[0] {
+            TestData::Animal(a) => a.legs,
+            _ => return false,
+        };
+        let filter_age = match &values[1] {
+            TestData::Person(p) => p.age,
+            _ => return false,
+        };
+        source_legs == filter_age
+    };
+
+    let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
+
+    // Act: Dog legs=4, Alice age=25 => 4 != 25 = false
+    source_tx.send(Sequenced::new(animal_dog())).unwrap();
+    filter_tx.send(Sequenced::new(person_alice())).unwrap();
+
+    // Assert
+    assert_no_element_emitted(&mut output_stream, 100).await;
+
+    // Act: Update source to Spider legs=8, still Alice => 8 != 25 = false
+    source_tx.send(Sequenced::new(animal_spider())).unwrap();
+
+    // Assert
+    assert_no_element_emitted(&mut output_stream, 100).await;
+
+    // Act: Update source to Ant legs=6, still Alice => 6 != 25 = false
+    source_tx.send(Sequenced::new(animal_ant())).unwrap();
+
+    // Assert
+    assert_no_element_emitted(&mut output_stream, 100).await;
+}
+
+#[tokio::test]
+async fn test_emit_when_source_stream_closes_after_filter() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
 
     let filter_fn = |_: &CombinedState<TestData>| -> bool { true };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
@@ -585,14 +544,11 @@ async fn test_emit_when_source_stream_closes() {
 #[should_panic(expected = "Filter function must not panic!")]
 async fn test_emit_when_filter_panics() {
     // Arrange
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
 
     let filter_fn =
         |_: &CombinedState<TestData>| -> bool { panic!("Filter function must not panic!") };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
@@ -610,8 +566,8 @@ async fn test_emit_when_complex_multi_condition() {
     // - Source is a Person with even age
     // - Filter is an Animal with legs > 2
     // - Person age is divisible by animal legs
-    let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (source_tx, source_stream) = test_channel();
+    let (filter_tx, filter_stream) = test_channel();
 
     let filter_fn = |state: &CombinedState<TestData>| -> bool {
         let values = state.values();
@@ -627,9 +583,6 @@ async fn test_emit_when_complex_multi_condition() {
         // All conditions must be true
         source_age % 2 == 0 && filter_legs > 2 && source_age % filter_legs == 0
     };
-
-    let source_stream = UnboundedReceiverStream::new(source_rx);
-    let filter_stream = UnboundedReceiverStream::new(filter_rx);
 
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 

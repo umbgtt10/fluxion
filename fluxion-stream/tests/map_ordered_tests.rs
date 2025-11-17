@@ -4,24 +4,21 @@
 
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
 use fluxion_test_utils::sequenced::Sequenced;
+use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_dave, TestData,
 };
 use futures::StreamExt;
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_map_ordered_basic_transformation() {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
-        let item = stream_item.unwrap();
         format!(
             "Previous: {:?}, Current: {}",
-            item.previous.map(|p| p.get().to_string()),
-            item.current.get()
+            stream_item.previous.map(|p| p.get().to_string()),
+            stream_item.current.get()
         )
     });
 
@@ -58,18 +55,19 @@ async fn test_map_ordered_to_struct() {
         age_increased: bool,
     }
 
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
-        let item = stream_item.unwrap();
-        let current_age = match &item.current.get() {
+        let current_age = match &stream_item.current.get() {
             TestData::Person(p) => p.age,
             _ => 0,
         };
-        let previous_age = item.previous.as_ref().and_then(|prev| match &prev.get() {
-            TestData::Person(p) => Some(p.age),
-            _ => None,
-        });
+        let previous_age = stream_item
+            .previous
+            .as_ref()
+            .and_then(|prev| match &prev.get() {
+                TestData::Person(p) => Some(p.age),
+                _ => None,
+            });
         let age_increased = previous_age.is_some_and(|prev| current_age > prev);
         AgeComparison {
             previous_age,
@@ -127,20 +125,21 @@ async fn test_map_ordered_to_struct() {
 #[tokio::test]
 async fn test_map_ordered_extract_age_difference() {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream
         .combine_with_previous()
         .map_ordered(|stream_item| -> i32 {
-            let item = stream_item.unwrap();
-            let current_age = match &item.current.get() {
+            let current_age = match &stream_item.current.get() {
                 TestData::Person(p) => p.age as i32,
                 _ => 0,
             };
-            let previous_age = item.previous.as_ref().and_then(|prev| match &prev.get() {
-                TestData::Person(p) => Some(p.age as i32),
-                _ => None,
-            });
+            let previous_age = stream_item
+                .previous
+                .as_ref()
+                .and_then(|prev| match &prev.get() {
+                    TestData::Person(p) => Some(p.age as i32),
+                    _ => None,
+                });
             current_age - previous_age.unwrap_or(current_age)
         });
 
@@ -165,11 +164,10 @@ async fn test_map_ordered_extract_age_difference() {
 #[tokio::test]
 async fn test_map_ordered_single_value() {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream
         .combine_with_previous()
-        .map_ordered(|stream_item| stream_item.unwrap().current.get().to_string());
+        .map_ordered(|stream_item| stream_item.current.get().to_string());
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice())).unwrap();
@@ -180,11 +178,10 @@ async fn test_map_ordered_single_value() {
 #[tokio::test]
 async fn test_map_ordered_empty_stream() {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream
         .combine_with_previous()
-        .map_ordered(|stream_item| stream_item.unwrap().current.get().to_string());
+        .map_ordered(|stream_item| stream_item.current.get().to_string());
 
     // Act
     drop(tx); // Close the stream
@@ -196,12 +193,10 @@ async fn test_map_ordered_empty_stream() {
 #[tokio::test]
 async fn test_map_ordered_preserves_ordering() {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
-        let item = stream_item.unwrap();
         // Extract name from current
-        match &item.current.get() {
+        match &stream_item.current.get() {
             TestData::Person(p) => p.name.clone(),
             _ => String::from("Unknown"),
         }
@@ -223,12 +218,10 @@ async fn test_map_ordered_preserves_ordering() {
 #[tokio::test]
 async fn test_map_ordered_multiple_transformations() {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
-        let item = stream_item.unwrap();
         // First transformation: extract age
-        match &item.current.get() {
+        match &stream_item.current.get() {
             TestData::Person(p) => p.age,
             _ => 0,
         }
@@ -248,8 +241,7 @@ async fn test_map_ordered_multiple_transformations() {
 #[tokio::test]
 async fn test_map_ordered_with_complex_closure() {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     #[derive(Debug, PartialEq)]
     struct PersonSummary {
@@ -259,8 +251,7 @@ async fn test_map_ordered_with_complex_closure() {
     }
 
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
-        let item = stream_item.unwrap();
-        let current = match &item.current.get() {
+        let current = match &stream_item.current.get() {
             TestData::Person(p) => p,
             _ => panic!("Expected person"),
         };
@@ -272,7 +263,7 @@ async fn test_map_ordered_with_complex_closure() {
             _ => "senior",
         };
 
-        let changed_from_previous = !item.previous.as_ref().is_some_and(|prev| {
+        let changed_from_previous = !stream_item.previous.as_ref().is_some_and(|prev| {
             if let TestData::Person(prev_person) = &prev.get() {
                 prev_person.name == current.name
             } else {
@@ -325,16 +316,14 @@ async fn test_map_ordered_with_complex_closure() {
 #[tokio::test]
 async fn test_map_ordered_boolean_logic() {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
-        let item = stream_item.unwrap();
         // Returns true if age increased from previous
-        let current_age = match &item.current.get() {
+        let current_age = match &stream_item.current.get() {
             TestData::Person(p) => p.age,
             _ => 0,
         };
-        item.previous.as_ref().is_some_and(|prev| {
+        stream_item.previous.as_ref().is_some_and(|prev| {
             if let TestData::Person(p) = &prev.get() {
                 current_age > p.age
             } else {

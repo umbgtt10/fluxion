@@ -109,8 +109,77 @@ pub mod plant;
 pub mod sequenced;
 pub mod test_data;
 
+use futures::{Stream, StreamExt};
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
+
 // Re-export commonly used test utilities
 pub use error_injection::ErrorInjectingStream;
 pub use helpers::assert_no_element_emitted;
 pub use sequenced::Sequenced;
 pub use test_data::{DataVariant, TestData};
+
+/// Creates a test channel that automatically wraps values in `StreamItem::Value`.
+///
+/// This helper simplifies test setup by handling the `StreamItem` wrapping automatically,
+/// allowing tests to send plain values while the stream receives `StreamItem<T>`.
+///
+/// # Example
+///
+/// ```rust
+/// use fluxion_test_utils::{test_channel, Sequenced};
+/// use fluxion_test_utils::test_data::person_alice;
+/// use futures::StreamExt;
+///
+/// # async fn example() {
+/// let (tx, mut stream) = test_channel();
+///
+/// // Send plain values
+/// tx.send(Sequenced::new(person_alice())).unwrap();
+///
+/// // Receive StreamItem-wrapped values
+/// let item = stream.next().await.unwrap().unwrap(); // Option -> StreamItem -> Value
+/// # }
+/// ```
+pub fn test_channel<T: Send + 'static>() -> (
+    mpsc::UnboundedSender<T>,
+    impl Stream<Item = fluxion_core::StreamItem<T>> + Send,
+) {
+    let (tx, rx) = mpsc::unbounded_channel();
+    let stream = UnboundedReceiverStream::new(rx).map(fluxion_core::StreamItem::Value);
+    (tx, stream)
+}
+
+/// Creates a test channel that accepts `StreamItem<T>` for testing error propagation.
+///
+/// This helper allows tests to explicitly send both values and errors through the stream,
+/// enabling comprehensive error handling tests.
+///
+/// # Example
+///
+/// ```rust
+/// use fluxion_test_utils::test_channel_with_errors;
+/// use fluxion_core::StreamItem;
+/// use futures::StreamExt;
+///
+/// # async fn example() {
+/// let (tx, mut stream) = test_channel_with_errors();
+///
+/// // Send values
+/// tx.send(StreamItem::Value(42)).unwrap();
+///
+/// // Send errors
+/// tx.send(StreamItem::Error("test error".into())).unwrap();
+///
+/// let value = stream.next().await.unwrap();
+/// let error = stream.next().await.unwrap();
+/// # }
+/// ```
+pub fn test_channel_with_errors<T: Send + 'static>() -> (
+    mpsc::UnboundedSender<fluxion_core::StreamItem<T>>,
+    impl Stream<Item = fluxion_core::StreamItem<T>> + Send,
+) {
+    let (tx, rx) = mpsc::unbounded_channel();
+    let stream = UnboundedReceiverStream::new(rx);
+    (tx, stream)
+}

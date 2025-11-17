@@ -400,27 +400,20 @@
 //! ## Basic Chaining Pattern
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, CombineWithPreviousExt, TakeLatestWhenExt};
-//! use fluxion_test_utils::Sequenced;
-//! use tokio::sync::mpsc;
-//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use fluxion_stream::{FluxionStream, CombineWithPreviousExt, TakeLatestWhenExt, Ordered};
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (source_tx, source_rx) = mpsc::unbounded_channel();
-//! let (filter_tx, filter_rx) = mpsc::unbounded_channel();
+//! let (source_tx, source_stream) = test_channel::<Sequenced<i32>>();
+//! let (filter_tx, filter_stream) = test_channel::<Sequenced<i32>>();
 //!
-//! let source_stream = UnboundedReceiverStream::new(source_rx);
-//! let filter_stream = UnboundedReceiverStream::new(filter_rx);
+//! // Chain: sample when filter emits, then pair with previous value
+//! let sampled = source_stream.take_latest_when(filter_stream, |_| true);
+//! let mut composed = FluxionStream::new(sampled).combine_with_previous();
 //!
-//! // Chain: sample when filter emits, unwrap the result, then pair with previous value
-//! let mut composed = FluxionStream::new(source_stream)
-//!     .take_latest_when(filter_stream, |_| true)
-//!     .map(|item| item.unwrap())
-//!     .combine_with_previous();
-//!
-//! filter_tx.send(Sequenced::new(1)).unwrap();
 //! source_tx.send(Sequenced::new(42)).unwrap();
+//! filter_tx.send(Sequenced::new(1)).unwrap();
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
@@ -435,19 +428,16 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, Ordered};
-//! use fluxion_test_utils::Sequenced;
-//! use tokio::sync::mpsc;
-//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
-//! let stream = UnboundedReceiverStream::new(rx);
+//! let (tx, stream) = test_channel::<Sequenced<i32>>();
 //!
 //! // Chain: filter positives, map to string
 //! let mut composed = FluxionStream::new(stream)
 //!     .filter_ordered(|n| *n > 0)
-//!     .map_ordered(|stream_item| format!("Value: {}", stream_item.unwrap().get()));
+//!     .map_ordered(|sequenced| format!("Value: {}", sequenced.get()));
 //!
 //! tx.send(Sequenced::new(-1)).unwrap();
 //! tx.send(Sequenced::new(5)).unwrap();
@@ -463,20 +453,15 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt, Ordered};
-//! use fluxion_test_utils::Sequenced;
-//! use tokio::sync::mpsc;
-//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, rx1) = mpsc::unbounded_channel();
-//! let (tx2, rx2) = mpsc::unbounded_channel();
-//!
-//! let stream1 = UnboundedReceiverStream::new(rx1);
-//! let stream2 = UnboundedReceiverStream::new(rx2);
+//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
 //!
 //! // Chain: combine latest from both streams, then track changes
-//! let mut composed = FluxionStream::new(stream1)
+//! let mut composed = stream1
 //!     .combine_latest(vec![stream2], |_| true)
 //!     .combine_with_previous();
 //!
@@ -507,20 +492,15 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt, CombineWithPreviousExt, Ordered};
-//! use fluxion_test_utils::Sequenced;
-//! use tokio::sync::mpsc;
-//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<i32>>();
-//! let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<i32>>();
-//!
-//! let stream1 = UnboundedReceiverStream::new(rx1);
-//! let stream2 = UnboundedReceiverStream::new(rx2);
+//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
 //!
 //! // Merge streams in temporal order, then pair consecutive values
-//! let mut composed = FluxionStream::new(stream1)
+//! let mut composed = stream1
 //!     .ordered_merge(vec![FluxionStream::new(stream2)])
 //!     .combine_with_previous();
 //!
@@ -542,20 +522,15 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt, Ordered};
-//! use fluxion_test_utils::Sequenced;
-//! use tokio::sync::mpsc;
-//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<i32>>();
-//! let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<i32>>();
-//!
-//! let stream1 = UnboundedReceiverStream::new(rx1);
-//! let stream2 = UnboundedReceiverStream::new(rx2);
+//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
 //!
 //! // Combine latest, then track previous combined state
-//! let mut composed = FluxionStream::new(stream1)
+//! let mut composed = stream1
 //!     .combine_latest(vec![stream2], |_| true)
 //!     .combine_with_previous();
 //!
@@ -579,22 +554,16 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, TakeWhileExt};
-//! use fluxion_test_utils::Sequenced;
-//! use tokio::sync::mpsc;
-//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<i32>>();
-//! let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<i32>>();
-//! let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-//!
-//! let stream1 = UnboundedReceiverStream::new(rx1);
-//! let stream2 = UnboundedReceiverStream::new(rx2);
-//! let filter_stream = UnboundedReceiverStream::new(filter_rx);
+//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
+//! let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 //!
 //! // Combine latest values, but stop when filter becomes false
-//! let mut composed = Box::pin(FluxionStream::new(stream1)
+//! let mut composed = Box::pin(stream1
 //!     .combine_latest(vec![stream2], |_| true)
 //!     .take_while_with(filter_stream, |f| *f));
 //!
@@ -613,22 +582,16 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt, TakeWhileExt};
-//! use fluxion_test_utils::Sequenced;
-//! use tokio::sync::mpsc;
-//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<i32>>();
-//! let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<i32>>();
-//! let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<bool>>();
-//!
-//! let stream1 = UnboundedReceiverStream::new(rx1);
-//! let stream2 = UnboundedReceiverStream::new(rx2);
-//! let filter_stream = UnboundedReceiverStream::new(filter_rx);
+//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
+//! let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 //!
 //! // Merge all values in order, but stop when filter says so
-//! let mut composed = Box::pin(FluxionStream::new(stream1)
+//! let mut composed = Box::pin(stream1
 //!     .ordered_merge(vec![FluxionStream::new(stream2)])
 //!     .take_while_with(filter_stream, |f| *f));
 //!
@@ -650,26 +613,19 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, TakeLatestWhenExt, CombineWithPreviousExt, Ordered};
-//! use fluxion_test_utils::Sequenced;
-//! use tokio::sync::mpsc;
-//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
-//! let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let (source_tx, source_stream) = test_channel::<Sequenced<i32>>();
+//! let (filter_tx, filter_stream) = test_channel::<Sequenced<i32>>();
 //!
-//! let source_stream = UnboundedReceiverStream::new(source_rx);
-//! let filter_stream = UnboundedReceiverStream::new(filter_rx);
+//! // Sample source when filter emits, then track consecutive samples
+//! let sampled = source_stream.take_latest_when(filter_stream, |_| true);
+//! let mut composed = FluxionStream::new(sampled).combine_with_previous();
 //!
-//! // Sample source when filter emits, unwrap the result, then track consecutive samples
-//! let mut composed = FluxionStream::new(source_stream)
-//!     .take_latest_when(filter_stream, |_| true)
-//!     .map(|item| item.unwrap())
-//!     .combine_with_previous();
-//!
-//! filter_tx.send(Sequenced::new(0)).unwrap();
 //! source_tx.send(Sequenced::new(42)).unwrap();
+//! filter_tx.send(Sequenced::new(0)).unwrap();
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
