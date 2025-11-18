@@ -45,10 +45,9 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ Full test coverage for each and every operator (happy case)
 - ✅ Full test coverage for each and every operator (error case)
 - ✅ Full test coverage for operator chaining (happy case)
-- [ ] Full test coverage for operator chaining (error case)
+- ✅ Full test coverage for operator chaining (error case)
 - ✅ 1 fully functional example application showing the intrinsic integration path
-- [ ] 1 fully functional example application showing the wrapped integration path
-- [ ] Remove ordocument unwrap/expect in productive code
+- ✅ Remove or document unwrap/expect in productive code
 
 **Documentation:**
 - ✅ Provide exaustive integration guide with options
@@ -67,13 +66,15 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 ## 🚀 Version 0.3.0 - Test & Bench
 **Essential Features:**
+- [ ] 1 fully functional example application showing the wrapped integration path
 - [ ] At least one error operator implemented, documented and tested
-- [ ] Code coverage complete
-- [ ] Code coverage integrated in the CI with badge
+- [ ] Code coverage metrix available and integrated in the PITCH
+- [ ] Code coverage integrated in the CI with badge on the README
 - [ ] Benches exaustive
 
 **Documentation:**
 - [ ] `Subscribe` and `SubscribeLatest` documented
+- [ ] docs finalized
 
 **Quality Gates:**
 - [ ] performance table available and comprehensible

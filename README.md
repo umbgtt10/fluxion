@@ -46,19 +46,23 @@ Add Fluxion to your `Cargo.toml`:
 [dependencies]
 fluxion-rx = "0.1.1"
 fluxion-test-utils = "0.1.1"
-tokio = { version = "1.48", features = ["full"] }
-futures = "0.3"
+tokio = { version = "1.48.0", features = ["full"] }
+anyhow = "1.0.100"
+futures = "0.3.31"
+tracing = "0.1.41"
 ```
+
+
 
 ### Basic Usage
 
-```rust
-use fluxion_rx::FluxionStream;
+```rustuse fluxion_rx::FluxionStream;
 use fluxion_test_utils::sequenced::Sequenced;
 use futures::StreamExt;
 
-#[tokio::main]
-async fn main() {
+#[tokio::test]
+async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
+    tracing::info!("Starting test_take_latest_when_int_bool");
     // Define enum to hold int and bool types
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     enum Value {
@@ -76,35 +80,37 @@ async fn main() {
     let mut pipeline = int_stream.take_latest_when(trigger_stream, |_| true);
 
     // Send int values first - they will be buffered
-    tx_int.send(Sequenced::with_sequence(Value::Int(10), 1)).unwrap();
-    tx_int.send(Sequenced::with_sequence(Value::Int(20), 2)).unwrap();
-    tx_int.send(Sequenced::with_sequence(Value::Int(30), 3)).unwrap();
+    tx_int.send(Sequenced::with_sequence(Value::Int(10), 1))?;
+    tx_int.send(Sequenced::with_sequence(Value::Int(20), 2))?;
+    tx_int.send(Sequenced::with_sequence(Value::Int(30), 3))?;
 
     // Trigger with bool - should emit latest int value (30) with trigger's sequence
-    tx_trigger.send(Sequenced::with_sequence(Value::Bool(true), 4)).unwrap();
+    tx_trigger.send(Sequenced::with_sequence(Value::Bool(true), 4))?;
 
     let result1 = pipeline.next().await.unwrap().unwrap();
     assert!(matches!(result1.get(), Value::Int(30)));
     assert_eq!(result1.sequence(), 4);
 
     // After first trigger, send more int values
-    tx_int.send(Sequenced::with_sequence(Value::Int(40), 5)).unwrap();
+    tx_int.send(Sequenced::with_sequence(Value::Int(40), 5))?;
 
     // Need another trigger to emit the buffered value
-    tx_trigger.send(Sequenced::with_sequence(Value::Bool(true), 6)).unwrap();
+    tx_trigger.send(Sequenced::with_sequence(Value::Bool(true), 6))?;
 
     let result2 = pipeline.next().await.unwrap().unwrap();
     assert!(matches!(result2.get(), Value::Int(40)));
     assert_eq!(result2.sequence(), 6);
 
     // Send another int and trigger
-    tx_int.send(Sequenced::with_sequence(Value::Int(50), 7)).unwrap();
+    tx_int.send(Sequenced::with_sequence(Value::Int(50), 7))?;
 
-    tx_trigger.send(Sequenced::with_sequence(Value::Bool(true), 8)).unwrap();
+    tx_trigger.send(Sequenced::with_sequence(Value::Bool(true), 8))?;
 
     let result3 = pipeline.next().await.unwrap().unwrap();
     assert!(matches!(result3.get(), Value::Int(50)));
     assert_eq!(result3.sequence(), 8);
+
+    Ok(())
 }
 ```
 
@@ -114,13 +120,12 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rust
-use fluxion_rx::FluxionStream;
+```rustuse fluxion_rx::{FluxionStream, Ordered};
 use fluxion_test_utils::sequenced::Sequenced;
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_take_latest_when_int_bool() {
+async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
     // Define enum to hold both int and string types
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     enum Value {
@@ -144,11 +149,11 @@ async fn test_take_latest_when_int_bool() {
         });
 
     // Send initial values
-    tx_str.send(Sequenced::with_sequence(Value::Str("initial".into()), 1)).unwrap();
-    tx_int.send(Sequenced::with_sequence(Value::Int(30), 2)).unwrap(); // Filtered out (30 <= 50)
-    tx_int.send(Sequenced::with_sequence(Value::Int(60), 3)).unwrap(); // Passes filter (60 > 50)
-    tx_str.send(Sequenced::with_sequence(Value::Str("updated".into()), 4)).unwrap(); // Passes filter (int still 60)
-    tx_int.send(Sequenced::with_sequence(Value::Int(75), 5)).unwrap(); // Passes filter (75 > 50)
+    tx_str.send(Sequenced::with_sequence(Value::Str("initial".into()), 1))?;
+    tx_int.send(Sequenced::with_sequence(Value::Int(30), 2))?;
+    tx_int.send(Sequenced::with_sequence(Value::Int(60), 3))?; // Passes filter (60 > 50)
+    tx_str.send(Sequenced::with_sequence(Value::Str("updated".into()), 4))?;
+    tx_int.send(Sequenced::with_sequence(Value::Int(75), 5))?; // Passes filter (75 > 50)
 
     // Results: seq 3 (Int 60), seq 4 (Int 60 + Str updated), seq 5 (Int 75)
     let result1 = pipeline.next().await.unwrap();
@@ -165,6 +170,8 @@ async fn test_take_latest_when_int_bool() {
     let combined3 = result3.get().values();
     assert!(matches!(combined3[0], Value::Int(75)));
     assert!(matches!(combined3[1], Value::Str(ref s) if s == "updated"));
+
+    Ok(())
 }
 ```
 

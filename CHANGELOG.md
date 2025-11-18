@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Automation**: Created `.ci/sync-readme-examples.ps1` PowerShell script for automatic README synchronization
+  - Syncs test file code to README examples (removes copyright headers for clean examples)
+  - Auto-detects dependencies from code (use statements, attributes like `#[tokio::test]`, qualified paths like `anyhow::Result`)
+  - Extracts exact versions from workspace `Cargo.toml` automatically
+  - Zero manual maintenance - adding new imports automatically updates README dependencies
 - **Documentation**: Comprehensive unwrap/expect assessment (`assessments/UNWRAP_EXPECT_ASSESSMENT.md`) - Grade A+ with only 1 expect() in production code
 - **Error Handling**: Comprehensive error propagation through `StreamItem<T>` enum in all operators
 - **Documentation**: Added `docs/ERROR-HANDLING.md` - complete error handling guide with patterns and examples
