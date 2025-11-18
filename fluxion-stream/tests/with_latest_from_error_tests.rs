@@ -10,7 +10,7 @@ use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_with_latest_from_propagates_primary_error() {
+async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> {
     let (primary_tx, primary_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (secondary_tx, secondary_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -52,10 +52,11 @@ async fn test_with_latest_from_propagates_primary_error() {
 
     drop(primary_tx);
     drop(secondary_tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_with_latest_from_propagates_secondary_error() {
+async fn test_with_latest_from_propagates_secondary_error() -> anyhow::Result<()> {
     let (primary_tx, primary_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (secondary_tx, secondary_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -102,10 +103,11 @@ async fn test_with_latest_from_propagates_secondary_error() {
 
     drop(primary_tx);
     drop(secondary_tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_with_latest_from_error_before_secondary_ready() {
+async fn test_with_latest_from_error_before_secondary_ready() -> anyhow::Result<()> {
     let (primary_tx, primary_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (secondary_tx, secondary_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -121,10 +123,11 @@ async fn test_with_latest_from_error_before_secondary_ready() {
 
     drop(primary_tx);
     drop(secondary_tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_with_latest_from_selector_continues_after_error() {
+async fn test_with_latest_from_selector_continues_after_error() -> anyhow::Result<()> {
     let (primary_tx, primary_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (secondary_tx, secondary_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -167,4 +170,5 @@ async fn test_with_latest_from_selector_continues_after_error() {
 
     drop(primary_tx);
     drop(secondary_tx);
+    Ok(())
 }

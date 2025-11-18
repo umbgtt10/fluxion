@@ -7,7 +7,7 @@ use fluxion_test_utils::sequenced::Sequenced;
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_combine_latest_int_string_filter_order() {
+async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
     // Define enum to hold both int and string types
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     enum Value {
@@ -31,21 +31,11 @@ async fn test_combine_latest_int_string_filter_order() {
         });
 
     // Send initial values
-    tx_str
-        .send(Sequenced::with_sequence(Value::Str("initial".into()), 1))
-        .unwrap();
-    tx_int
-        .send(Sequenced::with_sequence(Value::Int(30), 2))
-        .unwrap(); // Filtered out (30 <= 50)
-    tx_int
-        .send(Sequenced::with_sequence(Value::Int(60), 3))
-        .unwrap(); // Passes filter (60 > 50)
-    tx_str
-        .send(Sequenced::with_sequence(Value::Str("updated".into()), 4))
-        .unwrap(); // Passes filter (int still 60)
-    tx_int
-        .send(Sequenced::with_sequence(Value::Int(75), 5))
-        .unwrap(); // Passes filter (75 > 50)
+    tx_str.send(Sequenced::with_sequence(Value::Str("initial".into()), 1))?;
+    tx_int.send(Sequenced::with_sequence(Value::Int(30), 2))?;
+    tx_int.send(Sequenced::with_sequence(Value::Int(60), 3))?; // Passes filter (60 > 50)
+    tx_str.send(Sequenced::with_sequence(Value::Str("updated".into()), 4))?;
+    tx_int.send(Sequenced::with_sequence(Value::Int(75), 5))?; // Passes filter (75 > 50)
 
     // Results: seq 3 (Int 60), seq 4 (Int 60 + Str updated), seq 5 (Int 75)
     let result1 = pipeline.next().await.unwrap();
@@ -62,4 +52,6 @@ async fn test_combine_latest_int_string_filter_order() {
     let combined3 = result3.get().values();
     assert!(matches!(combined3[0], Value::Int(75)));
     assert!(matches!(combined3[1], Value::Str(ref s) if s == "updated"));
+
+    Ok(())
 }

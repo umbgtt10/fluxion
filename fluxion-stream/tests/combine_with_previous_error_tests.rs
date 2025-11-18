@@ -10,7 +10,7 @@ use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_combine_with_previous_propagates_errors() {
+async fn test_combine_with_previous_propagates_errors() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
@@ -44,10 +44,11 @@ async fn test_combine_with_previous_propagates_errors() {
     assert!(matches!(item4, StreamItem::Value(_)));
 
     drop(tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_with_previous_error_at_first_item() {
+async fn test_combine_with_previous_error_at_first_item() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
@@ -70,10 +71,11 @@ async fn test_combine_with_previous_error_at_first_item() {
     assert!(matches!(second, StreamItem::Value(_)), "Should continue");
 
     drop(tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_with_previous_multiple_errors() {
+async fn test_combine_with_previous_multiple_errors() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
@@ -114,10 +116,11 @@ async fn test_combine_with_previous_multiple_errors() {
     assert!(matches!(result5, StreamItem::Value(_)));
 
     drop(tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_with_previous_preserves_pairing_after_error() {
+async fn test_combine_with_previous_preserves_pairing_after_error() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
@@ -150,10 +153,11 @@ async fn test_combine_with_previous_preserves_pairing_after_error() {
     assert!(matches!(item4, StreamItem::Value(_)));
 
     drop(tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_with_previous_single_item_stream_with_error() {
+async fn test_combine_with_previous_single_item_stream_with_error() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
@@ -166,4 +170,5 @@ async fn test_combine_with_previous_single_item_stream_with_error() {
     assert!(matches!(item1, StreamItem::Error(_)));
 
     drop(tx);
+    Ok(())
 }

@@ -9,6 +9,7 @@ use fluxion_test_utils::test_data::{
 };
 use fluxion_test_utils::Sequenced;
 use std::sync::Arc;
+use tokio::spawn;
 use tokio::{
     sync::mpsc,
     sync::Mutex,
@@ -29,7 +30,7 @@ impl TestError {
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
+async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -67,34 +68,34 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
     });
 
     // Act - emit items one at a time, waiting for each to be processed
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.expect("Alice processed");
 
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.expect("Bob processed");
 
-    tx.send(Sequenced::new(person_charlie())).unwrap();
+    tx.send(Sequenced::new(person_charlie()))?;
     notify_rx.recv().await.expect("Charlie processed");
 
-    tx.send(Sequenced::new(person_diane())).unwrap();
+    tx.send(Sequenced::new(person_diane()))?;
     notify_rx.recv().await.expect("Diane processed");
 
-    tx.send(Sequenced::new(person_dave())).unwrap();
+    tx.send(Sequenced::new(person_dave()))?;
     notify_rx.recv().await.expect("Dave processed");
 
-    tx.send(Sequenced::new(animal_dog())).unwrap();
+    tx.send(Sequenced::new(animal_dog()))?;
     notify_rx.recv().await.expect("Dog processed");
 
-    tx.send(Sequenced::new(animal_cat())).unwrap();
+    tx.send(Sequenced::new(animal_cat()))?;
     notify_rx.recv().await.expect("Cat processed");
 
-    tx.send(Sequenced::new(animal_ant())).unwrap();
+    tx.send(Sequenced::new(animal_ant()))?;
     notify_rx.recv().await.expect("Ant processed");
 
-    tx.send(Sequenced::new(animal_spider())).unwrap();
+    tx.send(Sequenced::new(animal_spider()))?;
     notify_rx.recv().await.expect("Spider processed");
 
-    tx.send(Sequenced::new(plant_rose())).unwrap();
+    tx.send(Sequenced::new(plant_rose()))?;
     notify_rx.recv().await.expect("Rose processed");
 
     // Assert
@@ -114,10 +115,12 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() {
     assert_eq!(processed[8], animal_spider());
     assert_eq!(processed[9], plant_rose());
     drop(processed);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
+async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() -> anyhow::Result<()>
+{
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -169,7 +172,7 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
         eprintln!("Error occurred: {err:?}");
     };
 
-    tokio::spawn({
+    spawn({
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
@@ -179,14 +182,14 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     start_rx.recv().await.expect("first processing started");
 
     // While the first item is blocked, send 4 more items rapidly
-    tx.send(Sequenced::new(person_bob())).unwrap();
-    tx.send(Sequenced::new(person_charlie())).unwrap();
-    tx.send(Sequenced::new(person_diane())).unwrap();
-    tx.send(Sequenced::new(person_dave())).unwrap(); // latest
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(person_charlie()))?;
+    tx.send(Sequenced::new(person_diane()))?;
+    tx.send(Sequenced::new(person_dave()))?; // latest
 
     // Unblock the first processing, allowing it to complete
     let _ = gate_tx.send(());
@@ -212,10 +215,13 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() {
     assert!(!processed.contains(&person_bob()));
     assert!(!processed.contains(&person_charlie()));
     assert!(!processed.contains(&person_diane()));
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
+async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() -> anyhow::Result<()>
+{
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -249,7 +255,7 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
         eprintln!("Error occurred: {err:?}");
     };
 
-    tokio::spawn({
+    spawn({
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
@@ -259,19 +265,19 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.expect("Alice processed");
 
-    tx.send(Sequenced::new(person_bob())).unwrap(); // Error
+    tx.send(Sequenced::new(person_bob()))?; // Error
     notify_rx.recv().await.expect("Bob handled (error)");
 
-    tx.send(Sequenced::new(person_charlie())).unwrap();
+    tx.send(Sequenced::new(person_charlie()))?;
     notify_rx.recv().await.expect("Charlie processed");
 
-    tx.send(Sequenced::new(person_dave())).unwrap(); // Error
+    tx.send(Sequenced::new(person_dave()))?; // Error
     notify_rx.recv().await.expect("Dave handled (error)");
 
-    tx.send(Sequenced::new(animal_dog())).unwrap();
+    tx.send(Sequenced::new(animal_dog()))?;
     notify_rx.recv().await.expect("Dog processed");
 
     // Assert
@@ -285,10 +291,13 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() {
     assert!(processed.contains(&animal_dog()),);
     assert!(!processed.contains(&person_bob()),);
     assert!(!processed.contains(&person_dave()),);
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
+async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() -> anyhow::Result<()>
+{
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -322,7 +331,7 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
     };
 
     let cancellation_token = CancellationToken::new();
-    tokio::spawn({
+    spawn({
         let cancellation_token = cancellation_token.clone();
 
         async move {
@@ -334,20 +343,20 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.expect("Alice processed");
 
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.expect("Bob processed");
 
-    tx.send(Sequenced::new(person_charlie())).unwrap();
+    tx.send(Sequenced::new(person_charlie()))?;
     notify_rx.recv().await.expect("Charlie processed");
 
     // Cancel further processing
     cancellation_token.cancel();
 
-    tx.send(Sequenced::new(person_dave())).unwrap();
-    tx.send(Sequenced::new(animal_dog())).unwrap();
+    tx.send(Sequenced::new(person_dave()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
     let processed = {
@@ -360,10 +369,13 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() {
     assert_eq!(processed[2], person_charlie());
     assert!(!processed.contains(&person_dave()));
     assert!(!processed.contains(&animal_dog()));
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() {
+async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() -> anyhow::Result<()>
+{
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -399,7 +411,7 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
     };
 
     let cancellation_token = CancellationToken::new();
-    tokio::spawn({
+    spawn({
         let cancellation_token = cancellation_token.clone();
 
         async move {
@@ -411,19 +423,19 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.expect("Alice processed");
 
-    tx.send(Sequenced::new(animal_dog())).unwrap(); // Error
+    tx.send(Sequenced::new(animal_dog()))?; // Error
     notify_rx.recv().await.expect("Dog handled (error)");
 
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.expect("Bob processed");
 
     cancellation_token.cancel();
 
-    tx.send(Sequenced::new(person_diane())).unwrap();
-    tx.send(Sequenced::new(animal_cat())).unwrap();
+    tx.send(Sequenced::new(person_diane()))?;
+    tx.send(Sequenced::new(animal_cat()))?;
 
     // Assert
     let processed = {
@@ -436,11 +448,13 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
     assert!(!processed.contains(&person_diane()));
     assert!(!processed.contains(&animal_cat()));
     assert!(!processed.contains(&animal_dog()));
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_concurrent_processing()
-{
+async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_concurrent_processing(
+) -> anyhow::Result<()> {
     // Arrange
     let active_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let max_concurrent = Arc::new(std::sync::atomic::AtomicUsize::new(0));
@@ -507,7 +521,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
     // Act - Drive N sequential processings while always having the next item queued
     let n = 10;
 
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
 
     for i in 0..n {
         // Wait until current processing has started
@@ -515,7 +529,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
 
         // Queue next item before finishing current to try to induce overlap
         if i + 1 < n {
-            tx.send(Sequenced::new(person_alice())).unwrap();
+            tx.send(Sequenced::new(person_alice()))?;
         }
 
         // Now allow current processing to complete and wait for completion notification
@@ -532,10 +546,13 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
 
     let done = processed_count.load(std::sync::atomic::Ordering::SeqCst);
     assert_eq!(done, n);
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_empty_stream() {
+async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_empty_stream(
+) -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::<TestData>::new()));
     let collected_items_clone = collected_items.clone();
@@ -571,10 +588,12 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_
 
     // Assert
     assert_eq!(*collected_items.lock().await, Vec::<TestData>::new());
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_high_volume() {
+async fn test_subscribe_latest_async_high_volume() -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -644,14 +663,14 @@ async fn test_subscribe_latest_async_high_volume() {
     });
 
     // Act - Block first, flood many, ensure flood is done, then release gate
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     start_rx.recv().await.expect("first processing started");
 
     // Flood with many identical items, then a distinct last item
     for _ in 0..500 {
-        tx.send(Sequenced::new(person_alice())).unwrap();
+        tx.send(Sequenced::new(person_alice()))?;
     }
-    tx.send(Sequenced::new(person_bob())).unwrap(); // sentinel latest
+    tx.send(Sequenced::new(person_bob()))?; // sentinel latest
 
     // Signal that flooding (including Bob) is complete
     let _ = flood_done_tx.send(());
@@ -674,10 +693,12 @@ async fn test_subscribe_latest_async_high_volume() {
     // TODO: Find out why this fails intermittently
     // assert_eq!(processed[1], person_bob());
     drop(processed);
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_single_item() {
+async fn test_subscribe_latest_async_single_item() -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -716,7 +737,7 @@ async fn test_subscribe_latest_async_single_item() {
     });
 
     // Act - Send only one item
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
 
     // Wait for item to complete
     notify_rx.recv().await.unwrap();
@@ -732,10 +753,12 @@ async fn test_subscribe_latest_async_single_item() {
     // Cleanup
     drop(tx);
     task_handle.await.unwrap();
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_error_aggregation_without_callback() {
+async fn test_subscribe_latest_async_error_aggregation_without_callback() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -766,16 +789,16 @@ async fn test_subscribe_latest_async_error_aggregation_without_callback() {
     });
 
     // Act - Send mix of valid and invalid items
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.unwrap();
 
-    tx.send(Sequenced::new(animal_dog())).unwrap(); // Error
+    tx.send(Sequenced::new(animal_dog()))?; // Error
     notify_rx.recv().await.unwrap();
 
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.unwrap();
 
-    tx.send(Sequenced::new(animal_cat())).unwrap(); // Error
+    tx.send(Sequenced::new(animal_cat()))?; // Error
     notify_rx.recv().await.unwrap();
 
     drop(tx);
@@ -792,4 +815,6 @@ async fn test_subscribe_latest_async_error_aggregation_without_callback() {
         }
         other => panic!("Expected MultipleErrors, got: {:?}", other),
     }
+
+    Ok(())
 }

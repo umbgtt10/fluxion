@@ -13,26 +13,27 @@ use fluxion_test_utils::unwrap_value;
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_filter_ordered_basic_predicate() {
+async fn test_filter_ordered_basic_predicate() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
     let mut stream =
         FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Person(_)));
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     let result = unwrap_value(stream.next().await);
     assert_eq!(result.get(), &person_alice());
 
-    tx.send(Sequenced::new(animal_dog())).unwrap();
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(animal_dog()))?;
+    tx.send(Sequenced::new(person_bob()))?;
 
     let result = unwrap_value(stream.next().await);
     assert_eq!(result.get(), &person_bob()); // Animal filtered out
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_age_threshold() {
+async fn test_filter_ordered_age_threshold() -> anyhow::Result<()> {
     // Arrange - filter people by age > 30
     let (tx, stream) = test_channel();
     let mut stream = FluxionStream::new(stream).filter_ordered(|data| match data {
@@ -41,10 +42,10 @@ async fn test_filter_ordered_age_threshold() {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap(); // 25 - filtered
-    tx.send(Sequenced::new(person_bob())).unwrap(); // 30 - filtered
-    tx.send(Sequenced::new(person_charlie())).unwrap(); // 35 - kept
-    tx.send(Sequenced::new(person_diane())).unwrap(); // 40 - kept
+    tx.send(Sequenced::new(person_alice()))?; // 25 - filtered
+    tx.send(Sequenced::new(person_bob()))?; // 30 - filtered
+    tx.send(Sequenced::new(person_charlie()))?; // 35 - kept
+    tx.send(Sequenced::new(person_diane()))?; // 40 - kept
 
     // Assert
     let result = unwrap_value(stream.next().await);
@@ -52,10 +53,11 @@ async fn test_filter_ordered_age_threshold() {
 
     let result = unwrap_value(stream.next().await);
     assert_eq!(result.get(), &person_diane());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_empty_stream() {
+async fn test_filter_ordered_empty_stream() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = FluxionStream::new(stream).filter_ordered(|_| true);
@@ -65,43 +67,46 @@ async fn test_filter_ordered_empty_stream() {
 
     // Assert
     assert!(stream.next().await.is_none());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_all_filtered_out() {
+async fn test_filter_ordered_all_filtered_out() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
     let mut stream = FluxionStream::new(stream).filter_ordered(|_| false); // Filter everything
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
-    tx.send(Sequenced::new(person_bob())).unwrap();
-    tx.send(Sequenced::new(animal_dog())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
     drop(tx);
 
     // Assert
     assert!(stream.next().await.is_none());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_none_filtered() {
+async fn test_filter_ordered_none_filtered() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
     let mut stream = FluxionStream::new(stream).filter_ordered(|_| true); // Keep everything
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
-    tx.send(Sequenced::new(animal_dog())).unwrap();
-    tx.send(Sequenced::new(plant_rose())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
+    tx.send(Sequenced::new(plant_rose()))?;
 
     // Assert
     assert_eq!(unwrap_value(stream.next().await).get(), &person_alice());
     assert_eq!(unwrap_value(stream.next().await).get(), &animal_dog());
     assert_eq!(unwrap_value(stream.next().await).get(), &plant_rose());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_preserves_ordering() {
+async fn test_filter_ordered_preserves_ordering() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
 
@@ -112,11 +117,11 @@ async fn test_filter_ordered_preserves_ordering() {
     });
 
     // Act - send in sequence order
-    tx.send(Sequenced::new(person_alice())).unwrap(); // 25 - odd, filtered
-    tx.send(Sequenced::new(person_bob())).unwrap(); // 30 - even, kept
-    tx.send(Sequenced::new(person_charlie())).unwrap(); // 35 - odd, filtered
-    tx.send(Sequenced::new(person_diane())).unwrap(); // 40 - even, kept
-    tx.send(Sequenced::new(person_dave())).unwrap(); // 28 - even, kept
+    tx.send(Sequenced::new(person_alice()))?; // 25 - odd, filtered
+    tx.send(Sequenced::new(person_bob()))?; // 30 - even, kept
+    tx.send(Sequenced::new(person_charlie()))?; // 35 - odd, filtered
+    tx.send(Sequenced::new(person_diane()))?; // 40 - even, kept
+    tx.send(Sequenced::new(person_dave()))?; // 28 - even, kept
 
     // Assert - ordering preserved for kept items
     let r1 = unwrap_value(stream.next().await);
@@ -130,21 +135,22 @@ async fn test_filter_ordered_preserves_ordering() {
     // Verify sequence numbers are in order
     assert!(r1.order() < r2.order());
     assert!(r2.order() < r3.order());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_multiple_types() {
+async fn test_filter_ordered_multiple_types() -> anyhow::Result<()> {
     // Arrange - keep only animals
     let (tx, stream) = test_channel();
     let mut stream =
         FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Animal(_)));
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
-    tx.send(Sequenced::new(animal_dog())).unwrap();
-    tx.send(Sequenced::new(plant_rose())).unwrap();
-    tx.send(Sequenced::new(animal_spider())).unwrap();
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
+    tx.send(Sequenced::new(plant_rose()))?;
+    tx.send(Sequenced::new(animal_spider()))?;
+    tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
     let result = unwrap_value(stream.next().await);
@@ -152,10 +158,11 @@ async fn test_filter_ordered_multiple_types() {
 
     let result = unwrap_value(stream.next().await);
     assert_eq!(result.get(), &animal_spider());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_complex_predicate() {
+async fn test_filter_ordered_complex_predicate() -> anyhow::Result<()> {
     // Arrange - complex predicate: people with age between 30-40 OR animals
     let (tx, stream) = test_channel();
     let mut stream = FluxionStream::new(stream).filter_ordered(|data| match data {
@@ -165,37 +172,39 @@ async fn test_filter_ordered_complex_predicate() {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap(); // 25 - filtered
-    tx.send(Sequenced::new(person_bob())).unwrap(); // 30 - kept
-    tx.send(Sequenced::new(animal_dog())).unwrap(); // kept
-    tx.send(Sequenced::new(plant_rose())).unwrap(); // filtered
-    tx.send(Sequenced::new(person_diane())).unwrap(); // 40 - kept
+    tx.send(Sequenced::new(person_alice()))?; // 25 - filtered
+    tx.send(Sequenced::new(person_bob()))?; // 30 - kept
+    tx.send(Sequenced::new(animal_dog()))?; // kept
+    tx.send(Sequenced::new(plant_rose()))?; // filtered
+    tx.send(Sequenced::new(person_diane()))?; // 40 - kept
 
     // Assert
     assert_eq!(unwrap_value(stream.next().await).get(), &person_bob());
     assert_eq!(unwrap_value(stream.next().await).get(), &animal_dog());
     assert_eq!(unwrap_value(stream.next().await).get(), &person_diane());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_single_item() {
+async fn test_filter_ordered_single_item() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
     let mut stream =
         FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Person(_)));
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     drop(tx);
 
     // Assert
     let result = unwrap_value(stream.next().await);
     assert_eq!(result.get(), &person_alice());
     assert!(stream.next().await.is_none());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_with_pattern_matching() {
+async fn test_filter_ordered_with_pattern_matching() -> anyhow::Result<()> {
     // Arrange - filter by name pattern
     let (tx, stream) = test_channel();
     let mut stream = FluxionStream::new(stream).filter_ordered(|data| match data {
@@ -204,20 +213,21 @@ async fn test_filter_ordered_with_pattern_matching() {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap(); // Alice - kept
-    tx.send(Sequenced::new(person_bob())).unwrap(); // Bob - filtered
-    tx.send(Sequenced::new(person_charlie())).unwrap(); // Charlie - filtered
-    tx.send(Sequenced::new(person_dave())).unwrap(); // Dave - kept
-    tx.send(Sequenced::new(person_diane())).unwrap(); // Diane - kept
+    tx.send(Sequenced::new(person_alice()))?; // Alice - kept
+    tx.send(Sequenced::new(person_bob()))?; // Bob - filtered
+    tx.send(Sequenced::new(person_charlie()))?; // Charlie - filtered
+    tx.send(Sequenced::new(person_dave()))?; // Dave - kept
+    tx.send(Sequenced::new(person_diane()))?; // Diane - kept
 
     // Assert
     assert_eq!(unwrap_value(stream.next().await).get(), &person_alice());
     assert_eq!(unwrap_value(stream.next().await).get(), &person_dave());
     assert_eq!(unwrap_value(stream.next().await).get(), &person_diane());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_alternating_pattern() {
+async fn test_filter_ordered_alternating_pattern() -> anyhow::Result<()> {
     // Arrange - Keep every other person by creating a stateful filter
     let (tx, stream) = test_channel();
 
@@ -232,13 +242,14 @@ async fn test_filter_ordered_alternating_pattern() {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap(); // 1st person - kept
-    tx.send(Sequenced::new(person_bob())).unwrap(); // 2nd person - filtered
-    tx.send(Sequenced::new(animal_dog())).unwrap(); // not a person - filtered
-    tx.send(Sequenced::new(person_charlie())).unwrap(); // 3rd person - kept
-    tx.send(Sequenced::new(person_diane())).unwrap(); // 4th person - filtered
+    tx.send(Sequenced::new(person_alice()))?; // 1st person - kept
+    tx.send(Sequenced::new(person_bob()))?; // 2nd person - filtered
+    tx.send(Sequenced::new(animal_dog()))?; // not a person - filtered
+    tx.send(Sequenced::new(person_charlie()))?; // 3rd person - kept
+    tx.send(Sequenced::new(person_diane()))?; // 4th person - filtered
 
     // Assert
     assert_eq!(unwrap_value(stream.next().await).get(), &person_alice());
     assert_eq!(unwrap_value(stream.next().await).get(), &person_charlie());
+    Ok(())
 }

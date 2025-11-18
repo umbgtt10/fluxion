@@ -18,7 +18,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
-async fn test_merge_with_empty_streams() {
+async fn test_merge_with_empty_streams() -> anyhow::Result<()> {
     // Arrange
     let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let empty_stream1 = UnboundedReceiverStream::new(rx1);
@@ -52,10 +52,12 @@ async fn test_merge_with_empty_streams() {
     // Assert
     let result: Vec<Sequenced<i32>> = result_stream.collect().await;
     assert_eq!(result, vec![], "Empty streams should produce empty result");
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_merge_with_mixed_empty_and_non_empty_streams() {
+async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<()> {
     // Arrange
     let (non_empty_tx, non_empty_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let non_empty_stream = UnboundedReceiverStream::new(non_empty_rx);
@@ -65,7 +67,7 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
     drop(empty_tx);
 
     // Use a simple counter state to verify emissions from the non-empty stream
-    let merged_stream = MergedStream::seed(0usize)
+    let mut merged_stream = MergedStream::seed(0usize)
         .merge_with(
             non_empty_stream,
             |ts_new_item: Sequenced<TestData>, state: &mut usize| {
@@ -88,10 +90,9 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
         );
 
     // Act
-    non_empty_tx.send(Sequenced::new(person_alice())).unwrap();
+    non_empty_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
-    let mut merged_stream = Box::pin(merged_stream);
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
         state.into_inner(),
@@ -100,7 +101,7 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
     );
 
     // Act
-    non_empty_tx.send(Sequenced::new(person_bob())).unwrap();
+    non_empty_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -111,7 +112,7 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
     );
 
     // Act
-    non_empty_tx.send(Sequenced::new(person_charlie())).unwrap();
+    non_empty_tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -120,10 +121,11 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() {
         3,
         "Third emission should increment counter to 3"
     );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_merge_with_similar_streams_emits() {
+async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     // Arrange
     let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream1 = UnboundedReceiverStream::new(rx1);
@@ -131,7 +133,7 @@ async fn test_merge_with_similar_streams_emits() {
     let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream2 = UnboundedReceiverStream::new(rx2);
 
-    let merged_stream = MergedStream::seed(Repository::new())
+    let mut merged_stream = MergedStream::seed(Repository::new())
         .merge_with(
             stream1,
             |ts_new_item: Sequenced<TestData>, state: &mut Repository| {
@@ -146,10 +148,9 @@ async fn test_merge_with_similar_streams_emits() {
         );
 
     // Act
-    tx1.send(Sequenced::new(person_alice())).unwrap();
+    tx1.send(Sequenced::new(person_alice()))?;
 
     // Assert
-    let mut merged_stream = Box::pin(merged_stream);
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
         state.person_name,
@@ -158,7 +159,7 @@ async fn test_merge_with_similar_streams_emits() {
     );
 
     // Act
-    tx2.send(Sequenced::new(person_bob())).unwrap();
+    tx2.send(Sequenced::new(person_bob()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -169,7 +170,7 @@ async fn test_merge_with_similar_streams_emits() {
     );
 
     // Act
-    tx1.send(Sequenced::new(person_charlie())).unwrap();
+    tx1.send(Sequenced::new(person_charlie()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -180,7 +181,7 @@ async fn test_merge_with_similar_streams_emits() {
     );
 
     // Act
-    tx2.send(Sequenced::new(person_dave())).unwrap();
+    tx2.send(Sequenced::new(person_dave()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -189,10 +190,11 @@ async fn test_merge_with_similar_streams_emits() {
         Some("Dave".to_string()),
         "Repository should contain Dave after fourth emission"
     );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_merge_with_parallel_processing() {
+async fn test_merge_with_parallel_processing() -> anyhow::Result<()> {
     // Arrange
     let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream1 = UnboundedReceiverStream::new(rx1);
@@ -200,7 +202,7 @@ async fn test_merge_with_parallel_processing() {
     let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream2 = UnboundedReceiverStream::new(rx2);
 
-    let result_stream = MergedStream::seed(Repository::new())
+    let merged_stream = MergedStream::seed(Repository::new())
         .merge_with(
             stream1,
             |ts_new_item: Sequenced<TestData>, state: &mut Repository| {
@@ -227,7 +229,7 @@ async fn test_merge_with_parallel_processing() {
     });
 
     // Assert
-    let result: Vec<Sequenced<Repository>> = result_stream.collect().await;
+    let result: Vec<Sequenced<Repository>> = merged_stream.collect().await;
     let last = result.last().expect("at least one state").get();
     assert_eq!(
         last.person_name,
@@ -239,10 +241,12 @@ async fn test_merge_with_parallel_processing() {
         Some("Spider".to_string()),
         "Final repository should have Spider as last animal"
     );
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_merge_with_large_streams_emits() {
+async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
     // Arrange
     let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let large_stream1 = UnboundedReceiverStream::new(rx1);
@@ -250,7 +254,7 @@ async fn test_merge_with_large_streams_emits() {
     let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let large_stream2 = UnboundedReceiverStream::new(rx2);
 
-    let merged_stream = MergedStream::seed(0)
+    let mut merged_stream = MergedStream::seed(0)
         .merge_with(
             large_stream1,
             |ts_new_item: Sequenced<TestData>, state: &mut i32| {
@@ -282,16 +286,13 @@ async fn test_merge_with_large_streams_emits() {
 
     // Act
     for i in 0..10000 {
-        tx1.send(Sequenced::new(person(i.to_string(), i as u32)))
-            .unwrap();
+        tx1.send(Sequenced::new(person(i.to_string(), i as u32)))?;
     }
     for i in 10000..20000 {
-        tx2.send(Sequenced::new(person(i.to_string(), i as u32)))
-            .unwrap();
+        tx2.send(Sequenced::new(person(i.to_string(), i as u32)))?;
     }
 
     // Assert
-    let mut merged_stream = Box::pin(merged_stream);
     let mut count = 0;
     let mut final_state = None;
     for _ in 0..20000 {
@@ -305,10 +306,12 @@ async fn test_merge_with_large_streams_emits() {
         Some(199990000),
         "Final accumulated sum should be correct"
     );
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_merge_with_hybrid_using_repository_emits() {
+async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     // Arrange
     let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let animal_stream = UnboundedReceiverStream::new(animal_rx);
@@ -319,7 +322,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let plant_stream = UnboundedReceiverStream::new(plant_rx);
 
-    let merged_stream = MergedStream::seed(Repository::new())
+    let mut merged_stream = MergedStream::seed(Repository::new())
         .merge_with(animal_stream, |ts_new_item: Sequenced<TestData>, state| {
             state.from_testdata_timestamped(ts_new_item)
         })
@@ -331,10 +334,9 @@ async fn test_merge_with_hybrid_using_repository_emits() {
         });
 
     // Act
-    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
+    animal_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
-    let mut merged_stream = Box::pin(merged_stream);
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
         *state.get(),
@@ -352,7 +354,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     );
 
     // Act
-    animal_tx.send(Sequenced::new(animal_bird())).unwrap();
+    animal_tx.send(Sequenced::new(animal_bird()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -372,7 +374,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     );
 
     // Act
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -412,7 +414,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     );
 
     // Act
-    plant_tx.send(Sequenced::new(plant_fern())).unwrap();
+    plant_tx.send(Sequenced::new(plant_fern()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -432,7 +434,7 @@ async fn test_merge_with_hybrid_using_repository_emits() {
     );
 
     // Act
-    plant_tx.send(Sequenced::new(plant_oak())).unwrap();
+    plant_tx.send(Sequenced::new(plant_oak()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -450,6 +452,8 @@ async fn test_merge_with_hybrid_using_repository_emits() {
             plant_height: Some(1000),
         }
     );
+
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -566,7 +570,7 @@ async fn test_merge_with_user_closure_panics() {
     let stream = UnboundedReceiverStream::new(rx);
 
     // Create a merge_with stream where the closure panics on the second emission
-    let merged_stream = MergedStream::seed(0usize).merge_with(
+    let mut merged_stream = MergedStream::seed(0usize).merge_with(
         stream,
         |ts_new_item: Sequenced<TestData>, state: &mut usize| {
             let seq = ts_new_item.sequence();
@@ -579,8 +583,6 @@ async fn test_merge_with_user_closure_panics() {
             Sequenced::with_sequence(out, seq)
         },
     );
-
-    let mut merged_stream = Box::pin(merged_stream);
 
     // Act: First emission should succeed
     tx.send(Sequenced::new(person_alice())).unwrap();

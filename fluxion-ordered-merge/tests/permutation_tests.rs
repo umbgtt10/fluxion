@@ -1318,7 +1318,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 async fn test_ordered_merge_permutations(
     #[case] channel_order: [usize; 3],
     #[case] send_order: [usize; 9],
-) {
+) -> anyhow::Result<()> {
     // Test that temporal ordering (sequence numbers) is preserved
     // regardless of channel order or send pattern
 
@@ -1401,4 +1401,6 @@ async fn test_ordered_merge_permutations(
     assert_eq!(results.next().await.unwrap().value, expected_order[6]);
     assert_eq!(results.next().await.unwrap().value, expected_order[7]);
     assert_eq!(results.next().await.unwrap().value, expected_order[8]);
+
+    Ok(())
 }

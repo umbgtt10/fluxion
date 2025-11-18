@@ -24,3 +24,4 @@ fluxion-test-utils = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 rstest = { workspace = true }
+anyhow = { workspace = true }

@@ -10,7 +10,7 @@ use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_error_propagation_through_multiple_operators() {
+async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Chain multiple operators
@@ -51,10 +51,11 @@ async fn test_error_propagation_through_multiple_operators() {
     assert!(matches!(item4, StreamItem::Value(50)));
 
     drop(tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_error_in_long_operator_chain() {
+async fn test_error_in_long_operator_chain() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Long chain: filter -> combine_with_previous -> map
@@ -91,10 +92,11 @@ async fn test_error_in_long_operator_chain() {
     assert!(matches!(item4, StreamItem::Value(45)));
 
     drop(tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_multiple_errors_through_composition() {
+async fn test_multiple_errors_through_composition() -> anyhow::Result<()> {
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -132,10 +134,11 @@ async fn test_multiple_errors_through_composition() {
 
     drop(tx1);
     drop(tx2);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_error_recovery_in_composed_streams() {
+async fn test_error_recovery_in_composed_streams() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -171,10 +174,11 @@ async fn test_error_recovery_in_composed_streams() {
 
     drop(source_tx);
     drop(trigger_tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_error_with_emit_when_composition() {
+async fn test_error_with_emit_when_composition() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -215,4 +219,5 @@ async fn test_error_with_emit_when_composition() {
 
     drop(source_tx);
     drop(filter_tx);
+    Ok(())
 }

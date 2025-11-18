@@ -17,10 +17,9 @@ static RESULT_SELECTOR: fn(&CombinedState<TestData>) -> CombinedState<TestData> 
     |state: &CombinedState<TestData>| state.clone();
 
 #[tokio::test]
-async fn test_functional_combine_latest() {
+async fn test_functional_combine_latest() -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
-
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
 
     let person_stream = FluxionStream::new(person_stream);
@@ -29,18 +28,20 @@ async fn test_functional_combine_latest() {
     let mut combined = person_stream.combine_latest(vec![animal_stream], ALWAYS_TRUE_COMBINED);
 
     // Act
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
-    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
     let state = combined.next().await.unwrap();
     let combined_state = state.get();
     assert_eq!(combined_state.values()[0], person_alice());
     assert_eq!(combined_state.values()[1], animal_dog());
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_functional_combine_with_previous() {
+async fn test_functional_combine_with_previous() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
@@ -48,9 +49,9 @@ async fn test_functional_combine_with_previous() {
     let mut with_previous = stream.combine_with_previous();
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
-    tx.send(Sequenced::new(person_bob())).unwrap();
-    tx.send(Sequenced::new(person_charlie())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert
     let item = unwrap_value(with_previous.next().await);
@@ -64,10 +65,12 @@ async fn test_functional_combine_with_previous() {
     let item = unwrap_value(with_previous.next().await);
     assert_eq!(item.previous.unwrap().get(), &person_bob());
     assert_eq!(item.current.get(), &person_charlie());
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_functional_ordered_merge() {
+async fn test_functional_ordered_merge() -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
 
@@ -82,20 +85,22 @@ async fn test_functional_ordered_merge() {
     let mut merged = person_stream.ordered_merge(vec![animal_stream, plant_stream]);
 
     // Act
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
-    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
-    plant_tx.send(Sequenced::new(plant_rose())).unwrap();
-    person_tx.send(Sequenced::new(person_bob())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_dog()))?;
+    plant_tx.send(Sequenced::new(plant_rose()))?;
+    person_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert - items emitted in order they were pushed
     assert_eq!(merged.next().await.unwrap().get(), &person_alice());
     assert_eq!(merged.next().await.unwrap().get(), &animal_dog());
     assert_eq!(merged.next().await.unwrap().get(), &plant_rose());
     assert_eq!(merged.next().await.unwrap().get(), &person_bob());
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_functional_take_latest_when() {
+async fn test_functional_take_latest_when() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
 
@@ -107,16 +112,18 @@ async fn test_functional_take_latest_when() {
     let mut filtered = source_stream.take_latest_when(filter_stream, ALWAYS_TRUE);
 
     // Act
-    source_tx.send(Sequenced::new(person_bob())).unwrap();
-    source_tx.send(Sequenced::new(person_charlie())).unwrap();
-    filter_tx.send(Sequenced::new(person_alice())).unwrap();
+    source_tx.send(Sequenced::new(person_bob()))?;
+    source_tx.send(Sequenced::new(person_charlie()))?;
+    filter_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert - latest buffered value emitted when filter updates
     assert_eq!(filtered.next().await.unwrap().get(), &person_charlie());
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_functional_take_while_with() {
+async fn test_functional_take_while_with() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
 
@@ -128,11 +135,11 @@ async fn test_functional_take_while_with() {
     let taken = source_stream.take_while_with(predicate_stream, |_| true);
 
     // Act
-    predicate_tx.send(Sequenced::new(person_alice())).unwrap();
+    predicate_tx.send(Sequenced::new(person_alice()))?;
     let bob = Sequenced::new(person_bob());
     let charlie = Sequenced::new(person_charlie());
-    source_tx.send(bob.clone()).unwrap();
-    source_tx.send(charlie.clone()).unwrap();
+    source_tx.send(bob.clone())?;
+    source_tx.send(charlie.clone())?;
 
     // Assert
     let mut taken = Box::pin(taken);
@@ -144,10 +151,12 @@ async fn test_functional_take_while_with() {
         taken.next().await.unwrap(),
         fluxion_core::stream_item::StreamItem::Value(charlie)
     );
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_functional_with_latest_from() {
+async fn test_functional_with_latest_from() -> anyhow::Result<()> {
     // Arrange
     let (primary_tx, primary_stream) = test_channel::<Sequenced<TestData>>();
 
@@ -158,9 +167,9 @@ async fn test_functional_with_latest_from() {
     let mut combined = primary_stream.with_latest_from(secondary_stream, RESULT_SELECTOR);
 
     // Act
-    secondary_tx.send(Sequenced::new(animal_dog())).unwrap();
-    primary_tx.send(Sequenced::new(person_alice())).unwrap();
-    primary_tx.send(Sequenced::new(person_bob())).unwrap();
+    secondary_tx.send(Sequenced::new(animal_dog()))?;
+    primary_tx.send(Sequenced::new(person_alice()))?;
+    primary_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert - primary drives emissions, secondary provides latest value
     let result = combined.next().await.unwrap();
@@ -170,10 +179,11 @@ async fn test_functional_with_latest_from() {
     let result = combined.next().await.unwrap();
     assert_eq!(result.get().values()[0], person_bob());
     assert_eq!(result.get().values()[1], animal_dog());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_functional_chained_operations() {
+async fn test_functional_chained_operations() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
 
@@ -187,29 +197,33 @@ async fn test_functional_chained_operations() {
         .combine_with_previous();
 
     // Act
-    source_tx.send(Sequenced::new(person_bob())).unwrap();
-    source_tx.send(Sequenced::new(person_charlie())).unwrap();
-    filter_tx.send(Sequenced::new(person_alice())).unwrap();
+    source_tx.send(Sequenced::new(person_bob()))?;
+    source_tx.send(Sequenced::new(person_charlie()))?;
+    filter_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
     let item = unwrap_value(composed.next().await);
     assert!(item.previous.is_none());
     assert_eq!(item.current.get(), &person_charlie());
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_functional_from_unbounded_receiver() {
+async fn test_functional_from_unbounded_receiver() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     let mut stream = FluxionStream::from_unbounded_receiver(rx);
 
     // Act
-    tx.send(person_alice()).unwrap();
-    tx.send(person_bob()).unwrap();
+    tx.send(person_alice())?;
+    tx.send(person_bob())?;
     drop(tx);
 
     // Assert
     assert_eq!(unwrap_value(stream.next().await), person_alice());
     assert_eq!(unwrap_value(stream.next().await), person_bob());
     assert!(stream.next().await.is_none());
+
+    Ok(())
 }

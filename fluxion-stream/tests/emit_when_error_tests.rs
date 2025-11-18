@@ -10,7 +10,7 @@ use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_emit_when_propagates_source_error() {
+async fn test_emit_when_propagates_source_error() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -47,10 +47,11 @@ async fn test_emit_when_propagates_source_error() {
 
     drop(source_tx);
     drop(filter_tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_emit_when_propagates_filter_error() {
+async fn test_emit_when_propagates_filter_error() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -93,10 +94,11 @@ async fn test_emit_when_propagates_filter_error() {
 
     drop(source_tx);
     drop(filter_tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_emit_when_predicate_continues_after_error() {
+async fn test_emit_when_predicate_continues_after_error() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -135,10 +137,11 @@ async fn test_emit_when_predicate_continues_after_error() {
 
     drop(source_tx);
     drop(filter_tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_emit_when_both_streams_have_errors() {
+async fn test_emit_when_both_streams_have_errors() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -178,10 +181,11 @@ async fn test_emit_when_both_streams_have_errors() {
 
     drop(source_tx);
     drop(filter_tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_emit_when_error_before_filter_ready() {
+async fn test_emit_when_error_before_filter_ready() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -209,4 +213,5 @@ async fn test_emit_when_error_before_filter_ready() {
 
     drop(source_tx);
     drop(filter_tx);
+    Ok(())
 }

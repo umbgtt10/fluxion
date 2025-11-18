@@ -10,7 +10,7 @@ use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_map_ordered_propagates_errors() {
+async fn test_map_ordered_propagates_errors() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Use combine_with_previous then map to string
@@ -19,7 +19,7 @@ async fn test_map_ordered_propagates_errors() {
         .map_ordered(|x| format!("Current: {}", x.current.get()));
 
     // Send value
-    tx.send(StreamItem::Value(Sequenced::new(1))).unwrap();
+    tx.send(StreamItem::Value(Sequenced::new(1)))?;
 
     let item1 = result.next().await.unwrap();
     assert!(matches!(item1, StreamItem::Value(ref v) if v == "Current: 1"));
@@ -32,16 +32,17 @@ async fn test_map_ordered_propagates_errors() {
     assert!(matches!(item2, StreamItem::Error(_)));
 
     // Continue
-    tx.send(StreamItem::Value(Sequenced::new(2))).unwrap();
+    tx.send(StreamItem::Value(Sequenced::new(2)))?;
 
     let item3 = result.next().await.unwrap();
     assert!(matches!(item3, StreamItem::Value(_)));
 
     drop(tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_map_ordered_transformation_after_error() {
+async fn test_map_ordered_transformation_after_error() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Use combine_with_previous then map
@@ -77,10 +78,11 @@ async fn test_map_ordered_transformation_after_error() {
     assert!(matches!(item4, StreamItem::Value(80)));
 
     drop(tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_map_ordered_preserves_error_passthrough() {
+async fn test_map_ordered_preserves_error_passthrough() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = FluxionStream::new(stream)
@@ -108,10 +110,11 @@ async fn test_map_ordered_preserves_error_passthrough() {
     );
 
     drop(tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_map_ordered_chain_after_error() {
+async fn test_map_ordered_chain_after_error() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Chain combine_with_previous and map
@@ -141,4 +144,5 @@ async fn test_map_ordered_chain_after_error() {
     assert!(matches!(item3, StreamItem::Value(30)));
 
     drop(tx);
+    Ok(())
 }

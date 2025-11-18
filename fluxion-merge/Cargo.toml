@@ -27,3 +27,4 @@ pin-project = { workspace = true }
 fluxion-test-utils = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 criterion = { workspace = true }
+anyhow = { workspace = true }

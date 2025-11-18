@@ -10,13 +10,13 @@ use fluxion_test_utils::unwrap_value;
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_combine_with_previous_no_previous_value_emits() {
+async fn test_combine_with_previous_no_previous_value_emits() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
     let mut stream = stream.combine_with_previous();
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
     let result = unwrap_value(stream.next().await);
@@ -24,16 +24,17 @@ async fn test_combine_with_previous_no_previous_value_emits() {
         (result.previous.map(|s| s.value), result.current.value),
         (None, person_alice())
     );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_with_previous_single_previous_value() {
+async fn test_combine_with_previous_single_previous_value() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
     let mut stream = stream.combine_with_previous();
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
     let first_result = unwrap_value(stream.next().await);
@@ -46,7 +47,7 @@ async fn test_combine_with_previous_single_previous_value() {
     );
 
     // Act
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
     let second_result = unwrap_value(stream.next().await);
@@ -57,16 +58,17 @@ async fn test_combine_with_previous_single_previous_value() {
         ),
         (Some(person_alice()), person_bob())
     );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_with_previous_multiple_values() {
+async fn test_combine_with_previous_multiple_values() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
     let mut stream = stream.combine_with_previous();
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
     let first_result = unwrap_value(stream.next().await);
@@ -79,7 +81,7 @@ async fn test_combine_with_previous_multiple_values() {
     );
 
     // Act
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
     let second_result = unwrap_value(stream.next().await);
@@ -92,7 +94,7 @@ async fn test_combine_with_previous_multiple_values() {
     );
 
     // Act
-    tx.send(Sequenced::new(person_charlie())).unwrap();
+    tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert
     let third_result = unwrap_value(stream.next().await);
@@ -103,16 +105,17 @@ async fn test_combine_with_previous_multiple_values() {
         ),
         (Some(person_bob()), person_charlie())
     );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_with_previous_stream_ends() {
+async fn test_combine_with_previous_stream_ends() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
     let mut stream = stream.combine_with_previous();
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
     let first_result = unwrap_value(stream.next().await);
@@ -125,7 +128,7 @@ async fn test_combine_with_previous_stream_ends() {
     );
 
     // Act
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
     let second_result = unwrap_value(stream.next().await);
@@ -143,16 +146,17 @@ async fn test_combine_with_previous_stream_ends() {
     // Assert
     let third_result = stream.next().await;
     assert!(third_result.is_none());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_with_previous_for_types() {
+async fn test_combine_with_previous_for_types() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
     let mut stream = stream.combine_with_previous();
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
     let first_result = unwrap_value(stream.next().await);
@@ -165,7 +169,7 @@ async fn test_combine_with_previous_for_types() {
     );
 
     // Act
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
     let second_result = unwrap_value(stream.next().await);
@@ -176,10 +180,11 @@ async fn test_combine_with_previous_for_types() {
         ),
         (Some(person_alice()), person_bob())
     );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_with_previous_high_volume_sequential() {
+async fn test_combine_with_previous_high_volume_sequential() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
     let mut stream = stream.combine_with_previous();
@@ -187,9 +192,9 @@ async fn test_combine_with_previous_high_volume_sequential() {
     // Act: send a sequence of 200 items (mix of known fixtures cycling Alice,Bob,Charlie)
     for i in 0..200 {
         match i % 3 {
-            0 => tx.send(Sequenced::new(person_alice())).unwrap(),
-            1 => tx.send(Sequenced::new(person_bob())).unwrap(),
-            _ => tx.send(Sequenced::new(person_charlie())).unwrap(),
+            0 => tx.send(Sequenced::new(person_alice()))?,
+            1 => tx.send(Sequenced::new(person_bob()))?,
+            _ => tx.send(Sequenced::new(person_charlie()))?,
         }
     }
     // Close input so the stream can finish
@@ -222,16 +227,17 @@ async fn test_combine_with_previous_high_volume_sequential() {
     // Last pair should have a previous
     assert!(last_prev.is_some());
     assert!(last_curr.is_some());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_with_previous_boundary_empty_string_zero_values() {
+async fn test_combine_with_previous_boundary_empty_string_zero_values() -> anyhow::Result<()> {
     // Arrange: Test with boundary values (empty strings, zero numeric values)
     let (tx, stream) = test_channel();
     let mut stream = stream.combine_with_previous();
 
     // Act: Send empty string with zero value
-    tx.send(Sequenced::new(person(String::new(), 0))).unwrap();
+    tx.send(Sequenced::new(person(String::new(), 0)))?;
 
     // Assert: First emission has no previous
     let result = unwrap_value(stream.next().await);
@@ -241,7 +247,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() {
     );
 
     // Act: Send another boundary value
-    tx.send(Sequenced::new(person(String::new(), 0))).unwrap();
+    tx.send(Sequenced::new(person(String::new(), 0)))?;
 
     // Assert: Second emission has previous with boundary value
     let result2 = unwrap_value(stream.next().await);
@@ -251,7 +257,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() {
     );
 
     // Act: Transition to normal value
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
 
     // Assert: Should track boundary as previous
     let result3 = unwrap_value(stream.next().await);
@@ -259,10 +265,11 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() {
         (result3.previous.map(|s| s.value), result3.current.value),
         (Some(person(String::new(), 0)), person_alice())
     );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
+async fn test_combine_with_previous_boundary_maximum_concurrent_streams() -> anyhow::Result<()> {
     // Arrange: Test concurrent handling with many parallel streams
     let num_concurrent = 50;
     let mut handles = Vec::new();
@@ -313,16 +320,17 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() {
             .await
             .expect("Concurrent stream task should complete successfully");
     }
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_with_previous_single_value_stream() {
+async fn test_combine_with_previous_single_value_stream() -> anyhow::Result<()> {
     // Arrange: Stream that emits only one value
     let (tx, stream) = test_channel();
     let mut stream = stream.combine_with_previous();
 
     // Act: Send single value and close
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     drop(tx);
 
     // Assert: Should emit with no previous
@@ -334,4 +342,5 @@ async fn test_combine_with_previous_single_value_stream() {
 
     // Assert: Stream ends
     assert!(stream.next().await.is_none());
+    Ok(())
 }

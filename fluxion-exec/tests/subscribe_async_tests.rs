@@ -9,6 +9,7 @@ use fluxion_test_utils::test_data::{
 };
 use fluxion_test_utils::Sequenced;
 use std::{sync::Arc, sync::Mutex as StdMutex};
+use tokio::spawn;
 use tokio::{sync::mpsc, sync::Mutex as TokioMutex};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_stream::StreamExt as _;
@@ -33,7 +34,7 @@ enum ProcessingError {
 }
 
 #[tokio::test]
-async fn test_subscribe_async_processes_items_when_waiting_per_item() {
+async fn test_subscribe_async_processes_items_when_waiting_per_item() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -71,22 +72,22 @@ async fn test_subscribe_async_processes_items_when_waiting_per_item() {
     });
 
     // Act & Assert - wait for actual processing completion
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.unwrap();
     assert_eq!(*results.lock().await, vec![person_alice()]);
 
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.unwrap();
     assert_eq!(*results.lock().await, vec![person_alice(), person_bob()]);
 
-    tx.send(Sequenced::new(person_charlie())).unwrap();
+    tx.send(Sequenced::new(person_charlie()))?;
     notify_rx.recv().await.unwrap();
     assert_eq!(
         *results.lock().await,
         vec![person_alice(), person_bob(), person_charlie()]
     );
 
-    tx.send(Sequenced::new(person_diane())).unwrap();
+    tx.send(Sequenced::new(person_diane()))?;
     notify_rx.recv().await.unwrap();
     assert_eq!(
         *results.lock().await,
@@ -98,7 +99,7 @@ async fn test_subscribe_async_processes_items_when_waiting_per_item() {
         ]
     );
 
-    tx.send(Sequenced::new(person_dave())).unwrap();
+    tx.send(Sequenced::new(person_dave()))?;
     notify_rx.recv().await.unwrap();
     assert_eq!(
         *results.lock().await,
@@ -114,10 +115,13 @@ async fn test_subscribe_async_processes_items_when_waiting_per_item() {
     // Cleanup
     drop(tx);
     task_handle.await.unwrap();
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() {
+async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() -> anyhow::Result<()>
+{
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -164,19 +168,19 @@ async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() {
     });
 
     // Act & Assert - wait for processing completion
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.unwrap();
 
-    tx.send(Sequenced::new(animal_dog())).unwrap(); // Error
+    tx.send(Sequenced::new(animal_dog()))?; // Error
     notify_rx.recv().await.unwrap();
 
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.unwrap();
 
-    tx.send(Sequenced::new(animal_cat())).unwrap(); // Error
+    tx.send(Sequenced::new(animal_cat()))?; // Error
     notify_rx.recv().await.unwrap();
 
-    tx.send(Sequenced::new(person_charlie())).unwrap();
+    tx.send(Sequenced::new(person_charlie()))?;
     notify_rx.recv().await.unwrap();
 
     // Assert final state
@@ -189,10 +193,12 @@ async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() {
     // Cleanup
     drop(tx);
     task_handle.await.unwrap();
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() {
+async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -238,17 +244,17 @@ async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() {
     });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.unwrap();
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.unwrap();
 
     assert_eq!(*results.lock().await, vec![person_alice(), person_bob()]);
 
     // Cancel and verify no more processing
     cancellation_token_clone.cancel();
-    tx.send(Sequenced::new(person_charlie())).unwrap();
-    tx.send(Sequenced::new(person_diane())).unwrap();
+    tx.send(Sequenced::new(person_charlie()))?;
+    tx.send(Sequenced::new(person_diane()))?;
 
     // Close the stream and wait for the task to complete deterministically
     drop(tx);
@@ -256,10 +262,13 @@ async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() {
 
     // Assert no further items were processed after cancellation
     assert_eq!(*results.lock().await, vec![person_alice(), person_bob()]);
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing() {
+async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing(
+) -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -318,16 +327,16 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
     });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.unwrap();
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.unwrap();
 
     assert_eq!(*results.lock().await, vec![person_alice(), person_bob()]);
     assert!(errors.lock().unwrap().is_empty());
 
     // Send Charlie (which causes error)
-    tx.send(Sequenced::new(person_charlie())).unwrap();
+    tx.send(Sequenced::new(person_charlie()))?;
     notify_rx.recv().await.unwrap();
 
     assert_eq!(
@@ -343,8 +352,8 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
 
     // Cancel and send more
     cancellation_token_clone.cancel();
-    tx.send(Sequenced::new(person_diane())).unwrap();
-    tx.send(Sequenced::new(animal_dog())).unwrap();
+    tx.send(Sequenced::new(person_diane()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
 
     // Close the stream and await task completion deterministically
     drop(tx);
@@ -361,10 +370,12 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
             "Failed to process Charlie".to_string()
         )]
     );
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_async_empty_stream_completes_without_items() {
+async fn test_subscribe_async_empty_stream_completes_without_items() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -405,10 +416,12 @@ async fn test_subscribe_async_empty_stream_completes_without_items() {
 
     // Assert
     assert_eq!(*results.lock().await, Vec::<TestData>::new());
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_async_parallelism_max_active_ge_2() {
+async fn test_subscribe_async_parallelism_max_active_ge_2() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -473,9 +486,9 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() {
     });
 
     // Act - Send 3 items rapidly and ensure they overlap
-    tx.send(Sequenced::new(person_alice())).unwrap();
-    tx.send(Sequenced::new(person_bob())).unwrap();
-    tx.send(Sequenced::new(person_charlie())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(person_charlie()))?;
 
     // Wait until all three tasks have started
     started_rx.recv().await.unwrap();
@@ -505,10 +518,12 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() {
     // Cleanup
     drop(tx);
     task_handle.await.unwrap();
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_async_high_volume_processes_all() {
+async fn test_subscribe_async_high_volume_processes_all() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -547,7 +562,7 @@ async fn test_subscribe_async_high_volume_processes_all() {
 
     // Act - Send 100 items
     for _ in 0..100 {
-        tx.send(Sequenced::new(person_alice())).unwrap();
+        tx.send(Sequenced::new(person_alice()))?;
     }
 
     // Wait for all 100 to complete
@@ -565,10 +580,12 @@ async fn test_subscribe_async_high_volume_processes_all() {
     // Cleanup
     drop(tx);
     task_handle.await.unwrap();
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_async_precancelled_token_processes_nothing() {
+async fn test_subscribe_async_precancelled_token_processes_nothing() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -596,7 +613,7 @@ async fn test_subscribe_async_precancelled_token_processes_nothing() {
         }
     };
 
-    tokio::spawn({
+    spawn({
         async move {
             stream
                 .subscribe_async(func, Some(cancellation_token), Some(error_callback))
@@ -606,19 +623,21 @@ async fn test_subscribe_async_precancelled_token_processes_nothing() {
     });
 
     // Act - Send items (should not be processed due to pre-cancelled token)
-    tx.send(Sequenced::new(person_alice())).unwrap();
-    tx.send(Sequenced::new(person_bob())).unwrap();
-    tx.send(Sequenced::new(person_charlie())).unwrap();
-    tx.send(Sequenced::new(person_diane())).unwrap();
-    tx.send(Sequenced::new(person_dave())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(person_charlie()))?;
+    tx.send(Sequenced::new(person_diane()))?;
+    tx.send(Sequenced::new(person_dave()))?;
     drop(tx);
 
     // Assert
     assert_eq!(*results.lock().await, Vec::<TestData>::new());
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_subscribe_async_error_aggregation_without_callback() {
+async fn test_subscribe_async_error_aggregation_without_callback() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -649,16 +668,16 @@ async fn test_subscribe_async_error_aggregation_without_callback() {
     });
 
     // Act - Send mix of valid and invalid items
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.unwrap();
 
-    tx.send(Sequenced::new(animal_dog())).unwrap(); // Error
+    tx.send(Sequenced::new(animal_dog()))?; // Error
     notify_rx.recv().await.unwrap();
 
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.unwrap();
 
-    tx.send(Sequenced::new(animal_cat())).unwrap(); // Error
+    tx.send(Sequenced::new(animal_cat()))?; // Error
     notify_rx.recv().await.unwrap();
 
     drop(tx);
@@ -675,4 +694,6 @@ async fn test_subscribe_async_error_aggregation_without_callback() {
         }
         other => panic!("Expected MultipleErrors, got: {:?}", other),
     }
+
+    Ok(())
 }

@@ -12,7 +12,7 @@ use fluxion_test_utils::unwrap_value;
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_map_ordered_basic_transformation() {
+async fn test_map_ordered_basic_transformation() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
@@ -24,30 +24,31 @@ async fn test_map_ordered_basic_transformation() {
     });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         "Previous: None, Current: Person[name=Alice, age=25]"
     );
 
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
     let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         "Previous: Some(\"Person[name=Alice, age=25]\"), Current: Person[name=Bob, age=30]"
     );
 
-    tx.send(Sequenced::new(person_charlie())).unwrap();
+    tx.send(Sequenced::new(person_charlie()))?;
     let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
         "Previous: Some(\"Person[name=Bob, age=30]\"), Current: Person[name=Charlie, age=35]"
     );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_map_ordered_to_struct() {
+async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
     // Arrange
     #[derive(Debug, PartialEq)]
     struct AgeComparison {
@@ -78,7 +79,7 @@ async fn test_map_ordered_to_struct() {
     });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
+    tx.send(Sequenced::new(person_alice()))?; // Age 25
     let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
@@ -89,7 +90,7 @@ async fn test_map_ordered_to_struct() {
         }
     );
 
-    tx.send(Sequenced::new(person_bob())).unwrap(); // Age 30
+    tx.send(Sequenced::new(person_bob()))?; // Age 30
     let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
@@ -100,7 +101,7 @@ async fn test_map_ordered_to_struct() {
         }
     );
 
-    tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25 again
+    tx.send(Sequenced::new(person_alice()))?; // Age 25 again
     let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
@@ -111,7 +112,7 @@ async fn test_map_ordered_to_struct() {
         }
     );
 
-    tx.send(Sequenced::new(person_charlie())).unwrap(); // Age 35
+    tx.send(Sequenced::new(person_charlie()))?; // Age 35
     let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
@@ -121,10 +122,11 @@ async fn test_map_ordered_to_struct() {
             age_increased: true,
         }
     );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_map_ordered_extract_age_difference() {
+async fn test_map_ordered_extract_age_difference() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream
@@ -145,25 +147,26 @@ async fn test_map_ordered_extract_age_difference() {
         });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
+    tx.send(Sequenced::new(person_alice()))?; // Age 25
     let result = unwrap_value(stream.next().await);
     assert_eq!(result, 0); // No previous
 
-    tx.send(Sequenced::new(person_bob())).unwrap(); // Age 30
+    tx.send(Sequenced::new(person_bob()))?; // Age 30
     let result = unwrap_value(stream.next().await);
     assert_eq!(result, 5); // 30 - 25 = 5
 
-    tx.send(Sequenced::new(person_dave())).unwrap(); // Age 28
+    tx.send(Sequenced::new(person_dave()))?; // Age 28
     let result = unwrap_value(stream.next().await);
     assert_eq!(result, -2); // 28 - 30 = -2
 
-    tx.send(Sequenced::new(person_charlie())).unwrap(); // Age 35
+    tx.send(Sequenced::new(person_charlie()))?; // Age 35
     let result = unwrap_value(stream.next().await);
     assert_eq!(result, 7); // 35 - 28 = 7
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_map_ordered_single_value() {
+async fn test_map_ordered_single_value() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream
@@ -171,13 +174,14 @@ async fn test_map_ordered_single_value() {
         .map_ordered(|stream_item| stream_item.current.get().to_string());
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     let result = unwrap_value(stream.next().await);
     assert_eq!(result, "Person[name=Alice, age=25]");
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_map_ordered_empty_stream() {
+async fn test_map_ordered_empty_stream() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream
@@ -189,10 +193,11 @@ async fn test_map_ordered_empty_stream() {
 
     // Assert
     assert!(stream.next().await.is_none());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_map_ordered_preserves_ordering() {
+async fn test_map_ordered_preserves_ordering() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
@@ -204,20 +209,21 @@ async fn test_map_ordered_preserves_ordering() {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice())).unwrap();
-    tx.send(Sequenced::new(person_bob())).unwrap();
-    tx.send(Sequenced::new(person_charlie())).unwrap();
-    tx.send(Sequenced::new(person_dave())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(person_charlie()))?;
+    tx.send(Sequenced::new(person_dave()))?;
 
     // Assert - order should be preserved
     assert_eq!(unwrap_value(stream.next().await), "Alice");
     assert_eq!(unwrap_value(stream.next().await), "Bob");
     assert_eq!(unwrap_value(stream.next().await), "Charlie");
     assert_eq!(unwrap_value(stream.next().await), "Dave");
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_map_ordered_multiple_transformations() {
+async fn test_map_ordered_multiple_transformations() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
@@ -229,18 +235,19 @@ async fn test_map_ordered_multiple_transformations() {
     });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(unwrap_value(stream.next().await), 25);
 
-    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(unwrap_value(stream.next().await), 30);
 
-    tx.send(Sequenced::new(person_charlie())).unwrap();
+    tx.send(Sequenced::new(person_charlie()))?;
     assert_eq!(unwrap_value(stream.next().await), 35);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_map_ordered_with_complex_closure() {
+async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
@@ -280,7 +287,7 @@ async fn test_map_ordered_with_complex_closure() {
     });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
+    tx.send(Sequenced::new(person_alice()))?; // Age 25
     let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
@@ -291,7 +298,7 @@ async fn test_map_ordered_with_complex_closure() {
         }
     );
 
-    tx.send(Sequenced::new(person_bob())).unwrap(); // Age 30
+    tx.send(Sequenced::new(person_bob()))?; // Age 30
     let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
@@ -302,7 +309,7 @@ async fn test_map_ordered_with_complex_closure() {
         }
     );
 
-    tx.send(Sequenced::new(person_bob())).unwrap(); // Same person
+    tx.send(Sequenced::new(person_bob()))?; // Same person
     let result = unwrap_value(stream.next().await);
     assert_eq!(
         result,
@@ -312,10 +319,11 @@ async fn test_map_ordered_with_complex_closure() {
             changed_from_previous: false,
         }
     );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_map_ordered_boolean_logic() {
+async fn test_map_ordered_boolean_logic() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
@@ -334,18 +342,19 @@ async fn test_map_ordered_boolean_logic() {
     });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
+    tx.send(Sequenced::new(person_alice()))?; // Age 25
     assert!(!unwrap_value(stream.next().await)); // No previous
 
-    tx.send(Sequenced::new(person_bob())).unwrap(); // Age 30
+    tx.send(Sequenced::new(person_bob()))?; // Age 30
     assert!(unwrap_value(stream.next().await)); // 30 > 25
 
-    tx.send(Sequenced::new(person_charlie())).unwrap(); // Age 35
+    tx.send(Sequenced::new(person_charlie()))?; // Age 35
     assert!(unwrap_value(stream.next().await)); // 35 > 30
 
-    tx.send(Sequenced::new(person_dave())).unwrap(); // Age 28
+    tx.send(Sequenced::new(person_dave()))?; // Age 28
     assert!(!unwrap_value(stream.next().await)); // 28 < 35
 
-    tx.send(Sequenced::new(person_alice())).unwrap(); // Age 25
+    tx.send(Sequenced::new(person_alice()))?; // Age 25
     assert!(!unwrap_value(stream.next().await)); // 25 < 28
+    Ok(())
 }

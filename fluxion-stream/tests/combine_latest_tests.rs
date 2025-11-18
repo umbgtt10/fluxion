@@ -20,12 +20,17 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
-fn send_variant(variant: &DataVariant, senders: &[mpsc::UnboundedSender<Sequenced<TestData>>]) {
+fn send_variant(
+    variant: &DataVariant,
+    senders: &[mpsc::UnboundedSender<Sequenced<TestData>>],
+) -> anyhow::Result<()> {
     match variant {
-        DataVariant::Person => senders[0].send(Sequenced::new(person_alice())).unwrap(),
-        DataVariant::Animal => senders[1].send(Sequenced::new(animal_dog())).unwrap(),
-        DataVariant::Plant => senders[2].send(Sequenced::new(plant_rose())).unwrap(),
+        DataVariant::Person => senders[0].send(Sequenced::new(person_alice()))?,
+        DataVariant::Animal => senders[1].send(Sequenced::new(animal_dog()))?,
+        DataVariant::Plant => senders[2].send(Sequenced::new(plant_rose()))?,
     }
+
+    Ok(())
 }
 
 async fn expect_next_combined_equals<S, T>(stream: &mut S, expected: &[TestData])
@@ -42,7 +47,7 @@ where
 static FILTER: fn(&CombinedState<TestData>) -> bool = |_: &CombinedState<TestData>| true;
 
 #[tokio::test]
-async fn test_combine_latest_empty_streams() {
+async fn test_combine_latest_empty_streams() -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
@@ -62,10 +67,11 @@ async fn test_combine_latest_empty_streams() {
         next_item.is_none(),
         "Expected no items from an empty combined stream"
     );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
+async fn test_combine_latest_not_all_streams_have_published_does_not_emit() -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
@@ -75,20 +81,21 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() {
         person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act
-    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
+    animal_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_stream_closes_before_publish_no_output() {
+async fn test_combine_latest_stream_closes_before_publish_no_output() -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
@@ -100,8 +107,8 @@ async fn test_combine_latest_stream_closes_before_publish_no_output() {
     // Act
     drop(plant_tx);
 
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
-    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
@@ -111,10 +118,12 @@ async fn test_combine_latest_stream_closes_before_publish_no_output() {
 
     let next = combined_stream.next().await;
     assert!(next.is_none(), "Expected stream to end without emissions");
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_secondary_closes_after_initial_emission_continues() {
+async fn test_combine_latest_secondary_closes_after_initial_emission_continues(
+) -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
@@ -124,9 +133,9 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues()
         person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
-    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
-    plant_tx.send(Sequenced::new(plant_rose())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_dog()))?;
+    plant_tx.send(Sequenced::new(plant_rose()))?;
 
     // Assert
     let state = unwrap_value(combined_stream.next().await);
@@ -135,31 +144,41 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues()
 
     drop(plant_tx);
 
-    person_tx.send(Sequenced::new(person_bob())).unwrap();
+    person_tx.send(Sequenced::new(person_bob()))?;
     let state = unwrap_value(combined_stream.next().await);
     let actual: Vec<TestData> = state.get().values().clone();
     assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
 
-    animal_tx.send(Sequenced::new(animal_spider())).unwrap();
+    animal_tx.send(Sequenced::new(animal_spider()))?;
     let state = unwrap_value(combined_stream.next().await);
     let actual: Vec<TestData> = state.get().values().clone();
     assert_eq!(actual, vec![person_bob(), animal_spider(), plant_rose()]);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_all_streams_have_published_different_order_emits_updates() {
-    combine_latest_template_test(DataVariant::Plant, DataVariant::Animal, DataVariant::Person)
-        .await;
-    combine_latest_template_test(DataVariant::Plant, DataVariant::Person, DataVariant::Animal)
-        .await;
-    combine_latest_template_test(DataVariant::Animal, DataVariant::Plant, DataVariant::Person)
-        .await;
-    combine_latest_template_test(DataVariant::Animal, DataVariant::Person, DataVariant::Plant)
-        .await;
-    combine_latest_template_test(DataVariant::Person, DataVariant::Animal, DataVariant::Plant)
-        .await;
-    combine_latest_template_test(DataVariant::Person, DataVariant::Plant, DataVariant::Animal)
-        .await;
+async fn test_combine_latest_all_streams_have_published_different_order_emits_updates(
+) -> anyhow::Result<()> {
+    let _ =
+        combine_latest_template_test(DataVariant::Plant, DataVariant::Animal, DataVariant::Person)
+            .await;
+    let _ =
+        combine_latest_template_test(DataVariant::Plant, DataVariant::Person, DataVariant::Animal)
+            .await;
+    let _ =
+        combine_latest_template_test(DataVariant::Animal, DataVariant::Plant, DataVariant::Person)
+            .await;
+    let _ =
+        combine_latest_template_test(DataVariant::Animal, DataVariant::Person, DataVariant::Plant)
+            .await;
+    let _ =
+        combine_latest_template_test(DataVariant::Person, DataVariant::Animal, DataVariant::Plant)
+            .await;
+    let _ =
+        combine_latest_template_test(DataVariant::Person, DataVariant::Plant, DataVariant::Animal)
+            .await;
+
+    Ok(())
 }
 
 /// Test template for `combine_latest` that verifies consistent enum-based ordering regardless of send sequence.
@@ -171,7 +190,7 @@ async fn combine_latest_template_test(
     order1: DataVariant,
     order2: DataVariant,
     order3: DataVariant,
-) {
+) -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
@@ -183,9 +202,9 @@ async fn combine_latest_template_test(
         person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
-    send_variant(&order1, &senders);
-    send_variant(&order2, &senders);
-    send_variant(&order3, &senders);
+    send_variant(&order1, &senders)?;
+    send_variant(&order2, &senders)?;
+    send_variant(&order3, &senders)?;
 
     // Assert
 
@@ -194,10 +213,12 @@ async fn combine_latest_template_test(
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_all_streams_have_published_emits_updates() {
+async fn test_combine_latest_all_streams_have_published_emits_updates() -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
@@ -207,9 +228,9 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
         person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
-    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
-    plant_tx.send(Sequenced::new(plant_rose())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_dog()))?;
+    plant_tx.send(Sequenced::new(plant_rose()))?;
 
     // Assert
 
@@ -220,7 +241,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     .await;
 
     // Act
-    person_tx.send(Sequenced::new(person_bob())).unwrap();
+    person_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
     expect_next_combined_equals(
@@ -230,7 +251,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     .await;
 
     // Act
-    animal_tx.send(Sequenced::new(animal_spider())).unwrap();
+    animal_tx.send(Sequenced::new(animal_spider()))?;
 
     // Assert
     expect_next_combined_equals(
@@ -240,7 +261,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
     .await;
 
     // Act
-    plant_tx.send(Sequenced::new(plant_sunflower())).unwrap();
+    plant_tx.send(Sequenced::new(plant_sunflower()))?;
 
     // Assert
     expect_next_combined_equals(
@@ -248,22 +269,50 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() {
         &[person_bob(), animal_spider(), plant_sunflower()],
     )
     .await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_different_stream_order_emits_consistent_results() {
-    combine_latest_stream_order_test(DataVariant::Person, DataVariant::Animal, DataVariant::Plant)
-        .await;
-    combine_latest_stream_order_test(DataVariant::Person, DataVariant::Plant, DataVariant::Animal)
-        .await;
-    combine_latest_stream_order_test(DataVariant::Animal, DataVariant::Person, DataVariant::Plant)
-        .await;
-    combine_latest_stream_order_test(DataVariant::Animal, DataVariant::Plant, DataVariant::Person)
-        .await;
-    combine_latest_stream_order_test(DataVariant::Plant, DataVariant::Person, DataVariant::Animal)
-        .await;
-    combine_latest_stream_order_test(DataVariant::Plant, DataVariant::Animal, DataVariant::Person)
-        .await;
+async fn test_combine_latest_different_stream_order_emits_consistent_results() -> anyhow::Result<()>
+{
+    let _ = combine_latest_stream_order_test(
+        DataVariant::Person,
+        DataVariant::Animal,
+        DataVariant::Plant,
+    )
+    .await;
+    let _ = combine_latest_stream_order_test(
+        DataVariant::Person,
+        DataVariant::Plant,
+        DataVariant::Animal,
+    )
+    .await;
+    let _ = combine_latest_stream_order_test(
+        DataVariant::Animal,
+        DataVariant::Person,
+        DataVariant::Plant,
+    )
+    .await;
+    let _ = combine_latest_stream_order_test(
+        DataVariant::Animal,
+        DataVariant::Plant,
+        DataVariant::Person,
+    )
+    .await;
+    let _ = combine_latest_stream_order_test(
+        DataVariant::Plant,
+        DataVariant::Person,
+        DataVariant::Animal,
+    )
+    .await;
+    let _ = combine_latest_stream_order_test(
+        DataVariant::Plant,
+        DataVariant::Animal,
+        DataVariant::Person,
+    )
+    .await;
+
+    Ok(())
 }
 
 /// Test template for `combine_latest` that verifies consistent enum-based ordering regardless of stream Variant.
@@ -275,7 +324,7 @@ async fn combine_latest_stream_order_test(
     stream1: DataVariant,
     stream2: DataVariant,
     stream3: DataVariant,
-) {
+) -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
@@ -312,9 +361,9 @@ async fn combine_latest_stream_order_test(
     let mut combined_stream = first_stream.combine_latest(remaining_streams, FILTER);
 
     // Act
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
-    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
-    plant_tx.send(Sequenced::new(plant_rose())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_dog()))?;
+    plant_tx.send(Sequenced::new(plant_rose()))?;
 
     // Assert
     let state = unwrap_value(combined_stream.next().await);
@@ -322,10 +371,11 @@ async fn combine_latest_stream_order_test(
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_with_identical_streams_emits_updates() {
+async fn test_combine_latest_with_identical_streams_emits_updates() -> anyhow::Result<()> {
     // Arrange
     let (stream1_tx, stream1) = test_channel::<Sequenced<TestData>>();
     let (stream2_tx, stream2) = test_channel::<Sequenced<TestData>>();
@@ -333,27 +383,28 @@ async fn test_combine_latest_with_identical_streams_emits_updates() {
     let mut combined_stream = stream1.combine_latest(vec![stream2], FILTER);
 
     // Act
-    stream1_tx.send(Sequenced::new(person_alice())).unwrap();
-    stream2_tx.send(Sequenced::new(person_bob())).unwrap();
+    stream1_tx.send(Sequenced::new(person_alice()))?;
+    stream2_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
     expect_next_combined_equals(&mut combined_stream, &[person_alice(), person_bob()]).await;
 
     // Act
-    stream1_tx.send(Sequenced::new(person_charlie())).unwrap();
+    stream1_tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert
     expect_next_combined_equals(&mut combined_stream, &[person_charlie(), person_bob()]).await;
 
     // Act
-    stream2_tx.send(Sequenced::new(person_diane())).unwrap();
+    stream2_tx.send(Sequenced::new(person_diane()))?;
 
     // Assert
     expect_next_combined_equals(&mut combined_stream, &[person_charlie(), person_diane()]).await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_filter_rejects_initial_state() {
+async fn test_combine_latest_filter_rejects_initial_state() -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
@@ -372,21 +423,22 @@ async fn test_combine_latest_filter_rejects_initial_state() {
     let mut combined_stream = person_stream.combine_latest(vec![animal_stream], filter);
 
     // Act: Publish Alice and Dog (should be rejected)
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
-    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert: No emission due to filter rejection
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act: Update to Bob (should pass filter)
-    person_tx.send(Sequenced::new(person_bob())).unwrap();
+    person_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert: Now we get an emission
     expect_next_combined_equals(&mut combined_stream, &[person_bob(), animal_dog()]).await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_filter_alternates_between_true_false() {
+async fn test_combine_latest_filter_alternates_between_true_false() -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
@@ -404,41 +456,42 @@ async fn test_combine_latest_filter_alternates_between_true_false() {
     let mut combined_stream = person_stream.combine_latest(vec![animal_stream], filter);
 
     // Act: Alice + Dog (passes filter)
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
-    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert: Emission occurs
     expect_next_combined_equals(&mut combined_stream, &[person_alice(), animal_dog()]).await;
 
     // Act: Bob + Dog (rejected by filter)
-    person_tx.send(Sequenced::new(person_bob())).unwrap();
+    person_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert: No emission
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act: Charlie + Dog (passes filter)
-    person_tx.send(Sequenced::new(person_charlie())).unwrap();
+    person_tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert: Emission occurs
     expect_next_combined_equals(&mut combined_stream, &[person_charlie(), animal_dog()]).await;
 
     // Act: Diane + Dog (rejected by filter)
-    person_tx.send(Sequenced::new(person_diane())).unwrap();
+    person_tx.send(Sequenced::new(person_diane()))?;
 
     // Assert: No emission
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act: Update animal to Spider while Diane is still latest (still rejected)
-    animal_tx.send(Sequenced::new(animal_spider())).unwrap();
+    animal_tx.send(Sequenced::new(animal_spider()))?;
 
     // Assert: Still no emission
     assert_no_element_emitted(&mut combined_stream, 100).await;
 
     // Act: Alice + Spider (passes filter)
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert: Emission occurs
     expect_next_combined_equals(&mut combined_stream, &[person_alice(), animal_spider()]).await;
+    Ok(())
 }
 
 #[tokio::test]

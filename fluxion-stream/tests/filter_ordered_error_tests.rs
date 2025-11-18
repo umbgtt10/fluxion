@@ -10,7 +10,7 @@ use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_filter_ordered_propagates_errors() {
+async fn test_filter_ordered_propagates_errors() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = FluxionStream::new(stream).filter_ordered(|x| x % 2 == 0);
@@ -45,10 +45,11 @@ async fn test_filter_ordered_propagates_errors() {
     assert!(matches!(item3, StreamItem::Value(ref v) if *v.get() == 4));
 
     drop(tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_predicate_after_error() {
+async fn test_filter_ordered_predicate_after_error() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Only pass values > 18
@@ -87,10 +88,11 @@ async fn test_filter_ordered_predicate_after_error() {
     assert!(matches!(item4, StreamItem::Value(ref v) if *v.get() == 30));
 
     drop(tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_error_at_start() {
+async fn test_filter_ordered_error_at_start() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = FluxionStream::new(stream).filter_ordered(|x| *x > 1);
@@ -116,10 +118,11 @@ async fn test_filter_ordered_error_at_start() {
     assert!(matches!(third, StreamItem::Value(ref v) if *v.get() == 3));
 
     drop(tx);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_all_filtered_except_error() {
+async fn test_filter_ordered_all_filtered_except_error() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Filter out all odd numbers (but error passes through)
@@ -145,10 +148,11 @@ async fn test_filter_ordered_all_filtered_except_error() {
 
     // No more items (all filtered)
     assert!(result.next().await.is_none());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_filter_ordered_chain_with_map_after_error() {
+async fn test_filter_ordered_chain_with_map_after_error() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Chain filter and map
@@ -188,4 +192,5 @@ async fn test_filter_ordered_chain_with_map_after_error() {
     assert!(matches!(item4, StreamItem::Value(4)));
 
     drop(tx);
+    Ok(())
 }

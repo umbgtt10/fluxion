@@ -10,7 +10,7 @@ use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_take_while_with_propagates_source_error() {
+async fn test_take_while_with_propagates_source_error() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -43,10 +43,11 @@ async fn test_take_while_with_propagates_source_error() {
     // take_while_with terminates on error
     let result2 = result.next().await;
     assert!(result2.is_none(), "Stream should terminate on error");
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_take_while_with_propagates_filter_error() {
+async fn test_take_while_with_propagates_filter_error() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -78,10 +79,11 @@ async fn test_take_while_with_propagates_filter_error() {
     // Stream may terminate
     let result2 = result.next().await;
     assert!(result2.is_none() || matches!(result2, Some(StreamItem::Error(_))));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_take_while_with_predicate_after_error() {
+async fn test_take_while_with_predicate_after_error() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -111,10 +113,11 @@ async fn test_take_while_with_predicate_after_error() {
     // Stream terminates on error
     let result2 = result.next().await;
     assert!(result2.is_none());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_take_while_with_error_at_start() {
+async fn test_take_while_with_error_at_start() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -136,10 +139,11 @@ async fn test_take_while_with_error_at_start() {
     // Stream terminates on error
     let result1 = result.next().await;
     assert!(result1.is_none());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_take_while_with_stops_on_false_despite_errors() {
+async fn test_take_while_with_stops_on_false_despite_errors() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -169,4 +173,5 @@ async fn test_take_while_with_stops_on_false_despite_errors() {
     // Stream should terminate when predicate returns false
     let result2 = result.next().await;
     assert!(result2.is_none(), "Stream should stop on false predicate");
+    Ok(())
 }

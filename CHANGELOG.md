@@ -17,8 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **API**: Implemented `CompareByInner` trait for `StreamItem<T>` to enable `with_latest_from` operator
 - **Core**: New `fluxion-core::StreamItem<T>` enum for error propagation (`Value(T)` | `Error(FluxionError)`)
 - **Core**: Merged `fluxion-error` into `fluxion-core` - error types now in `fluxion-core::error` module
+- **Testing**: Added `anyhow` dependency to all test suites for better error handling in tests
 
 ### Changed
+- **Testing**: All test functions now return `anyhow::Result<()>` for proper error propagation
+- **Testing**: Replaced all `.unwrap()` calls with `?` operator in test assertions (200+ replacements across 20+ test files)
+- **Testing**: Improved test code quality and error reporting - test failures now show proper error context
 - **BREAKING**: All stream operators now return `StreamItem<T>` instead of bare `T` values
   - `combine_latest` → `Stream<Item = StreamItem<OrderedWrapper<CombinedState<T>>>>`
   - `with_latest_from` → `Stream<Item = StreamItem<OrderedWrapper<R>>>`

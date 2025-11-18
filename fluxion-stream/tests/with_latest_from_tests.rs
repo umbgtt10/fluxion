@@ -18,7 +18,7 @@ fn result_selector(state: &CombinedState<TestData>) -> CombinedState<TestData> {
 }
 
 #[tokio::test]
-async fn test_with_latest_from_basic() {
+async fn test_with_latest_from_basic() -> anyhow::Result<()> {
     // Arrange
     let (animal_tx, animal_stream) = test_channel();
     let (person_tx, person_stream) = test_channel();
@@ -26,9 +26,9 @@ async fn test_with_latest_from_basic() {
     let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
     // Act - send secondary first (no emission yet)
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
     // Send primary - should emit now
-    animal_tx.send(Sequenced::new(animal_cat())).unwrap();
+    animal_tx.send(Sequenced::new(animal_cat()))?;
 
     // Assert - should get combined state with both values
     let result = unwrap_value(combined_stream.next().await);
@@ -39,7 +39,7 @@ async fn test_with_latest_from_basic() {
     assert_eq!(combined_state.values()[1], person_alice());
 
     // Act - primary emits again
-    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
+    animal_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert - should emit with latest secondary (still Alice)
     let result = unwrap_value(combined_stream.next().await);
@@ -48,17 +48,19 @@ async fn test_with_latest_from_basic() {
     assert_eq!(combined_state.values()[1], person_alice());
 
     // Act - secondary emits Bob (should NOT emit because only primary triggers emissions)
-    person_tx.send(Sequenced::new(person_bob())).unwrap();
+    person_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert - should not have received anything
     assert!(
         combined_stream.next().now_or_never().is_none(),
         "Should not emit when only secondary stream emits"
     );
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_with_latest_from_ordering_preserved() {
+async fn test_with_latest_from_ordering_preserved() -> anyhow::Result<()> {
     // Arrange
     let (primary_tx, primary_stream) = test_channel();
     let (secondary_tx, secondary_stream) = test_channel();
@@ -66,10 +68,10 @@ async fn test_with_latest_from_ordering_preserved() {
     let mut combined_stream = primary_stream.with_latest_from(secondary_stream, result_selector);
 
     // Act - interleave emissions to test ordering
-    secondary_tx.send(Sequenced::new(person_alice())).unwrap();
-    primary_tx.send(Sequenced::new(animal_cat())).unwrap();
-    primary_tx.send(Sequenced::new(animal_dog())).unwrap();
-    secondary_tx.send(Sequenced::new(person_bob())).unwrap(); // should NOT emit
+    secondary_tx.send(Sequenced::new(person_alice()))?;
+    primary_tx.send(Sequenced::new(animal_cat()))?;
+    primary_tx.send(Sequenced::new(animal_dog()))?;
+    secondary_tx.send(Sequenced::new(person_bob()))?; // should NOT emit
 
     // Assert - should get two emissions in order
     let result1 = unwrap_value(combined_stream.next().await);
@@ -88,10 +90,12 @@ async fn test_with_latest_from_ordering_preserved() {
 
     // No more emissions (Bob didn't trigger any)
     assert!(combined_stream.next().now_or_never().is_none());
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_with_latest_from_custom_selector() {
+async fn test_with_latest_from_custom_selector() -> anyhow::Result<()> {
     // Arrange
     let (animal_tx, animal_stream) = test_channel();
     let (person_tx, person_stream) = test_channel();
@@ -104,8 +108,8 @@ async fn test_with_latest_from_custom_selector() {
     let mut combined_stream = animal_stream.with_latest_from(person_stream, custom_selector);
 
     // Act
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
-    animal_tx.send(Sequenced::new(animal_cat())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_cat()))?;
 
     // Assert - should get a String result
     let result = unwrap_value(combined_stream.next().await);
@@ -117,10 +121,12 @@ async fn test_with_latest_from_custom_selector() {
         "Expected 'Cat' in result: {}",
         string_result
     );
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_with_latest_from_secondary_emits_first_no_output() {
+async fn test_with_latest_from_secondary_emits_first_no_output() -> anyhow::Result<()> {
     // Arrange
     let (animal_tx, animal_stream) = test_channel();
     let (_person_tx, person_stream) = test_channel();
@@ -128,14 +134,16 @@ async fn test_with_latest_from_secondary_emits_first_no_output() {
     let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
     // Act - primary emits but no secondary value yet
-    animal_tx.send(Sequenced::new(animal_cat())).unwrap();
+    animal_tx.send(Sequenced::new(animal_cat()))?;
 
     // Assert - should not emit because secondary hasn't emitted
     assert!(combined_stream.next().now_or_never().is_none());
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_with_latest_from_secondary_completes_early() {
+async fn test_with_latest_from_secondary_completes_early() -> anyhow::Result<()> {
     // Arrange
     let (animal_tx, animal_stream) = test_channel();
     let (person_tx, person_stream) = test_channel();
@@ -143,11 +151,11 @@ async fn test_with_latest_from_secondary_completes_early() {
     let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
     // Act - secondary emits and completes
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
     drop(person_tx); // secondary completes
 
     // Primary emits
-    animal_tx.send(Sequenced::new(animal_cat())).unwrap();
+    animal_tx.send(Sequenced::new(animal_cat()))?;
 
     // Assert - should still emit with latest secondary value (Alice)
     let result = unwrap_value(combined_stream.next().await);
@@ -155,16 +163,18 @@ async fn test_with_latest_from_secondary_completes_early() {
     assert_eq!(result.get().values()[1], person_alice());
 
     // Primary emits again
-    animal_tx.send(Sequenced::new(animal_dog())).unwrap();
+    animal_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert - should still emit with same secondary value
     let result = unwrap_value(combined_stream.next().await);
     assert_eq!(result.get().values()[0], animal_dog());
     assert_eq!(result.get().values()[1], person_alice());
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_with_latest_from_primary_completes_early() {
+async fn test_with_latest_from_primary_completes_early() -> anyhow::Result<()> {
     // Arrange
     let (animal_tx, animal_stream) = test_channel();
     let (person_tx, person_stream) = test_channel();
@@ -172,8 +182,8 @@ async fn test_with_latest_from_primary_completes_early() {
     let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
     // Act
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
-    animal_tx.send(Sequenced::new(animal_cat())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_cat()))?;
 
     // Assert
     let result = unwrap_value(combined_stream.next().await);
@@ -182,7 +192,7 @@ async fn test_with_latest_from_primary_completes_early() {
 
     // Act - primary completes
     drop(animal_tx);
-    person_tx.send(Sequenced::new(person_bob())).unwrap();
+    person_tx.send(Sequenced::new(person_bob()))?;
 
     // The stream won't complete until the secondary also completes (ordered_merge behavior)
     // So we need to close the secondary stream too
@@ -190,10 +200,12 @@ async fn test_with_latest_from_primary_completes_early() {
 
     // Now the stream should complete
     assert!(combined_stream.next().await.is_none());
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_with_latest_from_large_number_of_emissions() {
+async fn test_with_latest_from_large_number_of_emissions() -> anyhow::Result<()> {
     // Arrange
     let (animal_tx, animal_stream) = test_channel();
     let (person_tx, person_stream) = test_channel();
@@ -201,7 +213,7 @@ async fn test_with_latest_from_large_number_of_emissions() {
     let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
     // Act - send secondary first
-    person_tx.send(Sequenced::new(person_alice())).unwrap();
+    person_tx.send(Sequenced::new(person_alice()))?;
 
     // Send many primary emissions
     for i in 0..100 {
@@ -221,10 +233,12 @@ async fn test_with_latest_from_large_number_of_emissions() {
             panic!("Expected Animal");
         }
     }
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_with_latest_from_both_streams_close_before_emission() {
+async fn test_with_latest_from_both_streams_close_before_emission() -> anyhow::Result<()> {
     // Arrange
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
@@ -237,6 +251,8 @@ async fn test_with_latest_from_both_streams_close_before_emission() {
 
     // Assert - stream should complete with no emissions
     assert!(combined_stream.next().await.is_none());
+
+    Ok(())
 }
 
 #[tokio::test]
@@ -271,7 +287,7 @@ async fn test_with_latest_from_secondary_updates_latest() -> anyhow::Result<()> 
 }
 
 #[tokio::test]
-async fn test_with_latest_from_multiple_concurrent_streams() {
+async fn test_with_latest_from_multiple_concurrent_streams() -> anyhow::Result<()> {
     // Test that multiple independent with_latest_from streams work correctly
     let (animal_tx1, animal_stream1) = test_channel();
     let (person_tx1, person_stream1) = test_channel();
@@ -285,12 +301,12 @@ async fn test_with_latest_from_multiple_concurrent_streams() {
     let mut stream2 = stream2;
 
     // Emit to stream1
-    person_tx1.send(Sequenced::new(person_alice())).unwrap();
-    animal_tx1.send(Sequenced::new(animal_cat())).unwrap();
+    person_tx1.send(Sequenced::new(person_alice()))?;
+    animal_tx1.send(Sequenced::new(animal_cat()))?;
 
     // Emit to stream2
-    person_tx2.send(Sequenced::new(person_bob())).unwrap();
-    animal_tx2.send(Sequenced::new(animal_dog())).unwrap();
+    person_tx2.send(Sequenced::new(person_bob()))?;
+    animal_tx2.send(Sequenced::new(animal_dog()))?;
 
     // Assert stream1
     let result1 = unwrap_value(stream1.next().await);
@@ -301,4 +317,6 @@ async fn test_with_latest_from_multiple_concurrent_streams() {
     let result2 = unwrap_value(stream2.next().await);
     assert_eq!(result2.get().values()[0], animal_dog());
     assert_eq!(result2.get().values()[1], person_bob());
+
+    Ok(())
 }

@@ -10,7 +10,7 @@ use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
 use futures::StreamExt;
 
 #[tokio::test]
-async fn test_combine_latest_propagates_error_from_primary_stream() {
+async fn test_combine_latest_propagates_error_from_primary_stream() -> anyhow::Result<()> {
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -48,10 +48,11 @@ async fn test_combine_latest_propagates_error_from_primary_stream() {
 
     drop(tx1);
     drop(tx2);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_propagates_error_from_secondary_stream() {
+async fn test_combine_latest_propagates_error_from_secondary_stream() -> anyhow::Result<()> {
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -87,10 +88,11 @@ async fn test_combine_latest_propagates_error_from_secondary_stream() {
 
     drop(tx1);
     drop(tx2);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_multiple_errors_from_different_streams() {
+async fn test_combine_latest_multiple_errors_from_different_streams() -> anyhow::Result<()> {
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -128,10 +130,11 @@ async fn test_combine_latest_multiple_errors_from_different_streams() {
 
     drop(tx1);
     drop(tx2);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_error_at_start() {
+async fn test_combine_latest_error_at_start() -> anyhow::Result<()> {
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -159,10 +162,11 @@ async fn test_combine_latest_error_at_start() {
 
     drop(tx1);
     drop(tx2);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_combine_latest_filter_predicate_continues_after_error() {
+async fn test_combine_latest_filter_predicate_continues_after_error() -> anyhow::Result<()> {
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -206,4 +210,5 @@ async fn test_combine_latest_filter_predicate_continues_after_error() {
 
     drop(tx1);
     drop(tx2);
+    Ok(())
 }
