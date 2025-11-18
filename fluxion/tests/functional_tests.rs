@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::StreamItem;
 use fluxion_rx::{CombinedState, FluxionStream, Ordered};
 use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
@@ -73,9 +74,7 @@ async fn test_functional_combine_with_previous() -> anyhow::Result<()> {
 async fn test_functional_ordered_merge() -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
-
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
-
     let (plant_tx, plant_stream) = test_channel::<Sequenced<TestData>>();
 
     let person_stream = FluxionStream::new(person_stream);
@@ -103,7 +102,6 @@ async fn test_functional_ordered_merge() -> anyhow::Result<()> {
 async fn test_functional_take_latest_when() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
-
     let (filter_tx, filter_stream) = test_channel::<Sequenced<TestData>>();
 
     let source_stream = FluxionStream::new(source_stream);
@@ -126,13 +124,12 @@ async fn test_functional_take_latest_when() -> anyhow::Result<()> {
 async fn test_functional_take_while_with() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
-
     let (predicate_tx, predicate_stream) = test_channel::<Sequenced<TestData>>();
 
     let source_stream = FluxionStream::new(source_stream);
     let predicate_stream = FluxionStream::new(predicate_stream);
 
-    let taken = source_stream.take_while_with(predicate_stream, |_| true);
+    let mut taken = source_stream.take_while_with(predicate_stream, |_| true);
 
     // Act
     predicate_tx.send(Sequenced::new(person_alice()))?;
@@ -142,15 +139,8 @@ async fn test_functional_take_while_with() -> anyhow::Result<()> {
     source_tx.send(charlie.clone())?;
 
     // Assert
-    let mut taken = Box::pin(taken);
-    assert_eq!(
-        taken.next().await.unwrap(),
-        fluxion_core::stream_item::StreamItem::Value(bob)
-    );
-    assert_eq!(
-        taken.next().await.unwrap(),
-        fluxion_core::stream_item::StreamItem::Value(charlie)
-    );
+    assert_eq!(taken.next().await.unwrap(), StreamItem::Value(bob));
+    assert_eq!(taken.next().await.unwrap(), StreamItem::Value(charlie));
 
     Ok(())
 }
@@ -159,12 +149,10 @@ async fn test_functional_take_while_with() -> anyhow::Result<()> {
 async fn test_functional_with_latest_from() -> anyhow::Result<()> {
     // Arrange
     let (primary_tx, primary_stream) = test_channel::<Sequenced<TestData>>();
-
     let (secondary_tx, secondary_stream) = test_channel::<Sequenced<TestData>>();
 
-    let primary_stream = FluxionStream::new(primary_stream);
-
-    let mut combined = primary_stream.with_latest_from(secondary_stream, RESULT_SELECTOR);
+    let mut combined =
+        FluxionStream::new(primary_stream).with_latest_from(secondary_stream, RESULT_SELECTOR);
 
     // Act
     secondary_tx.send(Sequenced::new(animal_dog()))?;
@@ -179,6 +167,7 @@ async fn test_functional_with_latest_from() -> anyhow::Result<()> {
     let result = combined.next().await.unwrap();
     assert_eq!(result.get().values()[0], person_bob());
     assert_eq!(result.get().values()[1], animal_dog());
+
     Ok(())
 }
 
@@ -186,7 +175,6 @@ async fn test_functional_with_latest_from() -> anyhow::Result<()> {
 async fn test_functional_chained_operations() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
-
     let (filter_tx, filter_stream) = test_channel::<Sequenced<TestData>>();
 
     let source_stream = FluxionStream::new(source_stream);

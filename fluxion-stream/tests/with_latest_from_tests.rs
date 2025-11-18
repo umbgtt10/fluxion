@@ -30,10 +30,9 @@ async fn test_with_latest_from_basic() -> anyhow::Result<()> {
     person_tx.send(Sequenced::new(person_alice()))?;
     animal_tx.send(Sequenced::new(animal_cat()))?;
 
+    // Assert CombinedState order: [primary (index 0), secondary (index 1)]
     let result = unwrap_stream(&mut combined_stream, 500).await.unwrap();
     let combined_state = result.get();
-
-    // Assert CombinedState order: [primary (index 0), secondary (index 1)]
     assert_eq!(combined_state.values()[0], animal_cat());
     assert_eq!(combined_state.values()[1], person_alice());
 

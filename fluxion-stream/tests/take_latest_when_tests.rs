@@ -33,6 +33,7 @@ async fn test_take_latest_when_empty_streams() -> anyhow::Result<()> {
         next_item.is_none(),
         "Expected no items from an empty stream with `take_latest_when`"
     );
+
     Ok(())
 }
 
@@ -57,6 +58,7 @@ async fn test_take_latest_when_filter_not_satisfied_does_not_emit() -> anyhow::R
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
+
     Ok(())
 }
 
@@ -90,6 +92,7 @@ async fn test_take_latest_when_filter_satisfied_emits() -> anyhow::Result<()> {
         &person_alice(),
         "Expected the source item to be emitted when the filter is satisfied"
     );
+
     Ok(())
 }
 
@@ -134,6 +137,7 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() -> anyhow::
         &person_bob(),
         "Second emitted item did not match expected"
     );
+
     Ok(())
 }
 
@@ -159,7 +163,6 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() -> anyh
     filter_tx.send(Sequenced::new(animal_ant()))?; // Trigger filter to sample Charlie
 
     // Assert
-
     let first_item = unwrap_stream(&mut output_stream, 500).await.unwrap();
     assert_eq!(
         first_item.get(),
@@ -173,6 +176,7 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() -> anyh
 
     // Assert: No emission since filter predicate is false (cat has 4 legs)
     assert_no_element_emitted(&mut output_stream, 100).await;
+
     Ok(())
 }
 
@@ -264,12 +268,13 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() -> anyhow
     source_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert: No emission because filter stream is closed
-    fluxion_test_utils::helpers::assert_no_element_emitted(&mut output_stream, 100).await;
+    assert_no_element_emitted(&mut output_stream, 100).await;
 
     source_tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert: Still no emission
-    fluxion_test_utils::helpers::assert_no_element_emitted(&mut output_stream, 100).await;
+    assert_no_element_emitted(&mut output_stream, 100).await;
+
     Ok(())
 }
 
@@ -421,9 +426,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() -> anyhow::Resul
     // Act: Toggle filter false and publish more
     filter_tx.send(Sequenced::new(animal_dog()))?; // legs 4 -> false
     for i in 10000u32..20000u32 {
-        source_tx
-            .send(Sequenced::new(person(format!("Person{i}"), i)))
-            .unwrap();
+        source_tx.send(Sequenced::new(person(format!("Person{i}"), i)))?;
     }
 
     // Assert: Still no emissions
@@ -452,14 +455,10 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() -> anyhow::Re
     let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act: Send empty string with zero value to source
-    source_tx
-        .send(Sequenced::new(person(String::new(), 0)))
-        .unwrap();
+    source_tx.send(Sequenced::new(person(String::new(), 0)))?;
 
     // Act: Send filter trigger with empty/zero
-    filter_tx
-        .send(Sequenced::new(animal(String::new(), 0)))
-        .unwrap();
+    filter_tx.send(Sequenced::new(animal(String::new(), 0)))?;
 
     // Assert: Should emit the boundary value
     let result = unwrap_stream(&mut output_stream, 500).await.unwrap();

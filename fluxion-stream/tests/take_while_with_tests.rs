@@ -17,8 +17,7 @@ async fn test_take_while_basic() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
-    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
-    let mut result_stream = Box::pin(result_stream);
+    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
     filter_tx.send(Sequenced::new(true))?;
@@ -56,6 +55,7 @@ async fn test_take_while_basic() -> anyhow::Result<()> {
     source_tx.send(Sequenced::new(person_bob()))?;
     source_tx.send(Sequenced::new(person_charlie()))?;
     assert_no_element_emitted(&mut result_stream, 100).await;
+
     Ok(())
 }
 
@@ -65,14 +65,16 @@ async fn test_take_while_filter_false_immediately() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
-    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
-    let mut result_stream = Box::pin(result_stream);
+    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
-    // Act & Assert
+    // Act
     filter_tx.send(Sequenced::new(false))?;
     source_tx.send(Sequenced::new(animal_cat()))?;
     source_tx.send(Sequenced::new(animal_dog()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result_stream, 100).await;
+
     Ok(())
 }
 
@@ -82,8 +84,7 @@ async fn test_take_while_always_true() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
-    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
-    let mut result_stream = Box::pin(result_stream);
+    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
     filter_tx.send(Sequenced::new(true))?;
@@ -125,9 +126,8 @@ async fn test_take_while_complex_predicate() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<i32>>();
 
-    let result_stream =
+    let mut result_stream =
         source_stream.take_while_with(filter_stream, |filter_val: &i32| *filter_val < 10);
-    let mut result_stream = Box::pin(result_stream);
 
     // Act & Assert
     filter_tx.send(Sequenced::new(5))?;
@@ -155,6 +155,7 @@ async fn test_take_while_complex_predicate() -> anyhow::Result<()> {
     source_tx.send(Sequenced::new(person_alice()))?;
     source_tx.send(Sequenced::new(person_bob()))?;
     assert_no_element_emitted(&mut result_stream, 100).await;
+
     Ok(())
 }
 
@@ -164,8 +165,7 @@ async fn test_take_while_interleaved_updates() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
-    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
-    let mut result_stream = Box::pin(result_stream);
+    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
     filter_tx.send(Sequenced::new(true))?;
@@ -205,6 +205,7 @@ async fn test_take_while_interleaved_updates() -> anyhow::Result<()> {
     source_tx.send(Sequenced::new(person_bob()))?;
     source_tx.send(Sequenced::new(person_charlie()))?;
     assert_no_element_emitted(&mut result_stream, 100).await;
+
     Ok(())
 }
 
@@ -214,8 +215,7 @@ async fn test_take_while_no_filter_value() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
-    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
-    let mut result_stream = Box::pin(result_stream);
+    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
     source_tx.send(Sequenced::new(animal_cat()))?;
@@ -242,6 +242,7 @@ async fn test_take_while_no_filter_value() -> anyhow::Result<()> {
         .get()
         .clone();
     assert_eq!(item, person_bob());
+
     Ok(())
 }
 
@@ -251,8 +252,7 @@ async fn test_take_while_empty_source() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel::<Sequenced<bool>>();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
-    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
-    let mut result_stream = Box::pin(result_stream);
+    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act
     filter_tx.send(Sequenced::new(true))?;
@@ -260,6 +260,7 @@ async fn test_take_while_empty_source() -> anyhow::Result<()> {
 
     // Assert
     assert_no_element_emitted(&mut result_stream, 100).await;
+
     Ok(())
 }
 
@@ -269,8 +270,7 @@ async fn test_take_while_empty_filter() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel();
     let (_filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
-    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
-    let mut result_stream = Box::pin(result_stream);
+    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act
     source_tx.send(Sequenced::new(animal_cat()))?;
@@ -278,6 +278,7 @@ async fn test_take_while_empty_filter() -> anyhow::Result<()> {
 
     // Assert
     assert_no_element_emitted(&mut result_stream, 100).await;
+
     Ok(())
 }
 
@@ -287,8 +288,7 @@ async fn test_take_while_filter_changes_back_to_true() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
-    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
-    let mut result_stream = Box::pin(result_stream);
+    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
     filter_tx.send(Sequenced::new(true))?;
@@ -309,6 +309,7 @@ async fn test_take_while_filter_changes_back_to_true() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(true))?;
     source_tx.send(Sequenced::new(person_alice()))?;
     assert_no_element_emitted(&mut result_stream, 100).await;
+
     Ok(())
 }
 
@@ -318,8 +319,7 @@ async fn test_take_while_multiple_source_items_same_filter() -> anyhow::Result<(
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
-    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
-    let mut result_stream = Box::pin(result_stream);
+    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
     filter_tx.send(Sequenced::new(true))?;
@@ -367,6 +367,7 @@ async fn test_take_while_multiple_source_items_same_filter() -> anyhow::Result<(
     source_tx.send(Sequenced::new(person_charlie()))?;
 
     assert_no_element_emitted(&mut result_stream, 100).await;
+
     Ok(())
 }
 
@@ -376,8 +377,7 @@ async fn test_take_while_filter_updates_without_source() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 
-    let result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
-    let mut result_stream = Box::pin(result_stream);
+    let mut result_stream = source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
     filter_tx.send(Sequenced::new(false))?;
@@ -405,5 +405,6 @@ async fn test_take_while_filter_updates_without_source() -> anyhow::Result<()> {
         .get()
         .clone();
     assert_eq!(item, animal_dog());
+
     Ok(())
 }
