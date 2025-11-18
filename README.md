@@ -44,25 +44,22 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.1.1"
-fluxion-test-utils = "0.1.1"
+fluxion-rx = "0.2.0"
+fluxion-test-utils = "0.2.0"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 futures = "0.3.31"
-tracing = "0.1.41"
 ```
-
-
 
 ### Basic Usage
 
-```rustuse fluxion_rx::FluxionStream;
+```rust
+use fluxion_rx::FluxionStream;
 use fluxion_test_utils::sequenced::Sequenced;
 use futures::StreamExt;
 
 #[tokio::test]
 async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
-    tracing::info!("Starting test_take_latest_when_int_bool");
     // Define enum to hold int and bool types
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     enum Value {
@@ -120,7 +117,8 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rustuse fluxion_rx::{FluxionStream, Ordered};
+```rust
+use fluxion_rx::{FluxionStream, Ordered};
 use fluxion_test_utils::sequenced::Sequenced;
 use futures::StreamExt;
 
@@ -318,13 +316,12 @@ See individual crate READMEs for detailed documentation.
 
 ## Project Status
 
-**Current Version:** 0.1.1
+**Current Version:** 0.2.0
 
 - ✅ Published to crates.io
 - ✅ Core functionality complete
 - ✅ Comprehensive test coverage
-- ✅ Phase 1 error handling implemented
-- 🚧 Phase 2 error propagation (planned for 1.0.0)
+- ✅ Error propagation and handling implemented
 - 📝 Documentation complete for current features
 
 See [ROADMAP.md](ROADMAP.md) for details on the path to 1.0.0.
@@ -359,3 +356,4 @@ All commits and releases are **GPG signed**.
 Name: Umberto Gotti
 Email: umberto.gotti@umbertogotti.dev
 Twitter: https://x.com/GottiUmberto
+LinkedIn: www.linkedin.com/in/umberto-gotti-85346b48

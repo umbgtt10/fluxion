@@ -412,6 +412,6 @@ This change allows your application to:
 ## See Also
 
 - [FluxionError API Documentation](https://docs.rs/fluxion-core)
-- [Refactoring Plan](REFACTORING_PLAN.md) - Technical details of error handling implementation
+- [ROADMAP.md](../ROADMAP.md) - Roadmap to 1.0 release
 - [Stream Operators](FLUXION_OPERATOR_SUMMARY.md) - Complete operator reference
 - [Examples](../examples/) - Working code showing error handling patterns

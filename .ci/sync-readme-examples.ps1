@@ -66,8 +66,8 @@ foreach ($crate in $externalCrates) {
 # Always include fluxion crates
 $dependenciesLines = @(
     "[dependencies]",
-    "fluxion-rx = `"0.1.1`"",
-    "fluxion-test-utils = `"0.1.1`""
+    "fluxion-rx = `"0.2.0`"",
+    "fluxion-test-utils = `"0.2.0`""
 )
 
 # Add tokio with features if used
@@ -102,10 +102,10 @@ $chainingCodeEnd = $readme.IndexOf('```', $chainingCodeStart + 7)
 
 # Build new README with updated dependencies and examples
 $newReadme = $readme.Substring(0, $dependenciesStart) # Up to dependencies code block
-$newReadme += $dependenciesSection + "`n`n"
-$newReadme += $readme.Substring($dependenciesEnd + 4, $basicUsageCodeStart - ($dependenciesEnd + 4) + 8) # From deps ``` to Basic Usage ```rust
+$newReadme += $dependenciesSection
+$newReadme += $readme.Substring($dependenciesEnd + 3, $basicUsageCodeStart - ($dependenciesEnd + 3) + 8) # From deps ``` to Basic Usage ```rust\n
 $newReadme += $example1Code
-$newReadme += $readme.Substring($basicUsageCodeEnd, $chainingCodeStart - $basicUsageCodeEnd + 8) # From first ``` to second ```rust
+$newReadme += $readme.Substring($basicUsageCodeEnd, $chainingCodeStart - $basicUsageCodeEnd + 8) # From first ``` to second ```rust\n
 $newReadme += $example2Code
 $newReadme += $readme.Substring($chainingCodeEnd) # From second ``` to end
 
