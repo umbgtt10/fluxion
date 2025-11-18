@@ -104,7 +104,7 @@ where
     ///
     /// All errors are non-fatal - the stream continues processing subsequent items.
     ///
-    /// See the [Error Handling Guide](https://github.com/umbgtt10/fluxion/blob/main/docs/ERROR-HANDLING.md)
+    /// See the [Error Handling Guide](../../docs/ERROR-HANDLING.md)
     /// for handling strategies.
     ///
     /// # See Also

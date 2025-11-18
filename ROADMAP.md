@@ -32,9 +32,9 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ Zero compiler warnings
 - ✅ Doc tests passing
 
-## 🚀 Version 0.2.0 - Error Propagation
+## 🚀 Version 0.2.1 - Error Propagation
 
-**Status:** Not published to crates.io
+**Status:** Published to crates.io
 
 **Goal:** Provide a consolidated foundation supporting error propagation
 

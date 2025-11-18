@@ -11,9 +11,9 @@ A reactive stream processing library for Rust with temporal ordering guarantees,
 
 ## Table of Contents
 - [Features](#features)
-- [Reviews](#reviews)
+- [Independent Code Reviews](#independent-code-reviews)
 - [Quick Start](#quick-start)
-- [Operator Documentation](#-operator-documentation)
+- [Operator Documentation](#operator-documentation)
 - [Core Concepts](#core-concepts)
 - [Documentation](#documentation)
 - [Development](#development)
@@ -44,8 +44,8 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.2.0"
-fluxion-test-utils = "0.2.0"
+fluxion-rx = "0.2.1"
+fluxion-test-utils = "0.2.1"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 futures = "0.3.31"
@@ -53,7 +53,8 @@ futures = "0.3.31"
 
 ### Basic Usage
 
-```rustuse fluxion_rx::FluxionStream;
+```rust
+use fluxion_rx::FluxionStream;
 use fluxion_test_utils::sequenced::Sequenced;
 use futures::StreamExt;
 
@@ -116,7 +117,8 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rustuse fluxion_rx::{FluxionStream, Ordered};
+```rust
+use fluxion_rx::{FluxionStream, Ordered};
 use fluxion_test_utils::sequenced::Sequenced;
 use futures::StreamExt;
 
@@ -314,7 +316,7 @@ See individual crate READMEs for detailed documentation.
 
 ## Project Status
 
-**Current Version:** 0.2.0
+**Current Version:** 0.2.1
 
 - ✅ Published to crates.io
 - ✅ Core functionality complete

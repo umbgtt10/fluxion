@@ -61,7 +61,7 @@ where
     /// These errors flow through the stream as `StreamItem::Error` values and can be handled
     /// using standard stream methods like `filter_map` or pattern matching.
     ///
-    /// See the [Error Handling Guide](https://github.com/umbgtt10/fluxion/blob/main/docs/ERROR-HANDLING.md)
+    /// See the [Error Handling Guide](../../docs/ERROR-HANDLING.md)
     /// for patterns and best practices.
     ///
     /// # See Also

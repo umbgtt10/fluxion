@@ -66,8 +66,8 @@ foreach ($crate in $externalCrates) {
 # Always include fluxion crates
 $dependenciesLines = @(
     "[dependencies]",
-    "fluxion-rx = `"0.2.0`"",
-    "fluxion-test-utils = `"0.2.0`""
+    "fluxion-rx = `"0.2.1`"",
+    "fluxion-test-utils = `"0.2.1`""
 )
 
 # Add tokio with features if used

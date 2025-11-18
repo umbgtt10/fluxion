@@ -63,7 +63,7 @@ where
     /// Errors are emitted as `StreamItem::Error` values in the output stream, allowing
     /// downstream operators to handle them appropriately.
     ///
-    /// See the [Error Handling Guide](https://github.com/umbgtt10/fluxion/blob/main/docs/ERROR-HANDLING.md)
+    /// See the [Error Handling Guide](../../docs/ERROR-HANDLING.md)
     /// for recovery patterns.
     ///
     /// # See Also

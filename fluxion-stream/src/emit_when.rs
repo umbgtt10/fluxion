@@ -103,7 +103,7 @@ where
     ///
     /// Lock errors are transient - the stream continues processing subsequent items.
     ///
-    /// See the [Error Handling Guide](https://github.com/umbgtt10/fluxion/blob/main/docs/ERROR-HANDLING.md).
+    /// See the [Error Handling Guide](../../docs/ERROR-HANDLING.md).
     ///
     /// # See Also
     ///

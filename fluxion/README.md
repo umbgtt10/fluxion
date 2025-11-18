@@ -19,7 +19,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.2.0"
+fluxion-rx = "0.2.1"
 ```
 
 ## Example
