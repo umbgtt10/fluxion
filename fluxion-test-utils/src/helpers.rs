@@ -8,7 +8,7 @@ use fluxion_core::{FluxionError, Result, StreamItem};
 use futures::stream::StreamExt;
 use futures::Stream;
 use std::time::Duration;
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::time::sleep;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -107,11 +107,9 @@ where
 /// let item = stream.next().await.unwrap().unwrap(); // Option -> StreamItem -> Value
 /// # }
 /// ```
-pub fn test_channel<T: Send + 'static>() -> (
-    mpsc::UnboundedSender<T>,
-    impl Stream<Item = StreamItem<T>> + Send,
-) {
-    let (tx, rx) = mpsc::unbounded_channel();
+pub fn test_channel<T: Send + 'static>(
+) -> (UnboundedSender<T>, impl Stream<Item = StreamItem<T>> + Send) {
+    let (tx, rx) = unbounded_channel();
     let stream = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
     (tx, stream)
 }
@@ -142,10 +140,10 @@ pub fn test_channel<T: Send + 'static>() -> (
 /// # }
 /// ```
 pub fn test_channel_with_errors<T: Send + 'static>() -> (
-    mpsc::UnboundedSender<StreamItem<T>>,
+    UnboundedSender<StreamItem<T>>,
     impl Stream<Item = StreamItem<T>> + Send,
 ) {
-    let (tx, rx) = mpsc::unbounded_channel();
+    let (tx, rx) = unbounded_channel();
     let stream = UnboundedReceiverStream::new(rx);
     (tx, stream)
 }

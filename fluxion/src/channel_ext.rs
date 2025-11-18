@@ -95,11 +95,8 @@ where
         F: FnMut(T) -> U + Send + Sync + 'static,
         U: Ordered<Inner = U> + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     {
-        // Transform the stream and box it to erase the concrete type
-        let source = UnboundedReceiverStream::new(self);
-        let mapped = source.map(move |value| StreamItem::Value(mapper(value)));
-        let boxed = Box::pin(mapped);
-
-        FluxionStream::new(boxed)
+        FluxionStream::new(Box::pin(
+            UnboundedReceiverStream::new(self).map(move |value| StreamItem::Value(mapper(value))),
+        ))
     }
 }

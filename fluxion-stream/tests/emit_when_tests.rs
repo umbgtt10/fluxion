@@ -6,7 +6,7 @@ use fluxion_stream::emit_when::EmitWhenExt;
 use fluxion_stream::CombinedState;
 use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::{
-    helpers::assert_no_element_emitted,
+    helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
     test_data::{
         animal_ant, animal_bird, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
@@ -63,7 +63,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
     filter_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &person_alice(),
@@ -74,7 +74,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
     filter_tx.send(Sequenced::new(animal_spider()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &person_alice(),
@@ -85,7 +85,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
     filter_tx.send(Sequenced::new(animal_ant()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &person_alice(),
@@ -120,7 +120,7 @@ async fn test_emit_when_threshold_comparison() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(plant_sunflower()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &plant_rose(),
@@ -161,7 +161,7 @@ async fn test_emit_when_name_length_comparison() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &person_charlie(),
@@ -216,7 +216,7 @@ async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Res
     source_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &person_bob(),
@@ -227,7 +227,7 @@ async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Res
     source_tx.send(Sequenced::new(person_dave()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &person_dave(),
@@ -277,7 +277,7 @@ async fn test_emit_when_stateful_comparison() -> anyhow::Result<()> {
     source_tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &person_charlie(),
@@ -288,7 +288,7 @@ async fn test_emit_when_stateful_comparison() -> anyhow::Result<()> {
     source_tx.send(Sequenced::new(person_diane()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &person_diane(),
@@ -327,7 +327,7 @@ async fn test_emit_when_filter_stream_closes() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert: Should emit
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(emitted_item.get(), &person_alice());
 
     // Act: Close filter stream
@@ -337,7 +337,7 @@ async fn test_emit_when_filter_stream_closes() -> anyhow::Result<()> {
     source_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert: Should still emit using last known filter value
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &person_bob(),
@@ -370,7 +370,7 @@ async fn test_emit_when_both_values_required() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert: Now it should emit
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &person_alice(),
@@ -405,7 +405,7 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() -> anyhow::
     filter_tx.send(Sequenced::new(animal_bird()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(emitted_item.get(), &person_alice());
 
     // Act: Update filter to Dog legs=4 => 25 >= 40 = false
@@ -418,7 +418,7 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() -> anyhow::
     filter_tx.send(Sequenced::new(animal_bird()))?;
 
     // Assert: Should emit again
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(emitted_item.get(), &person_alice());
     Ok(())
 }
@@ -461,7 +461,7 @@ async fn test_emit_when_delta_based_filtering() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &person_diane(),
@@ -527,7 +527,7 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
     filter_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(emitted_item.get(), &person_alice());
 
     // Act: Close source stream
@@ -537,7 +537,7 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
     filter_tx.send(Sequenced::new(animal_cat()))?;
 
     // Assert: Should emit latest source value
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted_item.get(),
         &person_alice(),
@@ -548,7 +548,7 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
     filter_tx.send(Sequenced::new(animal_spider()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(emitted_item.get(), &person_alice());
     Ok(())
 }
@@ -604,7 +604,7 @@ async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(emitted_item.get(), &person_diane());
 
     // Act: Bob age=30 (even), Dog legs=4 => 30 % 4 = 2 ✗
@@ -617,7 +617,7 @@ async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(animal_ant()))?;
 
     // Assert
-    let emitted_item = unwrap_value(output_stream.next().await);
+    let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(emitted_item.get(), &person_bob());
 
     // Act: Alice age=25 (odd) => fails even check ✗

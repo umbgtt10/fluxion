@@ -2,16 +2,11 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use std::time::Duration;
-
 use fluxion_rx::prelude::*;
 use fluxion_test_utils::{assert_no_element_emitted, helpers::unwrap_stream};
 use futures::StreamExt;
-use tokio::{
-    spawn,
-    sync::mpsc::{self, unbounded_channel},
-    time::sleep,
-};
+use std::time::Duration;
+use tokio::{spawn, sync::mpsc::unbounded_channel, time::sleep};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct SensorReading {
@@ -55,7 +50,7 @@ impl Ordered for DataEvent {
 #[tokio::test]
 async fn test_into_fluxion_stream_basic_transformation() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<SensorReading>();
+    let (tx, rx) = unbounded_channel::<SensorReading>();
 
     let reading1 = SensorReading {
         timestamp: 100,
@@ -87,7 +82,7 @@ async fn test_into_fluxion_stream_basic_transformation() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_into_fluxion_stream_empty_channel() -> anyhow::Result<()> {
     // Arrange
-    let (_tx, rx) = mpsc::unbounded_channel::<SensorReading>();
+    let (_tx, rx) = unbounded_channel::<SensorReading>();
 
     let mut stream = rx.into_fluxion_stream(|s| DataEvent::Sensor(s.clone()));
 
@@ -103,7 +98,7 @@ async fn test_into_fluxion_stream_empty_channel() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_into_fluxion_stream_preserves_order() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<SensorReading>();
+    let (tx, rx) = unbounded_channel::<SensorReading>();
 
     let readings: Vec<SensorReading> = (0..10)
         .map(|i| SensorReading {
