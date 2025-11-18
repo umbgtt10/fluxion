@@ -7,7 +7,7 @@
 [![Downloads](https://img.shields.io/crates/d/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
 [![Documentation](https://docs.rs/fluxion-rx/badge.svg)](https://docs.rs/fluxion-rx)
 
-A reactive stream processing library for Rust with temporal ordering guarantees, efficient async execution and friendly fluent API.
+A reactive stream processing library for Rust with temporal ordering guarantee, efficient async execution and friendly fluent API.
 
 **📊 [See why Fluxion sets new standards for quality →](PITCH.md)**
 

@@ -4,6 +4,7 @@
 
 use fluxion_core::StreamItem;
 use fluxion_rx::{CombinedState, FluxionStream, Ordered};
+use fluxion_test_utils::helpers::unwrap_stream;
 use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     animal_dog, person_alice, person_bob, person_charlie, plant_rose, TestData,
@@ -55,15 +56,15 @@ async fn test_functional_combine_with_previous() -> anyhow::Result<()> {
     tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert
-    let item = unwrap_value(with_previous.next().await);
+    let item = unwrap_value(Some(unwrap_stream(&mut with_previous, 500).await));
     assert!(item.previous.is_none());
     assert_eq!(item.current.get(), &person_alice());
 
-    let item = unwrap_value(with_previous.next().await);
+    let item = unwrap_value(Some(unwrap_stream(&mut with_previous, 500).await));
     assert_eq!(item.previous.unwrap().get(), &person_alice());
     assert_eq!(item.current.get(), &person_bob());
 
-    let item = unwrap_value(with_previous.next().await);
+    let item = unwrap_value(Some(unwrap_stream(&mut with_previous, 500).await));
     assert_eq!(item.previous.unwrap().get(), &person_bob());
     assert_eq!(item.current.get(), &person_charlie());
 
@@ -190,7 +191,7 @@ async fn test_functional_chained_operations() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
-    let item = unwrap_value(composed.next().await);
+    let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert!(item.previous.is_none());
     assert_eq!(item.current.get(), &person_charlie());
 
@@ -209,8 +210,14 @@ async fn test_functional_from_unbounded_receiver() -> anyhow::Result<()> {
     drop(tx);
 
     // Assert
-    assert_eq!(unwrap_value(stream.next().await), person_alice());
-    assert_eq!(unwrap_value(stream.next().await), person_bob());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
+        person_alice()
+    );
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
+        person_bob()
+    );
     assert!(stream.next().await.is_none());
 
     Ok(())

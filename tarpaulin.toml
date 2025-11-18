@@ -7,4 +7,4 @@ out = ["Html", "Xml"]
 
 [run]
 fail-under = 60
-exclude-files = ["examples/*, fluxion-test-utils"]
+exclude-files = ["examples/*", "fluxion-test-utils"]
