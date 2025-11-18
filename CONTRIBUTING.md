@@ -125,7 +125,8 @@ pub fn function_name() { }
 
 ### Testing
 
-- Write unit tests for all new functionality
+- Write integration tests for every file in a matching file in tests folder
+- Avoid unit tests.
 - Use descriptive test names: `test_combine_latest_emits_when_all_streams_ready`
 - Include edge cases and error conditions
 - Use `#[tokio::test]` for async tests

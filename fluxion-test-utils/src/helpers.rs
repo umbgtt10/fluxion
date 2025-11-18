@@ -24,7 +24,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 /// # Example
 ///
 /// ```rust
-/// use fluxion_test_utils::{test_channel, unwrap_value, Sequenced};
+/// use fluxion_test_utils::{test_channel, unwrap_value, unwrap_stream, Sequenced};
 /// use fluxion_test_utils::test_data::person_alice;
 /// use futures::StreamExt;
 ///
@@ -33,7 +33,8 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 /// tx.send(Sequenced::new(person_alice())).unwrap();
 ///
 /// // Instead of: let item = stream.next().await.unwrap().unwrap();
-/// let item = unwrap_value(stream.next().await);
+/// // Prefer the async helper which waits safely for spawned tasks:
+/// let item = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
 /// # }
 /// ```
 pub fn unwrap_value<T>(item: Option<StreamItem<T>>) -> T {
@@ -103,8 +104,10 @@ where
 /// // Send plain values
 /// tx.send(Sequenced::new(person_alice())).unwrap();
 ///
-/// // Receive StreamItem-wrapped values
-/// let item = stream.next().await.unwrap().unwrap(); // Option -> StreamItem -> Value
+/// // Receive StreamItem-wrapped values (prefer using `unwrap_stream` in async tests)
+/// // Option -> StreamItem -> Value
+/// // Example using the async helper:
+/// // let item = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
 /// # }
 /// ```
 pub fn test_channel<T: Send + 'static>(

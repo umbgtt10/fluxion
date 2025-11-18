@@ -50,15 +50,13 @@ fluxion-rx = "0.2.1"
 fluxion-test-utils = "0.2.1"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
-futures = "0.3.31"
 ```
 
 ### Basic Usage
 
-```rust
-use fluxion_rx::FluxionStream;
-use fluxion_test_utils::sequenced::Sequenced;
-use futures::StreamExt;
+```rustuse fluxion_rx::FluxionStream;
+use fluxion_test_utils::{sequenced::Sequenced, unwrap_stream};
+use tokio::sync::mpsc::unbounded_channel;
 
 #[tokio::test]
 async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
@@ -70,8 +68,8 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
     }
 
     // Create int stream and bool trigger stream
-    let (tx_int, rx_int) = tokio::sync::mpsc::unbounded_channel::<Sequenced<Value>>();
-    let (tx_trigger, rx_trigger) = tokio::sync::mpsc::unbounded_channel::<Sequenced<Value>>();
+    let (tx_int, rx_int) = unbounded_channel::<Sequenced<Value>>();
+    let (tx_trigger, rx_trigger) = unbounded_channel::<Sequenced<Value>>();
 
     let int_stream = FluxionStream::from_unbounded_receiver(rx_int);
     let trigger_stream = FluxionStream::from_unbounded_receiver(rx_trigger);
@@ -86,7 +84,7 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
     // Trigger with bool - should emit latest int value (30) with trigger's sequence
     tx_trigger.send(Sequenced::with_sequence(Value::Bool(true), 4))?;
 
-    let result1 = pipeline.next().await.unwrap().unwrap();
+    let result1 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(result1.get(), Value::Int(30)));
     assert_eq!(result1.sequence(), 4);
 
@@ -96,16 +94,15 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
     // Need another trigger to emit the buffered value
     tx_trigger.send(Sequenced::with_sequence(Value::Bool(true), 6))?;
 
-    let result2 = pipeline.next().await.unwrap().unwrap();
+    let result2 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(result2.get(), Value::Int(40)));
     assert_eq!(result2.sequence(), 6);
 
     // Send another int and trigger
     tx_int.send(Sequenced::with_sequence(Value::Int(50), 7))?;
-
     tx_trigger.send(Sequenced::with_sequence(Value::Bool(true), 8))?;
 
-    let result3 = pipeline.next().await.unwrap().unwrap();
+    let result3 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(result3.get(), Value::Int(50)));
     assert_eq!(result3.sequence(), 8);
 
@@ -119,10 +116,9 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rust
-use fluxion_rx::{FluxionStream, Ordered};
-use fluxion_test_utils::sequenced::Sequenced;
-use futures::StreamExt;
+```rustuse fluxion_rx::{FluxionStream, Ordered};
+use fluxion_test_utils::{sequenced::Sequenced, unwrap_stream};
+use tokio::sync::mpsc::unbounded_channel;
 
 #[tokio::test]
 async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
@@ -134,8 +130,8 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
     }
 
     // Create two input streams
-    let (tx_int, rx_int) = tokio::sync::mpsc::unbounded_channel::<Sequenced<Value>>();
-    let (tx_str, rx_str) = tokio::sync::mpsc::unbounded_channel::<Sequenced<Value>>();
+    let (tx_int, rx_int) = unbounded_channel::<Sequenced<Value>>();
+    let (tx_str, rx_str) = unbounded_channel::<Sequenced<Value>>();
 
     let int_stream = FluxionStream::from_unbounded_receiver(rx_int);
     let str_stream = FluxionStream::from_unbounded_receiver(rx_str);
@@ -156,17 +152,17 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
     tx_int.send(Sequenced::with_sequence(Value::Int(75), 5))?; // Passes filter (75 > 50)
 
     // Results: seq 3 (Int 60), seq 4 (Int 60 + Str updated), seq 5 (Int 75)
-    let result1 = pipeline.next().await.unwrap();
+    let result1 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     let combined1 = result1.get().values();
     assert!(matches!(combined1[0], Value::Int(60)));
     assert!(matches!(combined1[1], Value::Str(ref s) if s == "initial"));
 
-    let result2 = pipeline.next().await.unwrap();
+    let result2 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     let combined2 = result2.get().values();
     assert!(matches!(combined2[0], Value::Int(60)));
     assert!(matches!(combined2[1], Value::Str(ref s) if s == "updated"));
 
-    let result3 = pipeline.next().await.unwrap();
+    let result3 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     let combined3 = result3.get().values();
     assert!(matches!(combined3[0], Value::Int(75)));
     assert!(matches!(combined3[1], Value::Str(ref s) if s == "updated"));

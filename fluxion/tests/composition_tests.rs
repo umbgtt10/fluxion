@@ -122,7 +122,7 @@ async fn test_fluxion_stream_with_latest_from() -> anyhow::Result<()> {
     assert!(summary.contains("Alice"));
 
     primary_tx.send(Sequenced::new(person_charlie()))?;
-    let result = unwrap_value(combined.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut combined, 500).await));
     let summary = result.get();
     assert!(summary.contains("Charlie"));
     assert!(summary.contains("Alice"));
@@ -205,12 +205,12 @@ async fn test_fluxion_stream_take_latest_when_take_while() -> anyhow::Result<()>
     latest_filter_tx
         .send(Sequenced::new(person_alice()))
         .unwrap();
-    let result = unwrap_value(composed.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert_eq!(result.get(), &person_alice());
 
     source_tx.send(Sequenced::new(person_bob()))?;
     latest_filter_tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_value(composed.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert_eq!(result.get(), &person_bob());
 
     while_filter_tx.send(Sequenced::new(false))?;
@@ -245,7 +245,7 @@ async fn test_fluxion_stream_combine_latest_and_take_while() -> anyhow::Result<(
     person_tx.send(Sequenced::new(person_alice()))?;
     animal_tx.send(Sequenced::new(animal_dog()))?;
     plant_tx.send(Sequenced::new(plant_rose()))?;
-    let result = unwrap_value(composed.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     let state = result.get().values();
     assert_eq!(state.len(), 3);
     assert_eq!(state[0], person_alice());
@@ -253,7 +253,7 @@ async fn test_fluxion_stream_combine_latest_and_take_while() -> anyhow::Result<(
     assert_eq!(state[2], plant_rose());
 
     person_tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_value(composed.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     let state = result.get().values();
     assert_eq!(state[0], person_bob());
     assert_eq!(state[1], animal_dog());
@@ -314,17 +314,17 @@ async fn test_ordered_merge_then_combine_with_previous() -> anyhow::Result<()> {
 
     // Act & Assert
     person_tx.send(Sequenced::new(person_alice()))?;
-    let item = unwrap_value(composed.next().await);
+    let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert!(item.previous.is_none());
     assert_eq!(item.current.get(), &person_alice());
 
     animal_tx.send(Sequenced::new(animal_dog()))?;
-    let item = unwrap_value(composed.next().await);
+    let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert_eq!(item.previous.unwrap().get(), &person_alice());
     assert_eq!(item.current.get(), &animal_dog());
 
     person_tx.send(Sequenced::new(person_bob()))?;
-    let item = unwrap_value(composed.next().await);
+    let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert_eq!(item.previous.unwrap().get(), &animal_dog());
     assert_eq!(item.current.get(), &person_bob());
 
@@ -348,7 +348,7 @@ async fn test_combine_latest_then_combine_with_previous() -> anyhow::Result<()> 
     person_tx.send(Sequenced::new(person_alice()))?;
     animal_tx.send(Sequenced::new(animal_dog()))?;
 
-    let item = unwrap_value(composed.next().await);
+    let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert!(item.previous.is_none());
     let curr_binding = item.current;
     let curr_state = curr_binding.get().values();
@@ -356,7 +356,7 @@ async fn test_combine_latest_then_combine_with_previous() -> anyhow::Result<()> 
     assert_eq!(curr_state[1], animal_dog());
 
     person_tx.send(Sequenced::new(person_bob()))?;
-    let item = unwrap_value(composed.next().await);
+    let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     let prev_seq = item.previous.unwrap();
     let prev_binding = prev_seq;
     let prev_state = prev_binding.get().values();
@@ -396,7 +396,7 @@ async fn test_combine_latest_then_take_latest_when() -> anyhow::Result<()> {
     animal_tx.send(Sequenced::new(animal_dog()))?;
     filter_tx.send(Sequenced::new(filter_state))?;
 
-    let result = unwrap_value(composed.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     let state = result.get().values();
     assert_eq!(state.len(), 2);
     assert_eq!(state[0], person_alice());
@@ -406,7 +406,7 @@ async fn test_combine_latest_then_take_latest_when() -> anyhow::Result<()> {
     filter_tx
         .send(Sequenced::new(CombinedState::new(vec![person_alice()])))
         .unwrap();
-    let result = unwrap_value(composed.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     let state = result.get().values();
     assert_eq!(state[0], person_bob());
     assert_eq!(state[1], animal_dog());
@@ -432,10 +432,16 @@ async fn test_ordered_merge_then_take_while_with() -> anyhow::Result<()> {
     // Act & Assert
     filter_tx.send(Sequenced::new(true))?;
     person_tx.send(Sequenced::new(person_alice()))?;
-    assert_eq!(unwrap_value(composed.next().await).get(), &person_alice());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).get(),
+        &person_alice()
+    );
 
     animal_tx.send(Sequenced::new(animal_dog()))?;
-    assert_eq!(unwrap_value(composed.next().await).get(), &animal_dog());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).get(),
+        &animal_dog()
+    );
 
     person_tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
@@ -469,13 +475,13 @@ async fn test_triple_composition_combine_latest_take_while_ordered_merge() -> an
     filter_tx.send(Sequenced::new(true))?;
     person_tx.send(Sequenced::new(person_alice()))?;
     animal_tx.send(Sequenced::new(animal_dog()))?;
-    let result = unwrap_value(composed.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert_eq!(result.get().values().len(), 2);
     assert_eq!(result.get().values()[0], person_alice());
     assert_eq!(result.get().values()[1], animal_dog());
 
     person_tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_value(composed.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert_eq!(result.get().values()[0], person_bob());
     assert_eq!(result.get().values()[1], animal_dog());
 
@@ -505,15 +511,24 @@ async fn test_ordered_merge_then_take_latest_when() -> anyhow::Result<()> {
     person_tx.send(Sequenced::new(person_alice()))?;
     filter_tx.send(Sequenced::new(person_alice()))?;
 
-    assert_eq!(unwrap_value(composed.next().await).get(), &person_alice());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).get(),
+        &person_alice()
+    );
 
     animal_tx.send(Sequenced::new(animal_dog()))?;
     filter_tx.send(Sequenced::new(person_alice()))?;
-    assert_eq!(unwrap_value(composed.next().await).get(), &animal_dog());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).get(),
+        &animal_dog()
+    );
 
     person_tx.send(Sequenced::new(person_bob()))?;
     filter_tx.send(Sequenced::new(person_alice()))?;
-    assert_eq!(unwrap_value(composed.next().await).get(), &person_bob());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).get(),
+        &person_bob()
+    );
 
     drop(filter_tx);
     person_tx.send(Sequenced::new(person_charlie()))?;
@@ -545,8 +560,8 @@ async fn test_take_latest_when_then_ordered_merge() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(person_alice()))?;
     animal_tx.send(Sequenced::new(animal_dog()))?;
 
-    let result1 = unwrap_value(composed.next().await);
-    let result2 = unwrap_value(composed.next().await);
+    let result1 = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
+    let result2 = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 
     let values: Vec<_> = vec![result1.get(), result2.get()];
     assert!(values.contains(&&person_alice()));
@@ -554,7 +569,7 @@ async fn test_take_latest_when_then_ordered_merge() -> anyhow::Result<()> {
 
     source_tx.send(Sequenced::new(person_bob()))?;
     filter_tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_value(composed.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert_eq!(result.get(), &person_bob());
 
     drop(filter_tx);
@@ -615,7 +630,7 @@ async fn test_emit_when_composite_with_ordered_merge_and_combine_with_previous(
     person2_tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert: Should emit (35 >= 30)
-    let emitted = unwrap_value(output_stream.next().await);
+    let emitted = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted.current.get(),
         &person_charlie(),
@@ -632,7 +647,7 @@ async fn test_emit_when_composite_with_ordered_merge_and_combine_with_previous(
     person2_tx.send(Sequenced::new(person_diane()))?;
 
     // Assert: Should emit (40 >= 30)
-    let emitted = unwrap_value(output_stream.next().await);
+    let emitted = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted.current.get(),
         &person_diane(),
@@ -643,7 +658,7 @@ async fn test_emit_when_composite_with_ordered_merge_and_combine_with_previous(
     threshold_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert: Should re-emit Diane since she still meets the new threshold
-    let emitted = unwrap_value(output_stream.next().await);
+    let emitted = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted.current.get(),
         &person_diane(),
@@ -654,7 +669,7 @@ async fn test_emit_when_composite_with_ordered_merge_and_combine_with_previous(
     person1_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert: Should emit (30 >= 25)
-    let emitted = unwrap_value(output_stream.next().await);
+    let emitted = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
         emitted.current.get(),
         &person_bob(),
@@ -683,14 +698,14 @@ async fn test_map_ordered_basic() -> anyhow::Result<()> {
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
 
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(
         result,
         "Previous: None, Current: Person[name=Alice, age=25]"
     );
 
     tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(
         result,
         String::from(
@@ -699,7 +714,7 @@ async fn test_map_ordered_basic() -> anyhow::Result<()> {
     );
 
     tx.send(Sequenced::new(person_charlie()))?;
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(
         result,
         String::from(
@@ -746,7 +761,7 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
 
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(
         result,
         AgeComparison {
@@ -757,7 +772,7 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
     );
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(
         result,
         AgeComparison {
@@ -768,7 +783,7 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
     );
 
     tx.send(Sequenced::new(person_alice()))?; // Age 25 again
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(
         result,
         AgeComparison {
@@ -779,7 +794,7 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
     );
 
     tx.send(Sequenced::new(person_charlie()))?; // Age 35
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(
         result,
         AgeComparison {
@@ -820,19 +835,19 @@ async fn test_map_ordered_extract_age_difference() -> anyhow::Result<()> {
     tx.send(Sequenced::new(person_alice()))?; // Age 25
 
     let mut stream = Box::pin(stream);
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(result, 0); // No previous
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(result, 5); // 30 - 25 = 5
 
     tx.send(Sequenced::new(person_dave()))?; // Age 28
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(result, -2); // 28 - 30 = -2
 
     tx.send(Sequenced::new(person_charlie()))?; // Age 35
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(result, 7); // 35 - 28 = 7
 
     Ok(())
@@ -860,17 +875,17 @@ async fn test_map_ordered_with_ordered_merge() -> anyhow::Result<()> {
     // Act & Assert
     person_tx.send(Sequenced::new(person_alice()))?;
     let mut stream = Box::pin(stream);
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert!(result.contains("Alice"));
     assert!(result.contains("Previous: None"));
 
     animal_tx.send(Sequenced::new(animal_dog()))?;
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert!(result.contains("Dog"));
     assert!(result.contains("Alice"));
 
     person_tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert!(result.contains("Bob"));
     assert!(result.contains("Dog"));
 
@@ -902,11 +917,11 @@ async fn test_map_ordered_with_combine_latest() -> anyhow::Result<()> {
     animal_tx.send(Sequenced::new(animal_dog()))?;
 
     let mut stream = Box::pin(stream);
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(result, "Combined 2 streams");
 
     person_tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(result, "Combined 2 streams");
 
     Ok(())
@@ -941,15 +956,15 @@ async fn test_map_ordered_filter_by_age_change() -> anyhow::Result<()> {
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
     let mut stream = Box::pin(stream);
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(result, None); // No previous
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(result, Some(String::from("Age changed from 25 to 30")));
 
     tx.send(Sequenced::new(person_charlie()))?; // Age 35
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(result, Some(String::from("Age changed from 30 to 35")));
 
     Ok(())
@@ -996,7 +1011,7 @@ async fn test_emit_when_with_map_ordered() -> anyhow::Result<()> {
     assert_no_element_emitted(&mut stream, 100).await;
 
     source_tx.send(Sequenced::new(person_charlie()))?; // 35 - above threshold
-    let result = unwrap_value(stream.next().await).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert!(result.contains("Charlie"));
     assert!(result.contains("Passed filter"));
 
@@ -1035,9 +1050,9 @@ async fn test_triple_ordered_merge_then_map_ordered() -> anyhow::Result<()> {
     animal_tx.send(Sequenced::new(animal_dog()))?;
     plant_tx.send(Sequenced::new(plant_rose()))?;
 
-    let result1 = unwrap_value(stream.next().await);
-    let result2 = unwrap_value(stream.next().await);
-    let result3 = unwrap_value(stream.next().await);
+    let result1 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    let result2 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    let result3 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
 
     let results = [result1, result2, result3];
     assert!(results.contains(&StreamItem::Value(String::from("Person"))));
@@ -1074,18 +1089,18 @@ async fn test_with_latest_from_then_map_ordered() -> anyhow::Result<()> {
     secondary_tx.send(Sequenced::new(person_alice()))?; // 25
     primary_tx.send(Sequenced::new(person_bob()))?; // 30
 
-    let result = unwrap_value(stream.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.get(), "Age difference: 5"); // 30 - 25
 
     primary_tx.send(Sequenced::new(person_charlie()))?; // 35
-    let result = unwrap_value(stream.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.get(), "Age difference: 10"); // 35 - 25
 
     // Update secondary
     secondary_tx.send(Sequenced::new(person_diane()))?; // 40
     primary_tx.send(Sequenced::new(person_dave()))?; // 28
 
-    let result = unwrap_value(stream.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.get(), "Age difference: -12"); // 28 - 40
 
     Ok(())
@@ -1107,17 +1122,17 @@ async fn test_complex_composition_ordered_merge_and_combine_with_previous() -> a
     // Act & Assert
     person1_tx.send(Sequenced::new(person_alice()))?; // 25
 
-    let result = unwrap_value(stream.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert!(result.previous.is_none());
     assert_eq!(result.current.get(), &person_alice());
 
     person2_tx.send(Sequenced::new(person_bob()))?; // 30
-    let result = unwrap_value(stream.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.previous.unwrap().get(), &person_alice());
     assert_eq!(result.current.get(), &person_bob());
 
     person1_tx.send(Sequenced::new(person_charlie()))?; // 35
-    let result = unwrap_value(stream.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.previous.unwrap().get(), &person_bob());
     assert_eq!(result.current.get(), &person_charlie());
 
@@ -1158,19 +1173,25 @@ async fn test_ordered_merge_with_previous_and_map_ordered_name_change() -> anyho
     s1_tx.send(Sequenced::new(person_alice()))?;
 
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "First entry: Alice"
     );
 
     s2_tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Same name: Alice"
     );
 
     s1_tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Name changed from Alice to Bob"
     );
 
@@ -1212,11 +1233,15 @@ async fn test_combine_latest_with_previous_map_ordered_type_count() -> anyhow::R
     animal_tx.send(Sequenced::new(animal_dog()))?;
 
     let mut stream = Box::pin(stream);
-    let result = unwrap_value(stream.next().await).await.unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+        .await
+        .unwrap();
     assert_eq!(result, "Persons: 1, Animals: 1");
 
     person_tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_value(stream.next().await).await.unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+        .await
+        .unwrap();
     assert_eq!(result, "Persons: 1, Animals: 1");
 
     Ok(())
@@ -1249,19 +1274,25 @@ async fn test_double_ordered_merge_map_ordered() -> anyhow::Result<()> {
     s1_tx.send(Sequenced::new(person_alice()))?;
 
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Person (item #1)"
     );
 
     s2_tx.send(Sequenced::new(animal_dog()))?;
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Animal (item #2)"
     );
 
     s1_tx.send(Sequenced::new(plant_rose()))?;
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Plant (item #2)"
     );
 
@@ -1292,19 +1323,25 @@ async fn test_ordered_merge_map_ordered_data_extraction() -> anyhow::Result<()> 
     // Act & Assert
     s1_tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Person: Alice, Age: 25"
     );
 
     s2_tx.send(Sequenced::new(animal_dog()))?;
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Animal: Dog, Legs: 4"
     );
 
     s1_tx.send(Sequenced::new(plant_rose()))?;
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Plant: Rose, Height: 15"
     );
     Ok(())
@@ -1328,21 +1365,27 @@ async fn test_filter_ordered_with_map_ordered() -> anyhow::Result<()> {
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Person: Alice"
     );
 
     tx.send(Sequenced::new(animal_dog()))?; // Filtered out
     tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Person: Bob"
     );
 
     tx.send(Sequenced::new(plant_rose()))?; // Filtered out
     tx.send(Sequenced::new(person_charlie()))?;
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Person: Charlie"
     );
 
@@ -1366,17 +1409,17 @@ async fn test_filter_ordered_with_combine_with_previous() -> anyhow::Result<()> 
     tx.send(Sequenced::new(person_bob()))?; // 30 - kept
 
     let mut stream = Box::pin(stream);
-    let item = unwrap_value(stream.next().await);
+    let item = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert!(item.previous.is_none());
     assert_eq!(item.current.get(), &person_bob());
 
     tx.send(Sequenced::new(person_charlie()))?; // 35 - kept
-    let item = unwrap_value(stream.next().await);
+    let item = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(item.previous.unwrap().get(), &person_bob());
     assert_eq!(item.current.get(), &person_charlie());
 
     tx.send(Sequenced::new(person_dave()))?; // 28 - kept
-    let item = unwrap_value(stream.next().await);
+    let item = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(item.previous.unwrap().get(), &person_charlie());
     assert_eq!(item.current.get(), &person_dave());
 
@@ -1395,14 +1438,23 @@ async fn test_ordered_merge_with_filter_ordered() -> anyhow::Result<()> {
 
     // Act & Assert
     s1_tx.send(Sequenced::new(person_alice()))?;
-    assert_eq!(unwrap_value(stream.next().await).get(), &person_alice());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        &person_alice()
+    );
 
     s2_tx.send(Sequenced::new(animal_dog()))?; // Filtered out
     s1_tx.send(Sequenced::new(plant_rose()))?;
-    assert_eq!(unwrap_value(stream.next().await).get(), &plant_rose());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        &plant_rose()
+    );
 
     s2_tx.send(Sequenced::new(person_bob()))?;
-    assert_eq!(unwrap_value(stream.next().await).get(), &person_bob());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        &person_bob()
+    );
 
     Ok(())
 }
@@ -1424,13 +1476,19 @@ async fn test_filter_ordered_with_take_latest_when() -> anyhow::Result<()> {
 
     filter_tx.send(Sequenced::new(person_alice()))?; // Trigger emission
 
-    assert_eq!(unwrap_value(stream.next().await).get(), &person_bob());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        &person_bob()
+    );
 
     source_tx.send(Sequenced::new(person_charlie()))?;
     source_tx.send(Sequenced::new(plant_rose()))?; // Filtered
 
     filter_tx.send(Sequenced::new(person_bob()))?; // Trigger emission
-    assert_eq!(unwrap_value(stream.next().await).get(), &person_charlie());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        &person_charlie()
+    );
 
     Ok(())
 }
@@ -1464,20 +1522,26 @@ async fn test_filter_ordered_map_ordered_combine_with_previous() -> anyhow::Resu
     tx.send(Sequenced::new(person_bob()))?; // 30 - kept
 
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Current: Bob, Previous: None"
     );
 
     tx.send(Sequenced::new(person_charlie()))?; // 35 - kept
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Current: Charlie, Previous: Some(\"Bob\")"
     );
 
     tx.send(Sequenced::new(person_dave()))?; // 28 - filtered
     tx.send(Sequenced::new(person_diane()))?; // 40 - kept
     assert_eq!(
-        unwrap_value(stream.next().await).await.unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
         "Current: Diane, Previous: Some(\"Charlie\")"
     );
 
@@ -1507,13 +1571,13 @@ async fn test_combine_latest_with_filter_ordered() -> anyhow::Result<()> {
     // Combined but filtered out (age <= 30)
 
     p_tx.send(Sequenced::new(person_charlie()))?; // 35
-    let result = unwrap_value(stream.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     let state = result.get().values();
     assert_eq!(state[0], person_charlie());
     assert_eq!(state[1], animal_dog());
 
     p_tx.send(Sequenced::new(person_diane()))?; // 40
-    let result = unwrap_value(stream.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     let state = result.get().values();
     assert_eq!(state[0], person_diane());
 
@@ -1549,7 +1613,7 @@ async fn test_filter_ordered_with_latest_from() -> anyhow::Result<()> {
     primary_tx.send(Sequenced::new(plant_rose()))?; // Filtered
     primary_tx.send(Sequenced::new(person_alice()))?; // Kept
 
-    let result = unwrap_value(stream.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     let combined_name = result.get();
     assert_eq!(combined_name, "Alice with animal Dog (4 legs)");
 
@@ -1557,7 +1621,7 @@ async fn test_filter_ordered_with_latest_from() -> anyhow::Result<()> {
     secondary_tx.send(Sequenced::new(person_bob()))?;
     primary_tx.send(Sequenced::new(person_charlie()))?;
 
-    let result = unwrap_value(stream.next().await);
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     let combined_name = result.get();
     assert_eq!(combined_name, "Charlie with person Bob (age 30)");
 
@@ -1602,18 +1666,18 @@ async fn test_with_latest_from_in_middle_of_chain() -> anyhow::Result<()> {
     primary_tx.send(Sequenced::new(animal_dog()))?; // Filtered
     primary_tx.send(Sequenced::new(person_bob()))?; // 30
 
-    let result = unwrap_value(stream.next().await).await;
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await;
     assert_eq!(result, StreamItem::Value("Combined age: 55".to_string())); // 30 + 25
 
     primary_tx.send(Sequenced::new(person_charlie()))?; // 35
-    let result = unwrap_value(stream.next().await).await;
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await;
     assert_eq!(result, StreamItem::Value("Combined age: 60".to_string())); // 35 + 25
 
     // Update secondary
     secondary_tx.send(Sequenced::new(person_diane()))?; // 40
     primary_tx.send(Sequenced::new(person_dave()))?; // 28
 
-    let result = unwrap_value(stream.next().await).await;
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await;
     assert_eq!(result, StreamItem::Value("Combined age: 68".to_string())); // 28 + 40
 
     Ok(())
@@ -1641,8 +1705,8 @@ async fn test_take_while_with_in_middle_of_chain() -> anyhow::Result<()> {
     source_tx.send(Sequenced::new(animal_dog()))?; // Filtered by filter_ordered
     source_tx.send(Sequenced::new(person_bob()))?; // Kept
     other_tx.send(Sequenced::new(person_charlie()))?; // Kept
-    let result1 = unwrap_value(stream.next().await);
-    let result2 = unwrap_value(stream.next().await);
+    let result1 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    let result2 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
 
     assert_eq!(result1.get(), &person_bob());
     assert_eq!(result2.get(), &person_charlie());

@@ -1,6 +1,7 @@
 // Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 use fluxion_rx::prelude::*;
 use fluxion_test_utils::{assert_no_element_emitted, helpers::unwrap_stream};
@@ -8,44 +9,48 @@ use futures::StreamExt;
 use std::time::Duration;
 use tokio::{spawn, sync::mpsc::unbounded_channel, time::sleep};
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct SensorReading {
-    timestamp: u64,
-    temperature: i32,
-}
-
-impl Ordered for SensorReading {
-    type Inner = Self;
-    fn order(&self) -> u64 {
-        self.timestamp
+mod no_coverage_helpers {
+    use super::*;
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    pub struct SensorReading {
+        pub timestamp: u64,
+        pub temperature: i32,
     }
-    fn get(&self) -> &Self::Inner {
-        self
-    }
-    fn with_order(value: Self, _order: u64) -> Self {
-        value
-    }
-}
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum DataEvent {
-    Sensor(SensorReading),
-}
-
-impl Ordered for DataEvent {
-    type Inner = Self;
-    fn order(&self) -> u64 {
-        match self {
-            DataEvent::Sensor(s) => s.timestamp,
+    impl Ordered for SensorReading {
+        type Inner = Self;
+        fn order(&self) -> u64 {
+            self.timestamp
+        }
+        fn get(&self) -> &Self::Inner {
+            self
+        }
+        fn with_order(value: Self, _order: u64) -> Self {
+            value
         }
     }
-    fn get(&self) -> &Self::Inner {
-        self
+
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    pub enum DataEvent {
+        Sensor(SensorReading),
     }
-    fn with_order(value: Self, _order: u64) -> Self {
-        value
+
+    impl Ordered for DataEvent {
+        type Inner = Self;
+        fn order(&self) -> u64 {
+            match self {
+                DataEvent::Sensor(s) => s.timestamp,
+            }
+        }
+        fn get(&self) -> &Self::Inner {
+            self
+        }
+        fn with_order(value: Self, _order: u64) -> Self {
+            value
+        }
     }
 }
+pub use no_coverage_helpers::{DataEvent, SensorReading};
 
 #[tokio::test]
 async fn test_into_fluxion_stream_basic_transformation() -> anyhow::Result<()> {

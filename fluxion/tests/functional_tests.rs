@@ -12,6 +12,7 @@ use fluxion_test_utils::test_data::{
 use fluxion_test_utils::unwrap_value;
 use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
+use tokio::sync::mpsc::unbounded_channel;
 
 static ALWAYS_TRUE: fn(&TestData) -> bool = |_| true;
 static ALWAYS_TRUE_COMBINED: fn(&CombinedState<TestData>) -> bool = |_| true;
@@ -201,7 +202,7 @@ async fn test_functional_chained_operations() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_functional_from_unbounded_receiver() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, rx) = unbounded_channel();
     let mut stream = FluxionStream::from_unbounded_receiver(rx);
 
     // Act
