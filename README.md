@@ -53,8 +53,7 @@ futures = "0.3.31"
 
 ### Basic Usage
 
-```rust
-use fluxion_rx::FluxionStream;
+```rustuse fluxion_rx::FluxionStream;
 use fluxion_test_utils::sequenced::Sequenced;
 use futures::StreamExt;
 
@@ -117,8 +116,7 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rust
-use fluxion_rx::{FluxionStream, Ordered};
+```rustuse fluxion_rx::{FluxionStream, Ordered};
 use fluxion_test_utils::sequenced::Sequenced;
 use futures::StreamExt;
 
