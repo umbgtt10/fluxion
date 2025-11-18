@@ -122,11 +122,9 @@ impl Aggregator {
     ) {
         println!("🔄 Aggregator started\n");
 
-        // Transform domain events to DataEvent (spawns transformation tasks internally)
+        // Transform domain events to DataEvent (boxing happens inside into_fluxion_stream)
         let sensor_stream = sensor_rx.into_fluxion_stream(|s| DataEvent::Sensor(s.clone()));
-
         let metrics_stream = metrics_rx.into_fluxion_stream(|m| DataEvent::Metric(m.clone()));
-
         let events_stream = events_rx.into_fluxion_stream(|e| DataEvent::SystemEvent(e.clone()));
 
         // Combine the unified DataEvent streams

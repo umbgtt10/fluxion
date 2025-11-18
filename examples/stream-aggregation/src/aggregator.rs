@@ -4,7 +4,7 @@
 
 //! Aggregator module - combines three data sources using FluxionStream
 
+mod aggregation_task;
 mod event_aggregation;
-mod task;
 
-pub use task::Aggregator;
+pub use aggregation_task::Aggregator;

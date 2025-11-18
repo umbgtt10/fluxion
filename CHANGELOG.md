@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **API**: New `UnboundedReceiverExt::into_fluxion_stream` extension trait for transforming `UnboundedReceiver<T>` to `FluxionStream<U>`
+  - Provides type erasure via boxing to enable combining receivers of different types
+  - Returns `FluxionStream<Pin<Box<dyn Stream + Send + Sync>>>` for easy composition
+  - Enables clean stream aggregation patterns (see `examples/stream-aggregation`)
+- **Testing**: Comprehensive integration tests for `UnboundedReceiverExt` (8 test cases covering transformation, ordering, combining, and high-volume scenarios)
+- **Testing**: New test helper `unwrap_stream` in `fluxion-test-utils` for async stream assertions with timeout
+- **Testing**: New test helper `assert_no_element_emitted` for verifying stream completion
+
+### Changed
+- **Examples**: Simplified `stream-aggregation` example using `into_fluxion_stream` - removed manual boxing and type annotations
+- **Testing**: Re-exported `unwrap_stream` helper from `fluxion-test-utils` crate root for easier imports
+
 ## [0.2.1] - 2025-11-18
 
 ### Fixed

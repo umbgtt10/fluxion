@@ -44,6 +44,47 @@ pub fn unwrap_value<T>(item: Option<StreamItem<T>>) -> T {
     }
 }
 
+/// Unwraps a value from a stream with a timeout for spawned tasks to process.
+///
+/// This function polls the stream with a timeout to allow spawned background tasks
+/// time to process items. This is useful when testing streams that use `tokio::spawn`
+/// internally.
+///
+/// # Panics
+///
+/// Panics if:
+/// - The stream ends (returns `None`) before an item arrives
+/// - No item is received within the 500ms timeout
+///
+/// # Example
+///
+/// ```rust
+/// use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
+/// use fluxion_test_utils::test_data::person_alice;
+/// use futures::StreamExt;
+///
+/// # async fn example() {
+/// let (tx, mut stream) = test_channel();
+/// tx.send(Sequenced::new(person_alice())).unwrap();
+///
+/// // Waits up to 500ms for the item to arrive
+/// let item = unwrap_stream(&mut stream, 500).await;
+/// # }
+/// ```
+pub async fn unwrap_stream<T, S>(stream: &mut S, timeout_ms: u64) -> StreamItem<T>
+where
+    S: futures::stream::Stream<Item = StreamItem<T>> + Unpin,
+{
+    use futures::StreamExt;
+    use tokio::time::{timeout, Duration};
+
+    match timeout(Duration::from_millis(timeout_ms), stream.next()).await {
+        Ok(Some(item)) => item,
+        Ok(None) => panic!("Expected StreamItem but stream ended"),
+        Err(_) => panic!("Timeout: No item received within 500ms"),
+    }
+}
+
 /// Creates a test channel that automatically wraps values in `StreamItem::Value`.
 ///
 /// This helper simplifies test setup by handling the `StreamItem` wrapping automatically,

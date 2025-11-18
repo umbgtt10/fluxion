@@ -112,7 +112,7 @@ pub mod test_data;
 // Re-export commonly used test utilities
 pub use error_injection::ErrorInjectingStream;
 pub use helpers::{
-    assert_no_element_emitted, test_channel, test_channel_with_errors, unwrap_value,
+    assert_no_element_emitted, test_channel, test_channel_with_errors, unwrap_stream, unwrap_value,
 };
 pub use sequenced::Sequenced;
 pub use test_data::{DataVariant, TestData};

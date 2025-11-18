@@ -1,0 +1,10 @@
+[build]
+timeout = "120s"
+
+[report]
+engine = "Llvm"
+out = ["Html", "Xml"]
+
+[run]
+fail-under = 60
+exclude-files = ["examples/*, fluxion-test-utils"]

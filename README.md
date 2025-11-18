@@ -1,8 +1,10 @@
 # Fluxion
 
 [![CI](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml/badge.svg)](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/umbgtt10/fluxion/branch/main/graph/badge.svg)](https://codecov.io/gh/umbgtt10/fluxion)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Crates.io](https://img.shields.io/crates/v/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
+[![Downloads](https://img.shields.io/crates/d/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
 [![Documentation](https://docs.rs/fluxion-rx/badge.svg)](https://docs.rs/fluxion-rx)
 
 A reactive stream processing library for Rust with temporal ordering guarantees, efficient async execution and friendly fluent API.
