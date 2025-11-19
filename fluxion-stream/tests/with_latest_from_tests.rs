@@ -215,9 +215,7 @@ async fn test_with_latest_from_large_number_of_emissions() -> anyhow::Result<()>
 
     // Send many primary emissions
     for i in 0..100 {
-        animal_tx
-            .send(Sequenced::new(animal(format!("Animal{}", i), 4)))
-            .unwrap();
+        animal_tx.send(Sequenced::new(animal(format!("Animal{}", i), 4)))?;
     }
 
     // Assert - should get 100 emissions, all with Alice

@@ -18,9 +18,9 @@ use futures::StreamExt;
 
 #[tokio::test]
 async fn test_emit_when_empty_streams() -> anyhow::Result<()> {
+    // Arrange
     let filter_fn = |_: &CombinedState<TestData>| -> bool { true };
 
-    // Arrange
     let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<TestData>>();
     drop(source_tx);
@@ -34,6 +34,7 @@ async fn test_emit_when_empty_streams() -> anyhow::Result<()> {
         next_item.is_none(),
         "Expected no items from an empty stream with `emit_when`"
     );
+
     Ok(())
 }
 
@@ -91,6 +92,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
         &person_alice(),
         "Expected Alice to be emitted when age > legs (ant)"
     );
+
     Ok(())
 }
 
@@ -132,6 +134,7 @@ async fn test_emit_when_threshold_comparison() -> anyhow::Result<()> {
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
+
     Ok(())
 }
 
@@ -179,6 +182,7 @@ async fn test_emit_when_name_length_comparison() -> anyhow::Result<()> {
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
+
     Ok(())
 }
 
@@ -239,6 +243,7 @@ async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Res
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
+
     Ok(())
 }
 
@@ -306,6 +311,7 @@ async fn test_emit_when_stateful_comparison() -> anyhow::Result<()> {
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
+
     Ok(())
 }
 
@@ -343,6 +349,7 @@ async fn test_emit_when_filter_stream_closes() -> anyhow::Result<()> {
         &person_bob(),
         "Expected source updates to continue after filter stream closes"
     );
+
     Ok(())
 }
 
@@ -420,6 +427,7 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() -> anyhow::
     // Assert: Should emit again
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(emitted_item.get(), &person_alice());
+
     Ok(())
 }
 
@@ -467,6 +475,7 @@ async fn test_emit_when_delta_based_filtering() -> anyhow::Result<()> {
         &person_diane(),
         "Expected Diane to be emitted when age difference > 10"
     );
+
     Ok(())
 }
 
@@ -509,6 +518,7 @@ async fn test_emit_when_cross_type_comparison() -> anyhow::Result<()> {
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
+
     Ok(())
 }
 
@@ -550,6 +560,7 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(emitted_item.get(), &person_alice());
+
     Ok(())
 }
 

@@ -17,6 +17,7 @@ use futures::StreamExt;
 
 #[tokio::test]
 async fn test_take_latest_when_empty_streams() -> anyhow::Result<()> {
+    // Arrange
     let filter_fn = |_: &TestData| -> bool { true };
 
     // Arrange
@@ -167,7 +168,7 @@ async fn test_take_latest_when_multiple_emissions_filter_not_satisfied() -> anyh
     assert_eq!(
         first_item.get(),
         &person_charlie(),
-        "First emitted item did not match expected"
+        "First emitted item did not match expected one"
     );
 
     // Act
@@ -210,7 +211,8 @@ async fn test_take_latest_when_filter_toggle_emissions() -> anyhow::Result<()> {
     // Act: filter false, then source -> no emit
     filter_tx.send(Sequenced::new(animal_cat()))?; // legs 4 -> false
     source_tx.send(Sequenced::new(person_bob()))?;
-    fluxion_test_utils::helpers::assert_no_element_emitted(&mut output_stream, 100).await;
+
+    assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: filter true again -> should emit the latest buffered source (Bob)
     filter_tx.send(Sequenced::new(animal_ant()))?; // true
@@ -232,6 +234,7 @@ async fn test_take_latest_when_filter_toggle_emissions() -> anyhow::Result<()> {
         &person_charlie(),
         "Should emit Charlie when filter triggers again"
     );
+
     Ok(())
 }
 
@@ -327,6 +330,7 @@ async fn test_take_latest_when_source_publishes_before_filter() -> anyhow::Resul
         &person_bob(),
         "Should emit buffered Bob when filter becomes true again"
     );
+
     Ok(())
 }
 
@@ -382,6 +386,7 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() -> a
         &person_alice(),
         "Should emit Alice immediately when filter is true"
     );
+
     Ok(())
 }
 
@@ -405,9 +410,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() -> anyhow::Resul
 
     // Act: Publish a large number of source events while filter is false
     for i in 0u32..10000u32 {
-        source_tx
-            .send(Sequenced::new(person(format!("Person{i}"), i)))
-            .unwrap();
+        source_tx.send(Sequenced::new(person(format!("Person{i}"), i)))?;
     }
 
     // Assert: No emissions yet
@@ -446,6 +449,7 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() -> anyhow::Resul
 
 #[tokio::test]
 async fn test_take_latest_when_boundary_empty_string_zero_values() -> anyhow::Result<()> {
+    // Arrange
     let filter_fn: fn(&TestData) -> bool = |_: &TestData| true;
 
     // Arrange: Test boundary values (empty strings, zero numeric values)

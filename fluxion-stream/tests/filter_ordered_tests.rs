@@ -67,6 +67,7 @@ async fn test_filter_ordered_empty_stream() -> anyhow::Result<()> {
 
     // Assert
     assert!(stream.next().await.is_none());
+
     Ok(())
 }
 
@@ -84,6 +85,7 @@ async fn test_filter_ordered_all_filtered_out() -> anyhow::Result<()> {
 
     // Assert
     assert!(stream.next().await.is_none());
+
     Ok(())
 }
 
@@ -111,6 +113,7 @@ async fn test_filter_ordered_none_filtered() -> anyhow::Result<()> {
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
         &plant_rose()
     );
+
     Ok(())
 }
 
@@ -144,6 +147,7 @@ async fn test_filter_ordered_preserves_ordering() -> anyhow::Result<()> {
     // Verify sequence numbers are in order
     assert!(r1.order() < r2.order());
     assert!(r2.order() < r3.order());
+
     Ok(())
 }
 
@@ -167,6 +171,7 @@ async fn test_filter_ordered_multiple_types() -> anyhow::Result<()> {
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.get(), &animal_spider());
+
     Ok(())
 }
 
@@ -200,6 +205,7 @@ async fn test_filter_ordered_complex_predicate() -> anyhow::Result<()> {
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
         &person_diane()
     );
+
     Ok(())
 }
 
@@ -218,6 +224,7 @@ async fn test_filter_ordered_single_item() -> anyhow::Result<()> {
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.get(), &person_alice());
     assert!(stream.next().await.is_none());
+
     Ok(())
 }
 
@@ -250,6 +257,7 @@ async fn test_filter_ordered_with_pattern_matching() -> anyhow::Result<()> {
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
         &person_diane()
     );
+
     Ok(())
 }
 
@@ -284,5 +292,6 @@ async fn test_filter_ordered_alternating_pattern() -> anyhow::Result<()> {
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
         &person_charlie()
     );
+
     Ok(())
 }

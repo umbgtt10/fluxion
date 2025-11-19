@@ -11,17 +11,19 @@ use futures::StreamExt;
 
 #[tokio::test]
 async fn test_take_while_with_propagates_source_error() -> anyhow::Result<()> {
+    // Arrange
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = source_stream.take_while_with(filter_stream, |f| *f > 0);
 
-    // Send filter value first
+    // Act: Send filter value first
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 1)))?;
 
     // Send source value
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 2)))?;
 
+    // Assert
     let result1 = result.next().await.unwrap();
     assert!(matches!(result1, StreamItem::Value(_)));
 
@@ -43,17 +45,19 @@ async fn test_take_while_with_propagates_source_error() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_take_while_with_propagates_filter_error() -> anyhow::Result<()> {
+    // Arrange
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = source_stream.take_while_with(filter_stream, |f| *f > 0);
 
-    // Send filter value
+    // Act: Send filter value
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 1)))?;
 
     // Send source value
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 2)))?;
 
+    // Assert
     let result1 = result.next().await.unwrap();
     assert!(matches!(result1, StreamItem::Value(_)));
 
@@ -74,17 +78,19 @@ async fn test_take_while_with_propagates_filter_error() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_take_while_with_predicate_after_error() -> anyhow::Result<()> {
+    // Arrange
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = source_stream.take_while_with(filter_stream, |f| *f > 0);
 
-    // Send filter value
+    // Act: Send filter value
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 1)))?;
 
     // Send source value
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 2)))?;
 
+    // Assert
     let result1 = result.next().await.unwrap();
     assert!(matches!(result1, StreamItem::Value(_)));
 
@@ -103,12 +109,13 @@ async fn test_take_while_with_predicate_after_error() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_take_while_with_error_at_start() -> anyhow::Result<()> {
+    // Arrange
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = source_stream.take_while_with(filter_stream, |f| *f > 0);
 
-    // Send filter value
+    // Act: Send filter value
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 1)))?;
 
     // Error immediately in source
@@ -126,17 +133,19 @@ async fn test_take_while_with_error_at_start() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_take_while_with_stops_on_false_despite_errors() -> anyhow::Result<()> {
+    // Arrange
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = source_stream.take_while_with(filter_stream, |f| *f > 0);
 
-    // Send filter value that passes
+    // Act: Send filter value that passes
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 1)))?;
 
     // Send source value
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 2)))?;
 
+    // Assert
     let result1 = result.next().await.unwrap();
     assert!(matches!(result1, StreamItem::Value(_)));
 

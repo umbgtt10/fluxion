@@ -18,11 +18,11 @@ use fluxion_test_utils::{
 use futures::{Stream, StreamExt};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::UnboundedSender;
 
 fn send_variant(
     variant: &DataVariant,
-    senders: &[mpsc::UnboundedSender<Sequenced<TestData>>],
+    senders: &[UnboundedSender<Sequenced<TestData>>],
 ) -> anyhow::Result<()> {
     match variant {
         DataVariant::Person => senders[0].send(Sequenced::new(person_alice()))?,
@@ -91,6 +91,7 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() -> a
 
     // Assert
     assert_no_element_emitted(&mut combined_stream, 100).await;
+
     Ok(())
 }
 
@@ -118,6 +119,7 @@ async fn test_combine_latest_stream_closes_before_publish_no_output() -> anyhow:
 
     let next = combined_stream.next().await;
     assert!(next.is_none(), "Expected stream to end without emissions");
+
     Ok(())
 }
 
@@ -145,14 +147,17 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues(
     drop(plant_tx);
 
     person_tx.send(Sequenced::new(person_bob()))?;
+
     let state = unwrap_stream(&mut combined_stream, 500).await.unwrap();
     let actual: Vec<TestData> = state.get().values().clone();
     assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
 
     animal_tx.send(Sequenced::new(animal_spider()))?;
+
     let state = unwrap_stream(&mut combined_stream, 500).await.unwrap();
     let actual: Vec<TestData> = state.get().values().clone();
     assert_eq!(actual, vec![person_bob(), animal_spider(), plant_rose()]);
+
     Ok(())
 }
 
@@ -207,7 +212,6 @@ async fn combine_latest_template_test(
     send_variant(&order3, &senders)?;
 
     // Assert
-
     let state = unwrap_stream(&mut combined_stream, 500).await.unwrap();
     let actual: Vec<TestData> = state.get().values().clone();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
@@ -233,7 +237,6 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() -> anyho
     plant_tx.send(Sequenced::new(plant_rose()))?;
 
     // Assert
-
     expect_next_combined_equals(
         &mut combined_stream,
         &[person_alice(), animal_dog(), plant_rose()],
@@ -269,6 +272,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() -> anyho
         &[person_bob(), animal_spider(), plant_sunflower()],
     )
     .await;
+
     Ok(())
 }
 

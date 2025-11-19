@@ -44,6 +44,7 @@ async fn test_map_ordered_basic_transformation() -> anyhow::Result<()> {
         result,
         "Previous: Some(\"Person[name=Bob, age=30]\"), Current: Person[name=Charlie, age=35]"
     );
+
     Ok(())
 }
 
@@ -55,6 +56,17 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
         previous_age: Option<u32>,
         current_age: u32,
         age_increased: bool,
+    }
+
+    impl AgeComparison {
+        fn new(previous_age: Option<u32>, current_age: u32) -> Self {
+            let age_increased = previous_age.is_some_and(|prev| current_age > prev);
+            AgeComparison {
+                previous_age,
+                current_age,
+                age_increased,
+            }
+        }
     }
 
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
@@ -70,58 +82,26 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
                 TestData::Person(p) => Some(p.age),
                 _ => None,
             });
-        let age_increased = previous_age.is_some_and(|prev| current_age > prev);
-        AgeComparison {
-            previous_age,
-            current_age,
-            age_increased,
-        }
+        AgeComparison::new(previous_age, current_age)
     });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(
-        result,
-        AgeComparison {
-            previous_age: None,
-            current_age: 25,
-            age_increased: false,
-        }
-    );
+    assert_eq!(result, AgeComparison::new(None, 25));
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(
-        result,
-        AgeComparison {
-            previous_age: Some(25),
-            current_age: 30,
-            age_increased: true,
-        }
-    );
+    assert_eq!(result, AgeComparison::new(Some(25), 30));
 
     tx.send(Sequenced::new(person_alice()))?; // Age 25 again
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(
-        result,
-        AgeComparison {
-            previous_age: Some(30),
-            current_age: 25,
-            age_increased: false,
-        }
-    );
+    assert_eq!(result, AgeComparison::new(Some(30), 25));
 
     tx.send(Sequenced::new(person_charlie()))?; // Age 35
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(
-        result,
-        AgeComparison {
-            previous_age: Some(25),
-            current_age: 35,
-            age_increased: true,
-        }
-    );
+    assert_eq!(result, AgeComparison::new(Some(25), 35));
+
     Ok(())
 }
 
@@ -162,6 +142,7 @@ async fn test_map_ordered_extract_age_difference() -> anyhow::Result<()> {
     tx.send(Sequenced::new(person_charlie()))?; // Age 35
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result, 7); // 35 - 28 = 7
+
     Ok(())
 }
 
@@ -177,6 +158,7 @@ async fn test_map_ordered_single_value() -> anyhow::Result<()> {
     tx.send(Sequenced::new(person_alice()))?;
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result, "Person[name=Alice, age=25]");
+
     Ok(())
 }
 
@@ -193,6 +175,7 @@ async fn test_map_ordered_empty_stream() -> anyhow::Result<()> {
 
     // Assert
     assert!(stream.next().await.is_none());
+
     Ok(())
 }
 
@@ -231,6 +214,7 @@ async fn test_map_ordered_preserves_ordering() -> anyhow::Result<()> {
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         "Dave"
     );
+
     Ok(())
 }
 
@@ -271,14 +255,24 @@ async fn test_map_ordered_multiple_transformations() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<TestData>>();
-
     #[derive(Debug, PartialEq)]
     struct PersonSummary {
         name: String,
         age_category: &'static str,
         changed_from_previous: bool,
     }
+
+    impl PersonSummary {
+        fn new(name: String, age_category: &'static str, changed_from_previous: bool) -> Self {
+            PersonSummary {
+                name,
+                age_category,
+                changed_from_previous,
+            }
+        }
+    }
+
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
         let current = match &stream_item.current.get() {
@@ -301,11 +295,7 @@ async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
             }
         });
 
-        PersonSummary {
-            name: current.name.clone(),
-            age_category,
-            changed_from_previous,
-        }
+        PersonSummary::new(current.name.clone(), age_category, changed_from_previous)
     });
 
     // Act & Assert
@@ -313,34 +303,23 @@ async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(
         result,
-        PersonSummary {
-            name: String::from("Alice"),
-            age_category: "young adult",
-            changed_from_previous: true,
-        }
+        PersonSummary::new(String::from("Alice"), "young adult", true)
     );
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(
         result,
-        PersonSummary {
-            name: String::from("Bob"),
-            age_category: "adult",
-            changed_from_previous: true,
-        }
+        PersonSummary::new(String::from("Bob"), "adult", true)
     );
 
     tx.send(Sequenced::new(person_bob()))?; // Same person
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(
         result,
-        PersonSummary {
-            name: String::from("Bob"),
-            age_category: "adult",
-            changed_from_previous: false,
-        }
+        PersonSummary::new(String::from("Bob"), "adult", false)
     );
+
     Ok(())
 }
 
@@ -378,5 +357,6 @@ async fn test_map_ordered_boolean_logic() -> anyhow::Result<()> {
 
     tx.send(Sequenced::new(person_alice()))?; // Age 25
     assert!(!unwrap_value(Some(unwrap_stream(&mut stream, 500).await))); // 25 < 28
+
     Ok(())
 }

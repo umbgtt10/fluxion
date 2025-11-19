@@ -117,6 +117,7 @@ async fn test_take_while_always_true() -> anyhow::Result<()> {
         .get()
         .clone();
     assert_eq!(item, person_alice());
+
     Ok(())
 }
 

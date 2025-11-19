@@ -24,6 +24,7 @@ async fn test_combine_with_previous_no_previous_value_emits() -> anyhow::Result<
         (result.previous.map(|s| s.value), result.current.value),
         (None, person_alice())
     );
+
     Ok(())
 }
 
@@ -58,6 +59,7 @@ async fn test_combine_with_previous_single_previous_value() -> anyhow::Result<()
         ),
         (Some(person_alice()), person_bob())
     );
+
     Ok(())
 }
 
@@ -105,6 +107,7 @@ async fn test_combine_with_previous_multiple_values() -> anyhow::Result<()> {
         ),
         (Some(person_bob()), person_charlie())
     );
+
     Ok(())
 }
 
@@ -146,6 +149,7 @@ async fn test_combine_with_previous_stream_ends() -> anyhow::Result<()> {
     // Assert
     let third_result = stream.next().await;
     assert!(third_result.is_none());
+
     Ok(())
 }
 
@@ -180,6 +184,7 @@ async fn test_combine_with_previous_for_types() -> anyhow::Result<()> {
         ),
         (Some(person_alice()), person_bob())
     );
+
     Ok(())
 }
 
@@ -227,6 +232,7 @@ async fn test_combine_with_previous_high_volume_sequential() -> anyhow::Result<(
     // Last pair should have a previous
     assert!(last_prev.is_some());
     assert!(last_curr.is_some());
+
     Ok(())
 }
 
@@ -265,6 +271,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() -> anyho
         (result3.previous.map(|s| s.value), result3.current.value),
         (Some(person(String::new(), 0)), person_alice())
     );
+
     Ok(())
 }
 
@@ -320,6 +327,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() -> any
             .await
             .expect("Concurrent stream task should complete successfully");
     }
+
     Ok(())
 }
 
@@ -342,5 +350,6 @@ async fn test_combine_with_previous_single_value_stream() -> anyhow::Result<()> 
 
     // Assert: Stream ends
     assert!(stream.next().await.is_none());
+
     Ok(())
 }
