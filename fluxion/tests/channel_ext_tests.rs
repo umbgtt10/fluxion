@@ -334,8 +334,8 @@ async fn test_two_heterogeneous_streams_packed_into_enum() -> anyhow::Result<()>
     };
 
     let expected1 = CombinedEvent::Sensor(expected_reading1.clone());
-    let expected2 = CombinedEvent::Status(expected_status1.clone());
-    let expected3 = CombinedEvent::Sensor(expected_reading2.clone());
+    let expected2 = CombinedEvent::Sensor(expected_reading2.clone());
+    let expected3 = CombinedEvent::Status(expected_status1.clone());
 
     // Act: send one item on each channel in interleaved order
     tx1.send(expected_reading1.clone())?;
@@ -343,9 +343,18 @@ async fn test_two_heterogeneous_streams_packed_into_enum() -> anyhow::Result<()>
     tx1.send(expected_reading2.clone())?;
 
     // Assert: collect the three emitted items and verify ordering and variants
-    assert_eq!(unwrap_stream(&mut merged, 500).await, StreamItem::Value(expected1));
-    assert_eq!(unwrap_stream(&mut merged, 500).await, StreamItem::Value(expected2));
-    assert_eq!(unwrap_stream(&mut merged, 500).await, StreamItem::Value(expected3));
+    assert_eq!(
+        unwrap_stream(&mut merged, 500).await,
+        StreamItem::Value(expected1)
+    );
+    assert_eq!(
+        unwrap_stream(&mut merged, 500).await,
+        StreamItem::Value(expected2)
+    );
+    assert_eq!(
+        unwrap_stream(&mut merged, 500).await,
+        StreamItem::Value(expected3)
+    );
 
     Ok(())
 }

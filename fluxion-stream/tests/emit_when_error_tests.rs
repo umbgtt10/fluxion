@@ -30,11 +30,17 @@ async fn test_emit_when_propagates_source_error() -> anyhow::Result<()> {
     )))?;
 
     // Assert
-    assert!(matches!(unwrap_stream(&mut result, 100).await, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Continue with value
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(30, 3)))?;
-    assert!(matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(source_tx);
     drop(filter_tx);
@@ -57,7 +63,10 @@ async fn test_emit_when_propagates_filter_error() -> anyhow::Result<()> {
     // Send source value
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(10, 2)))?;
 
-    assert!(matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     // Send error in filter
     filter_tx.send(StreamItem::Error(FluxionError::stream_error(
@@ -65,12 +74,18 @@ async fn test_emit_when_propagates_filter_error() -> anyhow::Result<()> {
     )))?;
 
     // Assert
-    assert!(matches!(unwrap_stream(&mut result, 100).await, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
 
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(15, 4)))?;
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(20, 3)))?;
 
-    assert!(matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(source_tx);
     drop(filter_tx);
@@ -96,13 +111,19 @@ async fn test_emit_when_predicate_continues_after_error() -> anyhow::Result<()> 
 
     // Send error in source
     source_tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    assert!(matches!(unwrap_stream(&mut result, 100).await, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Send value that passes predicate
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(25, 4)))?;
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(30, 5)))?;
 
-    assert!(matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(source_tx);
     drop(filter_tx);
@@ -122,7 +143,10 @@ async fn test_emit_when_both_streams_have_errors() -> anyhow::Result<()> {
     // Act & Assert: Send initial values
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(5, 1)))?;
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(10, 2)))?;
-    assert!(matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     // Error from source
     source_tx.send(StreamItem::Error(FluxionError::stream_error(
@@ -157,12 +181,18 @@ async fn test_emit_when_error_before_filter_ready() -> anyhow::Result<()> {
 
     // Act & Assert: Error immediately before filter has value
     source_tx.send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
-    assert!(matches!(unwrap_stream(&mut result, 100).await, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Continue
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(5, 2)))?;
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(10, 1)))?;
-    assert!(matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(source_tx);
     drop(filter_tx);

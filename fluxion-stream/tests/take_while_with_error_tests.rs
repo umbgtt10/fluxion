@@ -138,7 +138,10 @@ async fn test_take_while_with_stops_on_false_despite_errors() -> anyhow::Result<
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 1)))?;
     assert_no_element_emitted(&mut result, 100).await;
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 2)))?;
-    assert!(matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     // Send filter value that fails predicate (stops stream)
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(0, 3)))?;
