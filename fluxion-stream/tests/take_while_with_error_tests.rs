@@ -6,7 +6,9 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::TakeWhileExt;
-use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
+use fluxion_test_utils::{
+    assert_no_element_emitted, sequenced::Sequenced, test_channel_with_errors, unwrap_stream,
+};
 use futures::StreamExt;
 
 #[tokio::test]
@@ -15,17 +17,16 @@ async fn test_take_while_with_propagates_source_error() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut result = source_stream.take_while_with(filter_stream, |f| *f > 0);
+    let mut filtered_stream = source_stream.take_while_with(filter_stream, |f| *f > 0);
 
-    // Act: Send filter value first
+    // Act & Assert: Send filter value first then source value
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 1)))?;
-
-    // Send source value
+    assert_no_element_emitted(&mut filtered_stream, 100).await;
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 2)))?;
-
-    // Assert
-    let result1 = result.next().await.unwrap();
-    assert!(matches!(result1, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut filtered_stream, 100).await,
+        StreamItem::Value(_)
+    ));
 
     // Send error in source
     source_tx.send(StreamItem::Error(FluxionError::stream_error(
@@ -36,9 +37,9 @@ async fn test_take_while_with_propagates_source_error() -> anyhow::Result<()> {
     drop(source_tx);
     drop(filter_tx);
 
-    // take_while_with terminates on error
-    let result2 = result.next().await;
-    assert!(result2.is_none(), "Stream should terminate on error");
+    // stream terminates on error
+    let element = filtered_stream.next().await;
+    assert!(element.is_none(), "Stream should terminate on error");
 
     Ok(())
 }
@@ -49,17 +50,16 @@ async fn test_take_while_with_propagates_filter_error() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut result = source_stream.take_while_with(filter_stream, |f| *f > 0);
+    let mut filtered_stream = source_stream.take_while_with(filter_stream, |f| *f > 0);
 
-    // Act: Send filter value
+    // Act & Assert: Send filter value
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 1)))?;
-
-    // Send source value
+    assert_no_element_emitted(&mut filtered_stream, 100).await;
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 2)))?;
-
-    // Assert
-    let result1 = result.next().await.unwrap();
-    assert!(matches!(result1, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut filtered_stream, 100).await,
+        StreamItem::Value(_)
+    ));
 
     // Send error in filter
     filter_tx.send(StreamItem::Error(FluxionError::stream_error(
@@ -69,9 +69,9 @@ async fn test_take_while_with_propagates_filter_error() -> anyhow::Result<()> {
     drop(source_tx);
     drop(filter_tx);
 
-    // Stream may terminate
-    let result2 = result.next().await;
-    assert!(result2.is_none() || matches!(result2, Some(StreamItem::Error(_))));
+    // stream terminates on error
+    let element = filtered_stream.next().await;
+    assert!(element.is_none(), "Stream should terminate on error");
 
     Ok(())
 }
@@ -84,15 +84,11 @@ async fn test_take_while_with_predicate_after_error() -> anyhow::Result<()> {
 
     let mut result = source_stream.take_while_with(filter_stream, |f| *f > 0);
 
-    // Act: Send filter value
+    // Act & Assert: Send filter value
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 1)))?;
-
-    // Send source value
+    assert_no_element_emitted(&mut result, 100).await;
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 2)))?;
-
-    // Assert
-    let result1 = result.next().await.unwrap();
-    assert!(matches!(result1, StreamItem::Value(_)));
+    assert!(matches!(result.next().await.unwrap(), StreamItem::Value(_)));
 
     // Send error in source
     source_tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
@@ -101,8 +97,8 @@ async fn test_take_while_with_predicate_after_error() -> anyhow::Result<()> {
     drop(filter_tx);
 
     // Stream terminates on error
-    let result2 = result.next().await;
-    assert!(result2.is_none());
+    let element = result.next().await;
+    assert!(element.is_none(), "Stream should terminate on error");
 
     Ok(())
 }
@@ -115,18 +111,17 @@ async fn test_take_while_with_error_at_start() -> anyhow::Result<()> {
 
     let mut result = source_stream.take_while_with(filter_stream, |f| *f > 0);
 
-    // Act: Send filter value
+    // Act & Assert: Send filter value
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 1)))?;
-
-    // Error immediately in source
+    assert_no_element_emitted(&mut result, 100).await;
     source_tx.send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
 
     drop(source_tx);
     drop(filter_tx);
 
     // Stream terminates on error
-    let result1 = result.next().await;
-    assert!(result1.is_none());
+    let element = result.next().await;
+    assert!(element.is_none(), "Stream should terminate on error");
 
     Ok(())
 }
@@ -139,15 +134,11 @@ async fn test_take_while_with_stops_on_false_despite_errors() -> anyhow::Result<
 
     let mut result = source_stream.take_while_with(filter_stream, |f| *f > 0);
 
-    // Act: Send filter value that passes
+    // Act & Assert: Send filter value that passes
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 1)))?;
-
-    // Send source value
+    assert_no_element_emitted(&mut result, 100).await;
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 2)))?;
-
-    // Assert
-    let result1 = result.next().await.unwrap();
-    assert!(matches!(result1, StreamItem::Value(_)));
+    assert!(matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(_)));
 
     // Send filter value that fails predicate (stops stream)
     filter_tx.send(StreamItem::Value(Sequenced::with_sequence(0, 3)))?;
@@ -156,8 +147,8 @@ async fn test_take_while_with_stops_on_false_despite_errors() -> anyhow::Result<
     drop(filter_tx);
 
     // Stream should terminate when predicate returns false
-    let result2 = result.next().await;
-    assert!(result2.is_none(), "Stream should stop on false predicate");
+    let element = result.next().await;
+    assert!(element.is_none(), "Stream should stop on false predicate");
 
     Ok(())
 }

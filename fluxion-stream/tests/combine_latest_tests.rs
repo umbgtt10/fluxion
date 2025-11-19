@@ -67,6 +67,7 @@ async fn test_combine_latest_empty_streams() -> anyhow::Result<()> {
         next_item.is_none(),
         "Expected no items from an empty combined stream"
     );
+
     Ok(())
 }
 

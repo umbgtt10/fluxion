@@ -29,6 +29,7 @@ async fn test_filter_ordered_basic_predicate() -> anyhow::Result<()> {
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.get(), &person_bob()); // Animal filtered out
+
     Ok(())
 }
 
@@ -53,6 +54,7 @@ async fn test_filter_ordered_age_threshold() -> anyhow::Result<()> {
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.get(), &person_diane());
+
     Ok(())
 }
 

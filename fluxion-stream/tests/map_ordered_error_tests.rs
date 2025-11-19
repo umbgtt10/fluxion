@@ -6,8 +6,7 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::FluxionStream;
-use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
-use futures::StreamExt;
+use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors, unwrap_stream};
 
 #[tokio::test]
 async fn test_map_ordered_propagates_errors() -> anyhow::Result<()> {
@@ -19,23 +18,25 @@ async fn test_map_ordered_propagates_errors() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|x| format!("Current: {}", x.current.get()));
 
-    // Send value
+    // Act & Assert: Send value
     tx.send(StreamItem::Value(Sequenced::new(1)))?;
-
-    let item1 = result.next().await.unwrap();
-    assert!(matches!(item1, StreamItem::Value(ref v) if v == "Current: 1"));
+    assert!(
+        matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref v) if v == "Current: 1")
+    );
 
     // Send error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-
-    let item2 = result.next().await.unwrap();
-    assert!(matches!(item2, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Continue
     tx.send(StreamItem::Value(Sequenced::new(2)))?;
-
-    let item3 = result.next().await.unwrap();
-    assert!(matches!(item3, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(tx);
 
@@ -52,28 +53,32 @@ async fn test_map_ordered_transformation_after_error() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|x| x.current.get() * 2);
 
-    // Send values
+    // Act & AssertSend values
     tx.send(StreamItem::Value(Sequenced::with_sequence(10, 1)))?;
-
-    let item1 = result.next().await.unwrap();
-    assert!(matches!(item1, StreamItem::Value(20)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(20)
+    ));
 
     tx.send(StreamItem::Value(Sequenced::with_sequence(20, 2)))?;
-
-    let item2 = result.next().await.unwrap();
-    assert!(matches!(item2, StreamItem::Value(40)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(40)
+    ));
 
     // Send error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-
-    let item3 = result.next().await.unwrap();
-    assert!(matches!(item3, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Continue after error
     tx.send(StreamItem::Value(Sequenced::with_sequence(40, 4)))?;
-
-    let item4 = result.next().await.unwrap();
-    assert!(matches!(item4, StreamItem::Value(80)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(80)
+    ));
 
     drop(tx);
 
@@ -82,29 +87,28 @@ async fn test_map_ordered_transformation_after_error() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_map_ordered_preserves_error_passthrough() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = FluxionStream::new(stream)
         .combine_with_previous()
         .map_ordered(|x| x.current.get() * 100);
 
-    // Error immediately
+    // Act & Assert: Error immediately
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
 
-    let first = result.next().await.unwrap();
-    assert!(
-        matches!(first, StreamItem::Error(_)),
-        "Error should pass through"
-    );
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ),);
 
     // Continue with value
     tx.send(StreamItem::Value(Sequenced::with_sequence(2, 2)))?;
 
-    let second = result.next().await.unwrap();
-    assert!(
-        matches!(second, StreamItem::Value(200)),
-        "Should have mapped value after error"
-    );
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(200)
+    ));
 
     drop(tx);
 
@@ -120,22 +124,26 @@ async fn test_map_ordered_chain_after_error() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|x| x.current.get() * 2);
 
-    // Send value
+    // Act & Assert: Send value
     tx.send(StreamItem::Value(Sequenced::with_sequence(5, 1)))?;
-    let item1 = result.next().await.unwrap();
-    assert!(matches!(item1, StreamItem::Value(10)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(10)
+    ));
 
-    // Send error
+    // Act & Assert: Send error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-
-    let item2 = result.next().await.unwrap();
-    assert!(matches!(item2, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Continue
     tx.send(StreamItem::Value(Sequenced::with_sequence(15, 3)))?;
-
-    let item3 = result.next().await.unwrap();
-    assert!(matches!(item3, StreamItem::Value(30)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(30)
+    ));
 
     drop(tx);
 

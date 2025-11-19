@@ -6,8 +6,9 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::TakeLatestWhenExt;
-use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
-use futures::StreamExt;
+use fluxion_test_utils::{
+    assert_no_element_emitted, sequenced::Sequenced, test_channel_with_errors, unwrap_stream,
+};
 
 #[tokio::test]
 async fn test_take_latest_when_propagates_source_error() -> anyhow::Result<()> {
@@ -15,32 +16,35 @@ async fn test_take_latest_when_propagates_source_error() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut result = source_stream.take_latest_when(trigger_stream, |_| true);
+    let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |_| true);
 
-    // Send source values
+    // Act & Assert: Send source values
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))?;
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(2, 2)))?;
 
     // Send trigger
     trigger_tx.send(StreamItem::Value(Sequenced::with_sequence(10, 4)))?;
-
-    let result1 = result.next().await.unwrap();
-    assert!(matches!(result1, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut triggered_stream, 500).await,
+        StreamItem::Value(_)
+    ));
 
     // Send error in source
     source_tx.send(StreamItem::Error(FluxionError::stream_error(
         "Source error",
     )))?;
-
-    let result2 = result.next().await.unwrap();
-    assert!(matches!(result2, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut triggered_stream, 500).await,
+        StreamItem::Error(_)
+    ));
 
     // Continue with values
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(3, 3)))?;
     trigger_tx.send(StreamItem::Value(Sequenced::with_sequence(20, 5)))?;
-
-    let result3 = result.next().await.unwrap();
-    assert!(matches!(result3, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut triggered_stream, 500).await,
+        StreamItem::Value(_)
+    ));
 
     drop(source_tx);
     drop(trigger_tx);
@@ -54,31 +58,36 @@ async fn test_take_latest_when_propagates_trigger_error() -> anyhow::Result<()> 
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut result = source_stream.take_latest_when(trigger_stream, |_| true);
+    let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |_| true);
 
     // Send source values
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))?;
+    assert_no_element_emitted(&mut triggered_stream, 500).await;
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(2, 2)))?;
+    assert_no_element_emitted(&mut triggered_stream, 500).await;
 
     // Send trigger
     trigger_tx.send(StreamItem::Value(Sequenced::with_sequence(10, 3)))?;
-
-    let result1 = result.next().await.unwrap();
-    assert!(matches!(result1, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut triggered_stream, 500).await,
+        StreamItem::Value(_)
+    ));
 
     // Send error in trigger
     trigger_tx.send(StreamItem::Error(FluxionError::stream_error(
         "Trigger error",
     )))?;
-
-    let result2 = result.next().await.unwrap();
-    assert!(matches!(result2, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut triggered_stream, 500).await,
+        StreamItem::Error(_)
+    ));
 
     // Continue
     trigger_tx.send(StreamItem::Value(Sequenced::with_sequence(30, 5)))?;
-
-    let result3 = result.next().await.unwrap();
-    assert!(matches!(result3, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut triggered_stream, 500).await,
+        StreamItem::Value(_)
+    ));
 
     drop(source_tx);
     drop(trigger_tx);
@@ -93,24 +102,29 @@ async fn test_take_latest_when_filter_predicate_after_error() -> anyhow::Result<
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Only emit when trigger is > 50
-    let mut result = source_stream.take_latest_when(trigger_stream, |t| *t > 50);
+    let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |t| *t > 50);
 
     // Send source values
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))?;
+    assert_no_element_emitted(&mut triggered_stream, 500).await;
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(2, 2)))?;
+    assert_no_element_emitted(&mut triggered_stream, 500).await;
 
     // Send error in source
     source_tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-
-    let result1 = result.next().await.unwrap();
-    assert!(matches!(result1, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut triggered_stream, 500).await,
+        StreamItem::Error(_)
+    ));
 
     // Send value and trigger that passes filter
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(3, 3)))?;
     trigger_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 5)))?;
 
-    let result2 = result.next().await.unwrap();
-    assert!(matches!(result2, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut triggered_stream, 500).await,
+        StreamItem::Value(_)
+    ));
 
     drop(source_tx);
     drop(trigger_tx);
@@ -120,33 +134,38 @@ async fn test_take_latest_when_filter_predicate_after_error() -> anyhow::Result<
 
 #[tokio::test]
 async fn test_take_latest_when_both_streams_have_errors() -> anyhow::Result<()> {
+    // Arrange
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut result = source_stream.take_latest_when(trigger_stream, |_| true);
+    let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |_| true);
 
     // Send initial values
     source_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))?;
+    assert_no_element_emitted(&mut triggered_stream, 500).await;
     trigger_tx.send(StreamItem::Value(Sequenced::with_sequence(10, 2)))?;
-
-    let result1 = result.next().await.unwrap();
-    assert!(matches!(result1, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut triggered_stream, 500).await,
+        StreamItem::Value(_)
+    ));
 
     // Error from source
     source_tx.send(StreamItem::Error(FluxionError::stream_error(
         "Source error",
     )))?;
-
-    let result2 = result.next().await.unwrap();
-    assert!(matches!(result2, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut triggered_stream, 500).await,
+        StreamItem::Error(_)
+    ));
 
     // Error from trigger
     trigger_tx.send(StreamItem::Error(FluxionError::stream_error(
         "Trigger error",
     )))?;
-
-    let result3 = result.next().await.unwrap();
-    assert!(matches!(result3, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut triggered_stream, 500).await,
+        StreamItem::Error(_)
+    ));
 
     drop(source_tx);
     drop(trigger_tx);

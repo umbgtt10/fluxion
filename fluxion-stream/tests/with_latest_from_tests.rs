@@ -2,16 +2,16 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::Ordered;
+use fluxion_core::{Ordered, OrderedWrapper, StreamItem};
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_stream::CombinedState;
-use fluxion_test_utils::assert_no_element_emitted;
 use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     animal, animal_cat, animal_dog, person_alice, person_bob, TestData,
 };
+use fluxion_test_utils::{assert_no_element_emitted, unwrap_value};
 use fluxion_test_utils::{helpers::unwrap_stream, test_channel};
-use futures::{FutureExt, StreamExt};
+use futures::{FutureExt, Stream, StreamExt};
 
 // Identity selector for testing - returns the CombinedState as-is
 fn result_selector(state: &CombinedState<TestData>) -> CombinedState<TestData> {
@@ -31,24 +31,18 @@ async fn test_with_latest_from_basic() -> anyhow::Result<()> {
     animal_tx.send(Sequenced::new(animal_cat()))?;
 
     // Assert CombinedState order: [primary (index 0), secondary (index 1)]
-    let result = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    let combined_state = result.get();
-    assert_eq!(combined_state.values()[0], animal_cat());
-    assert_eq!(combined_state.values()[1], person_alice());
+    let element = extract_element(&mut combined_stream).await;
+    assert_eq!(element.values()[0], animal_cat());
+    assert_eq!(element.values()[1], person_alice());
 
     // Act - primary emits again
     animal_tx.send(Sequenced::new(animal_dog()))?;
-
-    // Assert - should emit with latest secondary (still Alice)
-    let result = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    let combined_state = result.get();
-    assert_eq!(combined_state.values()[0], animal_dog());
-    assert_eq!(combined_state.values()[1], person_alice());
+    let element = extract_element(&mut combined_stream).await;
+    assert_eq!(element.values()[0], animal_dog());
+    assert_eq!(element.values()[1], person_alice());
 
     // Act - secondary emits Bob (should NOT emit because only primary triggers emissions)
     person_tx.send(Sequenced::new(person_bob()))?;
-
-    // Assert - should not have received anything
     assert!(
         combined_stream.next().now_or_never().is_none(),
         "Should not emit when only secondary stream emits"
@@ -72,17 +66,17 @@ async fn test_with_latest_from_ordering_preserved() -> anyhow::Result<()> {
     secondary_tx.send(Sequenced::new(person_bob()))?; // should NOT emit
 
     // Assert - should get two emissions in order
-    let result1 = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    assert_eq!(result1.get().values()[0], animal_cat());
-    assert_eq!(result1.get().values()[1], person_alice());
+    let element1 = extract_element(&mut combined_stream).await;
+    assert_eq!(element1.values()[0], animal_cat());
+    assert_eq!(element1.values()[1], person_alice());
 
-    let result2 = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    assert_eq!(result2.get().values()[0], animal_dog());
-    assert_eq!(result2.get().values()[1], person_alice());
+    let element2 = extract_element(&mut combined_stream).await;
+    assert_eq!(element2.values()[0], animal_dog());
+    assert_eq!(element2.values()[1], person_alice());
 
-    // Verify result2 comes after result1
+    // Verify element2 comes after element1
     assert!(
-        result2.order() > result1.order(),
+        element2.order() > element1.order(),
         "Second emission should have higher order"
     );
 
@@ -110,14 +104,11 @@ async fn test_with_latest_from_custom_selector() -> anyhow::Result<()> {
     animal_tx.send(Sequenced::new(animal_cat()))?;
 
     // Assert - should get a String result
-    let result = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    let string_result = result.get();
-
-    // The result should be the string representation of animal_cat
+    let element = extract_element(&mut combined_stream).await;
     assert!(
-        string_result.contains("Cat"),
+        element.contains("Cat"),
         "Expected 'Cat' in result: {}",
-        string_result
+        element
     );
 
     Ok(())
@@ -156,17 +147,17 @@ async fn test_with_latest_from_secondary_completes_early() -> anyhow::Result<()>
     animal_tx.send(Sequenced::new(animal_cat()))?;
 
     // Assert - should still emit with latest secondary value (Alice)
-    let result = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    assert_eq!(result.get().values()[0], animal_cat());
-    assert_eq!(result.get().values()[1], person_alice());
+    let element = extract_element(&mut combined_stream).await;
+    assert_eq!(element.values()[0], animal_cat());
+    assert_eq!(element.values()[1], person_alice());
 
     // Primary emits again
     animal_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert - should still emit with same secondary value
-    let result = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    assert_eq!(result.get().values()[0], animal_dog());
-    assert_eq!(result.get().values()[1], person_alice());
+    let element = extract_element(&mut combined_stream).await;
+    assert_eq!(element.values()[0], animal_dog());
+    assert_eq!(element.values()[1], person_alice());
 
     Ok(())
 }
@@ -184,9 +175,9 @@ async fn test_with_latest_from_primary_completes_early() -> anyhow::Result<()> {
     animal_tx.send(Sequenced::new(animal_cat()))?;
 
     // Assert
-    let result = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    assert_eq!(result.get().values()[0], animal_cat());
-    assert_eq!(result.get().values()[1], person_alice());
+    let element = extract_element(&mut combined_stream).await;
+    assert_eq!(element.values()[0], animal_cat());
+    assert_eq!(element.values()[1], person_alice());
 
     // Act - primary completes
     drop(animal_tx);
@@ -220,10 +211,9 @@ async fn test_with_latest_from_large_number_of_emissions() -> anyhow::Result<()>
 
     // Assert - should get 100 emissions, all with Alice
     for i in 0..100 {
-        let result = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-        let state = result.get();
-        assert_eq!(state.values()[1], person_alice());
-        if let TestData::Animal(ref animal) = state.values()[0] {
+        let element = extract_element(&mut combined_stream).await;
+        assert_eq!(element.values()[1], person_alice());
+        if let TestData::Animal(ref animal) = element.values()[0] {
             assert_eq!(animal.name, format!("Animal{}", i));
         } else {
             panic!("Expected Animal");
@@ -259,14 +249,12 @@ async fn test_with_latest_from_secondary_updates_latest() -> anyhow::Result<()> 
 
     let mut combined_stream = animal_stream.with_latest_from(person_stream, result_selector);
 
-    // Act
+    // Act & Assert
     person_tx.send(Sequenced::new(person_alice()))?;
     animal_tx.send(Sequenced::new(animal_cat()))?;
-
-    // Assert - first emission with Alice
-    let result = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    assert_eq!(result.get().values()[0], animal_cat());
-    assert_eq!(result.get().values()[1], person_alice());
+    let element = extract_element(&mut combined_stream).await;
+    assert_eq!(element.values()[0], animal_cat());
+    assert_eq!(element.values()[1], person_alice());
 
     // Act - secondary updates to Bob (no emission yet)
     person_tx.send(Sequenced::new(person_bob()))?;
@@ -275,9 +263,9 @@ async fn test_with_latest_from_secondary_updates_latest() -> anyhow::Result<()> 
     // Act - primary emits again
     animal_tx.send(Sequenced::new(animal_dog()))?;
     // Assert - should emit with latest secondary (Bob)
-    let result = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    assert_eq!(result.get().values()[0], animal_dog());
-    assert_eq!(result.get().values()[1], person_bob());
+    let element = extract_element(&mut combined_stream).await;
+    assert_eq!(element.values()[0], animal_dog());
+    assert_eq!(element.values()[1], person_bob());
 
     Ok(())
 }
@@ -305,14 +293,23 @@ async fn test_with_latest_from_multiple_concurrent_streams() -> anyhow::Result<(
     animal_tx2.send(Sequenced::new(animal_dog()))?;
 
     // Assert stream1
-    let result1 = unwrap_stream(&mut stream1, 500).await.unwrap();
-    assert_eq!(result1.get().values()[0], animal_cat());
-    assert_eq!(result1.get().values()[1], person_alice());
+    let element1 = extract_element(&mut stream1).await;
+    assert_eq!(element1.values()[0], animal_cat());
+    assert_eq!(element1.values()[1], person_alice());
 
     // Assert stream2
-    let result2 = unwrap_stream(&mut stream2, 500).await.unwrap();
-    assert_eq!(result2.get().values()[0], animal_dog());
-    assert_eq!(result2.get().values()[1], person_bob());
+    let element2 = extract_element(&mut stream2).await;
+    assert_eq!(element2.values()[0], animal_dog());
+    assert_eq!(element2.values()[1], person_bob());
 
     Ok(())
+}
+
+async fn extract_element<'a, T, S>(stream: &'a mut S) -> &'a T
+where
+    S: Stream<Item = StreamItem<OrderedWrapper<T>>> + Unpin,
+    T: Clone + 'a,
+{
+    let value = unwrap_value(Some(unwrap_stream(stream, 500).await));
+    value.get()
 }

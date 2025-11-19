@@ -6,8 +6,9 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::WithLatestFromExt;
-use fluxion_test_utils::{sequenced::Sequenced, test_channel_with_errors};
-use futures::StreamExt;
+use fluxion_test_utils::{
+    assert_no_element_emitted, sequenced::Sequenced, test_channel_with_errors, unwrap_stream,
+};
 
 #[tokio::test]
 async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> {
@@ -17,34 +18,30 @@ async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> 
 
     let mut result = primary_stream.with_latest_from(secondary_stream, |_| true);
 
-    // Act:Send secondary first (required for with_latest_from)
+    // Act & Assert: Send secondary first (required for with_latest_from)
     secondary_tx.send(StreamItem::Value(Sequenced::with_sequence(10, 1)))?;
-
-    // Send primary value
+    assert_no_element_emitted(&mut result, 100).await;
     primary_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 2)))?;
-
-    // Assert
-    let item1 = result.next().await.unwrap();
-    assert!(matches!(item1, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     // Send error in primary
     primary_tx.send(StreamItem::Error(FluxionError::stream_error(
         "Primary error",
     )))?;
-
-    let item2 = result.next().await.unwrap();
     assert!(
-        matches!(item2, StreamItem::Error(_)),
+        matches!(unwrap_stream(&mut result, 100).await, StreamItem::Error(_)),
         "Should propagate error from primary stream"
     );
 
     // Continue with more values
-    primary_tx
-        .send(StreamItem::Value(Sequenced::with_sequence(3, 4)))
-        .unwrap();
-
-    let item3 = result.next().await.unwrap();
-    assert!(matches!(item3, StreamItem::Value(_)));
+    primary_tx.send(StreamItem::Value(Sequenced::with_sequence(3, 4)))?;
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(primary_tx);
     drop(secondary_tx);
@@ -62,32 +59,30 @@ async fn test_with_latest_from_propagates_secondary_error() -> anyhow::Result<()
 
     // Act: Send secondary value first
     secondary_tx.send(StreamItem::Value(Sequenced::with_sequence(10, 1)))?;
-
-    // Send primary value
+    assert_no_element_emitted(&mut result, 100).await;
     primary_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 2)))?;
-
-    let item1 = result.next().await.unwrap();
-    assert!(matches!(item1, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     // Send error in secondary
     secondary_tx.send(StreamItem::Error(FluxionError::stream_error(
         "Secondary error",
     )))?;
-
-    let item2 = result.next().await.unwrap();
-    assert!(
-        matches!(item2, StreamItem::Error(_)),
-        "Should propagate error from secondary"
-    );
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Update secondary with new value
     secondary_tx.send(StreamItem::Value(Sequenced::with_sequence(30, 5)))?;
-
-    // Send primary value
+    assert_no_element_emitted(&mut result, 100).await;
     primary_tx.send(StreamItem::Value(Sequenced::with_sequence(2, 6)))?;
-
-    let item3 = result.next().await.unwrap();
-    assert!(matches!(item3, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(primary_tx);
     drop(secondary_tx);
@@ -107,8 +102,10 @@ async fn test_with_latest_from_error_before_secondary_ready() -> anyhow::Result<
     primary_tx.send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
 
     // Assert
-    let item = result.next().await.unwrap();
-    assert!(matches!(item, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
 
     drop(primary_tx);
     drop(secondary_tx);
@@ -125,30 +122,30 @@ async fn test_with_latest_from_selector_continues_after_error() -> anyhow::Resul
     // Custom selector - pass through combined state
     let mut result = primary_stream.with_latest_from(secondary_stream, |combined| combined.clone());
 
-    // Act: Send secondary first
+    // Act & Assert: Send secondary first
     secondary_tx.send(StreamItem::Value(Sequenced::with_sequence(100, 1)))?;
-
-    // Send primary value
+    assert_no_element_emitted(&mut result, 100).await;
     primary_tx.send(StreamItem::Value(Sequenced::with_sequence(1, 2)))?;
-
-    // Assert
-    let item1 = result.next().await.unwrap();
-    assert!(matches!(item1, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     // Send error in primary
     primary_tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-
-    let item2 = result.next().await.unwrap();
-    assert!(matches!(item2, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Update secondary
     secondary_tx.send(StreamItem::Value(Sequenced::with_sequence(200, 4)))?;
-
-    // Send primary value
+    assert_no_element_emitted(&mut result, 100).await;
     primary_tx.send(StreamItem::Value(Sequenced::with_sequence(3, 5)))?;
-
-    let item3 = result.next().await.unwrap();
-    assert!(matches!(item3, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(primary_tx);
     drop(secondary_tx);
