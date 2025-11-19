@@ -313,8 +313,6 @@ async fn test_subscribe_async_example() -> anyhow::Result<()> {
 
 **Latest-Value Processing (with auto-cancellation):**
 
-See [subscribe_latest_async_example.rs](fluxion-exec/tests/subscribe_latest_async_example.rs) for the source.
-
 **Dependencies:**
 ```toml
 [dependencies]

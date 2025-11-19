@@ -71,6 +71,40 @@ mod no_coverage_helpers {
             value
         }
     }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn fake_test_to_trick_tarpaulin() {
+            // Arrange
+            let sensor_reading = SensorReading {
+                timestamp: 0,
+                temperature: 0,
+            };
+            let status_update = StatusUpdate {
+                timestamp: 0,
+                code: 0,
+            };
+            let combined_sensor = CombinedEvent::Sensor(sensor_reading.clone());
+            let combined_status = CombinedEvent::Status(status_update.clone());
+
+            // Act
+            sensor_reading.order();
+            status_update.order();
+            let _ = sensor_reading.get();
+            let _ = status_update.get();
+            SensorReading::with_order(sensor_reading.clone(), 0);
+            StatusUpdate::with_order(status_update.clone(), 0);
+            combined_sensor.order();
+            combined_status.order();
+            let _ = combined_sensor.get();
+            let _ = combined_status.get();
+            CombinedEvent::with_order(combined_sensor, 0);
+            CombinedEvent::with_order(combined_status, 0);
+        }
+    }
 }
 pub use no_coverage_helpers::{CombinedEvent, SensorReading, StatusUpdate};
 

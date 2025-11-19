@@ -47,9 +47,7 @@ async fn test_functional_combine_latest() -> anyhow::Result<()> {
 async fn test_functional_combine_with_previous() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-
-    let stream = FluxionStream::new(stream);
-    let mut with_previous = stream.combine_with_previous();
+    let mut with_previous = FluxionStream::new(stream).combine_with_previous();
 
     // Act
     tx.send(Sequenced::new(person_alice()))?;

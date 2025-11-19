@@ -72,7 +72,8 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
     ///
-    /// # tokio_test::block_on(async {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// let results = Arc::new(Mutex::new(Vec::new()));
     /// let results_clone = results.clone();
     ///
@@ -97,7 +98,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// let processed = results.lock().await;
     /// assert!(processed.contains(&2));
     /// assert!(processed.contains(&4));
-    /// # });
+    /// # }
     /// ```
     ///
     /// ## With Error Handling
@@ -110,7 +111,8 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
     ///
-    /// # tokio_test::block_on(async {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// #[derive(Debug)]
     /// struct MyError(String);
     /// impl std::fmt::Display for MyError {
@@ -144,7 +146,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///
     /// tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     /// assert_eq!(*error_count.lock().await, 2); // Items 2 and 4 errored
-    /// # });
+    /// # }
     /// ```
     ///
     /// ## With Cancellation
@@ -160,7 +162,8 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
     ///
-    /// # tokio_test::block_on(async {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// let (tx, rx) = unbounded_channel();
     /// let stream = UnboundedReceiverStream::new(rx);
     ///
@@ -202,7 +205,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///
     /// // At least one item should be processed before cancellation
     /// assert!(!processed.lock().await.is_empty());
-    /// # });
+    /// # }
     /// ```
     ///
     /// ## Database Write Pattern
@@ -215,7 +218,8 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
     ///
-    /// # tokio_test::block_on(async {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// #[derive(Clone, Debug)]
     /// struct Event { id: u32, data: String }
     ///
@@ -246,7 +250,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///
     /// tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     /// assert_eq!(db.lock().await.len(), 2);
-    /// # });
+    /// # }
     /// ```
     ///
     /// # Thread Safety

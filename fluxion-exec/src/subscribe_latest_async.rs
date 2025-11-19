@@ -74,7 +74,8 @@ where
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
     ///
-    /// # tokio_test::block_on(async {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// let (tx, rx) = unbounded_channel();
     /// let stream = UnboundedReceiverStream::new(rx).map(|x: i32| x);
     ///
@@ -123,7 +124,7 @@ where
     /// assert_eq!(result.len(), 2); // Only first and latest
     /// assert_eq!(result[0], 1);
     /// assert_eq!(result[1], 4);
-    /// # });
+    /// # }
     /// ```
     ///
     /// ## With Cancellation Token Checks
@@ -138,7 +139,8 @@ where
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
     ///
-    /// # tokio_test::block_on(async {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// let (tx, rx) = unbounded_channel();
     /// let stream = UnboundedReceiverStream::new(rx).map(|x: i32| x);
     ///
@@ -172,7 +174,7 @@ where
     /// drop(tx);
     ///
     /// handle.await.unwrap().unwrap();
-    /// # });
+    /// # }
     /// ```
     ///
     /// ## Search-As-You-Type Pattern
@@ -187,7 +189,8 @@ where
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
     ///
-    /// # tokio_test::block_on(async {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// async fn search_api(query: &str) -> Result<Vec<String>, std::io::Error> {
     ///     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     ///     Ok(vec![format!("result_for_{}", query)])
@@ -224,7 +227,7 @@ where
     /// drop(tx);
     ///
     /// handle.await.unwrap().unwrap();
-    /// # });
+    /// # }
     /// ```
     ///
     /// ## UI Update Pattern
@@ -239,7 +242,8 @@ where
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
     ///
-    /// # tokio_test::block_on(async {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// #[derive(Clone, Debug, PartialEq)]
     /// struct AppState { counter: u32 }
     ///
@@ -279,7 +283,7 @@ where
     /// tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
     /// let rendered_states = rendered.lock().await;
     /// assert!(rendered_states.len() < 10); // Some states were skipped
-    /// # });
+    /// # }
     /// ```
     ///
     /// # Use Cases
