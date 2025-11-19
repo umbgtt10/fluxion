@@ -2,15 +2,18 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::FluxionError;
 use fluxion_exec::subscribe_async::SubscribeAsyncExt;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
     TestData,
 };
 use fluxion_test_utils::Sequenced;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{sync::Arc, sync::Mutex as StdMutex};
 use tokio::spawn;
-use tokio::{sync::mpsc, sync::Mutex as TokioMutex};
+use tokio::sync::mpsc::unbounded_channel;
+use tokio::sync::Mutex as TokioMutex;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_stream::StreamExt as _;
 use tokio_util::sync::CancellationToken;
@@ -36,11 +39,11 @@ enum ProcessingError {
 #[tokio::test]
 async fn test_subscribe_async_processes_items_when_waiting_per_item() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
     let func = {
         let results = results.clone();
@@ -62,7 +65,7 @@ async fn test_subscribe_async_processes_items_when_waiting_per_item() -> anyhow:
         }
     };
 
-    let task_handle = tokio::spawn({
+    let task_handle = spawn({
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
@@ -123,12 +126,12 @@ async fn test_subscribe_async_processes_items_when_waiting_per_item() -> anyhow:
 async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() -> anyhow::Result<()>
 {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let errors = Arc::new(StdMutex::new(Vec::new()));
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
     let func = {
         let results = results.clone();
@@ -158,7 +161,7 @@ async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() -
         }
     };
 
-    let task_handle = tokio::spawn({
+    let task_handle = spawn({
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
@@ -200,13 +203,13 @@ async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() -
 #[tokio::test]
 async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let cancellation_token = CancellationToken::new();
     let cancellation_token_clone = cancellation_token.clone();
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
     let func = {
         let results = results.clone();
@@ -234,7 +237,7 @@ async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() -> a
         }
     };
 
-    let task_handle = tokio::spawn({
+    let task_handle = spawn({
         async move {
             stream
                 .subscribe_async(func, Some(cancellation_token), Some(error_callback))
@@ -270,14 +273,14 @@ async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() -> a
 async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing(
 ) -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
     let errors = Arc::new(StdMutex::new(Vec::new()));
     let cancellation_token = CancellationToken::new();
     let cancellation_token_clone = cancellation_token.clone();
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
     let func = {
         let results = results.clone();
@@ -317,7 +320,7 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
         }
     };
 
-    let task_handle = tokio::spawn({
+    let task_handle = spawn({
         async move {
             stream
                 .subscribe_async(func, Some(cancellation_token), Some(error_callback))
@@ -377,7 +380,7 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
 #[tokio::test]
 async fn test_subscribe_async_empty_stream_completes_without_items() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
@@ -399,7 +402,7 @@ async fn test_subscribe_async_empty_stream_completes_without_items() -> anyhow::
         }
     };
 
-    let task_handle = tokio::spawn({
+    let task_handle = spawn({
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
@@ -423,20 +426,20 @@ async fn test_subscribe_async_empty_stream_completes_without_items() -> anyhow::
 #[tokio::test]
 async fn test_subscribe_async_parallelism_max_active_ge_2() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
     // Concurrency counters
-    let active = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let max_active = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let active = Arc::new(AtomicUsize::new(0));
+    let max_active = Arc::new(AtomicUsize::new(0));
 
     // Gate to hold completion so tasks overlap; and starter to know when tasks begin
-    let (finish_tx, finish_rx) = mpsc::unbounded_channel::<()>();
+    let (finish_tx, finish_rx) = unbounded_channel::<()>();
     let finish_rx_shared = Arc::new(TokioMutex::new(finish_rx));
-    let (started_tx, mut started_rx) = mpsc::unbounded_channel::<()>();
+    let (started_tx, mut started_rx) = unbounded_channel::<()>();
 
     let func = {
         let results = results.clone();
@@ -454,15 +457,15 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() -> anyhow::Result<()
             let started_tx = started_tx.clone();
             async move {
                 // Mark task active and track max concurrency
-                let cur = active.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-                max_active.fetch_max(cur, std::sync::atomic::Ordering::SeqCst);
+                let cur = active.fetch_add(1, Ordering::SeqCst) + 1;
+                max_active.fetch_max(cur, Ordering::SeqCst);
                 let _ = started_tx.send(());
 
                 // Wait until released
                 let _ = finish_rx_shared.lock().await.recv().await;
 
                 // Complete work
-                active.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+                active.fetch_sub(1, Ordering::SeqCst);
                 results.lock().await.push(item);
                 let _ = notify_tx.send(());
                 Ok::<(), TestError>(())
@@ -476,7 +479,7 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() -> anyhow::Result<()
         }
     };
 
-    let task_handle = tokio::spawn({
+    let task_handle = spawn({
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
@@ -509,7 +512,7 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() -> anyhow::Result<()
         assert_eq!(processed.len(), 3, "All 3 items should be processed");
         drop(processed);
     }
-    let max = max_active.load(std::sync::atomic::Ordering::SeqCst);
+    let max = max_active.load(Ordering::SeqCst);
     assert!(
         max >= 2,
         "Expected parallelism (max_active >= 2), got {max}"
@@ -525,11 +528,11 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() -> anyhow::Result<()
 #[tokio::test]
 async fn test_subscribe_async_high_volume_processes_all() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
     let func = {
         let results = results.clone();
@@ -551,7 +554,7 @@ async fn test_subscribe_async_high_volume_processes_all() -> anyhow::Result<()> 
         }
     };
 
-    let task_handle = tokio::spawn({
+    let task_handle = spawn({
         async move {
             stream
                 .subscribe_async(func, None, Some(error_callback))
@@ -587,7 +590,7 @@ async fn test_subscribe_async_high_volume_processes_all() -> anyhow::Result<()> 
 #[tokio::test]
 async fn test_subscribe_async_precancelled_token_processes_nothing() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
     let results = Arc::new(TokioMutex::new(Vec::new()));
@@ -639,10 +642,10 @@ async fn test_subscribe_async_precancelled_token_processes_nothing() -> anyhow::
 #[tokio::test]
 async fn test_subscribe_async_error_aggregation_without_callback() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
     let func = {
         let notify_tx = notify_tx.clone();
@@ -659,7 +662,7 @@ async fn test_subscribe_async_error_aggregation_without_callback() -> anyhow::Re
         }
     };
 
-    let task_handle = tokio::spawn({
+    let task_handle = spawn({
         async move {
             stream
                 .subscribe_async(func, None, Option::<fn(TestError)>::None) // No error callback
@@ -688,7 +691,7 @@ async fn test_subscribe_async_error_aggregation_without_callback() -> anyhow::Re
 
     let err = result.unwrap_err();
     match err {
-        fluxion_core::FluxionError::MultipleErrors { count, errors } => {
+        FluxionError::MultipleErrors { count, errors } => {
             assert_eq!(count, 2, "Expected 2 errors");
             assert_eq!(errors.len(), 2, "Expected 2 error entries");
         }

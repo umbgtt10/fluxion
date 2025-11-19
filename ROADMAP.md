@@ -81,7 +81,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 ## 🚀 Version 0.4.0 - Wasm & Runtime abstraction
 **Essential Features:**
-- [ ] IMplement runtime abstraction
+- [ ] Implement runtime abstraction
 
 **Documentation:**
 
@@ -94,7 +94,9 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 ### Requirements for 1.0.0
 
-#### 1. Complete Error Handling (Phase 2 & 3)
+#### 1. Complete Error Handling
+- [X] Error handling implemented
+- [] Standard error handling operators implemented
 
 **Phase 2: Stream Operator Error Propagation**
 

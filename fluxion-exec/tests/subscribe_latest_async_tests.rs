@@ -2,14 +2,17 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::FluxionError;
 use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
 use fluxion_test_utils::test_data::{
     animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
     person_dave, person_diane, plant_rose, TestData,
 };
 use fluxion_test_utils::Sequenced;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::spawn;
+use tokio::sync::mpsc::unbounded_channel;
 use tokio::{
     sync::mpsc,
     sync::Mutex,
@@ -34,9 +37,9 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() -> a
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -58,7 +61,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() -> a
         eprintln!("Error occurred: {err:?}");
     };
 
-    tokio::spawn({
+    spawn({
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
@@ -115,6 +118,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() -> a
     assert_eq!(processed[8], animal_spider());
     assert_eq!(processed[9], plant_rose());
     drop(processed);
+
     Ok(())
 }
 
@@ -127,14 +131,14 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() ->
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     // Barrier channel: only the FIRST processed item will wait on this
-    let (gate_tx, gate_rx) = mpsc::unbounded_channel::<()>();
+    let (gate_tx, gate_rx) = unbounded_channel::<()>();
     let gate_rx_shared = Arc::new(Mutex::new(Some(gate_rx)));
 
     // Start channel: first processing signals when it starts (to avoid races)
-    let (start_tx, mut start_rx) = mpsc::unbounded_channel::<()>();
+    let (start_tx, mut start_rx) = unbounded_channel::<()>();
     let start_tx_shared = Arc::new(Mutex::new(Some(start_tx)));
 
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -225,9 +229,9 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() ->
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -301,8 +305,8 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() -
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -379,9 +383,9 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -456,17 +460,17 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
 async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_concurrent_processing(
 ) -> anyhow::Result<()> {
     // Arrange
-    let active_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let max_concurrent = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let processed_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let active_count = Arc::new(AtomicUsize::new(0));
+    let max_concurrent = Arc::new(AtomicUsize::new(0));
+    let processed_count = Arc::new(AtomicUsize::new(0));
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
     // Signal when processing starts; control completion via a finish gate
-    let (started_tx, mut started_rx) = mpsc::unbounded_channel::<()>();
-    let (finish_tx, finish_rx) = mpsc::unbounded_channel::<()>();
+    let (started_tx, mut started_rx) = unbounded_channel::<()>();
+    let (finish_tx, finish_rx) = unbounded_channel::<()>();
     let finish_rx_shared = Arc::new(Mutex::new(finish_rx));
 
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -486,8 +490,8 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
             let finish_rx_shared = finish_rx_shared.clone();
             async move {
                 // Increment active count and record max concurrency
-                let current = active_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-                max_concurrent.fetch_max(current, std::sync::atomic::Ordering::SeqCst);
+                let current = active_count.fetch_add(1, Ordering::SeqCst) + 1;
+                max_concurrent.fetch_max(current, Ordering::SeqCst);
 
                 // Notify that processing has started
                 let _ = started_tx.send(());
@@ -496,8 +500,8 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
                 let _ = finish_rx_shared.lock().await.recv().await;
 
                 // Decrement active count and mark processed
-                active_count.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
-                processed_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                active_count.fetch_sub(1, Ordering::SeqCst);
+                processed_count.fetch_add(1, Ordering::SeqCst);
                 let _ = notify_tx.send(());
 
                 Ok::<(), TestError>(())
@@ -509,7 +513,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
         eprintln!("Unexpected error");
     };
 
-    tokio::spawn({
+    spawn({
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
@@ -538,13 +542,13 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
     }
 
     // Assert
-    let max = max_concurrent.load(std::sync::atomic::Ordering::SeqCst);
+    let max = max_concurrent.load(Ordering::SeqCst);
     assert_eq!(max, 1);
 
-    let final_active = active_count.load(std::sync::atomic::Ordering::SeqCst);
+    let final_active = active_count.load(Ordering::SeqCst);
     assert_eq!(final_active, 0);
 
-    let done = processed_count.load(std::sync::atomic::Ordering::SeqCst);
+    let done = processed_count.load(Ordering::SeqCst);
     assert_eq!(done, n);
 
     Ok(())
@@ -557,7 +561,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_
     let collected_items = Arc::new(Mutex::new(Vec::<TestData>::new()));
     let collected_items_clone = collected_items.clone();
 
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -597,19 +601,19 @@ async fn test_subscribe_latest_async_high_volume() -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
     // Barrier and start channels for deterministic high-load skipping
-    let (gate_tx, gate_rx) = mpsc::unbounded_channel::<()>();
+    let (gate_tx, gate_rx) = unbounded_channel::<()>();
     let gate_rx_shared = Arc::new(Mutex::new(Some(gate_rx)));
-    let (start_tx, mut start_rx) = mpsc::unbounded_channel::<()>();
+    let (start_tx, mut start_rx) = unbounded_channel::<()>();
     let start_tx_shared = Arc::new(Mutex::new(Some(start_tx)));
     // Flood completion channel to ensure bulk enqueue (including Bob) happens
     // before we allow the first processing to proceed
-    let (flood_done_tx, flood_done_rx) = mpsc::unbounded_channel::<()>();
+    let (flood_done_tx, flood_done_rx) = unbounded_channel::<()>();
     let flood_done_rx_shared = Arc::new(Mutex::new(Some(flood_done_rx)));
 
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -653,7 +657,7 @@ async fn test_subscribe_latest_async_high_volume() -> anyhow::Result<()> {
         eprintln!("Unexpected error");
     };
 
-    tokio::spawn({
+    spawn({
         async move {
             stream
                 .subscribe_latest_async(func, Some(error_callback), None)
@@ -702,9 +706,9 @@ async fn test_subscribe_latest_async_single_item() -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -760,10 +764,10 @@ async fn test_subscribe_latest_async_single_item() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_subscribe_latest_async_error_aggregation_without_callback() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded_channel();
 
     let func = {
         let notify_tx = notify_tx.clone();
@@ -809,7 +813,7 @@ async fn test_subscribe_latest_async_error_aggregation_without_callback() -> any
 
     let err = result.unwrap_err();
     match err {
-        fluxion_core::FluxionError::MultipleErrors { count, errors } => {
+        FluxionError::MultipleErrors { count, errors } => {
             assert_eq!(count, 2, "Expected 2 errors");
             assert_eq!(errors.len(), 2, "Expected 2 error entries");
         }

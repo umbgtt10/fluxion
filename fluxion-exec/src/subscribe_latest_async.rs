@@ -62,34 +62,224 @@ where
     ///
     /// # Examples
     ///
-    /// ```text
+    /// ## Basic Usage - Skipping Intermediate Values
+    ///
+    /// Only the first and latest items are processed:
+    ///
+    /// ```
     /// use fluxion_exec::SubscribeLatestAsyncExt;
-    /// use futures::StreamExt;
+    /// use tokio::sync::mpsc::unbounded_channel;
     /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// use futures::StreamExt;
+    /// use std::sync::Arc;
+    /// use tokio::sync::Mutex;
     ///
-    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    /// let stream = UnboundedReceiverStream::new(rx);
+    /// # tokio_test::block_on(async {
+    /// let (tx, rx) = unbounded_channel();
+    /// let stream = UnboundedReceiverStream::new(rx).map(|x: i32| x);
     ///
-    /// stream.subscribe_latest_async(
-    ///     |item, token| async move {
-    ///         // Long-running operation
-    ///         for i in 0..100 {
-    ///             if token.is_cancelled() {
-    ///                 println!("Cancelled processing of {:?}", item);
-    ///                 return Ok(());
+    /// let processed = Arc::new(Mutex::new(Vec::new()));
+    /// let processed_clone = processed.clone();
+    ///
+    /// // Gate to control when first item completes
+    /// let (gate_tx, gate_rx) = unbounded_channel::<()>();
+    /// let gate_shared = Arc::new(Mutex::new(Some(gate_rx)));
+    ///
+    /// let handle = tokio::spawn(async move {
+    ///     stream.subscribe_latest_async(
+    ///         move |item, token| {
+    ///             let processed = processed_clone.clone();
+    ///             let gate = gate_shared.clone();
+    ///             async move {
+    ///                 // First item waits at gate
+    ///                 if let Some(mut rx) = gate.lock().await.take() {
+    ///                     let _ = rx.recv().await;
+    ///                 }
+    ///                 if !token.is_cancelled() {
+    ///                     processed.lock().await.push(item);
+    ///                 }
+    ///                 Ok::<(), std::io::Error>(())
     ///             }
-    ///             // Do work...
-    ///             tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    ///         }
-    ///         println!("Completed: {:?}", item);
-    ///         Ok::<(), std::io::Error>(())
-    ///     },
-    ///     Some(|err| eprintln!("Error: {}", err)),
-    ///     None
-    /// ).await?;
-    /// # Ok(())
-    /// # }
+    ///         },
+    ///         None::<fn(std::io::Error)>,
+    ///         None
+    ///     ).await
+    /// });
+    ///
+    /// // Send multiple items rapidly
+    /// tx.send(1).unwrap();
+    /// tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    /// tx.send(2).unwrap(); // Will be skipped
+    /// tx.send(3).unwrap(); // Will be skipped
+    /// tx.send(4).unwrap(); // Latest - will be processed
+    ///
+    /// // Release the gate
+    /// gate_tx.send(()).unwrap();
+    /// drop(tx);
+    ///
+    /// handle.await.unwrap().unwrap();
+    ///
+    /// let result = processed.lock().await.clone();
+    /// assert_eq!(result.len(), 2); // Only first and latest
+    /// assert_eq!(result[0], 1);
+    /// assert_eq!(result[1], 4);
+    /// # });
+    /// ```
+    ///
+    /// ## With Cancellation Token Checks
+    ///
+    /// Handlers should check the token periodically for responsive cancellation:
+    ///
+    /// ```
+    /// use fluxion_exec::SubscribeLatestAsyncExt;
+    /// use tokio::sync::mpsc::unbounded_channel;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// use futures::StreamExt;
+    /// use std::sync::Arc;
+    /// use tokio::sync::Mutex;
+    ///
+    /// # tokio_test::block_on(async {
+    /// let (tx, rx) = unbounded_channel();
+    /// let stream = UnboundedReceiverStream::new(rx).map(|x: i32| x);
+    ///
+    /// let completed = Arc::new(Mutex::new(Vec::new()));
+    /// let completed_clone = completed.clone();
+    ///
+    /// let handle = tokio::spawn(async move {
+    ///     stream.subscribe_latest_async(
+    ///         move |item, token| {
+    ///             let completed = completed_clone.clone();
+    ///             async move {
+    ///                 // Simulate long-running work with cancellation checks
+    ///                 for i in 0..10 {
+    ///                     if token.is_cancelled() {
+    ///                         return Ok(()); // Exit gracefully
+    ///                     }
+    ///                     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    ///                 }
+    ///                 completed.lock().await.push(item);
+    ///                 Ok::<(), std::io::Error>(())
+    ///             }
+    ///         },
+    ///         None::<fn(std::io::Error)>,
+    ///         None
+    ///     ).await
+    /// });
+    ///
+    /// tx.send(1).unwrap();
+    /// tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    /// tx.send(2).unwrap(); // This will cancel work on item 1 if still in progress
+    /// drop(tx);
+    ///
+    /// handle.await.unwrap().unwrap();
+    /// # });
+    /// ```
+    ///
+    /// ## Search-As-You-Type Pattern
+    ///
+    /// Only search for the latest query:
+    ///
+    /// ```
+    /// use fluxion_exec::SubscribeLatestAsyncExt;
+    /// use tokio::sync::mpsc::unbounded_channel;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// use futures::StreamExt;
+    /// use std::sync::Arc;
+    /// use tokio::sync::Mutex;
+    ///
+    /// # tokio_test::block_on(async {
+    /// async fn search_api(query: &str) -> Result<Vec<String>, std::io::Error> {
+    ///     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    ///     Ok(vec![format!("result_for_{}", query)])
+    /// }
+    ///
+    /// let (tx, rx) = unbounded_channel();
+    /// let stream = UnboundedReceiverStream::new(rx).map(|x: String| x);
+    ///
+    /// let results = Arc::new(Mutex::new(Vec::new()));
+    /// let results_clone = results.clone();
+    ///
+    /// let handle = tokio::spawn(async move {
+    ///     stream.subscribe_latest_async(
+    ///         move |query, token| {
+    ///             let results = results_clone.clone();
+    ///             async move {
+    ///                 let search_results = search_api(&query).await?;
+    ///                 if !token.is_cancelled() {
+    ///                     results.lock().await.extend(search_results);
+    ///                 }
+    ///                 Ok::<(), std::io::Error>(())
+    ///             }
+    ///         },
+    ///         None::<fn(std::io::Error)>,
+    ///         None
+    ///     ).await
+    /// });
+    ///
+    /// // User types rapidly
+    /// tx.send("r".to_string()).unwrap();
+    /// tx.send("ru".to_string()).unwrap();
+    /// tx.send("rus".to_string()).unwrap();
+    /// tx.send("rust".to_string()).unwrap();
+    /// drop(tx);
+    ///
+    /// handle.await.unwrap().unwrap();
+    /// # });
+    /// ```
+    ///
+    /// ## UI Update Pattern
+    ///
+    /// Render only the latest application state:
+    ///
+    /// ```
+    /// use fluxion_exec::SubscribeLatestAsyncExt;
+    /// use tokio::sync::mpsc::unbounded_channel;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// use futures::StreamExt;
+    /// use std::sync::Arc;
+    /// use tokio::sync::Mutex;
+    ///
+    /// # tokio_test::block_on(async {
+    /// #[derive(Clone, Debug, PartialEq)]
+    /// struct AppState { counter: u32 }
+    ///
+    /// let (tx, rx) = unbounded_channel();
+    /// let stream = UnboundedReceiverStream::new(rx).map(|x: AppState| x);
+    ///
+    /// let rendered = Arc::new(Mutex::new(Vec::new()));
+    /// let rendered_clone = rendered.clone();
+    ///
+    /// let handle = tokio::spawn(async move {
+    ///     stream.subscribe_latest_async(
+    ///         move |state, token| {
+    ///             let rendered = rendered_clone.clone();
+    ///             async move {
+    ///                 // Simulate expensive rendering
+    ///                 tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    ///                 if !token.is_cancelled() {
+    ///                     rendered.lock().await.push(state);
+    ///                 }
+    ///                 Ok::<(), std::io::Error>(())
+    ///             }
+    ///         },
+    ///         None::<fn(std::io::Error)>,
+    ///         None
+    ///     ).await
+    /// });
+    ///
+    /// // Rapid state updates
+    /// for i in 0..10 {
+    ///     tx.send(AppState { counter: i }).unwrap();
+    /// }
+    /// drop(tx);
+    ///
+    /// handle.await.unwrap().unwrap();
+    ///
+    /// // Only latest states should be rendered (intermediate ones skipped)
+    /// tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+    /// let rendered_states = rendered.lock().await;
+    /// assert!(rendered_states.len() < 10); // Some states were skipped
+    /// # });
     /// ```
     ///
     /// # Use Cases

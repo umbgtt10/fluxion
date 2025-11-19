@@ -116,3 +116,165 @@ Write-Host "✓ README synced successfully!" -ForegroundColor Green
 Write-Host "  - Dependencies extracted from Cargo.toml" -ForegroundColor Gray
 Write-Host "  - example1_functional.rs → ### Basic Usage" -ForegroundColor Gray
 Write-Host "  - example2_composition.rs → ### Chaining Multiple Operators" -ForegroundColor Gray
+
+# Sync fluxion-exec README subscribe_async example
+Write-Host "
+Syncing fluxion-exec subscribe_async example..." -ForegroundColor Cyan
+
+$subscribeAsyncExamplePath = "fluxion-exec/tests/subscribe_async_example.rs"
+
+if (Test-Path $subscribeAsyncExamplePath) {
+    $subscribeAsyncContent = Get-Content $subscribeAsyncExamplePath -Raw
+    $subscribeAsyncLines = $subscribeAsyncContent -split "`r?`n"
+    $subscribeAsyncCode = (($subscribeAsyncLines | Select-Object -Skip 4) -join "`n") + "`n"
+
+    # Extract dependencies from the example file's use statements
+    $usedExecCrates = @{}
+    $exampleUseStatements = $subscribeAsyncLines | Where-Object { $_ -match '^use ' }
+
+    # Always include fluxion-exec
+    $usedExecCrates['fluxion-exec'] = '0.2.1'
+
+    # Check for other crates in use statements
+    $execExternalCrates = @('tokio', 'tokio-stream', 'tokio-util', 'anyhow', 'thiserror')
+    foreach ($crate in $execExternalCrates) {
+        # Convert hyphens to underscores for matching Rust import names
+        $rustCrateName = $crate -replace '-', '_'
+        if ($exampleUseStatements -match "use\s+$rustCrateName(::|\s|;)") {
+            # Extract version from workspace Cargo.toml
+            if ($cargoToml -match "$crate\s*=\s*\{\s*version\s*=\s*`"([^`"]+)`"") {
+                $usedExecCrates[$crate] = $matches[1]
+            }
+            elseif ($cargoToml -match "$crate\s*=\s*`"([^`"]+)`"") {
+                $usedExecCrates[$crate] = $matches[1]
+            }
+        }
+    }
+
+    # Build dependencies section for subscribe_async
+    $execDepsLines = @("[dependencies]", "fluxion-exec = `"0.2.1`"")
+
+    # Add tokio with features if used
+    if ($usedExecCrates.ContainsKey('tokio')) {
+        $execDepsLines += "tokio = { version = `"$($usedExecCrates['tokio'])`", features = [`"full`"] }"
+    }
+
+    # Add other dependencies
+    foreach ($crate in $usedExecCrates.Keys | Where-Object { $_ -ne 'tokio' -and $_ -ne 'fluxion-exec' } | Sort-Object) {
+        $execDepsLines += "$crate = `"$($usedExecCrates[$crate])`""
+    }
+
+    $execDepsSection = ($execDepsLines -join "`n")
+
+    # Update main README with subscribe_async example
+    $mainReadme = Get-Content $readmePath -Raw
+
+    # Find the Sequential Processing section
+    $sequentialStart = $mainReadme.IndexOf('**Sequential Processing:**')
+    if ($sequentialStart -ge 0) {
+        # Find the Dependencies section
+        $depsLabel = $mainReadme.IndexOf('**Dependencies:**', $sequentialStart)
+        $depsStart = $mainReadme.IndexOf('```toml', $depsLabel)
+        $depsEnd = $mainReadme.IndexOf('```', $depsStart + 7)
+
+        # Find the Example code block after Dependencies
+        $exampleLabel = $mainReadme.IndexOf('**Example:**', $depsEnd)
+        $exampleStart = $mainReadme.IndexOf('```rust', $exampleLabel)
+        $exampleEnd = $mainReadme.IndexOf('```', $exampleStart + 7)
+
+        if ($depsStart -ge 0 -and $depsEnd -ge 0 -and $exampleStart -ge 0 -and $exampleEnd -ge 0) {
+            # Replace both dependencies and example code
+            $newMainReadme = $mainReadme.Substring(0, $depsStart + 8) # Up to ```toml`n
+            $newMainReadme += $execDepsSection + "`n"
+            $newMainReadme += $mainReadme.Substring($depsEnd, $exampleStart - $depsEnd + 8) # From ```` to ```rust`n
+            $newMainReadme += $subscribeAsyncCode
+            $newMainReadme += $mainReadme.Substring($exampleEnd) # From ```` to end
+
+            Set-Content $readmePath $newMainReadme -NoNewline
+            Write-Host "   Updated subscribe_async dependencies and example in main README" -ForegroundColor Green
+        }
+    }
+} else {
+    Write-Host "   Warning: subscribe_async_example.rs not found" -ForegroundColor Yellow
+}
+
+# Sync subscribe_latest_async example
+Write-Host "
+Syncing fluxion-exec subscribe_latest_async example..." -ForegroundColor Cyan
+
+$subscribeLatestAsyncExamplePath = "fluxion-exec/tests/subscribe_latest_async_example.rs"
+
+if (Test-Path $subscribeLatestAsyncExamplePath) {
+    $subscribeLatestAsyncContent = Get-Content $subscribeLatestAsyncExamplePath -Raw
+    $subscribeLatestAsyncLines = $subscribeLatestAsyncContent -split "`r?`n"
+    $subscribeLatestAsyncCode = (($subscribeLatestAsyncLines | Select-Object -Skip 4) -join "`n") + "`n"
+
+    # Extract dependencies from the example file's use statements
+    $usedLatestCrates = @{}
+    $latestExampleUseStatements = $subscribeLatestAsyncLines | Where-Object { $_ -match '^use ' }
+
+    # Always include fluxion-exec
+    $usedLatestCrates['fluxion-exec'] = '0.2.1'
+
+    # Check for other crates in use statements
+    $latestExternalCrates = @('tokio', 'tokio-stream', 'tokio-util', 'anyhow', 'thiserror')
+    foreach ($crate in $latestExternalCrates) {
+        # Convert hyphens to underscores for matching Rust import names
+        $rustCrateName = $crate -replace '-', '_'
+        if ($latestExampleUseStatements -match "use\s+$rustCrateName(::|\s|;)") {
+            # Extract version from workspace Cargo.toml
+            if ($cargoToml -match "$crate\s*=\s*\{\s*version\s*=\s*`"([^`"]+)`"") {
+                $usedLatestCrates[$crate] = $matches[1]
+            }
+            elseif ($cargoToml -match "$crate\s*=\s*`"([^`"]+)`"") {
+                $usedLatestCrates[$crate] = $matches[1]
+            }
+        }
+    }
+
+    # Build dependencies section for subscribe_latest_async
+    $latestDepsLines = @("[dependencies]", "fluxion-exec = `"0.2.1`"")
+
+    # Add tokio with features if used
+    if ($usedLatestCrates.ContainsKey('tokio')) {
+        $latestDepsLines += "tokio = { version = `"$($usedLatestCrates['tokio'])`", features = [`"full`"] }"
+    }
+
+    # Add other dependencies
+    foreach ($crate in $usedLatestCrates.Keys | Where-Object { $_ -ne 'tokio' -and $_ -ne 'fluxion-exec' } | Sort-Object) {
+        $latestDepsLines += "$crate = `"$($usedLatestCrates[$crate])`""
+    }
+
+    $latestDepsSection = ($latestDepsLines -join "`n")
+
+    # Update main README with subscribe_latest_async example
+    $mainReadme = Get-Content $readmePath -Raw
+
+    # Find the Latest-Value Processing section
+    $latestValueStart = $mainReadme.IndexOf('**Latest-Value Processing (with auto-cancellation):**')
+    if ($latestValueStart -ge 0) {
+        # Find the Dependencies section
+        $latestDepsLabel = $mainReadme.IndexOf('**Dependencies:**', $latestValueStart)
+        $latestDepsStart = $mainReadme.IndexOf('```toml', $latestDepsLabel)
+        $latestDepsEnd = $mainReadme.IndexOf('```', $latestDepsStart + 7)
+
+        # Find the Example code block after Dependencies
+        $latestExampleLabel = $mainReadme.IndexOf('**Example:**', $latestDepsEnd)
+        $latestExampleStart = $mainReadme.IndexOf('```rust', $latestExampleLabel)
+        $latestExampleEnd = $mainReadme.IndexOf('```', $latestExampleStart + 7)
+
+        if ($latestDepsStart -ge 0 -and $latestDepsEnd -ge 0 -and $latestExampleStart -ge 0 -and $latestExampleEnd -ge 0) {
+            # Replace both dependencies and example code
+            $newMainReadme = $mainReadme.Substring(0, $latestDepsStart + 8) # Up to ```toml`n
+            $newMainReadme += $latestDepsSection + "`n"
+            $newMainReadme += $mainReadme.Substring($latestDepsEnd, $latestExampleStart - $latestDepsEnd + 8) # From ```` to ```rust`n
+            $newMainReadme += $subscribeLatestAsyncCode
+            $newMainReadme += $mainReadme.Substring($latestExampleEnd) # From ```` to end
+
+            Set-Content $readmePath $newMainReadme -NoNewline
+            Write-Host "   Updated subscribe_latest_async dependencies and example in main README" -ForegroundColor Green
+        }
+    }
+} else {
+    Write-Host "   Warning: subscribe_latest_async_example.rs not found" -ForegroundColor Yellow
+}

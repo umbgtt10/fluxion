@@ -62,57 +62,191 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///
     /// # Examples
     ///
-    /// ```text
-    /// use fluxion_exec::SubscribeAsyncExt;
-    /// use futures::StreamExt;
-    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// ## Basic Usage
     ///
-    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    /// let stream = UnboundedReceiverStream::new(rx);
+    /// Process all items sequentially:
+    ///
+    /// ```
+    /// use fluxion_exec::SubscribeAsyncExt;
+    /// use futures::stream;
+    /// use std::sync::Arc;
+    /// use tokio::sync::Mutex;
+    ///
+    /// # tokio_test::block_on(async {
+    /// let results = Arc::new(Mutex::new(Vec::new()));
+    /// let results_clone = results.clone();
+    ///
+    /// let stream = stream::iter(vec![1, 2, 3, 4, 5]);
+    ///
+    /// // Subscribe and process each item
+    /// stream.subscribe_async(
+    ///     move |item, _token| {
+    ///         let results = results_clone.clone();
+    ///         async move {
+    ///             results.lock().await.push(item * 2);
+    ///             Ok::<(), std::io::Error>(())
+    ///         }
+    ///     },
+    ///     None, // No cancellation
+    ///     None::<fn(std::io::Error)>  // No error callback
+    /// ).await.unwrap();
+    ///
+    /// // Wait a bit for spawned tasks to complete
+    /// tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    ///
+    /// let processed = results.lock().await;
+    /// assert!(processed.contains(&2));
+    /// assert!(processed.contains(&4));
+    /// # });
+    /// ```
+    ///
+    /// ## With Error Handling
+    ///
+    /// Use an error callback to handle errors without stopping the stream:
+    ///
+    /// ```
+    /// use fluxion_exec::SubscribeAsyncExt;
+    /// use futures::stream;
+    /// use std::sync::Arc;
+    /// use tokio::sync::Mutex;
+    ///
+    /// # tokio_test::block_on(async {
+    /// #[derive(Debug)]
+    /// struct MyError(String);
+    /// impl std::fmt::Display for MyError {
+    ///     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    ///         write!(f, "MyError: {}", self.0)
+    ///     }
+    /// }
+    /// impl std::error::Error for MyError {}
+    ///
+    /// let error_count = Arc::new(Mutex::new(0));
+    /// let error_count_clone = error_count.clone();
+    ///
+    /// let stream = stream::iter(vec![1, 2, 3, 4, 5]);
     ///
     /// stream.subscribe_async(
     ///     |item, _token| async move {
-    ///         // Process item
-    ///         println!("Processing: {:?}", item);
-    ///         Ok::<(), std::io::Error>(())
+    ///         if item % 2 == 0 {
+    ///             Err(MyError(format!("Even number: {}", item)))
+    ///         } else {
+    ///             Ok(())
+    ///         }
     ///     },
     ///     None,
-    ///     Some(|err| eprintln!("Error: {}", err))
-    /// ).await?;
-    /// # Ok(())
-    /// # }
+    ///     Some(move |_err| {
+    ///         let count = error_count_clone.clone();
+    ///         tokio::spawn(async move {
+    ///             *count.lock().await += 1;
+    ///         });
+    ///     })
+    /// ).await.unwrap();
+    ///
+    /// tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    /// assert_eq!(*error_count.lock().await, 2); // Items 2 and 4 errored
+    /// # });
     /// ```
     ///
-    /// # With Cancellation
+    /// ## With Cancellation
     ///
-    /// ```text
-    /// # use fluxion_exec::SubscribeAsyncExt;
-    /// # use futures::StreamExt;
-    /// # use tokio_util::sync::CancellationToken;
-    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let stream = futures::stream::iter(vec![1, 2, 3]);
-    /// let cancel = CancellationToken::new();
-    /// let cancel_clone = cancel.clone();
+    /// Use a cancellation token to stop processing:
     ///
-    /// tokio::spawn(async move {
-    ///     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-    ///     cancel_clone.cancel();
+    /// ```
+    /// use fluxion_exec::SubscribeAsyncExt;
+    /// use tokio::sync::mpsc::unbounded_channel;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// use futures::StreamExt;
+    /// use tokio_util::sync::CancellationToken;
+    /// use std::sync::Arc;
+    /// use tokio::sync::Mutex;
+    ///
+    /// # tokio_test::block_on(async {
+    /// let (tx, rx) = unbounded_channel();
+    /// let stream = UnboundedReceiverStream::new(rx);
+    ///
+    /// let cancel_token = CancellationToken::new();
+    /// let cancel_clone = cancel_token.clone();
+    ///
+    /// let processed = Arc::new(Mutex::new(Vec::new()));
+    /// let processed_clone = processed.clone();
+    ///
+    /// let handle = tokio::spawn(async move {
+    ///     stream.subscribe_async(
+    ///         move |item, token| {
+    ///             let vec = processed_clone.clone();
+    ///             async move {
+    ///                 if token.is_cancelled() {
+    ///                     return Ok(());
+    ///                 }
+    ///                 tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    ///                 vec.lock().await.push(item);
+    ///                 Ok::<(), std::io::Error>(())
+    ///             }
+    ///         },
+    ///         Some(cancel_token),
+    ///         None::<fn(std::io::Error)>
+    ///     ).await
     /// });
     ///
+    /// // Send a few items
+    /// tx.send(1).unwrap();
+    /// tx.send(2).unwrap();
+    /// tx.send(3).unwrap();
+    ///
+    /// // Wait a bit then cancel
+    /// tokio::time::sleep(tokio::time::Duration::from_millis(15)).await;
+    /// cancel_clone.cancel();
+    /// drop(tx);
+    ///
+    /// handle.await.unwrap().unwrap();
+    ///
+    /// // At least one item should be processed before cancellation
+    /// assert!(!processed.lock().await.is_empty());
+    /// # });
+    /// ```
+    ///
+    /// ## Database Write Pattern
+    ///
+    /// Process events and persist to a database:
+    ///
+    /// ```
+    /// use fluxion_exec::SubscribeAsyncExt;
+    /// use futures::stream;
+    /// use std::sync::Arc;
+    /// use tokio::sync::Mutex;
+    ///
+    /// # tokio_test::block_on(async {
+    /// #[derive(Clone, Debug)]
+    /// struct Event { id: u32, data: String }
+    ///
+    /// // Simulated database
+    /// let db = Arc::new(Mutex::new(Vec::new()));
+    /// let db_clone = db.clone();
+    ///
+    /// let events = vec![
+    ///     Event { id: 1, data: "event1".to_string() },
+    ///     Event { id: 2, data: "event2".to_string() },
+    /// ];
+    ///
+    /// let stream = stream::iter(events);
+    ///
     /// stream.subscribe_async(
-    ///     |item, token| async move {
-    ///         if token.is_cancelled() {
-    ///             return Ok(());
+    ///     move |event, _token| {
+    ///         let db = db_clone.clone();
+    ///         async move {
+    ///             // Simulate database write
+    ///             tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    ///             db.lock().await.push(event);
+    ///             Ok::<(), std::io::Error>(())
     ///         }
-    ///         // Process item...
-    ///         Ok::<(), std::io::Error>(())
     ///     },
-    ///     Some(cancel),
-    ///     None
-    /// ).await?;
-    /// # Ok(())
-    /// # }
+    ///     None,
+    ///     Some(|err| eprintln!("DB Error: {}", err))
+    /// ).await.unwrap();
+    ///
+    /// tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    /// assert_eq!(db.lock().await.len(), 2);
+    /// # });
     /// ```
     ///
     /// # Thread Safety

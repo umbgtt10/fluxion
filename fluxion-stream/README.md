@@ -107,16 +107,6 @@ let combined = stream1.combine_latest(
 
 ## Running tests
 
-```powershell
-cargo test --package fluxion-stream --all-features --all-targets
-```
-
-Documentation
-
-```powershell
-cargo doc --package fluxion-stream --no-deps --open
-```
-
 License
 
 Apache-2.0
