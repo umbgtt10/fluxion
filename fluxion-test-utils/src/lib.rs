@@ -25,9 +25,9 @@
 //! A wrapper type that adds temporal ordering to test values:
 //!
 //! ```rust
-//! use fluxion_test_utils::Timestamped;
+//! use fluxion_test_utils::ChronoTimestamped;
 //! use fluxion_core::Timestamped ;
-//! let item = Timestamped::new(42);  // Auto-timestamped with current time
+//! let item = ChronoTimestamped::new(42);  // Auto-timestamped with current time
 //! assert_eq!(item.value, 42);
 //! // Timestamps use chrono::Utc::now()
 //! ```
@@ -63,13 +63,13 @@
 //! ## Creating Ordered Test Values
 //!
 //! ```rust
-//! use fluxion_test_utils::Timestamped;
+//! use fluxion_test_utils::ChronoTimestamped;
 //! use fluxion_core::Timestamped ;
 //!
 //! // Create timestamped values with explicit ordering
-//! let first = Timestamped::with_timestamp(100, 1);
-//! let second = Timestamped::with_timestamp(200, 2);
-//! let third = Timestamped::with_timestamp(300, 3);
+//! let first = ChronoTimestamped::with_timestamp(100, 1);
+//! let second = ChronoTimestamped::with_timestamp(200, 2);
+//! let third = ChronoTimestamped::with_timestamp(300, 3);
 //!
 //! // Verify ordering
 //! assert!(first.timestamp() < second.timestamp());

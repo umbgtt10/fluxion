@@ -125,13 +125,13 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
-    /// use fluxion_test_utils::{Timestamped, test_channel};
-    /// use fluxion_core::Timestamped ;
+    /// use fluxion_test_utils::{ChronoTimestamped, test_channel};
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let (tx, stream) = test_channel::<Timestamped<i32>>();
+    /// let (tx, stream) = test_channel::<ChronoTimestamped<i32>>();
     /// let stream = FluxionStream::new(stream);
     ///
     /// // Transform ordered stream to strings
@@ -141,7 +141,7 @@ where
     ///         format!("Value: {}", with_previous.current.inner())
     ///     });
     ///
-    /// tx.send(Timestamped::new(42)).unwrap();
+    /// tx.send(ChronoTimestamped::new(42)).unwrap();
     /// assert_eq!(mapped.next().await.unwrap().unwrap(), "Value: 42");
     /// # }
     /// ```
@@ -208,22 +208,22 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped ;
+    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = mpsc::unbounded_channel::<Timestamped<i32>>();
+    /// let (tx, rx) = mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
     /// let stream = FluxionStream::from_unbounded_receiver(rx);
     ///
     /// // Filter for even numbers
     /// let mut evens = stream.filter_ordered(|&n| n % 2 == 0);
     ///
-    /// tx.send(Timestamped::new(1)).unwrap();
-    /// tx.send(Timestamped::new(2)).unwrap();
-    /// tx.send(Timestamped::new(3)).unwrap();
-    /// tx.send(Timestamped::new(4)).unwrap();
+    /// tx.send(ChronoTimestamped::new(1)).unwrap();
+    /// tx.send(ChronoTimestamped::new(2)).unwrap();
+    /// tx.send(ChronoTimestamped::new(3)).unwrap();
+    /// tx.send(ChronoTimestamped::new(4)).unwrap();
     ///
     /// assert_eq!(evens.next().await.unwrap().unwrap().inner(), &2);
     /// assert_eq!(evens.next().await.unwrap().unwrap().inner(), &4);
@@ -284,19 +284,19 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped ;
+    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = mpsc::unbounded_channel::<Timestamped<i32>>();
+    /// let (tx, rx) = mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
     /// let stream = FluxionStream::from_unbounded_receiver(rx);
     /// let mut paired = stream.combine_with_previous();
     ///
-    /// tx.send(Timestamped::new(10)).unwrap();
-    /// tx.send(Timestamped::new(20)).unwrap();
-    /// tx.send(Timestamped::new(30)).unwrap();
+    /// tx.send(ChronoTimestamped::new(10)).unwrap();
+    /// tx.send(ChronoTimestamped::new(20)).unwrap();
+    /// tx.send(ChronoTimestamped::new(30)).unwrap();
     ///
     /// // First item has no previous
     /// let item = paired.next().await.unwrap().unwrap();
@@ -359,14 +359,14 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped ;
+    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (source_tx, source_rx) = mpsc::unbounded_channel::<Timestamped<i32>>();
-    /// let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Timestamped<i32>>();
+    /// let (source_tx, source_rx) = mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+    /// let (filter_tx, filter_rx) = mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
     ///
     /// let source = FluxionStream::from_unbounded_receiver(source_rx);
     /// let filter = FluxionStream::from_unbounded_receiver(filter_rx);
@@ -374,9 +374,9 @@ where
     /// let mut taken = source.take_while_with(filter, |value: &i32| *value > 0);
     ///
     /// // Filter allows emissions (value = 1)
-    /// filter_tx.send(Timestamped::new(1)).unwrap();
-    /// source_tx.send(Timestamped::new(100)).unwrap();
-    /// source_tx.send(Timestamped::new(200)).unwrap();
+    /// filter_tx.send(ChronoTimestamped::new(1)).unwrap();
+    /// source_tx.send(ChronoTimestamped::new(100)).unwrap();
+    /// source_tx.send(ChronoTimestamped::new(200)).unwrap();
     ///
     /// let mut taken = Box::pin(taken);
     /// assert_eq!(taken.next().await.unwrap().unwrap().inner(), &100);
@@ -433,14 +433,14 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped ;
+    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (source_tx, source_rx) = mpsc::unbounded_channel::<Timestamped<i32>>();
-    /// let (trigger_tx, trigger_rx) = mpsc::unbounded_channel::<Timestamped<i32>>();
+    /// let (source_tx, source_rx) = mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+    /// let (trigger_tx, trigger_rx) = mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
     ///
     /// let source = FluxionStream::from_unbounded_receiver(source_rx);
     /// let trigger = FluxionStream::from_unbounded_receiver(trigger_rx);
@@ -518,14 +518,14 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombinedState};
-    /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped ;
+    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (source_tx, source_rx) = mpsc::unbounded_channel::<Timestamped<i32>>();
-    /// let (threshold_tx, threshold_rx) = mpsc::unbounded_channel::<Timestamped<i32>>();
+    /// let (source_tx, source_rx) = mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+    /// let (threshold_tx, threshold_rx) = mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
     ///
     /// let source = FluxionStream::from_unbounded_receiver(source_rx);
     /// let threshold = FluxionStream::from_unbounded_receiver(threshold_rx);
@@ -536,10 +536,10 @@ where
     ///     values[0] > values[1] // source > threshold
     /// });
     ///
-    /// threshold_tx.send(Timestamped::new(50)).unwrap();
+    /// threshold_tx.send(ChronoTimestamped::new(50)).unwrap();
     ///
-    /// source_tx.send(Timestamped::new(30)).unwrap(); // Below threshold, not emitted
-    /// source_tx.send(Timestamped::new(60)).unwrap(); // Above threshold, emitted
+    /// source_tx.send(ChronoTimestamped::new(30)).unwrap(); // Below threshold, not emitted
+    /// source_tx.send(ChronoTimestamped::new(60)).unwrap(); // Above threshold, emitted
     ///
     /// let mut gated = Box::pin(gated);
     /// let result = gated.next().await.unwrap().unwrap();
@@ -593,14 +593,14 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombinedState};
-    /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped ;
+    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (primary_tx, primary_rx) = mpsc::unbounded_channel::<Timestamped<i32>>();
-    /// let (secondary_tx, secondary_rx) = mpsc::unbounded_channel::<Timestamped<i32>>();
+    /// let (primary_tx, primary_rx) = mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+    /// let (secondary_tx, secondary_rx) = mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
     ///
     /// let primary = FluxionStream::from_unbounded_receiver(primary_rx);
     /// let secondary = FluxionStream::from_unbounded_receiver(secondary_rx);
@@ -610,11 +610,11 @@ where
     /// });
     ///
     /// // Set secondary value
-    /// secondary_tx.send(Timestamped::new(100)).unwrap();
+    /// secondary_tx.send(ChronoTimestamped::new(100)).unwrap();
     ///
     /// // Primary emissions drive output
-    /// primary_tx.send(Timestamped::new(1)).unwrap();
-    /// primary_tx.send(Timestamped::new(2)).unwrap();
+    /// primary_tx.send(ChronoTimestamped::new(1)).unwrap();
+    /// primary_tx.send(ChronoTimestamped::new(2)).unwrap();
     ///
     /// let result = combined.next().await.unwrap().unwrap();
     /// let values = result.inner().values();
@@ -681,22 +681,22 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped ;
+    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (tx1, rx1) = mpsc::unbounded_channel::<Timestamped<i32>>();
-    /// let (tx2, rx2) = mpsc::unbounded_channel::<Timestamped<i32>>();
+    /// let (tx1, rx1) = mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+    /// let (tx2, rx2) = mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
     ///
     /// let stream1 = FluxionStream::from_unbounded_receiver(rx1);
     /// let stream2 = FluxionStream::from_unbounded_receiver(rx2);
     ///
     /// let mut combined = stream1.combine_latest(vec![stream2], |_| true);
     ///
-    /// tx1.send(Timestamped::new(10)).unwrap();
-    /// tx2.send(Timestamped::new(20)).unwrap();
+    /// tx1.send(ChronoTimestamped::new(10)).unwrap();
+    /// tx2.send(ChronoTimestamped::new(20)).unwrap();
     ///
     /// let result = combined.next().await.unwrap();
     /// let state = result.inner().values();
@@ -704,7 +704,7 @@ where
     /// assert_eq!(state[1], 20); // Second stream's value
     ///
     /// // When either stream updates, a new combined state is emitted
-    /// tx1.send(Timestamped::new(30)).unwrap();
+    /// tx1.send(ChronoTimestamped::new(30)).unwrap();
     /// let result = combined.next().await.unwrap();
     /// let state = result.inner().values();
     /// assert_eq!(state[0], 30); // Updated
@@ -760,15 +760,15 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped ;
+    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (tx1, rx1) = mpsc::unbounded_channel::<Timestamped<&str>>();
-    /// let (tx2, rx2) = mpsc::unbounded_channel::<Timestamped<&str>>();
-    /// let (tx3, rx3) = mpsc::unbounded_channel::<Timestamped<&str>>();
+    /// let (tx1, rx1) = mpsc::unbounded_channel::<ChronoTimestamped<&str>>();
+    /// let (tx2, rx2) = mpsc::unbounded_channel::<ChronoTimestamped<&str>>();
+    /// let (tx3, rx3) = mpsc::unbounded_channel::<ChronoTimestamped<&str>>();
     ///
     /// let stream1 = FluxionStream::from_unbounded_receiver(rx1);
     /// let stream2 = FluxionStream::from_unbounded_receiver(rx2);

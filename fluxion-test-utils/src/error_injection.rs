@@ -20,16 +20,16 @@ use std::task::{Context, Poll};
 /// # Examples
 ///
 /// ```rust
-/// use fluxion_test_utils::Timestamped;
+/// use fluxion_test_utils::ChronoTimestamped;
 /// use fluxion_test_utils::ErrorInjectingStream;
 /// use fluxion_core::{StreamItem, Timestamped };
 /// use futures::{stream, StreamExt};
 ///
 /// # async fn example() {
 /// let items = vec![
-///     <Timestamped<i32> >::with_timestamp(1, 1),
-///     <Timestamped<i32> >::with_timestamp(2, 2),
-///     <Timestamped<i32> >::with_timestamp(3, 3),
+///     <ChronoTimestamped<i32> >::with_timestamp(1, 1),
+///     <ChronoTimestamped<i32> >::with_timestamp(2, 2),
+///     <ChronoTimestamped<i32> >::with_timestamp(3, 3),
 /// ];
 ///
 /// let base_stream = stream::iter(items);
@@ -65,10 +65,10 @@ impl<S> ErrorInjectingStream<S> {
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_test_utils::{Timestamped, ErrorInjectingStream};
+    /// use fluxion_test_utils::{ChronoTimestamped, ErrorInjectingStream};
     /// use futures::stream;
     ///
-    /// let items = vec![Timestamped::new(1), Timestamped::new(2)];
+    /// let items = vec![ChronoTimestamped::new(1), ChronoTimestamped::new(2)];
     /// let base = stream::iter(items);
     /// let error_stream = ErrorInjectingStream::new(base, 1);
     /// // Will inject error at position 1 (after first value)

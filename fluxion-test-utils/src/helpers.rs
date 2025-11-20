@@ -24,13 +24,13 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 /// # Example
 ///
 /// ```rust
-/// use fluxion_test_utils::{test_channel, unwrap_value, unwrap_stream, Timestamped};
+/// use fluxion_test_utils::{test_channel, unwrap_value, unwrap_stream, ChronoTimestamped};
 /// use fluxion_test_utils::test_data::person_alice;
 /// use futures::StreamExt;
 ///
 /// # async fn example() {
 /// let (tx, mut stream) = test_channel();
-/// tx.send(Timestamped::new(person_alice())).unwrap();
+/// tx.send(ChronoTimestamped::new(person_alice())).unwrap();
 ///
 /// // Instead of: let item = stream.next().await.unwrap().unwrap();
 /// // Prefer the async helper which waits safely for spawned tasks:
@@ -60,13 +60,13 @@ pub fn unwrap_value<T>(item: Option<StreamItem<T>>) -> T {
 /// # Example
 ///
 /// ```rust
-/// use fluxion_test_utils::{test_channel, unwrap_stream, Timestamped};
+/// use fluxion_test_utils::{test_channel, unwrap_stream, ChronoTimestamped};
 /// use fluxion_test_utils::test_data::person_alice;
 /// use futures::StreamExt;
 ///
 /// # async fn example() {
 /// let (tx, mut stream) = test_channel();
-/// tx.send(Timestamped::new(person_alice())).unwrap();
+/// tx.send(ChronoTimestamped::new(person_alice())).unwrap();
 ///
 /// // Waits up to 500ms for the item to arrive
 /// let item = unwrap_stream(&mut stream, 500).await;
@@ -91,7 +91,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// use fluxion_test_utils::{test_channel, Timestamped};
+/// use fluxion_test_utils::{test_channel, ChronoTimestamped};
 /// use fluxion_test_utils::test_data::person_alice;
 /// use futures::StreamExt;
 ///
@@ -99,7 +99,7 @@ where
 /// let (tx, mut stream) = test_channel();
 ///
 /// // Send plain values
-/// tx.send(Timestamped::new(person_alice())).unwrap();
+/// tx.send(ChronoTimestamped::new(person_alice())).unwrap();
 ///
 /// // Receive StreamItem-wrapped values (prefer using `unwrap_stream` in async tests)
 /// // Option -> StreamItem -> Value

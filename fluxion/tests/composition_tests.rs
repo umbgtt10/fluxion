@@ -67,7 +67,6 @@ where
 static FILTER: fn(&TestData) -> bool = |_| true;
 static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;
 static LATEST_FILTER: fn(&TestData) -> bool = |_| true;
-static LATEST_FILTER_COMBINED: fn(&CombinedState<TestData, u64>) -> bool = |_| true;
 
 #[tokio::test]
 async fn test_fluxion_stream_composition() -> anyhow::Result<()> {
@@ -419,11 +418,60 @@ async fn test_combine_latest_then_combine_with_previous() -> anyhow::Result<()> 
 }
 
 #[tokio::test]
-#[ignore = "TODO: Fix test - take_latest_when requires source and filter to emit same type"]
 async fn test_combine_latest_then_take_latest_when() -> anyhow::Result<()> {
-    // This test needs to be rewritten - take_latest_when requires both streams to emit the same type T
-    // Currently: source emits CombinedState<TestData, u64>, filter emits Timestamped<CombinedState<TestData, u64>>
-    // These are incompatible types for take_latest_when
+    // Arrange: Chain combine_latest with take_latest_when
+    let (person_tx, person_rx) = test_channel::<ChronoTimestamped<TestData>>();
+    let (animal_tx, animal_rx) = test_channel::<ChronoTimestamped<TestData>>();
+    let (trigger_person_tx, trigger_person_rx) = test_channel::<ChronoTimestamped<TestData>>();
+    let (trigger_animal_tx, trigger_animal_rx) = test_channel::<ChronoTimestamped<TestData>>();
+
+    let person_stream = person_rx;
+    let animal_stream = animal_rx;
+    let trigger_person_stream = trigger_person_rx;
+    let trigger_animal_stream = trigger_animal_rx;
+
+    // Create trigger combined stream first
+    let trigger_combined = FluxionStream::new(trigger_person_stream)
+        .combine_latest(vec![trigger_animal_stream], COMBINE_FILTER);
+
+    // Chain: combine_latest then take_latest_when
+    let mut composed = FluxionStream::new(person_stream)
+        .combine_latest(vec![animal_stream], COMBINE_FILTER)
+        .take_latest_when(
+            trigger_combined,
+            |state| state.values().len() >= 2, // Trigger when trigger stream has both values
+        );
+
+    // Act & Assert: First populate the source stream
+    person_tx.send(ChronoTimestamped::new(person_alice()))?;
+    animal_tx.send(ChronoTimestamped::new(animal_dog()))?;
+
+    // No emission yet - waiting for trigger
+    assert_no_element_emitted(&mut composed, 100).await;
+
+    // Now trigger emission by populating trigger streams
+    trigger_person_tx.send(ChronoTimestamped::new(person_bob()))?;
+    trigger_animal_tx.send(ChronoTimestamped::new(plant_rose()))?;
+
+    // Should emit the latest from source stream
+    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
+    let values = result.inner().values();
+    assert_eq!(values.len(), 2);
+    assert_eq!(values[0], person_alice());
+    assert_eq!(values[1], animal_dog());
+
+    // Update source stream
+    person_tx.send(ChronoTimestamped::new(person_charlie()))?;
+
+    // Trigger another emission
+    trigger_person_tx.send(ChronoTimestamped::new(person_dave()))?;
+
+    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
+    let values = result.inner().values();
+    assert_eq!(values.len(), 2);
+    assert_eq!(values[0], person_charlie());
+    assert_eq!(values[1], animal_dog());
+
     Ok(())
 }
 
