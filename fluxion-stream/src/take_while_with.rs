@@ -169,7 +169,7 @@ where
         let state = Arc::new(Mutex::new((None::<TFilter::Inner>, false)));
 
         // Use ordered_merge and process items in order
-        let result = OrderedMergeExt::ordered_merge(streams).filter_map({
+        let combined_stream = OrderedMergeExt::ordered_merge(streams).filter_map({
             let state = Arc::clone(&state);
             move |item| {
                 let state = Arc::clone(&state);
@@ -209,8 +209,7 @@ where
             }
         });
 
-        let boxed = Box::pin(result);
-        FluxionStream::new(boxed)
+        FluxionStream::new(Box::pin(combined_stream))
     }
 }
 

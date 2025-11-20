@@ -160,65 +160,60 @@ where
         let num_streams = streams.len();
         let state = Arc::new(Mutex::new(IntermediateState::new(num_streams)));
 
-        let result = Box::pin(
-            streams
-                .ordered_merge()
-                .filter_map({
+        let combined_stream = streams
+            .ordered_merge()
+            .filter_map({
+                let state = Arc::clone(&state);
+
+                move |(item, index)| {
                     let state = Arc::clone(&state);
+                    async move {
+                        match item {
+                            StreamItem::Value(value) => {
+                                match lock_or_error(&state, "combine_latest state") {
+                                    Ok(mut guard) => {
+                                        guard.insert(index, value);
 
-                    move |(item, index)| {
-                        let state = Arc::clone(&state);
-                        async move {
-                            match item {
-                                StreamItem::Value(value) => {
-                                    match lock_or_error(&state, "combine_latest state") {
-                                        Ok(mut guard) => {
-                                            guard.insert(index, value);
-
-                                            if guard.is_complete() {
-                                                Some(StreamItem::Value(guard.clone()))
-                                            } else {
-                                                None
-                                            }
-                                        }
-                                        Err(e) => {
-                                            error!(
-                                                "Failed to acquire lock in combine_latest: {}",
-                                                e
-                                            );
-                                            Some(StreamItem::Error(e))
+                                        if guard.is_complete() {
+                                            Some(StreamItem::Value(guard.clone()))
+                                        } else {
+                                            None
                                         }
                                     }
+                                    Err(e) => {
+                                        error!("Failed to acquire lock in combine_latest: {}", e);
+                                        Some(StreamItem::Error(e))
+                                    }
                                 }
-                                StreamItem::Error(e) => {
-                                    // Propagate upstream errors immediately without state update
-                                    Some(StreamItem::Error(e))
-                                }
+                            }
+                            StreamItem::Error(e) => {
+                                // Propagate upstream errors immediately without state update
+                                Some(StreamItem::Error(e))
                             }
                         }
                     }
+                }
+            })
+            .map(|item| {
+                item.map(|state| {
+                    // Extract the inner values to create CombinedState
+                    let inner_values: Vec<T::Inner> = state
+                        .get_ordered_values()
+                        .iter()
+                        .map(|ordered_val| ordered_val.clone().into_inner())
+                        .collect();
+                    let timestamp = state.last_timestamp().expect("State must have timestamp");
+                    CombinedState::new(inner_values, timestamp)
                 })
-                .map(|item| {
-                    item.map(|state| {
-                        // Extract the inner values to create CombinedState
-                        let inner_values: Vec<T::Inner> = state
-                            .get_ordered_values()
-                            .iter()
-                            .map(|ordered_val| ordered_val.clone().into_inner())
-                            .collect();
-                        let timestamp = state.last_timestamp().expect("State must have timestamp");
-                        CombinedState::new(inner_values, timestamp)
-                    })
-                })
-                .filter(move |item| {
-                    match item {
-                        StreamItem::Value(combined_state) => ready(filter(combined_state)),
-                        StreamItem::Error(_) => ready(true), // Always emit errors
-                    }
-                }),
-        );
+            })
+            .filter(move |item| {
+                match item {
+                    StreamItem::Value(combined_state) => ready(filter(combined_state)),
+                    StreamItem::Error(_) => ready(true), // Always emit errors
+                }
+            });
 
-        FluxionStream::new(result)
+        FluxionStream::new(Box::pin(combined_stream))
     }
 }
 

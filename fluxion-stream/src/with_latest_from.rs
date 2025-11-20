@@ -198,8 +198,7 @@ where
             }
         });
 
-        let result = Box::pin(combined_stream);
-        FluxionStream::new(result)
+        FluxionStream::new(Box::pin(combined_stream))
     }
 }
 
