@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_ordered_merge::OrderedMergeExt;
-use fluxion_test_utils::sequenced::Sequenced;
+use fluxion_test_utils::Timestamped;
 use fluxion_test_utils::test_data::{
     animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_rose,
     plant_sunflower, TestData,
@@ -15,9 +15,9 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 #[tokio::test]
 async fn test_ordered_merge_empty_streams() -> anyhow::Result<()> {
     // Arrange
-    let (person_tx, person_rx) = unbounded_channel::<Sequenced<TestData>>();
-    let (animal_tx, animal_rx) = unbounded_channel::<Sequenced<TestData>>();
-    let (plant_tx, plant_rx) = unbounded_channel::<Sequenced<TestData>>();
+    let (person_tx, person_rx) = unbounded_channel::<Timestamped<TestData>>();
+    let (animal_tx, animal_rx) = unbounded_channel::<Timestamped<TestData>>();
+    let (plant_tx, plant_rx) = unbounded_channel::<Timestamped<TestData>>();
 
     let person_stream = UnboundedReceiverStream::new(person_rx);
     let animal_stream = UnboundedReceiverStream::new(animal_rx);
@@ -41,15 +41,15 @@ async fn test_ordered_merge_empty_streams() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_ordered_merge_single_stream() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
+    let (tx, rx) = unbounded_channel::<Timestamped<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
 
     let mut ordered_stream = vec![stream].ordered_merge();
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(person_bob()))?;
-    tx.send(Sequenced::new(person_charlie()))?;
+    tx.send(Timestamped::new(person_alice()))?;
+    tx.send(Timestamped::new(person_bob()))?;
+    tx.send(Timestamped::new(person_charlie()))?;
 
     // Assert
     assert_eq!(ordered_stream.next().await.unwrap().value, person_alice());
@@ -62,9 +62,9 @@ async fn test_ordered_merge_single_stream() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_ordered_merge_one_empty_stream() -> anyhow::Result<()> {
     // Arrange
-    let (person_tx, person_rx) = unbounded_channel::<Sequenced<TestData>>();
-    let (animal_tx, animal_rx) = unbounded_channel::<Sequenced<TestData>>();
-    let (plant_tx, plant_rx) = unbounded_channel::<Sequenced<TestData>>();
+    let (person_tx, person_rx) = unbounded_channel::<Timestamped<TestData>>();
+    let (animal_tx, animal_rx) = unbounded_channel::<Timestamped<TestData>>();
+    let (plant_tx, plant_rx) = unbounded_channel::<Timestamped<TestData>>();
 
     let person_stream = UnboundedReceiverStream::new(person_rx);
     let animal_stream = UnboundedReceiverStream::new(animal_rx);
@@ -76,9 +76,9 @@ async fn test_ordered_merge_one_empty_stream() -> anyhow::Result<()> {
     // Act
     drop(animal_tx);
 
-    person_tx.send(Sequenced::new(person_alice()))?;
-    plant_tx.send(Sequenced::new(plant_rose()))?;
-    person_tx.send(Sequenced::new(person_bob()))?;
+    person_tx.send(Timestamped::new(person_alice()))?;
+    plant_tx.send(Timestamped::new(plant_rose()))?;
+    person_tx.send(Timestamped::new(person_bob()))?;
 
     // Assert
     assert_eq!(results.next().await.unwrap().value, person_alice());
@@ -91,9 +91,9 @@ async fn test_ordered_merge_one_empty_stream() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_ordered_merge_interleaved_emissions() -> anyhow::Result<()> {
     // Arrange
-    let (person_tx, person_rx) = unbounded_channel::<Sequenced<TestData>>();
-    let (animal_tx, animal_rx) = unbounded_channel::<Sequenced<TestData>>();
-    let (plant_tx, plant_rx) = unbounded_channel::<Sequenced<TestData>>();
+    let (person_tx, person_rx) = unbounded_channel::<Timestamped<TestData>>();
+    let (animal_tx, animal_rx) = unbounded_channel::<Timestamped<TestData>>();
+    let (plant_tx, plant_rx) = unbounded_channel::<Timestamped<TestData>>();
 
     let person_stream = UnboundedReceiverStream::new(person_rx);
     let animal_stream = UnboundedReceiverStream::new(animal_rx);
@@ -102,22 +102,22 @@ async fn test_ordered_merge_interleaved_emissions() -> anyhow::Result<()> {
     let mut results = vec![person_stream, animal_stream, plant_stream].ordered_merge();
 
     // Act & Assert
-    person_tx.send(Sequenced::new(person_alice()))?;
+    person_tx.send(Timestamped::new(person_alice()))?;
     assert_eq!(results.next().await.unwrap().value, person_alice());
 
-    animal_tx.send(Sequenced::new(animal_dog()))?;
+    animal_tx.send(Timestamped::new(animal_dog()))?;
     assert_eq!(results.next().await.unwrap().value, animal_dog());
 
-    person_tx.send(Sequenced::new(person_bob()))?;
+    person_tx.send(Timestamped::new(person_bob()))?;
     assert_eq!(results.next().await.unwrap().value, person_bob());
 
-    plant_tx.send(Sequenced::new(plant_rose()))?;
+    plant_tx.send(Timestamped::new(plant_rose()))?;
     assert_eq!(results.next().await.unwrap().value, plant_rose());
 
-    animal_tx.send(Sequenced::new(animal_spider()))?;
+    animal_tx.send(Timestamped::new(animal_spider()))?;
     assert_eq!(results.next().await.unwrap().value, animal_spider());
 
-    plant_tx.send(Sequenced::new(plant_sunflower()))?;
+    plant_tx.send(Timestamped::new(plant_sunflower()))?;
     assert_eq!(results.next().await.unwrap().value, plant_sunflower());
 
     Ok(())
@@ -126,8 +126,8 @@ async fn test_ordered_merge_interleaved_emissions() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_ordered_merge_stream_completes_early() -> anyhow::Result<()> {
     // Arrange
-    let (person_tx, person_rx) = unbounded_channel::<Sequenced<TestData>>();
-    let (animal_tx, animal_rx) = unbounded_channel::<Sequenced<TestData>>();
+    let (person_tx, person_rx) = unbounded_channel::<Timestamped<TestData>>();
+    let (animal_tx, animal_rx) = unbounded_channel::<Timestamped<TestData>>();
 
     let person_stream = UnboundedReceiverStream::new(person_rx);
     let animal_stream = UnboundedReceiverStream::new(animal_rx);
@@ -135,10 +135,10 @@ async fn test_ordered_merge_stream_completes_early() -> anyhow::Result<()> {
     let mut results = vec![person_stream, animal_stream].ordered_merge();
 
     // Act
-    person_tx.send(Sequenced::new(person_alice()))?;
-    animal_tx.send(Sequenced::new(animal_dog()))?;
+    person_tx.send(Timestamped::new(person_alice()))?;
+    animal_tx.send(Timestamped::new(animal_dog()))?;
     drop(person_tx);
-    animal_tx.send(Sequenced::new(animal_spider()))?;
+    animal_tx.send(Timestamped::new(animal_spider()))?;
 
     // Assert
     assert_eq!(results.next().await.unwrap().value, person_alice());
@@ -155,9 +155,9 @@ async fn test_ordered_merge_stream_completes_early() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_ordered_merge_all_streams_close_simultaneously() -> anyhow::Result<()> {
     // Arrange
-    let (person_tx, person_rx) = unbounded_channel::<Sequenced<TestData>>();
-    let (animal_tx, animal_rx) = unbounded_channel::<Sequenced<TestData>>();
-    let (plant_tx, plant_rx) = unbounded_channel::<Sequenced<TestData>>();
+    let (person_tx, person_rx) = unbounded_channel::<Timestamped<TestData>>();
+    let (animal_tx, animal_rx) = unbounded_channel::<Timestamped<TestData>>();
+    let (plant_tx, plant_rx) = unbounded_channel::<Timestamped<TestData>>();
 
     let person_stream = UnboundedReceiverStream::new(person_rx);
     let animal_stream = UnboundedReceiverStream::new(animal_rx);
@@ -166,9 +166,9 @@ async fn test_ordered_merge_all_streams_close_simultaneously() -> anyhow::Result
     let mut results = vec![person_stream, animal_stream, plant_stream].ordered_merge();
 
     // Act
-    person_tx.send(Sequenced::new(person_alice()))?;
-    animal_tx.send(Sequenced::new(animal_dog()))?;
-    plant_tx.send(Sequenced::new(plant_rose()))?;
+    person_tx.send(Timestamped::new(person_alice()))?;
+    animal_tx.send(Timestamped::new(animal_dog()))?;
+    plant_tx.send(Timestamped::new(plant_rose()))?;
 
     drop(person_tx);
     drop(animal_tx);
@@ -188,9 +188,9 @@ async fn test_ordered_merge_all_streams_close_simultaneously() -> anyhow::Result
 #[tokio::test]
 async fn test_ordered_merge_one_stream_closes_midway_three_streams() -> anyhow::Result<()> {
     // Arrange
-    let (person_tx, person_rx) = unbounded_channel::<Sequenced<TestData>>();
-    let (animal_tx, animal_rx) = unbounded_channel::<Sequenced<TestData>>();
-    let (plant_tx, plant_rx) = unbounded_channel::<Sequenced<TestData>>();
+    let (person_tx, person_rx) = unbounded_channel::<Timestamped<TestData>>();
+    let (animal_tx, animal_rx) = unbounded_channel::<Timestamped<TestData>>();
+    let (plant_tx, plant_rx) = unbounded_channel::<Timestamped<TestData>>();
 
     let person_stream = UnboundedReceiverStream::new(person_rx);
     let animal_stream = UnboundedReceiverStream::new(animal_rx);
@@ -199,21 +199,21 @@ async fn test_ordered_merge_one_stream_closes_midway_three_streams() -> anyhow::
     let mut results = vec![person_stream, animal_stream, plant_stream].ordered_merge();
 
     // Act & Assert stepwise
-    person_tx.send(Sequenced::new(person_alice()))?;
+    person_tx.send(Timestamped::new(person_alice()))?;
     assert_eq!(results.next().await.unwrap().value, person_alice());
 
-    animal_tx.send(Sequenced::new(animal_dog()))?;
+    animal_tx.send(Timestamped::new(animal_dog()))?;
     assert_eq!(results.next().await.unwrap().value, animal_dog());
 
-    plant_tx.send(Sequenced::new(plant_rose()))?;
+    plant_tx.send(Timestamped::new(plant_rose()))?;
     assert_eq!(results.next().await.unwrap().value, plant_rose());
 
     drop(plant_tx);
 
-    person_tx.send(Sequenced::new(person_bob()))?;
+    person_tx.send(Timestamped::new(person_bob()))?;
     assert_eq!(results.next().await.unwrap().value, person_bob());
 
-    animal_tx.send(Sequenced::new(animal_spider()))?;
+    animal_tx.send(Timestamped::new(animal_spider()))?;
     assert_eq!(results.next().await.unwrap().value, animal_spider());
 
     drop(person_tx);
@@ -227,8 +227,8 @@ async fn test_ordered_merge_one_stream_closes_midway_three_streams() -> anyhow::
 #[tokio::test]
 async fn test_ordered_merge_large_volume() -> anyhow::Result<()> {
     // Arrange
-    let (tx1, rx1) = unbounded_channel::<Sequenced<TestData>>();
-    let (tx2, rx2) = unbounded_channel::<Sequenced<TestData>>();
+    let (tx1, rx1) = unbounded_channel::<Timestamped<TestData>>();
+    let (tx2, rx2) = unbounded_channel::<Timestamped<TestData>>();
 
     let stream1 = UnboundedReceiverStream::new(rx1);
     let stream2 = UnboundedReceiverStream::new(rx2);
@@ -237,8 +237,8 @@ async fn test_ordered_merge_large_volume() -> anyhow::Result<()> {
 
     // Act
     for _ in 0..500 {
-        tx1.send(Sequenced::new(person_alice()))?;
-        tx2.send(Sequenced::new(animal_dog()))?;
+        tx1.send(Timestamped::new(person_alice()))?;
+        tx2.send(Timestamped::new(animal_dog()))?;
     }
 
     // Assert
@@ -267,9 +267,9 @@ async fn test_ordered_merge_maximum_concurrent_streams() -> anyhow::Result<()> {
     for _i in 0..num_concurrent {
         let handle = tokio::spawn(async move {
             // Arrange
-            let (tx1, rx1) = unbounded_channel::<Sequenced<TestData>>();
-            let (tx2, rx2) = unbounded_channel::<Sequenced<TestData>>();
-            let (tx3, rx3) = unbounded_channel::<Sequenced<TestData>>();
+            let (tx1, rx1) = unbounded_channel::<Timestamped<TestData>>();
+            let (tx2, rx2) = unbounded_channel::<Timestamped<TestData>>();
+            let (tx3, rx3) = unbounded_channel::<Timestamped<TestData>>();
 
             let stream1 = UnboundedReceiverStream::new(rx1);
             let stream2 = UnboundedReceiverStream::new(rx2);
@@ -278,24 +278,24 @@ async fn test_ordered_merge_maximum_concurrent_streams() -> anyhow::Result<()> {
             let mut results = vec![stream1, stream2, stream3].ordered_merge();
 
             // Act
-            tx1.send(Sequenced::new(person_alice())).unwrap();
-            tx2.send(Sequenced::new(animal_dog())).unwrap();
-            tx3.send(Sequenced::new(plant_rose())).unwrap();
+            tx1.send(Timestamped::new(person_alice())).unwrap();
+            tx2.send(Timestamped::new(animal_dog())).unwrap();
+            tx3.send(Timestamped::new(plant_rose())).unwrap();
 
             // Assert
             assert_eq!(results.next().await.unwrap().value, person_alice());
             assert_eq!(results.next().await.unwrap().value, animal_dog());
             assert_eq!(results.next().await.unwrap().value, plant_rose());
 
-            let (tx4, rx4) = unbounded_channel::<Sequenced<TestData>>();
-            let (tx5, rx5) = unbounded_channel::<Sequenced<TestData>>();
+            let (tx4, rx4) = unbounded_channel::<Timestamped<TestData>>();
+            let (tx5, rx5) = unbounded_channel::<Timestamped<TestData>>();
 
             let stream4 = UnboundedReceiverStream::new(rx4);
             let stream5 = UnboundedReceiverStream::new(rx5);
 
             // Act
-            tx4.send(Sequenced::new(person_bob())).unwrap();
-            tx5.send(Sequenced::new(person_charlie())).unwrap();
+            tx4.send(Timestamped::new(person_bob())).unwrap();
+            tx5.send(Timestamped::new(person_charlie())).unwrap();
 
             let mut results2 = vec![stream4, stream5].ordered_merge();
 
@@ -315,3 +315,4 @@ async fn test_ordered_merge_maximum_concurrent_streams() -> anyhow::Result<()> {
 
     Ok(())
 }
+

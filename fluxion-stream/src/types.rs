@@ -6,7 +6,7 @@
 //!
 //! This module centralizes shared types to reduce duplication and improve maintainability.
 
-use fluxion_core::Ordered;
+use fluxion_core::Timestamped;
 use std::fmt::Debug;
 
 /// Represents a value paired with its previous value in the stream.
@@ -38,21 +38,28 @@ impl<T> WithPrevious<T> {
     }
 }
 
-impl<T: Ordered> Ordered for WithPrevious<T> {
+impl<T: Timestamped> Timestamped for WithPrevious<T> {
     type Inner = T::Inner;
 
-    fn order(&self) -> u64 {
-        self.current.order()
+    fn timestamp(&self) -> u64 {
+        self.current.timestamp()
     }
 
-    fn get(&self) -> &Self::Inner {
-        self.current.get()
+    fn inner(&self) -> &Self::Inner {
+        self.current.inner()
     }
 
-    fn with_order(value: Self::Inner, order: u64) -> Self {
+    fn with_timestamp(value: Self::Inner, timestamp: u64) -> Self {
         Self {
             previous: None,
-            current: T::with_order(value, order),
+            current: T::with_timestamp(value, timestamp),
+        }
+    }
+
+    fn with_fresh_timestamp(value: Self::Inner) -> Self {
+        Self {
+            previous: None,
+            current: T::with_fresh_timestamp(value),
         }
     }
 
@@ -109,23 +116,27 @@ where
     }
 }
 
-impl<V> Ordered for CombinedState<V>
+impl<V> Timestamped for CombinedState<V>
 where
     V: Clone + Debug + Ord,
 {
     type Inner = Self;
 
-    fn order(&self) -> u64 {
-        // CombinedState doesn't have its own order - it's always wrapped by an Ordered type
+    fn timestamp(&self) -> u64 {
+        // CombinedState doesn't have its own timestamp - it's always wrapped by a Timestamped type
         // This should never be called directly
-        0
+        panic!("CombinedState::timestamp() should not be called directly")
     }
 
-    fn get(&self) -> &Self::Inner {
+    fn inner(&self) -> &Self::Inner {
         self
     }
 
-    fn with_order(value: Self::Inner, _order: u64) -> Self {
+    fn with_timestamp(value: Self::Inner, _timestamp: u64) -> Self {
+        value
+    }
+
+    fn with_fresh_timestamp(value: Self::Inner) -> Self {
         value
     }
 
@@ -134,10 +145,10 @@ where
     }
 }
 
-/// Type alias for the common trait bounds used for ordered stream items.
+/// Type alias for the common trait bounds used for timestamped stream items.
 ///
 /// This trait requires that types are:
-/// - `Ordered`: Have temporal ordering
+/// - `Timestamped`: Have temporal ordering
 /// - `Clone`: Can be duplicated
 /// - `Debug`: Can be formatted for debugging
 /// - `Ord`: Have total ordering
@@ -149,30 +160,36 @@ where
 ///
 /// Instead of writing:
 /// ```
-/// # use fluxion_stream::OrderedStreamItem;
-/// # use fluxion_core::Ordered;
+/// # use fluxion_stream::TimestampedStreamItem;
+/// # use fluxion_core::Timestamped;
 /// # use std::fmt::Debug;
 /// fn process_stream<T>()
 /// where
-///     T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static
+///     T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static
 /// # {}
 /// ```
 ///
 /// You can write:
 /// ```
-/// # use fluxion_stream::OrderedStreamItem;
+/// # use fluxion_stream::TimestampedStreamItem;
 /// fn process_stream<T>()
 /// where
-///     T: OrderedStreamItem
+///     T: TimestampedStreamItem
 /// # {}
 /// ```
-pub trait OrderedStreamItem: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static {}
-
-// Blanket implementation for all types that satisfy the bounds
-impl<T> OrderedStreamItem for T where
-    T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static
+pub trait TimestampedStreamItem:
+    Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static
 {
 }
+
+// Blanket implementation for all types that satisfy the bounds
+impl<T> TimestampedStreamItem for T where
+    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static
+{
+}
+
+// Compatibility alias
+pub use TimestampedStreamItem as OrderedStreamItem;
 
 /// Type alias for the common trait bounds used for the inner values of ordered stream items.
 ///

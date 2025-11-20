@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_ordered_merge::OrderedMergeExt;
-use fluxion_test_utils::sequenced::Sequenced;
+use fluxion_test_utils::Timestamped;
 use futures::stream::{empty, Empty, Stream, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
@@ -12,7 +12,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-/// A stateful stream merger that combines multiple sequenced streams while maintaining state.
+/// A stateful stream merger that combines multiple Timestamped streams while maintaining state.
 ///
 /// Internally uses [`fluxion_ordered_merge`] to merge streams in order
 /// based on their sequence numbers, ensuring temporal consistency across merged streams.
@@ -43,25 +43,29 @@ where
     State: Send + Sync + 'static,
     Item: Send + Ord + Unpin + 'static,
 {
-    /// Merges a new sequenced stream into the existing merged stream.
+    /// Merges a new Timestamped stream into the existing merged stream.
     ///
     /// Uses [`fluxion_ordered_merge`] to combine the streams while preserving
     /// temporal order based on sequence numbers.
     ///
     /// # Parameters
-    /// - `new_stream`: The new sequenced stream to merge
+    /// - `new_stream`: The new Timestamped stream to merge
     /// - `process_fn`: Function to process each item with mutable access to shared state
     pub fn merge_with<NewStream, F, NewItem, T>(
         self,
         new_stream: NewStream,
         process_fn: F,
-    ) -> MergedStream<impl Stream<Item = Sequenced<T>>, State, Sequenced<T>>
+    ) -> MergedStream<impl Stream<Item = Timestamped<T>>, State, Timestamped<T>>
     where
-        NewStream: Stream<Item = Sequenced<NewItem>> + Send + Sync + 'static,
-        F: FnMut(Sequenced<NewItem>, &mut State) -> Sequenced<T> + Send + Sync + Clone + 'static,
+        NewStream: Stream<Item = Timestamped<NewItem>> + Send + Sync + 'static,
+        F: FnMut(Timestamped<NewItem>, &mut State) -> Timestamped<T>
+            + Send
+            + Sync
+            + Clone
+            + 'static,
         NewItem: Send + Sync + 'static,
         T: Send + Sync + Ord + Unpin + 'static,
-        Item: Into<Sequenced<T>>,
+        Item: Into<Timestamped<T>>,
     {
         let shared_state = Arc::clone(&self.state);
         let new_stream_mapped = new_stream.then(move |timestamped_item| {
@@ -76,8 +80,10 @@ where
         let self_stream_mapped = self.inner.map(Into::into);
 
         let merged_stream = vec![
-            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>,
-            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>,
+            Box::pin(self_stream_mapped)
+                as Pin<Box<dyn Stream<Item = Timestamped<T>> + Send + Sync>>,
+            Box::pin(new_stream_mapped)
+                as Pin<Box<dyn Stream<Item = Timestamped<T>> + Send + Sync>>,
         ]
         .ordered_merge();
 

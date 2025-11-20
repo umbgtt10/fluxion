@@ -51,7 +51,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{TakeLatestWhenExt, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
@@ -70,12 +70,12 @@ where
     /// );
     ///
     /// // Send values
-    /// tx_data.send(Sequenced::with_sequence(100, 1)).unwrap();
-    /// tx_trigger.send(Sequenced::with_sequence(1, 2)).unwrap();  // Trigger
+    /// tx_data.send(Timestamped::with_timestamp(100, 1)).unwrap();
+    /// tx_trigger.send(Timestamped::with_timestamp(1, 2)).unwrap();  // Trigger
     ///
     /// // Assert - trigger emits the latest data value
     /// let result = sampled.next().await.unwrap().unwrap();
-    /// assert_eq!(*result.get(), 100);
+    /// assert_eq!(*result.inner(), 100);
     /// # }
     /// ```
     ///
@@ -154,8 +154,6 @@ where
             async move {
                 match item {
                     StreamItem::Value(ordered_value) => {
-                        let order = ordered_value.order();
-
                         match index {
                             0 => {
                                 // Source stream update - just cache the value, don't emit
@@ -166,7 +164,7 @@ where
                                             return Some(StreamItem::Error(e));
                                         }
                                     };
-                                *source = Some(ordered_value.get().clone());
+                                *source = Some(ordered_value.inner().clone());
                                 None
                             }
                             1 => {
@@ -188,15 +186,14 @@ where
                                     };
 
                                 // Update filter value
-                                *filter_val = Some(ordered_value.get().clone());
+                                *filter_val = Some(ordered_value.inner().clone());
 
                                 // Now check the condition and potentially emit
                                 if let Some(filt) = filter_val.as_ref() {
                                     if let Some(src) = source.as_ref() {
                                         if filter(filt) {
-                                            Some(StreamItem::Value(T::with_order(
+                                            Some(StreamItem::Value(T::with_fresh_timestamp(
                                                 src.clone(),
-                                                order,
                                             )))
                                         } else {
                                             None
@@ -226,3 +223,4 @@ where
         FluxionStream::new(result)
     }
 }
+

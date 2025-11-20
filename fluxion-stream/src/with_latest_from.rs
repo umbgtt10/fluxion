@@ -12,7 +12,7 @@ use crate::types::CombinedState;
 use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_error;
-use fluxion_core::{CompareByInner, OrderedWrapper, StreamItem};
+use fluxion_core::{CompareByInner, OrderedWrapper, StreamItem, TimestampedWrapper};
 
 /// Extension trait providing the `with_latest_from` operator for ordered streams.
 ///
@@ -76,7 +76,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{WithLatestFromExt, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use fluxion_core::Ordered;
     /// use futures::StreamExt;
     ///
@@ -99,12 +99,12 @@ where
     /// );
     ///
     /// // Send values
-    /// tx_secondary.send(Sequenced::with_sequence(10, 1)).unwrap();
-    /// tx_primary.send(Sequenced::with_sequence(1, 2)).unwrap();
+    /// tx_secondary.send(Timestamped::with_timestamp(10, 1)).unwrap();
+    /// tx_primary.send(Timestamped::with_timestamp(1, 2)).unwrap();
     ///
     /// // Assert
     /// let result = combined.next().await.unwrap().unwrap();
-    /// assert_eq!(*result.get(), 11);
+    /// assert_eq!(*result.inner(), 11);
     /// # }
     /// ```
     ///
@@ -161,7 +161,7 @@ where
                 async move {
                     match item {
                         StreamItem::Value(value) => {
-                            let order = value.order();
+                            let _timestamp = value.timestamp();
                             // Update state with new value
                             match lock_or_error(&state, "with_latest_from state") {
                                 Ok(mut guard) => {
@@ -175,17 +175,17 @@ where
 
                                         // values[0] = primary, values[1] = secondary
                                         let combined_state = CombinedState::new(vec![
-                                            values[0].get().clone(),
-                                            values[1].get().clone(),
+                                            values[0].inner().clone(),
+                                            values[1].inner().clone(),
                                         ]);
 
                                         // Apply the result selector to transform the combined state
                                         let result = selector(&combined_state);
 
-                                        // Wrap result with the primary's order
-                                        Some(StreamItem::Value(OrderedWrapper::with_order(
-                                            result, order,
-                                        )))
+                                        // Wrap result with a fresh timestamp
+                                        Some(StreamItem::Value(
+                                            TimestampedWrapper::with_fresh_timestamp(result),
+                                        ))
                                     } else {
                                         // Secondary stream emitted, just update state but don't emit
                                         None
@@ -235,3 +235,4 @@ impl<T: Clone> IntermediateState<T> {
             .collect()
     }
 }
+

@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream::{FluxionStream, Ordered};
-use fluxion_test_utils::sequenced::Sequenced;
+use fluxion_test_utils::Timestamped;
 use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_dave, person_diane,
@@ -11,6 +11,7 @@ use fluxion_test_utils::test_data::{
 };
 use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value};
 use futures::StreamExt;
+use fluxion_core::Timestamped as TimestampedTrait;
 
 #[tokio::test]
 async fn test_filter_ordered_basic_predicate() -> anyhow::Result<()> {
@@ -20,15 +21,15 @@ async fn test_filter_ordered_basic_predicate() -> anyhow::Result<()> {
         FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Person(_)));
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Timestamped::new(person_alice()))?;
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.get(), &person_alice());
+    assert_eq!(result.inner(), &person_alice());
 
-    tx.send(Sequenced::new(animal_dog()))?;
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Timestamped::new(animal_dog()))?;
+    tx.send(Timestamped::new(person_bob()))?;
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.get(), &person_bob()); // Animal filtered out
+    assert_eq!(result.inner(), &person_bob()); // Animal filtered out
 
     Ok(())
 }
@@ -43,17 +44,17 @@ async fn test_filter_ordered_age_threshold() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?; // 25 - filtered
-    tx.send(Sequenced::new(person_bob()))?; // 30 - filtered
-    tx.send(Sequenced::new(person_charlie()))?; // 35 - kept
-    tx.send(Sequenced::new(person_diane()))?; // 40 - kept
+    tx.send(Timestamped::new(person_alice()))?; // 25 - filtered
+    tx.send(Timestamped::new(person_bob()))?; // 30 - filtered
+    tx.send(Timestamped::new(person_charlie()))?; // 35 - kept
+    tx.send(Timestamped::new(person_diane()))?; // 40 - kept
 
     // Assert
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.get(), &person_charlie());
+    assert_eq!(result.inner(), &person_charlie());
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.get(), &person_diane());
+    assert_eq!(result.inner(), &person_diane());
 
     Ok(())
 }
@@ -61,7 +62,7 @@ async fn test_filter_ordered_age_threshold() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_filter_ordered_empty_stream() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (tx, stream) = test_channel::<Timestamped<TestData>>();
     let mut stream = FluxionStream::new(stream).filter_ordered(|_| true);
 
     // Act
@@ -80,9 +81,9 @@ async fn test_filter_ordered_all_filtered_out() -> anyhow::Result<()> {
     let mut stream = FluxionStream::new(stream).filter_ordered(|_| false); // Filter everything
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(person_bob()))?;
-    tx.send(Sequenced::new(animal_dog()))?;
+    tx.send(Timestamped::new(person_alice()))?;
+    tx.send(Timestamped::new(person_bob()))?;
+    tx.send(Timestamped::new(animal_dog()))?;
     drop(tx);
 
     // Assert
@@ -98,21 +99,21 @@ async fn test_filter_ordered_none_filtered() -> anyhow::Result<()> {
     let mut stream = FluxionStream::new(stream).filter_ordered(|_| true); // Keep everything
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(animal_dog()))?;
-    tx.send(Sequenced::new(plant_rose()))?;
+    tx.send(Timestamped::new(person_alice()))?;
+    tx.send(Timestamped::new(animal_dog()))?;
+    tx.send(Timestamped::new(plant_rose()))?;
 
     // Assert
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).inner(),
         &person_alice()
     );
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).inner(),
         &animal_dog()
     );
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).inner(),
         &plant_rose()
     );
 
@@ -131,24 +132,24 @@ async fn test_filter_ordered_preserves_ordering() -> anyhow::Result<()> {
     });
 
     // Act - send in sequence order
-    tx.send(Sequenced::new(person_alice()))?; // 25 - odd, filtered
-    tx.send(Sequenced::new(person_bob()))?; // 30 - even, kept
-    tx.send(Sequenced::new(person_charlie()))?; // 35 - odd, filtered
-    tx.send(Sequenced::new(person_diane()))?; // 40 - even, kept
-    tx.send(Sequenced::new(person_dave()))?; // 28 - even, kept
+    tx.send(Timestamped::new(person_alice()))?; // 25 - odd, filtered
+    tx.send(Timestamped::new(person_bob()))?; // 30 - even, kept
+    tx.send(Timestamped::new(person_charlie()))?; // 35 - odd, filtered
+    tx.send(Timestamped::new(person_diane()))?; // 40 - even, kept
+    tx.send(Timestamped::new(person_dave()))?; // 28 - even, kept
 
     // Assert - ordering preserved for kept items
     let r1 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     let r2 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     let r3 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
 
-    assert_eq!(r1.get(), &person_bob());
-    assert_eq!(r2.get(), &person_diane());
-    assert_eq!(r3.get(), &person_dave());
+    assert_eq!(r1.inner(), &person_bob());
+    assert_eq!(r2.inner(), &person_diane());
+    assert_eq!(r3.inner(), &person_dave());
 
     // Verify sequence numbers are in order
-    assert!(r1.order() < r2.order());
-    assert!(r2.order() < r3.order());
+    assert!(r1.timestamp() < r2.timestamp());
+    assert!(r2.timestamp() < r3.timestamp());
 
     Ok(())
 }
@@ -161,18 +162,18 @@ async fn test_filter_ordered_multiple_types() -> anyhow::Result<()> {
         FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Animal(_)));
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(animal_dog()))?;
-    tx.send(Sequenced::new(plant_rose()))?;
-    tx.send(Sequenced::new(animal_spider()))?;
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Timestamped::new(person_alice()))?;
+    tx.send(Timestamped::new(animal_dog()))?;
+    tx.send(Timestamped::new(plant_rose()))?;
+    tx.send(Timestamped::new(animal_spider()))?;
+    tx.send(Timestamped::new(person_bob()))?;
 
     // Assert
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.get(), &animal_dog());
+    assert_eq!(result.inner(), &animal_dog());
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.get(), &animal_spider());
+    assert_eq!(result.inner(), &animal_spider());
 
     Ok(())
 }
@@ -188,23 +189,23 @@ async fn test_filter_ordered_complex_predicate() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?; // 25 - filtered
-    tx.send(Sequenced::new(person_bob()))?; // 30 - kept
-    tx.send(Sequenced::new(animal_dog()))?; // kept
-    tx.send(Sequenced::new(plant_rose()))?; // filtered
-    tx.send(Sequenced::new(person_diane()))?; // 40 - kept
+    tx.send(Timestamped::new(person_alice()))?; // 25 - filtered
+    tx.send(Timestamped::new(person_bob()))?; // 30 - kept
+    tx.send(Timestamped::new(animal_dog()))?; // kept
+    tx.send(Timestamped::new(plant_rose()))?; // filtered
+    tx.send(Timestamped::new(person_diane()))?; // 40 - kept
 
     // Assert
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).inner(),
         &person_bob()
     );
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).inner(),
         &animal_dog()
     );
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).inner(),
         &person_diane()
     );
 
@@ -219,12 +220,12 @@ async fn test_filter_ordered_single_item() -> anyhow::Result<()> {
         FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Person(_)));
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Timestamped::new(person_alice()))?;
     drop(tx);
 
     // Assert
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.get(), &person_alice());
+    assert_eq!(result.inner(), &person_alice());
     assert!(stream.next().await.is_none());
 
     Ok(())
@@ -240,23 +241,23 @@ async fn test_filter_ordered_with_pattern_matching() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?; // Alice - kept
-    tx.send(Sequenced::new(person_bob()))?; // Bob - filtered
-    tx.send(Sequenced::new(person_charlie()))?; // Charlie - filtered
-    tx.send(Sequenced::new(person_dave()))?; // Dave - kept
-    tx.send(Sequenced::new(person_diane()))?; // Diane - kept
+    tx.send(Timestamped::new(person_alice()))?; // Alice - kept
+    tx.send(Timestamped::new(person_bob()))?; // Bob - filtered
+    tx.send(Timestamped::new(person_charlie()))?; // Charlie - filtered
+    tx.send(Timestamped::new(person_dave()))?; // Dave - kept
+    tx.send(Timestamped::new(person_diane()))?; // Diane - kept
 
     // Assert
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).inner(),
         &person_alice()
     );
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).inner(),
         &person_dave()
     );
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).inner(),
         &person_diane()
     );
 
@@ -279,21 +280,22 @@ async fn test_filter_ordered_alternating_pattern() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?; // 1st person - kept
-    tx.send(Sequenced::new(person_bob()))?; // 2nd person - filtered
-    tx.send(Sequenced::new(animal_dog()))?; // not a person - filtered
-    tx.send(Sequenced::new(person_charlie()))?; // 3rd person - kept
-    tx.send(Sequenced::new(person_diane()))?; // 4th person - filtered
+    tx.send(Timestamped::new(person_alice()))?; // 1st person - kept
+    tx.send(Timestamped::new(person_bob()))?; // 2nd person - filtered
+    tx.send(Timestamped::new(animal_dog()))?; // not a person - filtered
+    tx.send(Timestamped::new(person_charlie()))?; // 3rd person - kept
+    tx.send(Timestamped::new(person_diane()))?; // 4th person - filtered
 
     // Assert
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).inner(),
         &person_alice()
     );
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).get(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).inner(),
         &person_charlie()
     );
 
     Ok(())
 }
+

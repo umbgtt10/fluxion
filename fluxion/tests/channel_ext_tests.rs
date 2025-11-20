@@ -4,6 +4,7 @@
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 use fluxion_core::StreamItem;
+use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_rx::prelude::*;
 use fluxion_test_utils::{assert_no_element_emitted, helpers::unwrap_stream};
 use futures::StreamExt;
@@ -18,15 +19,18 @@ mod no_coverage_helpers {
         pub temperature: i32,
     }
 
-    impl Ordered for SensorReading {
+    impl fluxion_core::Timestamped for SensorReading {
         type Inner = Self;
-        fn order(&self) -> u64 {
+        fn timestamp(&self) -> u64 {
             self.timestamp
         }
-        fn get(&self) -> &Self::Inner {
+        fn inner(&self) -> &Self::Inner {
             self
         }
-        fn with_order(value: Self, _order: u64) -> Self {
+        fn with_timestamp(value: Self, _timestamp: u64) -> Self {
+            value
+        }
+        fn with_fresh_timestamp(value: Self) -> Self {
             value
         }
     }
@@ -37,15 +41,18 @@ mod no_coverage_helpers {
         pub code: i32,
     }
 
-    impl Ordered for StatusUpdate {
+    impl fluxion_core::Timestamped for StatusUpdate {
         type Inner = Self;
-        fn order(&self) -> u64 {
+        fn timestamp(&self) -> u64 {
             self.timestamp
         }
-        fn get(&self) -> &Self::Inner {
+        fn inner(&self) -> &Self::Inner {
             self
         }
-        fn with_order(value: Self, _order: u64) -> Self {
+        fn with_timestamp(value: Self, _timestamp: u64) -> Self {
+            value
+        }
+        fn with_fresh_timestamp(value: Self) -> Self {
             value
         }
     }
@@ -56,18 +63,21 @@ mod no_coverage_helpers {
         Status(StatusUpdate),
     }
 
-    impl Ordered for CombinedEvent {
+    impl fluxion_core::Timestamped for CombinedEvent {
         type Inner = Self;
-        fn order(&self) -> u64 {
+        fn timestamp(&self) -> u64 {
             match self {
                 CombinedEvent::Sensor(s) => s.timestamp,
                 CombinedEvent::Status(st) => st.timestamp,
             }
         }
-        fn get(&self) -> &Self::Inner {
+        fn inner(&self) -> &Self::Inner {
             self
         }
-        fn with_order(value: Self, _order: u64) -> Self {
+        fn with_timestamp(value: Self, _order: u64) -> Self {
+            value
+        }
+        fn with_fresh_timestamp(value: Self) -> Self {
             value
         }
     }
@@ -91,18 +101,18 @@ mod no_coverage_helpers {
             let combined_status = CombinedEvent::Status(status_update.clone());
 
             // Act
-            sensor_reading.order();
-            status_update.order();
-            let _ = sensor_reading.get();
-            let _ = status_update.get();
-            SensorReading::with_order(sensor_reading.clone(), 0);
-            StatusUpdate::with_order(status_update.clone(), 0);
-            combined_sensor.order();
-            combined_status.order();
-            let _ = combined_sensor.get();
-            let _ = combined_status.get();
-            CombinedEvent::with_order(combined_sensor, 0);
-            CombinedEvent::with_order(combined_status, 0);
+            sensor_reading.timestamp();
+            status_update.timestamp();
+            let _ = sensor_reading.inner();
+            let _ = status_update.inner();
+            SensorReading::with_timestamp(sensor_reading.clone(), 0);
+            StatusUpdate::with_timestamp(status_update.clone(), 0);
+            combined_sensor.timestamp();
+            combined_status.timestamp();
+            let _ = combined_sensor.inner();
+            let _ = combined_status.inner();
+            CombinedEvent::with_timestamp(combined_sensor, 0);
+            CombinedEvent::with_timestamp(combined_status, 0);
         }
     }
 }
@@ -130,11 +140,11 @@ async fn test_into_fluxion_stream_basic_transformation() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        unwrap_stream(&mut stream, 500).await.get(),
+        unwrap_stream(&mut stream, 500).await.inner(),
         &CombinedEvent::Sensor(reading1)
     );
     assert_eq!(
-        unwrap_stream(&mut stream, 500).await.get(),
+        unwrap_stream(&mut stream, 500).await.inner(),
         &CombinedEvent::Sensor(reading2)
     );
 
@@ -181,7 +191,7 @@ async fn test_into_fluxion_stream_preserves_order() -> anyhow::Result<()> {
     // Assert
     for expected in &readings {
         assert_eq!(
-            unwrap_stream(&mut stream, 500).await.get(),
+            unwrap_stream(&mut stream, 500).await.inner(),
             &CombinedEvent::Sensor(expected.clone())
         );
     }
@@ -213,7 +223,7 @@ async fn test_into_fluxion_stream_multiple_items() -> anyhow::Result<()> {
             temperature: (i * 10),
         };
         assert_eq!(
-            unwrap_stream(&mut stream, 500).await.get(),
+            unwrap_stream(&mut stream, 500).await.inner(),
             &CombinedEvent::Sensor(expected)
         );
     }
@@ -248,7 +258,7 @@ async fn test_into_fluxion_stream_transformation_logic() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        unwrap_stream(&mut stream, 500).await.get(),
+        unwrap_stream(&mut stream, 500).await.inner(),
         &CombinedEvent::Sensor(expected)
     );
 
@@ -278,8 +288,8 @@ async fn test_into_fluxion_stream_can_combine_with_other_streams() -> anyhow::Re
     })?;
 
     // Assert - both items should be in the merged stream
-    assert_eq!(unwrap_stream(&mut merged, 500).await.order(), 100);
-    assert_eq!(unwrap_stream(&mut merged, 500).await.order(), 200);
+    assert_eq!(unwrap_stream(&mut merged, 500).await.timestamp(), 100);
+    assert_eq!(unwrap_stream(&mut merged, 500).await.timestamp(), 200);
 
     assert_no_element_emitted(&mut merged, 100).await;
 
@@ -311,8 +321,8 @@ async fn test_into_fluxion_stream_late_sends() -> anyhow::Result<()> {
     });
 
     // Assert
-    assert_eq!(unwrap_stream(&mut stream, 500).await.order(), 100);
-    assert_eq!(unwrap_stream(&mut stream, 500).await.order(), 200);
+    assert_eq!(unwrap_stream(&mut stream, 500).await.timestamp(), 100);
+    assert_eq!(unwrap_stream(&mut stream, 500).await.timestamp(), 200);
 
     Ok(())
 }
@@ -336,7 +346,7 @@ async fn test_into_fluxion_stream_high_volume() -> anyhow::Result<()> {
 
     // Assert
     for i in 0..COUNT {
-        assert_eq!(unwrap_stream(&mut stream, 500).await.order(), i as u64);
+        assert_eq!(unwrap_stream(&mut stream, 500).await.timestamp(), i as u64);
     }
 
     assert_no_element_emitted(&mut stream, 100).await;

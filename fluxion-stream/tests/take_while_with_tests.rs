@@ -5,37 +5,38 @@
 use fluxion_core::StreamItem;
 use fluxion_stream::take_while_with::TakeWhileExt;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
-use fluxion_test_utils::sequenced::Sequenced;
+use fluxion_test_utils::Timestamped;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, person_alice, person_bob, person_charlie,
 };
 use fluxion_test_utils::{test_channel, unwrap_stream, unwrap_value};
 use futures::Stream;
+use fluxion_core::Timestamped as TimestampedTrait;
 
 #[tokio::test]
 async fn test_take_while_basic() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel();
-    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
+    let (filter_tx, filter_stream) = test_channel::<Timestamped<bool>>();
 
     let mut filtered_stream =
         source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
-    filter_tx.send(Sequenced::new(true))?;
+    filter_tx.send(Timestamped::new(true))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
-    source_tx.send(Sequenced::new(animal_cat()))?;
+    source_tx.send(Timestamped::new(animal_cat()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_cat());
 
-    source_tx.send(Sequenced::new(animal_dog()))?;
+    source_tx.send(Timestamped::new(animal_dog()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_dog());
 
-    source_tx.send(Sequenced::new(person_alice()))?;
+    source_tx.send(Timestamped::new(person_alice()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, person_alice());
 
-    filter_tx.send(Sequenced::new(false))?;
-    source_tx.send(Sequenced::new(person_bob()))?;
-    source_tx.send(Sequenced::new(person_charlie()))?;
+    filter_tx.send(Timestamped::new(false))?;
+    source_tx.send(Timestamped::new(person_bob()))?;
+    source_tx.send(Timestamped::new(person_charlie()))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
 
     Ok(())
@@ -45,15 +46,15 @@ async fn test_take_while_basic() -> anyhow::Result<()> {
 async fn test_take_while_filter_false_immediately() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel();
-    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
+    let (filter_tx, filter_stream) = test_channel::<Timestamped<bool>>();
 
     let mut filtered_stream =
         source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act
-    filter_tx.send(Sequenced::new(false))?;
-    source_tx.send(Sequenced::new(animal_cat()))?;
-    source_tx.send(Sequenced::new(animal_dog()))?;
+    filter_tx.send(Timestamped::new(false))?;
+    source_tx.send(Timestamped::new(animal_cat()))?;
+    source_tx.send(Timestamped::new(animal_dog()))?;
 
     // Assert
     assert_no_element_emitted(&mut filtered_stream, 100).await;
@@ -65,21 +66,21 @@ async fn test_take_while_filter_false_immediately() -> anyhow::Result<()> {
 async fn test_take_while_always_true() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel();
-    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
+    let (filter_tx, filter_stream) = test_channel::<Timestamped<bool>>();
 
     let mut filtered_stream =
         source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
-    filter_tx.send(Sequenced::new(true))?;
+    filter_tx.send(Timestamped::new(true))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
-    source_tx.send(Sequenced::new(animal_cat()))?;
+    source_tx.send(Timestamped::new(animal_cat()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_cat());
 
-    source_tx.send(Sequenced::new(animal_dog()))?;
+    source_tx.send(Timestamped::new(animal_dog()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_dog());
 
-    source_tx.send(Sequenced::new(person_alice()))?;
+    source_tx.send(Timestamped::new(person_alice()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, person_alice());
 
     Ok(())
@@ -89,23 +90,23 @@ async fn test_take_while_always_true() -> anyhow::Result<()> {
 async fn test_take_while_complex_predicate() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel();
-    let (filter_tx, filter_stream) = test_channel::<Sequenced<i32>>();
+    let (filter_tx, filter_stream) = test_channel::<Timestamped<i32>>();
 
     let mut filtered_stream =
         source_stream.take_while_with(filter_stream, |filter_val: &i32| *filter_val < 10);
 
     // Act & Assert
-    filter_tx.send(Sequenced::new(5))?;
+    filter_tx.send(Timestamped::new(5))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
-    source_tx.send(Sequenced::new(animal_cat()))?;
+    source_tx.send(Timestamped::new(animal_cat()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_cat());
 
-    source_tx.send(Sequenced::new(animal_dog()))?;
+    source_tx.send(Timestamped::new(animal_dog()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_dog());
 
-    filter_tx.send(Sequenced::new(10))?;
-    source_tx.send(Sequenced::new(person_alice()))?;
-    source_tx.send(Sequenced::new(person_bob()))?;
+    filter_tx.send(Timestamped::new(10))?;
+    source_tx.send(Timestamped::new(person_alice()))?;
+    source_tx.send(Timestamped::new(person_bob()))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
 
     Ok(())
@@ -115,28 +116,28 @@ async fn test_take_while_complex_predicate() -> anyhow::Result<()> {
 async fn test_take_while_interleaved_updates() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel();
-    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
+    let (filter_tx, filter_stream) = test_channel::<Timestamped<bool>>();
 
     let mut filtered_stream =
         source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
-    filter_tx.send(Sequenced::new(true))?;
+    filter_tx.send(Timestamped::new(true))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
-    source_tx.send(Sequenced::new(animal_cat()))?;
+    source_tx.send(Timestamped::new(animal_cat()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_cat());
 
-    filter_tx.send(Sequenced::new(true))?;
-    source_tx.send(Sequenced::new(animal_dog()))?;
+    filter_tx.send(Timestamped::new(true))?;
+    source_tx.send(Timestamped::new(animal_dog()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_dog());
 
-    filter_tx.send(Sequenced::new(true))?;
-    source_tx.send(Sequenced::new(person_alice()))?;
+    filter_tx.send(Timestamped::new(true))?;
+    source_tx.send(Timestamped::new(person_alice()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, person_alice());
 
-    filter_tx.send(Sequenced::new(false))?;
-    source_tx.send(Sequenced::new(person_bob()))?;
-    source_tx.send(Sequenced::new(person_charlie()))?;
+    filter_tx.send(Timestamped::new(false))?;
+    source_tx.send(Timestamped::new(person_bob()))?;
+    source_tx.send(Timestamped::new(person_charlie()))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
 
     Ok(())
@@ -146,22 +147,22 @@ async fn test_take_while_interleaved_updates() -> anyhow::Result<()> {
 async fn test_take_while_no_filter_value() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel();
-    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
+    let (filter_tx, filter_stream) = test_channel::<Timestamped<bool>>();
 
     let mut filtered_stream =
         source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
-    source_tx.send(Sequenced::new(animal_cat()))?;
+    source_tx.send(Timestamped::new(animal_cat()))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
-    source_tx.send(Sequenced::new(animal_dog()))?;
+    source_tx.send(Timestamped::new(animal_dog()))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
 
-    filter_tx.send(Sequenced::new(true))?;
-    source_tx.send(Sequenced::new(person_alice()))?;
+    filter_tx.send(Timestamped::new(true))?;
+    source_tx.send(Timestamped::new(person_alice()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, person_alice());
 
-    source_tx.send(Sequenced::new(person_bob()))?;
+    source_tx.send(Timestamped::new(person_bob()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, person_bob());
 
     Ok(())
@@ -170,14 +171,14 @@ async fn test_take_while_no_filter_value() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_take_while_empty_source() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel::<Sequenced<bool>>();
-    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
+    let (source_tx, source_stream) = test_channel::<Timestamped<bool>>();
+    let (filter_tx, filter_stream) = test_channel::<Timestamped<bool>>();
 
     let mut filtered_stream =
         source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act
-    filter_tx.send(Sequenced::new(true))?;
+    filter_tx.send(Timestamped::new(true))?;
     drop(source_tx);
 
     // Assert
@@ -190,14 +191,14 @@ async fn test_take_while_empty_source() -> anyhow::Result<()> {
 async fn test_take_while_empty_filter() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel();
-    let (_, filter_stream) = test_channel::<Sequenced<bool>>();
+    let (_, filter_stream) = test_channel::<Timestamped<bool>>();
 
     let mut filtered_stream =
         source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act
-    source_tx.send(Sequenced::new(animal_cat()))?;
-    source_tx.send(Sequenced::new(animal_dog()))?;
+    source_tx.send(Timestamped::new(animal_cat()))?;
+    source_tx.send(Timestamped::new(animal_dog()))?;
 
     // Assert
     assert_no_element_emitted(&mut filtered_stream, 100).await;
@@ -209,23 +210,23 @@ async fn test_take_while_empty_filter() -> anyhow::Result<()> {
 async fn test_take_while_filter_changes_back_to_true() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel();
-    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
+    let (filter_tx, filter_stream) = test_channel::<Timestamped<bool>>();
 
     let mut filtered_stream =
         source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
-    filter_tx.send(Sequenced::new(true))?;
+    filter_tx.send(Timestamped::new(true))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
-    source_tx.send(Sequenced::new(animal_cat()))?;
+    source_tx.send(Timestamped::new(animal_cat()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_cat());
 
-    filter_tx.send(Sequenced::new(false))?;
-    source_tx.send(Sequenced::new(animal_dog()))?;
+    filter_tx.send(Timestamped::new(false))?;
+    source_tx.send(Timestamped::new(animal_dog()))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
 
-    filter_tx.send(Sequenced::new(true))?;
-    source_tx.send(Sequenced::new(person_alice()))?;
+    filter_tx.send(Timestamped::new(true))?;
+    source_tx.send(Timestamped::new(person_alice()))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
 
     Ok(())
@@ -235,27 +236,27 @@ async fn test_take_while_filter_changes_back_to_true() -> anyhow::Result<()> {
 async fn test_take_while_multiple_source_items_same_filter() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel();
-    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
+    let (filter_tx, filter_stream) = test_channel::<Timestamped<bool>>();
 
     let mut filtered_stream =
         source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
-    filter_tx.send(Sequenced::new(true))?;
-    source_tx.send(Sequenced::new(animal_cat()))?;
+    filter_tx.send(Timestamped::new(true))?;
+    source_tx.send(Timestamped::new(animal_cat()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_cat());
 
-    source_tx.send(Sequenced::new(animal_dog()))?;
+    source_tx.send(Timestamped::new(animal_dog()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_dog());
 
-    source_tx.send(Sequenced::new(person_alice()))?;
+    source_tx.send(Timestamped::new(person_alice()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, person_alice());
 
-    source_tx.send(Sequenced::new(person_bob()))?;
+    source_tx.send(Timestamped::new(person_bob()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, person_bob());
 
-    filter_tx.send(Sequenced::new(false))?;
-    source_tx.send(Sequenced::new(person_charlie()))?;
+    filter_tx.send(Timestamped::new(false))?;
+    source_tx.send(Timestamped::new(person_charlie()))?;
 
     assert_no_element_emitted(&mut filtered_stream, 100).await;
 
@@ -266,21 +267,21 @@ async fn test_take_while_multiple_source_items_same_filter() -> anyhow::Result<(
 async fn test_take_while_filter_updates_without_source() -> anyhow::Result<()> {
     // Arrange
     let (source_tx, source_stream) = test_channel();
-    let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
+    let (filter_tx, filter_stream) = test_channel::<Timestamped<bool>>();
 
     let mut filtered_stream =
         source_stream.take_while_with(filter_stream, |filter_val| *filter_val);
 
     // Act & Assert
-    filter_tx.send(Sequenced::new(false))?;
-    filter_tx.send(Sequenced::new(true))?;
-    filter_tx.send(Sequenced::new(true))?;
+    filter_tx.send(Timestamped::new(false))?;
+    filter_tx.send(Timestamped::new(true))?;
+    filter_tx.send(Timestamped::new(true))?;
     assert_no_element_emitted(&mut filtered_stream, 100).await;
 
-    source_tx.send(Sequenced::new(animal_cat()))?;
+    source_tx.send(Timestamped::new(animal_cat()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_cat());
 
-    source_tx.send(Sequenced::new(animal_dog()))?;
+    source_tx.send(Timestamped::new(animal_dog()))?;
     assert_eq!(extract_element(&mut filtered_stream).await, animal_dog());
 
     Ok(())
@@ -289,9 +290,10 @@ async fn test_take_while_filter_updates_without_source() -> anyhow::Result<()> {
 async fn extract_element<T, S>(stream: &mut S) -> T
 where
     T: Clone,
-    S: Stream<Item = StreamItem<Sequenced<T>>> + Unpin,
+    S: Stream<Item = StreamItem<Timestamped<T>>> + Unpin,
 {
     unwrap_value(Some(unwrap_stream(stream, 500).await))
-        .get()
+        .inner()
         .clone()
 }
+

@@ -53,7 +53,7 @@
 //!
 //! ```
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt};
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::Timestamped;
 //! use futures::StreamExt;
 //!
 //! # #[tokio::main]
@@ -68,8 +68,8 @@
 //! let mut merged = merged;
 //!
 //! // Send out of order - stream2 sends seq=1, stream1 sends seq=2
-//! tx2.send(Sequenced::with_sequence(100, 1)).unwrap();
-//! tx1.send(Sequenced::with_sequence(200, 2)).unwrap();
+//! tx2.send(Timestamped::with_timestamp(100, 1)).unwrap();
+//! tx1.send(Timestamped::with_timestamp(200, 2)).unwrap();
 //!
 //! // Items are emitted in temporal order (seq 1, then seq 2)
 //! let first = merged.next().await.unwrap().unwrap();
@@ -210,7 +210,7 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, WithLatestFromExt};
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::Timestamped;
 //! use fluxion_core::Ordered;
 //! use futures::StreamExt;
 //!
@@ -229,11 +229,11 @@
 //! let mut enriched = enriched;
 //!
 //! // Send config first, then click
-//! config_tx.send(Sequenced::with_sequence("theme=dark".to_string(), 1)).unwrap();
-//! click_tx.send(Sequenced::with_sequence("button1".to_string(), 2)).unwrap();
+//! config_tx.send(Timestamped::with_timestamp("theme=dark".to_string(), 1)).unwrap();
+//! click_tx.send(Timestamped::with_timestamp("button1".to_string(), 2)).unwrap();
 //!
 //! let result = enriched.next().await.unwrap().unwrap();
-//! assert_eq!(result.get().len(), 2); // Has both click and config
+//! assert_eq!(result.inner().len(), 2); // Has both click and config
 //! # }
 //! ```
 //!
@@ -244,7 +244,7 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt};
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::Timestamped;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
@@ -259,8 +259,8 @@
 //! let mut unified_log = unified_log;
 //!
 //! // Send logs with different timestamps
-//! service1_tx.send(Sequenced::with_sequence("service1: started".to_string(), 1)).unwrap();
-//! service2_tx.send(Sequenced::with_sequence("service2: ready".to_string(), 2)).unwrap();
+//! service1_tx.send(Timestamped::with_timestamp("service1: started".to_string(), 1)).unwrap();
+//! service2_tx.send(Timestamped::with_timestamp("service2: ready".to_string(), 2)).unwrap();
 //!
 //! let first = unified_log.next().await.unwrap().unwrap();
 //! assert_eq!(first.value, "service1: started");
@@ -274,7 +274,7 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::Timestamped;
 //! use fluxion_core::Ordered;
 //! use futures::StreamExt;
 //!
@@ -287,9 +287,9 @@
 //! let mut paired = paired;
 //!
 //! // Send values
-//! tx.send(Sequenced::with_sequence(1, 1)).unwrap();
-//! tx.send(Sequenced::with_sequence(1, 2)).unwrap(); // Same value
-//! tx.send(Sequenced::with_sequence(2, 3)).unwrap(); // Changed!
+//! tx.send(Timestamped::with_timestamp(1, 1)).unwrap();
+//! tx.send(Timestamped::with_timestamp(1, 2)).unwrap(); // Same value
+//! tx.send(Timestamped::with_timestamp(2, 3)).unwrap(); // Changed!
 //!
 //! let result = paired.next().await.unwrap().unwrap();
 //! assert!(result.previous.is_none()); // First has no previous
@@ -311,7 +311,7 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, EmitWhenExt};
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::Timestamped;
 //! use fluxion_core::Ordered;
 //! use futures::StreamExt;
 //!
@@ -330,12 +330,12 @@
 //! let mut notifications = notifications;
 //!
 //! // Enable notifications
-//! enabled_tx.send(Sequenced::with_sequence(1, 1)).unwrap();
+//! enabled_tx.send(Timestamped::with_timestamp(1, 1)).unwrap();
 //! // Send event
-//! event_tx.send(Sequenced::with_sequence(999, 2)).unwrap();
+//! event_tx.send(Timestamped::with_timestamp(999, 2)).unwrap();
 //!
 //! let result = notifications.next().await.unwrap().unwrap();
-//! assert_eq!(*result.get(), 999);
+//! assert_eq!(*result.inner(), 999);
 //! # }
 //! ```
 //!
@@ -401,23 +401,23 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineWithPreviousExt, TakeLatestWhenExt, Ordered};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Timestamped, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (source_tx, source_stream) = test_channel::<Sequenced<i32>>();
-//! let (filter_tx, filter_stream) = test_channel::<Sequenced<i32>>();
+//! let (source_tx, source_stream) = test_channel::<Timestamped<i32>>();
+//! let (filter_tx, filter_stream) = test_channel::<Timestamped<i32>>();
 //!
 //! // Chain: sample when filter emits, then pair with previous value
 //! let sampled = source_stream.take_latest_when(filter_stream, |_| true);
 //! let mut composed = FluxionStream::new(sampled).combine_with_previous();
 //!
-//! source_tx.send(Sequenced::new(42)).unwrap();
-//! filter_tx.send(Sequenced::new(1)).unwrap();
+//! source_tx.send(Timestamped::new(42)).unwrap();
+//! filter_tx.send(Timestamped::new(1)).unwrap();
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(item.current.get(), &42);
+//! assert_eq!(item.current.inner(), &42);
 //! }
 //! ```
 //!
@@ -428,19 +428,19 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, Ordered};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Timestamped, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx, stream) = test_channel::<Sequenced<i32>>();
+//! let (tx, stream) = test_channel::<Timestamped<i32>>();
 //!
 //! // Chain: filter positives, map to string
 //! let mut composed = FluxionStream::new(stream)
 //!     .filter_ordered(|n| *n > 0)
-//!     .map_ordered(|sequenced| format!("Value: {}", sequenced.get()));
+//!     .map_ordered(|Timestamped| format!("Value: {}", Timestamped.inner()));
 //!
-//! tx.send(Sequenced::new(-1)).unwrap();
-//! tx.send(Sequenced::new(5)).unwrap();
+//! tx.send(Timestamped::new(-1)).unwrap();
+//! tx.send(Timestamped::new(5)).unwrap();
 //!
 //! let result = composed.next().await.unwrap().unwrap();
 //! assert_eq!(result, "Value: 5");
@@ -453,24 +453,24 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt, Ordered};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Timestamped, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
-//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
+//! let (tx1, stream1) = test_channel::<Timestamped<i32>>();
+//! let (tx2, stream2) = test_channel::<Timestamped<i32>>();
 //!
 //! // Chain: combine latest from both streams, then track changes
 //! let mut composed = stream1
 //!     .combine_latest(vec![stream2], |_| true)
 //!     .combine_with_previous();
 //!
-//! tx1.send(Sequenced::new(1)).unwrap();
-//! tx2.send(Sequenced::new(2)).unwrap();
+//! tx1.send(Timestamped::new(1)).unwrap();
+//! tx2.send(Timestamped::new(2)).unwrap();
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(item.current.get().values().len(), 2);
+//! assert_eq!(item.current.inner().values().len(), 2);
 //! }
 //! ```
 //!
@@ -492,27 +492,27 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt, CombineWithPreviousExt, Ordered};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Timestamped, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
-//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
+//! let (tx1, stream1) = test_channel::<Timestamped<i32>>();
+//! let (tx2, stream2) = test_channel::<Timestamped<i32>>();
 //!
 //! // Merge streams in temporal order, then pair consecutive values
 //! let mut composed = stream1
 //!     .ordered_merge(vec![FluxionStream::new(stream2)])
 //!     .combine_with_previous();
 //!
-//! tx1.send(Sequenced::new(1)).unwrap();
+//! tx1.send(Timestamped::new(1)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(item.current.get(), &1);
+//! assert_eq!(item.current.inner(), &1);
 //!
-//! tx2.send(Sequenced::new(2)).unwrap();
+//! tx2.send(Timestamped::new(2)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
-//! assert_eq!(item.previous.unwrap().get(), &1);
-//! assert_eq!(item.current.get(), &2);
+//! assert_eq!(item.previous.unwrap().inner(), &1);
+//! assert_eq!(item.current.inner(), &2);
 //! }
 //! ```
 //!
@@ -522,26 +522,26 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt, Ordered};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Timestamped, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
-//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
+//! let (tx1, stream1) = test_channel::<Timestamped<i32>>();
+//! let (tx2, stream2) = test_channel::<Timestamped<i32>>();
 //!
 //! // Combine latest, then track previous combined state
 //! let mut composed = stream1
 //!     .combine_latest(vec![stream2], |_| true)
 //!     .combine_with_previous();
 //!
-//! tx1.send(Sequenced::new(1)).unwrap();
-//! tx2.send(Sequenced::new(2)).unwrap();
+//! tx1.send(Timestamped::new(1)).unwrap();
+//! tx2.send(Timestamped::new(2)).unwrap();
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(item.current.get().values().len(), 2);
+//! assert_eq!(item.current.inner().values().len(), 2);
 //!
-//! tx1.send(Sequenced::new(3)).unwrap();
+//! tx1.send(Timestamped::new(3)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
 //! // Previous state had [1, 2], current has [3, 2]
 //! assert!(item.previous.is_some());
@@ -554,25 +554,25 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, TakeWhileExt, Ordered};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Timestamped, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
-//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
-//! let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
+//! let (tx1, stream1) = test_channel::<Timestamped<i32>>();
+//! let (tx2, stream2) = test_channel::<Timestamped<i32>>();
+//! let (filter_tx, filter_stream) = test_channel::<Timestamped<bool>>();
 //!
 //! // Combine latest values, but stop when filter becomes false
 //! let mut composed = stream1
 //!     .combine_latest(vec![stream2], |_| true)
 //!     .take_while_with(filter_stream, |f| *f);
 //!
-//! filter_tx.send(Sequenced::new(true)).unwrap();
-//! tx1.send(Sequenced::new(1)).unwrap();
-//! tx2.send(Sequenced::new(2)).unwrap();
+//! filter_tx.send(Timestamped::new(true)).unwrap();
+//! tx1.send(Timestamped::new(1)).unwrap();
+//! tx2.send(Timestamped::new(2)).unwrap();
 //!
 //! let combined = composed.next().await.unwrap().unwrap();
-//! assert_eq!(combined.get().values().len(), 2);
+//! assert_eq!(combined.inner().values().len(), 2);
 //! }
 //! ```
 //!
@@ -582,27 +582,27 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt, TakeWhileExt};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Timestamped, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
-//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
-//! let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
+//! let (tx1, stream1) = test_channel::<Timestamped<i32>>();
+//! let (tx2, stream2) = test_channel::<Timestamped<i32>>();
+//! let (filter_tx, filter_stream) = test_channel::<Timestamped<bool>>();
 //!
 //! // Merge all values in order, but stop when filter says so
 //! let mut composed = stream1
 //!     .ordered_merge(vec![FluxionStream::new(stream2)])
 //!     .take_while_with(filter_stream, |f| *f);
 //!
-//! filter_tx.send(Sequenced::new(true)).unwrap();
-//! tx1.send(Sequenced::new(1)).unwrap();
+//! filter_tx.send(Timestamped::new(true)).unwrap();
+//! tx1.send(Timestamped::new(1)).unwrap();
 //!
-//! let item = composed.next().await.unwrap().unwrap().get().clone();
+//! let item = composed.next().await.unwrap().unwrap().inner().clone();
 //! assert_eq!(item, 1);
 //!
-//! tx2.send(Sequenced::new(2)).unwrap();
-//! let item = composed.next().await.unwrap().unwrap().get().clone();
+//! tx2.send(Timestamped::new(2)).unwrap();
+//! let item = composed.next().await.unwrap().unwrap().inner().clone();
 //! assert_eq!(item, 2);
 //! }
 //! ```
@@ -613,28 +613,28 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, TakeLatestWhenExt, CombineWithPreviousExt, Ordered};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Timestamped, test_channel};
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (source_tx, source_stream) = test_channel::<Sequenced<i32>>();
-//! let (filter_tx, filter_stream) = test_channel::<Sequenced<i32>>();
+//! let (source_tx, source_stream) = test_channel::<Timestamped<i32>>();
+//! let (filter_tx, filter_stream) = test_channel::<Timestamped<i32>>();
 //!
 //! // Sample source when filter emits, then track consecutive samples
 //! let sampled = source_stream.take_latest_when(filter_stream, |_| true);
 //! let mut composed = FluxionStream::new(sampled).combine_with_previous();
 //!
-//! source_tx.send(Sequenced::new(42)).unwrap();
-//! filter_tx.send(Sequenced::new(0)).unwrap();
+//! source_tx.send(Timestamped::new(42)).unwrap();
+//! filter_tx.send(Timestamped::new(0)).unwrap();
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(item.current.get(), &42);
+//! assert_eq!(item.current.inner(), &42);
 //!
-//! source_tx.send(Sequenced::new(99)).unwrap();
+//! source_tx.send(Timestamped::new(99)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
-//! assert_eq!(item.previous.unwrap().get(), &42);
-//! assert_eq!(item.current.get(), &99);
+//! assert_eq!(item.previous.unwrap().inner(), &42);
+//! assert_eq!(item.current.inner(), &99);
 //! }
 //! ```
 //!
@@ -691,3 +691,4 @@ pub use types::{
     CombinedState, OrderedInner, OrderedInnerUnwrapped, OrderedStreamItem, WithPrevious,
 };
 pub use with_latest_from::WithLatestFromExt;
+

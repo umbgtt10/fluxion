@@ -122,3 +122,4 @@ async fn test_safe_lock_in_async_context() {
     assert_eq!(*guard, vec![1, 2, 3, 4]);
     drop(guard);
 }
+

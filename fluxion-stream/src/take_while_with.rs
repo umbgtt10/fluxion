@@ -4,7 +4,7 @@
 
 use crate::FluxionStream;
 use fluxion_core::lock_utilities::lock_or_error;
-use fluxion_core::{Ordered, StreamItem};
+use fluxion_core::{Ordered, StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::StreamExt;
 use futures::Stream;
@@ -13,7 +13,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 type PinnedItemStream<TItem, TFilter> =
-    Pin<Box<dyn Stream<Item = Item<TItem, TFilter>> + Send + Sync>>;
+    Pin<Box<dyn Stream<Item = Item<TItem, TFilter>> + Send + Sync + 'static>>;
 
 /// Extension trait providing the `take_while_with` operator for ordered streams.
 ///
@@ -72,7 +72,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{TakeWhileExt, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
@@ -91,11 +91,11 @@ where
     /// );
     ///
     /// // Send values
-    /// tx_gate.send(Sequenced::with_sequence(true, 1)).unwrap();
-    /// tx_data.send(Sequenced::with_sequence(1, 2)).unwrap();
+    /// tx_gate.send(Timestamped::with_timestamp(true, 1)).unwrap();
+    /// tx_data.send(Timestamped::with_timestamp(1, 2)).unwrap();
     ///
     /// // Assert
-    /// assert_eq!(gated.next().await.unwrap().unwrap().get(), &1);
+    /// assert_eq!(gated.next().await.unwrap().unwrap().inner(), &1);
     /// # }
     /// ```
     ///
@@ -119,9 +119,9 @@ where
 impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
 where
     P: Stream<Item = StreamItem<TItem>> + Send + Sync + Unpin + 'static,
-    TItem: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    TItem: Ordered + Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     TItem::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    TFilter: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    TFilter: Ordered + Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     TFilter::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = StreamItem<TFilter>> + Send + Sync + 'static,
 {
@@ -154,7 +154,7 @@ where
         let state = Arc::new(Mutex::new((None::<TFilter::Inner>, false)));
 
         // Use ordered_merge and process items in order
-        let result = streams.ordered_merge().filter_map({
+        let result = OrderedMergeExt::ordered_merge(streams).filter_map({
             let state = Arc::clone(&state);
             move |item| {
                 let state = Arc::clone(&state);
@@ -172,7 +172,7 @@ where
 
                             match item {
                                 Item::Filter(filter_val) => {
-                                    *filter_state = Some(filter_val.get().clone());
+                                    *filter_state = Some(filter_val.inner().clone());
                                     None
                                 }
                                 Item::Source(source_val) => filter_state.as_ref().map_or_else(
@@ -205,23 +205,74 @@ enum Item<TItem, TFilter> {
     Filter(TFilter),
 }
 
+// Manually implement Send + Sync + Unpin
+unsafe impl<TItem, TFilter> Send for Item<TItem, TFilter>
+where
+    TItem: Send,
+    TFilter: Send,
+{
+}
+
+unsafe impl<TItem, TFilter> Sync for Item<TItem, TFilter>
+where
+    TItem: Sync,
+    TFilter: Sync,
+{
+}
+
+impl<TItem, TFilter> Unpin for Item<TItem, TFilter>
+where
+    TItem: Unpin,
+    TFilter: Unpin,
+{
+}
+
 impl<TItem, TFilter> Item<TItem, TFilter>
 where
-    TItem: Ordered,
-    TFilter: Ordered,
+    TItem: Timestamped,
+    TFilter: Timestamped,
 {
     fn order(&self) -> u64 {
         match self {
-            Self::Source(s) => s.order(),
-            Self::Filter(f) => f.order(),
+            Self::Source(s) => s.timestamp(),
+            Self::Filter(f) => f.timestamp(),
         }
+    }
+}
+
+// Implement Timestamped for Item so it can work with ordered_merge
+impl<TItem, TFilter> Timestamped for Item<TItem, TFilter>
+where
+    TItem: Timestamped + Clone + Ord + Send + 'static,
+    TFilter: Timestamped + Clone + Ord + Send + 'static,
+{
+    type Inner = Self;
+
+    fn timestamp(&self) -> u64 {
+        self.order()
+    }
+
+    fn inner(&self) -> &Self {
+        self
+    }
+
+    fn with_timestamp(value: Self, _timestamp: u64) -> Self {
+        value
+    }
+
+    fn with_fresh_timestamp(value: Self) -> Self {
+        value
+    }
+
+    fn into_inner(self) -> Self {
+        self
     }
 }
 
 impl<TItem, TFilter> PartialEq for Item<TItem, TFilter>
 where
-    TItem: Ordered,
-    TFilter: Ordered,
+    TItem: Timestamped,
+    TFilter: Timestamped,
 {
     fn eq(&self, other: &Self) -> bool {
         self.order() == other.order()
@@ -230,15 +281,15 @@ where
 
 impl<TItem, TFilter> Eq for Item<TItem, TFilter>
 where
-    TItem: Ordered,
-    TFilter: Ordered,
+    TItem: Timestamped,
+    TFilter: Timestamped,
 {
 }
 
 impl<TItem, TFilter> PartialOrd for Item<TItem, TFilter>
 where
-    TItem: Ordered,
-    TFilter: Ordered,
+    TItem: Timestamped + Eq,
+    TFilter: Timestamped + Eq,
 {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
@@ -247,10 +298,11 @@ where
 
 impl<TItem, TFilter> Ord for Item<TItem, TFilter>
 where
-    TItem: Ordered,
-    TFilter: Ordered,
+    TItem: Timestamped + Eq,
+    TFilter: Timestamped + Eq,
 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.order().cmp(&other.order())
     }
 }
+

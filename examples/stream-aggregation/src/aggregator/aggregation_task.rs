@@ -133,7 +133,7 @@ impl Aggregator {
             .map_ordered(create_aggregated_event)
             .filter_ordered(|agg| {
                 // Only process reasonable temperatures (150-300 represents 15.0-30.0°C)
-                agg.get()
+                agg.inner()
                     .temperature
                     .is_some_and(|t| (150..=300).contains(&t))
             })

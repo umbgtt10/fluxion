@@ -3,40 +3,41 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
-use fluxion_test_utils::sequenced::Sequenced;
+use fluxion_test_utils::Timestamped;
 use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_dave, TestData,
 };
 use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value};
 use futures::StreamExt;
+use fluxion_core::Timestamped as TimestampedTrait;
 
 #[tokio::test]
 async fn test_map_ordered_basic_transformation() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (tx, stream) = test_channel::<Timestamped<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
         format!(
             "Previous: {:?}, Current: {}",
-            stream_item.previous.map(|p| p.get().to_string()),
-            stream_item.current.get()
+            stream_item.previous.map(|p| p.inner().to_string()),
+            stream_item.current.inner()
         )
     });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Timestamped::new(person_alice()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         "Previous: None, Current: Person[name=Alice, age=25]"
     );
 
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Timestamped::new(person_bob()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         "Previous: Some(\"Person[name=Alice, age=25]\"), Current: Person[name=Bob, age=30]"
     );
 
-    tx.send(Sequenced::new(person_charlie()))?;
+    tx.send(Timestamped::new(person_charlie()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         "Previous: Some(\"Person[name=Bob, age=30]\"), Current: Person[name=Charlie, age=35]"
@@ -66,16 +67,16 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
         }
     }
 
-    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (tx, stream) = test_channel::<Timestamped<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
-        let current_age = match &stream_item.current.get() {
+        let current_age = match &stream_item.current.inner() {
             TestData::Person(p) => p.age,
             _ => 0,
         };
         let previous_age = stream_item
             .previous
             .as_ref()
-            .and_then(|prev| match &prev.get() {
+            .and_then(|prev| match &prev.inner() {
                 TestData::Person(p) => Some(p.age),
                 _ => None,
             });
@@ -83,25 +84,25 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice()))?; // Age 25
+    tx.send(Timestamped::new(person_alice()))?; // Age 25
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         AgeComparison::new(None, 25)
     );
 
-    tx.send(Sequenced::new(person_bob()))?; // Age 30
+    tx.send(Timestamped::new(person_bob()))?; // Age 30
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         AgeComparison::new(Some(25), 30)
     );
 
-    tx.send(Sequenced::new(person_alice()))?; // Age 25 again
+    tx.send(Timestamped::new(person_alice()))?; // Age 25 again
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         AgeComparison::new(Some(30), 25)
     );
 
-    tx.send(Sequenced::new(person_charlie()))?; // Age 35
+    tx.send(Timestamped::new(person_charlie()))?; // Age 35
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         AgeComparison::new(Some(25), 35)
@@ -113,18 +114,18 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_map_ordered_extract_age_difference() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (tx, stream) = test_channel::<Timestamped<TestData>>();
     let mut stream = stream
         .combine_with_previous()
         .map_ordered(|stream_item| -> i32 {
-            let current_age = match &stream_item.current.get() {
+            let current_age = match &stream_item.current.inner() {
                 TestData::Person(p) => p.age as i32,
                 _ => 0,
             };
             let previous_age = stream_item
                 .previous
                 .as_ref()
-                .and_then(|prev| match &prev.get() {
+                .and_then(|prev| match &prev.inner() {
                     TestData::Person(p) => Some(p.age as i32),
                     _ => None,
                 });
@@ -132,19 +133,19 @@ async fn test_map_ordered_extract_age_difference() -> anyhow::Result<()> {
         });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice()))?; // Age 25
+    tx.send(Timestamped::new(person_alice()))?; // Age 25
     assert_eq!(unwrap_value(Some(unwrap_stream(&mut stream, 500).await)), 0); // No previous
 
-    tx.send(Sequenced::new(person_bob()))?; // Age 30
+    tx.send(Timestamped::new(person_bob()))?; // Age 30
     assert_eq!(unwrap_value(Some(unwrap_stream(&mut stream, 500).await)), 5); // 30 - 25 = 5
 
-    tx.send(Sequenced::new(person_dave()))?; // Age 28
+    tx.send(Timestamped::new(person_dave()))?; // Age 28
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         -2
     ); // 28 - 30 = -2
 
-    tx.send(Sequenced::new(person_charlie()))?; // Age 35
+    tx.send(Timestamped::new(person_charlie()))?; // Age 35
     assert_eq!(unwrap_value(Some(unwrap_stream(&mut stream, 500).await)), 7); // 35 - 28 = 7
 
     Ok(())
@@ -153,13 +154,13 @@ async fn test_map_ordered_extract_age_difference() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_map_ordered_single_value() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (tx, stream) = test_channel::<Timestamped<TestData>>();
     let mut stream = stream
         .combine_with_previous()
-        .map_ordered(|stream_item| stream_item.current.get().to_string());
+        .map_ordered(|stream_item| stream_item.current.inner().to_string());
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Timestamped::new(person_alice()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         "Person[name=Alice, age=25]"
@@ -171,10 +172,10 @@ async fn test_map_ordered_single_value() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_map_ordered_empty_stream() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (tx, stream) = test_channel::<Timestamped<TestData>>();
     let mut stream = stream
         .combine_with_previous()
-        .map_ordered(|stream_item| stream_item.current.get().to_string());
+        .map_ordered(|stream_item| stream_item.current.inner().to_string());
 
     // Act
     drop(tx); // Close the stream
@@ -188,20 +189,20 @@ async fn test_map_ordered_empty_stream() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_map_ordered_preserves_ordering() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (tx, stream) = test_channel::<Timestamped<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
         // Extract name from current
-        match &stream_item.current.get() {
+        match &stream_item.current.inner() {
             TestData::Person(p) => p.name.clone(),
             _ => String::from("Unknown"),
         }
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(person_bob()))?;
-    tx.send(Sequenced::new(person_charlie()))?;
-    tx.send(Sequenced::new(person_dave()))?;
+    tx.send(Timestamped::new(person_alice()))?;
+    tx.send(Timestamped::new(person_bob()))?;
+    tx.send(Timestamped::new(person_charlie()))?;
+    tx.send(Timestamped::new(person_dave()))?;
 
     // Assert - order should be preserved
     assert_eq!(
@@ -227,29 +228,29 @@ async fn test_map_ordered_preserves_ordering() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_map_ordered_multiple_transformations() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (tx, stream) = test_channel::<Timestamped<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
         // First transformation: extract age
-        match &stream_item.current.get() {
+        match &stream_item.current.inner() {
             TestData::Person(p) => p.age,
             _ => 0,
         }
     });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Timestamped::new(person_alice()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         25
     );
 
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Timestamped::new(person_bob()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         30
     );
 
-    tx.send(Sequenced::new(person_charlie()))?;
+    tx.send(Timestamped::new(person_charlie()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         35
@@ -278,10 +279,10 @@ async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
         }
     }
 
-    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (tx, stream) = test_channel::<Timestamped<TestData>>();
 
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
-        let current = match &stream_item.current.get() {
+        let current = match &stream_item.current.inner() {
             TestData::Person(p) => p,
             _ => panic!("Expected person"),
         };
@@ -294,7 +295,7 @@ async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
         };
 
         let changed_from_previous = !stream_item.previous.as_ref().is_some_and(|prev| {
-            if let TestData::Person(prev_person) = &prev.get() {
+            if let TestData::Person(prev_person) = &prev.inner() {
                 prev_person.name == current.name
             } else {
                 false
@@ -305,19 +306,19 @@ async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice()))?; // Age 25
+    tx.send(Timestamped::new(person_alice()))?; // Age 25
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         PersonSummary::new(String::from("Alice"), "young adult", true)
     );
 
-    tx.send(Sequenced::new(person_bob()))?; // Age 30
+    tx.send(Timestamped::new(person_bob()))?; // Age 30
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         PersonSummary::new(String::from("Bob"), "adult", true)
     );
 
-    tx.send(Sequenced::new(person_bob()))?; // Same person
+    tx.send(Timestamped::new(person_bob()))?; // Same person
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         PersonSummary::new(String::from("Bob"), "adult", false)
@@ -329,15 +330,15 @@ async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_map_ordered_boolean_logic() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (tx, stream) = test_channel::<Timestamped<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
         // Returns true if age increased from previous
-        let current_age = match &stream_item.current.get() {
+        let current_age = match &stream_item.current.inner() {
             TestData::Person(p) => p.age,
             _ => 0,
         };
         stream_item.previous.as_ref().is_some_and(|prev| {
-            if let TestData::Person(p) = &prev.get() {
+            if let TestData::Person(p) = &prev.inner() {
                 current_age > p.age
             } else {
                 false
@@ -346,20 +347,21 @@ async fn test_map_ordered_boolean_logic() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice()))?; // Age 25
+    tx.send(Timestamped::new(person_alice()))?; // Age 25
     assert!(!unwrap_value(Some(unwrap_stream(&mut stream, 500).await))); // No previous
 
-    tx.send(Sequenced::new(person_bob()))?; // Age 30
+    tx.send(Timestamped::new(person_bob()))?; // Age 30
     assert!(unwrap_value(Some(unwrap_stream(&mut stream, 500).await))); // 30 > 25
 
-    tx.send(Sequenced::new(person_charlie()))?; // Age 35
+    tx.send(Timestamped::new(person_charlie()))?; // Age 35
     assert!(unwrap_value(Some(unwrap_stream(&mut stream, 500).await))); // 35 > 30
 
-    tx.send(Sequenced::new(person_dave()))?; // Age 28
+    tx.send(Timestamped::new(person_dave()))?; // Age 28
     assert!(!unwrap_value(Some(unwrap_stream(&mut stream, 500).await))); // 28 < 35
 
-    tx.send(Sequenced::new(person_alice()))?; // Age 25
+    tx.send(Timestamped::new(person_alice()))?; // Age 25
     assert!(!unwrap_value(Some(unwrap_stream(&mut stream, 500).await))); // 25 < 28
 
     Ok(())
 }
+

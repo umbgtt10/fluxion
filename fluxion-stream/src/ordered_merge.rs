@@ -64,7 +64,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{OrderedStreamExt, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     /// use fluxion_core::Ordered;
     ///
@@ -81,9 +81,9 @@ where
     /// let mut merged = stream1.ordered_merge(vec![stream2]);
     ///
     /// // Send values with explicit ordering
-    /// tx1.send(Sequenced::with_sequence(1, 100)).unwrap();
-    /// tx2.send(Sequenced::with_sequence(2, 200)).unwrap();
-    /// tx1.send(Sequenced::with_sequence(3, 300)).unwrap();
+    /// tx1.send(Timestamped::with_timestamp(1, 100)).unwrap();
+    /// tx2.send(Timestamped::with_timestamp(2, 200)).unwrap();
+    /// tx1.send(Timestamped::with_timestamp(3, 300)).unwrap();
     ///
     /// // Assert - values emitted in temporal order
     /// assert_eq!(merged.next().await.unwrap().unwrap().value, 1);
@@ -135,3 +135,4 @@ where
         FluxionStream::new(result)
     }
 }
+

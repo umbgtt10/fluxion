@@ -6,11 +6,11 @@
 
 use crate::domain::{AggregatedEvent, DataEvent};
 use fluxion_rx::prelude::*;
-use fluxion_rx::OrderedWrapper;
+use fluxion_rx::TimestampedWrapper;
 
 /// Creates an aggregated event from combined stream state
 pub fn create_aggregated_event(
-    combined: OrderedWrapper<CombinedState<DataEvent>>,
+    combined: TimestampedWrapper<CombinedState<DataEvent>>,
 ) -> AggregatedEvent {
     let inner = combined.into_inner();
     let state = inner.values();

@@ -4,7 +4,7 @@
 
 //! Aggregated event domain type
 
-use fluxion_rx::Ordered;
+use fluxion_rx::Timestamped;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AggregatedEvent {
@@ -14,18 +14,22 @@ pub struct AggregatedEvent {
     pub has_alert: bool,
 }
 
-impl Ordered for AggregatedEvent {
+impl Timestamped for AggregatedEvent {
     type Inner = AggregatedEvent;
 
-    fn order(&self) -> u64 {
+    fn timestamp(&self) -> u64 {
         self.timestamp
     }
 
-    fn get(&self) -> &Self::Inner {
+    fn inner(&self) -> &Self::Inner {
         self
     }
 
-    fn with_order(value: Self::Inner, _order: u64) -> Self {
+    fn with_timestamp(value: Self::Inner, _timestamp: u64) -> Self {
+        value
+    }
+
+    fn with_fresh_timestamp(value: Self) -> Self {
         value
     }
 }

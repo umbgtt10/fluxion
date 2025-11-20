@@ -4,7 +4,7 @@
 
 //! Metric data domain type
 
-use fluxion_rx::prelude::Ordered;
+use fluxion_rx::prelude::Timestamped;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MetricData {
@@ -13,21 +13,25 @@ pub struct MetricData {
     pub value: u64,
 }
 
-impl Ordered for MetricData {
+impl Timestamped for MetricData {
     type Inner = Self;
 
-    fn get(&self) -> &Self::Inner {
+    fn inner(&self) -> &Self::Inner {
         self
     }
 
-    fn order(&self) -> u64 {
+    fn timestamp(&self) -> u64 {
         self.timestamp
     }
 
-    fn with_order(inner: Self::Inner, order: u64) -> Self {
+    fn with_timestamp(inner: Self::Inner, timestamp: u64) -> Self {
         Self {
-            timestamp: order,
+            timestamp,
             ..inner
         }
+    }
+
+    fn with_fresh_timestamp(value: Self) -> Self {
+        value
     }
 }

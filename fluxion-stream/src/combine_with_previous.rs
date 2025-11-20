@@ -53,7 +53,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{CombineWithPreviousExt, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     /// use fluxion_core::Ordered;
     ///
@@ -68,18 +68,18 @@ where
     /// let mut paired = stream.combine_with_previous();
     ///
     /// // Send values
-    /// tx.send(Sequenced::with_sequence(1, 1)).unwrap();
-    /// tx.send(Sequenced::with_sequence(2, 2)).unwrap();
+    /// tx.send(Timestamped::with_timestamp(1, 1)).unwrap();
+    /// tx.send(Timestamped::with_timestamp(2, 2)).unwrap();
     ///
     /// // Assert - first has no previous
     /// let first = paired.next().await.unwrap().unwrap();
     /// assert_eq!(first.previous, None);
-    /// assert_eq!(*first.current.get(), 1);
+    /// assert_eq!(*first.current.inner(), 1);
     ///
     /// // Assert - second has previous
     /// let second = paired.next().await.unwrap().unwrap();
-    /// assert_eq!(*second.previous.as_ref().unwrap().get(), 1);
-    /// assert_eq!(*second.current.get(), 2);
+    /// assert_eq!(*second.previous.as_ref().unwrap().inner(), 1);
+    /// assert_eq!(*second.current.inner(), 2);
     /// # }
     /// ```
     ///
@@ -115,3 +115,4 @@ where
         FluxionStream::new(result)
     }
 }
+

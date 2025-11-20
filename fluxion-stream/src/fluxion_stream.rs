@@ -126,22 +126,22 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
-    /// use fluxion_test_utils::{Sequenced, test_channel};
+    /// use fluxion_test_utils::{Timestamped, test_channel};
     /// use futures::StreamExt;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let (tx, stream) = test_channel::<Sequenced<i32>>();
+    /// let (tx, stream) = test_channel::<Timestamped<i32>>();
     /// let stream = FluxionStream::new(stream);
     ///
     /// // Transform ordered stream to strings
     /// let mut mapped = stream
     ///     .combine_with_previous()
     ///     .map_ordered(|with_previous| {
-    ///         format!("Value: {}", with_previous.current.get())
+    ///         format!("Value: {}", with_previous.current.inner())
     ///     });
     ///
-    /// tx.send(Sequenced::new(42)).unwrap();
+    /// tx.send(Timestamped::new(42)).unwrap();
     /// assert_eq!(mapped.next().await.unwrap().unwrap(), "Value: 42");
     /// # }
     /// ```
@@ -208,7 +208,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -219,13 +219,13 @@ where
     /// // Filter for even numbers
     /// let mut evens = stream.filter_ordered(|&n| n % 2 == 0);
     ///
-    /// tx.send(Sequenced::new(1)).unwrap();
-    /// tx.send(Sequenced::new(2)).unwrap();
-    /// tx.send(Sequenced::new(3)).unwrap();
-    /// tx.send(Sequenced::new(4)).unwrap();
+    /// tx.send(Timestamped::new(1)).unwrap();
+    /// tx.send(Timestamped::new(2)).unwrap();
+    /// tx.send(Timestamped::new(3)).unwrap();
+    /// tx.send(Timestamped::new(4)).unwrap();
     ///
-    /// assert_eq!(evens.next().await.unwrap().unwrap().get(), &2);
-    /// assert_eq!(evens.next().await.unwrap().unwrap().get(), &4);
+    /// assert_eq!(evens.next().await.unwrap().unwrap().inner(), &2);
+    /// assert_eq!(evens.next().await.unwrap().unwrap().inner(), &4);
     /// # }
     /// ```
     ///
@@ -261,7 +261,7 @@ where
         let inner = self.into_inner();
         FluxionStream::new(inner.filter_map(move |item| {
             futures::future::ready(match item {
-                StreamItem::Value(value) if predicate(value.get()) => {
+                StreamItem::Value(value) if predicate(value.inner()) => {
                     Some(StreamItem::Value(value))
                 }
                 StreamItem::Value(_) => None,
@@ -283,7 +283,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -292,24 +292,24 @@ where
     /// let stream = FluxionStream::from_unbounded_receiver(rx);
     /// let mut paired = stream.combine_with_previous();
     ///
-    /// tx.send(Sequenced::new(10)).unwrap();
-    /// tx.send(Sequenced::new(20)).unwrap();
-    /// tx.send(Sequenced::new(30)).unwrap();
+    /// tx.send(Timestamped::new(10)).unwrap();
+    /// tx.send(Timestamped::new(20)).unwrap();
+    /// tx.send(Timestamped::new(30)).unwrap();
     ///
     /// // First item has no previous
     /// let item = paired.next().await.unwrap().unwrap();
     /// assert!(item.previous.is_none());
-    /// assert_eq!(item.current.get(), &10);
+    /// assert_eq!(item.current.inner(), &10);
     ///
     /// // Second item has previous value
     /// let item = paired.next().await.unwrap().unwrap();
-    /// assert_eq!(item.previous.unwrap().get(), &10);
-    /// assert_eq!(item.current.get(), &20);
+    /// assert_eq!(item.previous.unwrap().inner(), &10);
+    /// assert_eq!(item.current.inner(), &20);
     ///
     /// // Third item pairs 20 and 30
     /// let item = paired.next().await.unwrap().unwrap();
-    /// assert_eq!(item.previous.unwrap().get(), &20);
-    /// assert_eq!(item.current.get(), &30);
+    /// assert_eq!(item.previous.unwrap().inner(), &20);
+    /// assert_eq!(item.current.inner(), &30);
     /// # }
     /// ```
     ///
@@ -357,7 +357,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -371,13 +371,13 @@ where
     /// let mut taken = source.take_while_with(filter, |value: &i32| *value > 0);
     ///
     /// // Filter allows emissions (value = 1)
-    /// filter_tx.send(Sequenced::new(1)).unwrap();
-    /// source_tx.send(Sequenced::new(100)).unwrap();
-    /// source_tx.send(Sequenced::new(200)).unwrap();
+    /// filter_tx.send(Timestamped::new(1)).unwrap();
+    /// source_tx.send(Timestamped::new(100)).unwrap();
+    /// source_tx.send(Timestamped::new(200)).unwrap();
     ///
     /// let mut taken = Box::pin(taken);
-    /// assert_eq!(taken.next().await.unwrap().unwrap().get(), &100);
-    /// assert_eq!(taken.next().await.unwrap().unwrap().get(), &200);
+    /// assert_eq!(taken.next().await.unwrap().unwrap().inner(), &100);
+    /// assert_eq!(taken.next().await.unwrap().unwrap().inner(), &200);
     /// # }
     /// ```
     ///
@@ -423,7 +423,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -437,21 +437,21 @@ where
     /// let mut sampled = source.take_latest_when(trigger, |_| true);
     ///
     /// // Buffer source values
-    /// source_tx.send(Sequenced::with_sequence(10, 1)).unwrap();
-    /// source_tx.send(Sequenced::with_sequence(20, 2)).unwrap();
-    /// source_tx.send(Sequenced::with_sequence(30, 3)).unwrap();
+    /// source_tx.send(Timestamped::with_timestamp(10, 1)).unwrap();
+    /// source_tx.send(Timestamped::with_timestamp(20, 2)).unwrap();
+    /// source_tx.send(Timestamped::with_timestamp(30, 3)).unwrap();
     ///
     /// // Trigger emission - emits latest buffered value (30)
-    /// trigger_tx.send(Sequenced::with_sequence(0, 4)).unwrap();
+    /// trigger_tx.send(Timestamped::with_timestamp(0, 4)).unwrap();
     ///
     /// let result = sampled.next().await.unwrap().unwrap();
-    /// assert_eq!(result.get(), &30);
+    /// assert_eq!(result.inner(), &30);
     /// assert_eq!(result.sequence(), 4); // Uses trigger's sequence
     ///
     /// // After trigger, source values emit immediately
-    /// source_tx.send(Sequenced::with_sequence(40, 5)).unwrap();
+    /// source_tx.send(Timestamped::with_timestamp(40, 5)).unwrap();
     /// let result = sampled.next().await.unwrap().unwrap();
-    /// assert_eq!(result.get(), &40);
+    /// assert_eq!(result.inner(), &40);
     /// assert_eq!(result.sequence(), 5); // Uses source's sequence
     /// # }
     /// ```
@@ -507,7 +507,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombinedState};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -524,14 +524,14 @@ where
     ///     values[0] > values[1] // source > threshold
     /// });
     ///
-    /// threshold_tx.send(Sequenced::new(50)).unwrap();
+    /// threshold_tx.send(Timestamped::new(50)).unwrap();
     ///
-    /// source_tx.send(Sequenced::new(30)).unwrap(); // Below threshold, not emitted
-    /// source_tx.send(Sequenced::new(60)).unwrap(); // Above threshold, emitted
+    /// source_tx.send(Timestamped::new(30)).unwrap(); // Below threshold, not emitted
+    /// source_tx.send(Timestamped::new(60)).unwrap(); // Above threshold, emitted
     ///
     /// let mut gated = Box::pin(gated);
     /// let result = gated.next().await.unwrap().unwrap();
-    /// assert_eq!(result.get(), &42);
+    /// assert_eq!(result.inner(), &42);
     /// # }
     /// ```
     ///
@@ -581,7 +581,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombinedState, Ordered};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -598,14 +598,14 @@ where
     /// });
     ///
     /// // Set secondary value
-    /// secondary_tx.send(Sequenced::new(100)).unwrap();
+    /// secondary_tx.send(Timestamped::new(100)).unwrap();
     ///
     /// // Primary emissions drive output
-    /// primary_tx.send(Sequenced::new(1)).unwrap();
-    /// primary_tx.send(Sequenced::new(2)).unwrap();
+    /// primary_tx.send(Timestamped::new(1)).unwrap();
+    /// primary_tx.send(Timestamped::new(2)).unwrap();
     ///
-    /// assert_eq!(combined.next().await.unwrap().unwrap().get(), &101); // 1 + 100
-    /// assert_eq!(combined.next().await.unwrap().unwrap().get(), &102); // 2 + 100
+    /// assert_eq!(combined.next().await.unwrap().unwrap().inner(), &101); // 1 + 100
+    /// assert_eq!(combined.next().await.unwrap().unwrap().inner(), &102); // 2 + 100
     /// # }
     /// ```
     ///
@@ -662,7 +662,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{FluxionStream, Ordered};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -675,18 +675,18 @@ where
     ///
     /// let mut combined = stream1.combine_latest(vec![stream2], |_| true);
     ///
-    /// tx1.send(Sequenced::new(10)).unwrap();
-    /// tx2.send(Sequenced::new(20)).unwrap();
+    /// tx1.send(Timestamped::new(10)).unwrap();
+    /// tx2.send(Timestamped::new(20)).unwrap();
     ///
     /// let result = combined.next().await.unwrap();
-    /// let state = result.get().values();
+    /// let state = result.inner().values();
     /// assert_eq!(state[0], 10); // First stream's value
     /// assert_eq!(state[1], 20); // Second stream's value
     ///
     /// // When either stream updates, a new combined state is emitted
-    /// tx1.send(Sequenced::new(30)).unwrap();
+    /// tx1.send(Timestamped::new(30)).unwrap();
     /// let result = combined.next().await.unwrap();
-    /// let state = result.get().values();
+    /// let state = result.inner().values();
     /// assert_eq!(state[0], 30); // Updated
     /// assert_eq!(state[1], 20); // Still latest from stream2
     /// # }
@@ -740,7 +740,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -756,14 +756,14 @@ where
     /// let mut merged = stream1.ordered_merge(vec![stream2, stream3]);
     ///
     /// // Send out of order across streams
-    /// tx1.send(Sequenced::with_sequence("first", 1)).unwrap();
-    /// tx3.send(Sequenced::with_sequence("third", 3)).unwrap();
-    /// tx2.send(Sequenced::with_sequence("second", 2)).unwrap();
+    /// tx1.send(Timestamped::with_timestamp("first", 1)).unwrap();
+    /// tx3.send(Timestamped::with_timestamp("third", 3)).unwrap();
+    /// tx2.send(Timestamped::with_timestamp("second", 2)).unwrap();
     ///
     /// // Items are emitted in temporal order
-    /// assert_eq!(merged.next().await.unwrap().unwrap().get(), &"first");
-    /// assert_eq!(merged.next().await.unwrap().unwrap().get(), &"second");
-    /// assert_eq!(merged.next().await.unwrap().unwrap().get(), &"third");
+    /// assert_eq!(merged.next().await.unwrap().unwrap().inner(), &"first");
+    /// assert_eq!(merged.next().await.unwrap().unwrap().inner(), &"second");
+    /// assert_eq!(merged.next().await.unwrap().unwrap().inner(), &"third");
     /// # }
     /// ```
     ///
@@ -792,3 +792,4 @@ where
         FluxionStream::new(OrderedStreamExt::ordered_merge(inner, other_streams))
     }
 }
+

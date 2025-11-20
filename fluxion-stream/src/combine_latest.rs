@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_error;
-use fluxion_core::{CompareByInner, Ordered, OrderedWrapper, StreamItem};
+use fluxion_core::{CompareByInner, Ordered, OrderedWrapper, StreamItem, TimestampedWrapper};
 use fluxion_ordered_merge::OrderedMergeExt;
 
 /// Extension trait providing the `combine_latest` operator for ordered streams.
@@ -74,7 +74,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{CombineLatestExt, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use fluxion_core::Ordered;
     /// use futures::StreamExt;
     ///
@@ -94,12 +94,12 @@ where
     /// );
     ///
     /// // Send values
-    /// tx1.send(Sequenced::with_sequence(1, 1)).unwrap();
-    /// tx2.send(Sequenced::with_sequence(2, 2)).unwrap();
+    /// tx1.send(Timestamped::with_timestamp(1, 1)).unwrap();
+    /// tx2.send(Timestamped::with_timestamp(2, 2)).unwrap();
     ///
     /// // Assert
     /// let result = combined.next().await.unwrap();
-    /// let values = result.get().values();
+    /// let values = result.inner().values();
     /// assert_eq!(values.len(), 2);
     /// # }
     /// ```
@@ -163,13 +163,12 @@ where
                         async move {
                             match item {
                                 StreamItem::Value(value) => {
-                                    let order = value.order();
                                     match lock_or_error(&state, "combine_latest state") {
                                         Ok(mut guard) => {
                                             guard.insert(index, value);
 
                                             if guard.is_complete() {
-                                                Some(StreamItem::Value((guard.clone(), order)))
+                                                Some(StreamItem::Value(guard.clone()))
                                             } else {
                                                 None
                                             }
@@ -192,21 +191,21 @@ where
                     }
                 })
                 .map(|item| {
-                    item.map(|(state, order)| {
+                    item.map(|state| {
                         // Extract the inner values to create CombinedState
                         let inner_values: Vec<T::Inner> = state
                             .get_ordered_values()
                             .iter()
-                            .map(|ordered_val| ordered_val.get().clone())
+                            .map(|ordered_val| ordered_val.inner().clone())
                             .collect();
                         let combined = CombinedState::new(inner_values);
-                        OrderedWrapper::with_order(combined, order)
+                        TimestampedWrapper::with_fresh_timestamp(combined)
                     })
                 })
                 .filter(move |item| {
                     match item {
                         StreamItem::Value(ordered_combined) => {
-                            let combined_state = ordered_combined.get();
+                            let combined_state = ordered_combined.inner();
                             ready(filter(combined_state))
                         }
                         StreamItem::Error(_) => ready(true), // Always emit errors
@@ -284,3 +283,4 @@ where
         }
     }
 }
+

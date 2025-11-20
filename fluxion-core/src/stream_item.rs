@@ -154,28 +154,32 @@ impl<T> From<StreamItem<T>> for Result<T, FluxionError> {
     }
 }
 
-impl<T> crate::Ordered for StreamItem<T>
+impl<T> crate::Timestamped for StreamItem<T>
 where
-    T: crate::Ordered,
+    T: crate::Timestamped,
 {
     type Inner = T::Inner;
 
-    fn order(&self) -> u64 {
+    fn timestamp(&self) -> u64 {
         match self {
-            StreamItem::Value(v) => v.order(),
-            StreamItem::Error(_) => 0, // Errors have no meaningful order
+            StreamItem::Value(v) => v.timestamp(),
+            StreamItem::Error(_) => panic!("called `timestamp()` on StreamItem::Error"),
         }
     }
 
-    fn get(&self) -> &Self::Inner {
+    fn inner(&self) -> &Self::Inner {
         match self {
-            StreamItem::Value(v) => v.get(),
-            StreamItem::Error(_) => panic!("called `get()` on StreamItem::Error"),
+            StreamItem::Value(v) => v.inner(),
+            StreamItem::Error(_) => panic!("called `inner()` on StreamItem::Error"),
         }
     }
 
-    fn with_order(value: Self::Inner, order: u64) -> Self {
-        StreamItem::Value(T::with_order(value, order))
+    fn with_timestamp(value: Self::Inner, timestamp: u64) -> Self {
+        StreamItem::Value(T::with_timestamp(value, timestamp))
+    }
+
+    fn with_fresh_timestamp(value: Self::Inner) -> Self {
+        StreamItem::Value(T::with_fresh_timestamp(value))
     }
 }
 

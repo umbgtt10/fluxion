@@ -51,7 +51,7 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{EmitWhenExt, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
@@ -73,12 +73,12 @@ where
     /// );
     ///
     /// // Send values
-    /// tx_enable.send(Sequenced::with_sequence(1, 1)).unwrap();  // Enabled
-    /// tx_data.send(Sequenced::with_sequence(42, 2)).unwrap();
+    /// tx_enable.send(Timestamped::with_timestamp(1, 1)).unwrap();  // Enabled
+    /// tx_data.send(Timestamped::with_timestamp(42, 2)).unwrap();
     ///
     /// // Assert - data emits when enabled
     /// let result = gated.next().await.unwrap().unwrap();
-    /// assert_eq!(*result.get(), 42);
+    /// assert_eq!(*result.inner(), 42);
     /// # }
     /// ```
     ///
@@ -153,8 +153,6 @@ where
             async move {
                 match item {
                     StreamItem::Value(ordered_value) => {
-                        let order = ordered_value.order();
-
                         match index {
                             0 => {
                                 // Source stream update
@@ -175,16 +173,15 @@ where
                                     };
 
                                 // Update source value
-                                *source = Some(ordered_value.get().clone());
+                                *source = Some(ordered_value.inner().clone());
 
                                 if let Some(src) = source.as_ref() {
                                     if let Some(filt) = filter_val.as_ref() {
                                         let combined_state =
                                             CombinedState::new(vec![src.clone(), filt.clone()]);
                                         if filter(&combined_state) {
-                                            Some(StreamItem::Value(T::with_order(
+                                            Some(StreamItem::Value(T::with_fresh_timestamp(
                                                 src.clone(),
-                                                order,
                                             )))
                                         } else {
                                             None
@@ -215,16 +212,15 @@ where
                                 };
 
                                 // Update filter value
-                                *filter_val = Some(ordered_value.get().clone());
+                                *filter_val = Some(ordered_value.inner().clone());
 
                                 if let Some(src) = source.as_ref() {
                                     if let Some(filt) = filter_val.as_ref() {
                                         let combined_state =
                                             CombinedState::new(vec![src.clone(), filt.clone()]);
                                         if filter(&combined_state) {
-                                            Some(StreamItem::Value(T::with_order(
+                                            Some(StreamItem::Value(T::with_fresh_timestamp(
                                                 src.clone(),
-                                                order,
                                             )))
                                         } else {
                                             None
@@ -251,3 +247,4 @@ where
         FluxionStream::new(result)
     }
 }
+

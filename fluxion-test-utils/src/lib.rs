@@ -20,17 +20,16 @@
 //!
 //! # Key Types
 //!
-//! ## `Sequenced<T>`
+//! ## `Timestamped<T>`
 //!
 //! A wrapper type that adds temporal ordering to test values:
 //!
 //! ```rust
-//! use fluxion_test_utils::Sequenced;
-//! use fluxion_core::Ordered;
-//!
-//! let item = Sequenced::new(42);  // Auto-sequenced
+//! use fluxion_test_utils::Timestamped;
+//! use fluxion_core::Timestamped as TimestampedTrait;
+//! let item = Timestamped::new(42);  // Auto-timestamped with current time
 //! assert_eq!(item.value, 42);
-//! // Sequence numbers are auto-incremented globally
+//! // Timestamps use chrono::Utc::now()
 //! ```
 //!
 //! ## TestData and Variants
@@ -64,17 +63,17 @@
 //! ## Creating Ordered Test Values
 //!
 //! ```rust
-//! use fluxion_test_utils::Sequenced;
-//! use fluxion_core::Ordered;
+//! use fluxion_test_utils::Timestamped;
+//! use fluxion_core::Timestamped as TimestampedTrait;
 //!
-//! // Create sequenced values with explicit ordering
-//! let first = Sequenced::with_sequence(100, 1);
-//! let second = Sequenced::with_sequence(200, 2);
-//! let third = Sequenced::with_sequence(300, 3);
+//! // Create timestamped values with explicit ordering
+//! let first = Timestamped::with_timestamp(100, 1);
+//! let second = Timestamped::with_timestamp(200, 2);
+//! let third = Timestamped::with_timestamp(300, 3);
 //!
 //! // Verify ordering
-//! assert!(first.order() < second.order());
-//! assert!(second.order() < third.order());
+//! assert!(first.timestamp() < second.timestamp());
+//! assert!(second.timestamp() < third.timestamp());
 //!
 //! // Access inner values
 //! assert_eq!(first.value, 100);
@@ -95,7 +94,7 @@
 //!
 //! # Module Organization
 //!
-//! - `sequenced` - `Sequenced<T>` wrapper and implementations
+//! - `timestamped` - `Timestamped<T>` wrapper and implementations
 //! - `test_data` - Enum variants for diverse test scenarios
 //! - `person`, `animal`, `plant` - Specific fixture types
 //! - `helpers` - Assertion and utility functions
@@ -106,13 +105,19 @@ pub mod error_injection;
 pub mod helpers;
 pub mod person;
 pub mod plant;
-pub mod sequenced;
 pub mod test_data;
+pub mod timestamped;
 
 // Re-export commonly used test utilities
 pub use error_injection::ErrorInjectingStream;
 pub use helpers::{
     assert_no_element_emitted, test_channel, test_channel_with_errors, unwrap_stream, unwrap_value,
 };
-pub use sequenced::Sequenced;
 pub use test_data::{DataVariant, TestData};
+pub use timestamped::Timestamped;
+
+// Legacy alias for backward compatibility - use Timestamped directly
+pub mod sequenced {
+    #[deprecated(since = "0.1.0", note = "Use `Timestamped` instead")]
+    pub use super::timestamped::Timestamped as Sequenced;
+}
