@@ -8,36 +8,39 @@ Core traits and types for ordered stream processing in async Rust.
 
 This crate provides the foundational abstractions used throughout the Fluxion ecosystem:
 
-- **`Ordered` trait**: Temporal ordering for stream items via sequence numbers
-- **`OrderedItem<T>`**: Default implementation of `Ordered`
+- **`Timestamped` trait**: Temporal ordering for stream items via timestamps
+- **`StreamItem<T>`**: Error-aware stream item wrapper
 - **Lock utilities**: Safe mutex operations with error propagation
 
 ## Key Types
 
-### Ordered Trait
+### Timestamped Trait
 
-The `Ordered` trait enables temporal ordering guarantees across stream operations:
+The `Timestamped` trait enables temporal ordering guarantees across stream operations:
 
 ```rust
-pub trait Ordered: Clone {
+pub trait Timestamped: Clone {
     type Inner: Clone;
+    type Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug;
 
-    fn order(&self) -> u64;  // Temporal sequence number
-    fn get(&self) -> &Self::Inner;  // Access inner value
-    fn with_order(value: Self::Inner, order: u64) -> Self;
+    fn timestamp(&self) -> Self::Timestamp;  // Get timestamp for ordering
+    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self;
+    fn with_fresh_timestamp(value: Self::Inner) -> Self;
+    fn into_inner(self) -> Self::Inner;
 }
 ```
 
-### OrderedItem<T>
+### ChronoTimestamped<T>
 
-A ready-to-use implementation of `Ordered`:
+A ready-to-use implementation of `Timestamped` using chrono timestamps (available in `fluxion-test-utils`):
 
 ```rust
-use fluxion_core::{Ordered, OrderedItem};
+use fluxion_test_utils::ChronoTimestamped;
+use fluxion_core::Timestamped;
 
-let item = OrderedItem::new(42, 1);
-assert_eq!(item.order(), 1);
-assert_eq!(*item.get(), 42);
+let item = ChronoTimestamped::new(42);
+assert_eq!(item.value, 42);
+// Timestamp uses chrono::Utc::now()
 ```
 
 ### Lock Utilities

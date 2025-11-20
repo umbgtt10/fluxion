@@ -6,11 +6,11 @@ Generic ordered stream merging utilities for async Rust.
 
 ## Overview
 
-This crate provides low-level utilities for merging async streams with ordering guarantees. Unlike `fluxion-merge`, which is specialized for Fluxion streams, this crate works with any stream type implementing the `Ordered` trait.
+This crate provides low-level utilities for merging async streams with temporal ordering guarantees. Unlike `fluxion-merge`, which is specialized for Fluxion streams, this crate works with any stream type implementing the `Timestamped` trait.
 
-## Key Features
+## Features
 
-- Generic over any `Ordered` type
+- Generic over any `Timestamped` type
 - Strict temporal ordering via buffering
 - Efficient out-of-order handling
 - Zero-copy stream merging where possible

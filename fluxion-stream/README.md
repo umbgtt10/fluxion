@@ -39,7 +39,7 @@ Stream combinators for async Rust with strong temporal-ordering guarantees. This
 
 ## Key Features
 
-- **Temporal Ordering**: All operators maintain temporal correctness via the `Ordered` trait
+- **Temporal Ordering**: All operators maintain temporal correctness via the `Timestamped` trait
 - **Composable Operators**: 9+ stream combinators designed to work together seamlessly
 - **Error Propagation**: Structured error handling through `StreamItem<T>` enum
 - **Zero-Copy**: Minimal allocations and efficient buffering strategies
@@ -48,40 +48,41 @@ Stream combinators for async Rust with strong temporal-ordering guarantees. This
 
 ## Core Concepts
 
-### Ordered Trait
+### Timestamped Trait
 
-The `Ordered` trait is the foundation of fluxion-stream. It provides temporal ordering for stream items:
+The `Timestamped` trait is the foundation of fluxion-stream. It provides temporal ordering for stream items:
 
 ```rust
-pub trait Ordered: Clone {
+pub trait Timestamped: Clone {
     type Inner: Clone;
+    type Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug;
 
-    fn order(&self) -> u64;  // Temporal ordering value (timestamp, sequence, etc.)
-    fn get(&self) -> &Self::Inner;  // Access inner value
-    fn with_order(value: Self::Inner, order: u64) -> Self;
+    fn timestamp(&self) -> Self::Timestamp;  // Get the timestamp for ordering
+    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self;
+    fn with_fresh_timestamp(value: Self::Inner) -> Self;
+    fn into_inner(self) -> Self::Inner;
 }
 ```
 
 **Implementations:**
-- `OrderedWrapper<T>` - Generic wrapper adding sequence numbers
-- `Sequenced<T>` - Test utility from `fluxion-test-utils`
-- Custom types - Implement for your domain types (e.g., timestamped events)
+- `ChronoTimestamped<T>` - Test utility from `fluxion-test-utils` using chrono timestamps
+- Custom domain types - Implement for your types (e.g., events with built-in timestamps)
 
 ### Temporal Ordering
 
-Temporal ordering means items are processed based on their intrinsic ordering value, not arrival time:
+Temporal ordering means items are processed based on their intrinsic timestamp, not arrival time:
 
 ```rust
-// Stream 1 sends: [seq=2, value=B]
-// Stream 2 sends: [seq=1, value=A]
-// Merged output:  [seq=1, value=A], [seq=2, value=B]  ✓ Correct temporal order
+// Stream 1 sends: [timestamp=2, value=B]
+// Stream 2 sends: [timestamp=1, value=A]
+// Merged output:  [timestamp=1, value=A], [timestamp=2, value=B]  ✓ Correct temporal order
 ```
 
 **How it works:**
-1. Each item has an `order()` value (timestamp, sequence number, etc.)
-2. Operators buffer items and emit them in order of their `order()` value
+1. Each item has a `timestamp()` value (chrono::DateTime, u64 counter, etc.)
+2. Operators buffer items and emit them in order of their `timestamp()` value
 3. Late-arriving items are placed correctly in the sequence
-4. Gaps in ordering may cause buffering until the sequence is complete
+4. Gaps in timestamps may cause buffering until the sequence is complete
 
 **When to use:**
 - Event sourcing and event-driven architectures

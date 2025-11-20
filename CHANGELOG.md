@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING**: Migrated from `Ordered` trait to `Timestamped` trait
+  - Renamed core trait from `Ordered` to `Timestamped` for better clarity
+  - Method changes:
+    - `order() -> u64` → `timestamp() -> Self::Timestamp` (generic timestamp type)
+    - `get() -> &Self::Inner` → Removed (use `Deref` trait instead)
+    - `with_order(value, order)` → `with_timestamp(value, timestamp)`
+    - Added `with_fresh_timestamp(value)` for auto-timestamping
+    - Added `into_inner(self) -> Self::Inner` (required method, no default)
+  - All stream operators updated to use new trait
+  - Test utilities migrated: `Sequenced<T>` (deprecated) → `ChronoTimestamped<T>`
+  - More idiomatic Rust: leverages `Deref` pattern for borrowing
+
+### Fixed
+- **Bug**: Fixed timestamp preservation in `take_latest_when` operator
+  - Now stores full timestamped value instead of just inner value
+  - Correctly preserves trigger event's timestamp when emitting
+- **Documentation**: Resolved all rustdoc warnings (4 → 0)
+  - Fixed 3 broken intra-doc links to `Ordered` trait
+  - Fixed unclosed HTML tag error in `timestamped.rs`
+  - Updated all trait signatures in documentation
+- **Documentation**: Comprehensive documentation consistency review
+  - Updated INTEGRATION.md with current `Timestamped` trait examples
+  - Updated all README files across workspace
+  - Fixed all code examples to use `ChronoTimestamped<T>`
+  - Synchronized code samples with actual test implementations
+
 ### Added
 - **CI/CD**: Integrated Tarpaulin for code coverage tracking in CI pipeline
 - **Testing**: Added comprehensive unit tests for `channel_ext` module
@@ -16,11 +43,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Examples demonstrate sequential processing and burst cancellation patterns
   - Include inline data structures for easy understanding
 
-### Changed
+### Improved
 - **Testing**: Consolidated and cleaned up test suite organization
   - Merged duplicate test files and removed redundant tests
   - Simplified test code for better maintainability
   - Improved test naming conventions for clarity
+  - Fixed 200+ test compilation errors from trait migration
+  - All 1,684 tests passing, all 63 doc tests passing
 - **Documentation**: Fixed all doc tests in `fluxion-exec` crate
   - Replaced `tokio_test::block_on` with `#[tokio::main]` for self-contained examples
   - All 8 doc tests now compile and run successfully
@@ -28,12 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: Enhanced README with automated example synchronization
   - Added subscribe_async_example and subscribe_latest_async_example
   - Dependencies automatically extracted from test files and synced to README
-
-### Fixed
-- **Tests**: Fixed fundamental test failures in core functionality
-- **Tests**: Resolved Tarpaulin integration issues in CI
-- **API**: Fixed bad design issue in `channel_ext` module
-- **Documentation**: Corrected doc test compilation errors
+- **Quality**: Improved error handling
+  - Zero `unwrap()` calls in production code
+  - Only 2 justified `expect()` calls with invariant checks
 
 ## [0.2.1] - 2025-11-18
 

@@ -17,13 +17,13 @@ This guide describes the three fundamental patterns for integrating events with 
 
 ## Overview
 
-Fluxion processes streams of ordered events. The `Ordered` trait is the core abstraction that defines how events are sequenced. There are three main patterns for providing ordering information:
+Fluxion processes streams of timestamped events. The `Timestamped` trait is the core abstraction that defines how events are sequenced. There are three main patterns for providing timestamp information:
 
-1. **Intrinsic Ordering** - Events carry their own timestamps (production)
-2. **Extrinsic Ordering** - Test infrastructure controls order (testing)
-3. **Wrapper Ordering** - Adapter adds timestamps at boundaries (integration)
+1. **Intrinsic Timestamps** - Events carry their own timestamps (production)
+2. **Extrinsic Timestamps** - Test infrastructure controls timestamps (testing)
+3. **Wrapper Timestamps** - Adapter adds timestamps at boundaries (integration)
 
-## Pattern 1: Intrinsic Ordering (Production)
+## Pattern 1: Intrinsic Timestamps (Production)
 
 **When to use:** Your domain events already have timestamps, sequence numbers, or other inherent ordering information.
 
@@ -37,7 +37,7 @@ Fluxion processes streams of ordered events. The `Ordered` trait is the core abs
 ### Implementation
 
 ```rust
-use fluxion_rx::prelude::*;
+use fluxion_core::Timestamped;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct SensorReading {
@@ -46,19 +46,24 @@ struct SensorReading {
     temperature: f64,
 }
 
-impl Ordered for SensorReading {
+impl Timestamped for SensorReading {
     type Inner = Self;
+    type Timestamp = u64;
 
-    fn order(&self) -> u64 {
+    fn timestamp(&self) -> Self::Timestamp {
         self.timestamp  // Use the event's intrinsic timestamp
     }
 
-    fn get(&self) -> &Self::Inner {
-        self
+    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
+        Self { timestamp, ..value }
     }
 
-    fn with_order(value: Self::Inner, _order: u64) -> Self {
-        value  // Order is immutable, already part of the event
+    fn with_fresh_timestamp(value: Self::Inner) -> Self {
+        value  // For domain types, use existing timestamp
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self  // Domain type extracts to itself
     }
 }
 ```
@@ -75,7 +80,7 @@ async fn main() {
 
     // Events are already ordered by their timestamp
     let stream = FluxionStream::from_unbounded_receiver(rx)
-        .filter_ordered(|reading| reading.get().temperature > 25.0);
+        .filter_ordered(|reading| &*reading.temperature > 25.0);
 
     // Stream processing respects the intrinsic timestamp ordering
 }
@@ -84,12 +89,11 @@ async fn main() {
 **Key points:**
 - ✅ Events reflect real-world temporal order
 - ✅ No additional infrastructure needed
-- ✅ Uses `auto_ordered()` to enable ordered stream operations
 - ✅ Ordering is a property of the domain model
 
-## Pattern 2: Extrinsic Ordering (Testing)
+## Pattern 2: Extrinsic Timestamps (Testing)
 
-**When to use:** You need fine-grained control over event ordering, typically in tests.
+**When to use:** You need fine-grained control over event timestamps, typically in tests.
 
 **Typical scenarios:**
 - Unit testing ordered operators
@@ -100,27 +104,27 @@ async fn main() {
 
 ### Implementation
 
-Fluxion provides the `Sequenced<T>` wrapper in the `fluxion-test-utils` crate:
+Fluxion provides the `ChronoTimestamped<T>` wrapper in the `fluxion-test-utils` crate:
 
 ```rust
-use fluxion_test_utils::Sequenced;
+use fluxion_test_utils::ChronoTimestamped;
 
-// Your domain type doesn't need ordering information
+// Your domain type doesn't need timestamp information
 #[derive(Clone, Debug)]
 struct Event {
     data: String,
 }
 
-// Test infrastructure adds sequence numbers
-let event1 = Sequenced::with_sequence(Event { data: "first".into() }, 100);
-let event2 = Sequenced::with_sequence(Event { data: "second".into() }, 200);
+// Test infrastructure adds timestamps
+let event1 = ChronoTimestamped::with_timestamp(Event { data: "first".into() }, 100);
+let event2 = ChronoTimestamped::with_timestamp(Event { data: "second".into() }, 200);
 ```
 
 ### Usage
 
 ```rust
 use fluxion_rx::prelude::*;
-use fluxion_test_utils::Sequenced;
+use fluxion_test_utils::ChronoTimestamped;
 use tokio::sync::mpsc;
 use futures::StreamExt;
 
@@ -134,18 +138,18 @@ async fn test_ordered_filtering() {
     let (tx, rx) = mpsc::unbounded_channel();
 
     let mut stream = FluxionStream::from_unbounded_receiver(rx)
-        .filter_ordered(|e| e.get().data.starts_with('f'));
+        .filter_ordered(|e| &*e.data.starts_with('f'));
 
     // Push events in arbitrary order
-    tx.send(Sequenced::with_sequence(Event { data: "third".into() }, 300)).unwrap();
-    tx.send(Sequenced::with_sequence(Event { data: "first".into() }, 100)).unwrap();
-    tx.send(Sequenced::with_sequence(Event { data: "second".into() }, 200)).unwrap();
+    tx.send(ChronoTimestamped::with_timestamp(Event { data: "third".into() }, 300)).unwrap();
+    tx.send(ChronoTimestamped::with_timestamp(Event { data: "first".into() }, 100)).unwrap();
+    tx.send(ChronoTimestamped::with_timestamp(Event { data: "second".into() }, 200)).unwrap();
     drop(tx);
 
-    // Stream will reorder by sequence: 100, 200, 300
+    // Stream will reorder by timestamp: 100, 200, 300
     // Then filter to only: 100 ("first")
     let result = stream.next().await.unwrap();
-    assert_eq!(result.get().data, "first");
+    assert_eq!(&*result.data, "first");
 }
 ```
 
@@ -153,26 +157,26 @@ async fn test_ordered_filtering() {
 - ✅ Full control over event sequencing
 - ✅ Domain objects stay clean (no test-specific fields)
 - ✅ Perfect for testing edge cases (duplicates, gaps, reordering)
-- ✅ Uses `Sequenced<T>` wrapper from `fluxion-test-utils`
+- ✅ Uses `ChronoTimestamped<T>` wrapper from `fluxion-test-utils`
 
-## Pattern 3: Wrapper Ordering (Integration)
+## Pattern 3: Wrapper Timestamps (Integration)
 
-**When to use:** Integrating with external systems that don't provide timestamps, or when you need to add ordering at ingestion boundaries.
+**When to use:** Integrating with external systems that don't provide timestamps, or when you need to add timestamps at ingestion boundaries.
 
 **Typical scenarios:**
 - REST API endpoints receiving events
 - Legacy systems without timestamps
 - Third-party integrations
 - System boundaries where you add temporal metadata
-- Adapters between ordered and unordered worlds
+- Adapters between timestamped and non-timestamped worlds
 
 ### Implementation
 
 ```rust
-use fluxion_rx::prelude::*;
+use fluxion_core::Timestamped;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-// External system provides unordered events
+// External system provides non-timestamped events
 #[derive(Clone, Debug)]
 struct ThirdPartyEvent {
     id: String,
@@ -197,19 +201,24 @@ impl TimestampedEvent {
     }
 }
 
-impl Ordered for TimestampedEvent {
+impl Timestamped for TimestampedEvent {
     type Inner = Self;
+    type Timestamp = u64;
 
-    fn order(&self) -> u64 {
+    fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
     }
 
-    fn get(&self) -> &Self::Inner {
-        self
+    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
+        Self { timestamp, ..value }
     }
 
-    fn with_order(value: Self::Inner, _order: u64) -> Self {
-        value
+    fn with_fresh_timestamp(value: Self::Inner) -> Self {
+        Self::from_external(value.event)
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self
     }
 }
 ```
@@ -223,7 +232,7 @@ async fn handle_webhook(external_event: ThirdPartyEvent, tx: mpsc::UnboundedSend
     // Add timestamp at the system boundary
     let timestamped = TimestampedEvent::from_external(external_event);
 
-    // Send to ordered stream processing pipeline
+    // Send to timestamped stream processing pipeline
     tx.send(timestamped).unwrap();
 }
 
@@ -233,64 +242,64 @@ async fn main() {
 
     // Process timestamped events
     let stream = FluxionStream::from_unbounded_receiver(rx)
-        .map_ordered(|e| e.get().event.clone());
+        .map_ordered(|e| e.clone().into_inner().event);
 
-    // Now you have ordered stream of ThirdPartyEvent
+    // Now you have stream of ThirdPartyEvent with temporal ordering
 }
 ```
 
 **Key points:**
-- ✅ Adds ordering at system boundaries
-- ✅ Bridges unordered external systems with Fluxion's ordered processing
+- ✅ Adds timestamps at system boundaries
+- ✅ Bridges non-timestamped external systems with Fluxion's temporal processing
 - ✅ Timestamp assigned at ingestion time
 - ✅ Original event preserved inside wrapper
 
 ## Comparison Table
 
-| Pattern | Order Source | Use Case | Domain Impact | Infrastructure |
-|---------|--------------|----------|---------------|----------------|
+| Pattern | Timestamp Source | Use Case | Domain Impact | Infrastructure |
+|---------|------------------|----------|---------------|----------------|
 | **Intrinsic** | Event's own timestamp | Production event streams | Timestamp is part of domain | Minimal |
-| **Extrinsic** | Test harness | Unit/integration testing | Domain stays clean | `Sequenced<T>` wrapper |
+| **Extrinsic** | Test harness | Unit/integration testing | Domain stays clean | `ChronoTimestamped<T>` wrapper |
 | **Wrapper** | Added at boundary | Third-party integration | Adapter layer adds field | Ingestion adapter |
 
 ## Choosing the Right Pattern
 
-### Use Intrinsic Ordering when:
+### Use Intrinsic Timestamps when:
 - ✅ Events naturally have timestamps (sensors, logs, messages)
 - ✅ Building production event processing pipelines
 - ✅ Timestamps are part of your domain model
 - ✅ You want minimal abstraction overhead
 
-### Use Extrinsic Ordering when:
+### Use Extrinsic Timestamps when:
 - ✅ Writing unit tests for ordered operators
-- ✅ Need to simulate specific ordering scenarios
+- ✅ Need to simulate specific timestamp scenarios
 - ✅ Testing reordering, duplicates, or gaps
-- ✅ Domain objects shouldn't know about sequencing
+- ✅ Domain objects shouldn't know about temporal sequencing
 
-### Use Wrapper Ordering when:
+### Use Wrapper Timestamps when:
 - ✅ Integrating with systems that don't provide timestamps
 - ✅ Adding temporal metadata at ingestion points
-- ✅ Building adapters between ordered/unordered systems
+- ✅ Building adapters between timestamped/non-timestamped systems
 - ✅ You control the integration boundary but not the source
 
 ## Best Practices
 
-1. **Production Code**: Use intrinsic ordering whenever possible - it's the most natural and efficient.
+1. **Production Code**: Use intrinsic timestamps whenever possible - it's the most natural and efficient.
 
-2. **Testing**: Use `Sequenced<T>` from `fluxion-test-utils` to keep tests clean and flexible.
+2. **Testing**: Use `ChronoTimestamped<T>` from `fluxion-test-utils` to keep tests clean and flexible.
 
 3. **Integration Boundaries**: Add timestamps as early as possible in your pipeline, ideally at the point of ingestion.
 
 4. **Timestamp Source**:
-   - Use event time (when the event occurred) for intrinsic ordering
-   - Use processing time (when you received it) for wrapper ordering
+   - Use event time (when the event occurred) for intrinsic timestamps
+   - Use processing time (when you received it) for wrapper timestamps
    - Be consistent within a stream
 
 5. **Mixed Streams**: When combining multiple streams, ensure all use compatible timestamp sources (all event time or all processing time).
 
 ## Examples
 
-See the `examples/stream-aggregation` directory for a **complete production example** using intrinsic ordering with sensor readings, metrics, and system events.
+See the `examples/stream-aggregation` directory for a **complete production example** using intrinsic timestamps with sensor readings, metrics, and system events.
 
 **What makes this example valuable:**
 - **Real-world architecture**: Demonstrates how to structure a multi-stream event processing system
@@ -301,4 +310,4 @@ See the `examples/stream-aggregation` directory for a **complete production exam
 
 Run it: `cargo run --example stream-aggregation`
 
-For testing examples, see the test suites in `fluxion-stream/tests/` which extensively use `Sequenced<T>` for controlled ordering scenarios.
+For testing examples, see the test suites in `fluxion-stream/tests/` which extensively use `ChronoTimestamped<T>` for controlled timestamp scenarios.

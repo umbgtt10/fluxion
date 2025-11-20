@@ -6,16 +6,16 @@
 //!
 //! This crate provides reactive stream combinators that maintain temporal ordering
 //! across asynchronous operations. All operators work with types implementing the
-//! [`Ordered`] trait, which provides an ordering value for correct temporal sequencing.
+//! [`Timestamped`](fluxion_core::Timestamped) trait, which provides timestamp-based ordering for correct temporal sequencing.
 //!
 //! # Architecture
 //!
 //! The crate is built around several key concepts:
 //!
 //! - **[`FluxionStream`]**: A wrapper around any `Stream` that provides access to all operators
-//! - **[`Ordered`] trait**: Types must have an intrinsic ordering (timestamp, sequence number, etc.)
+//! - **[`Timestamped`](fluxion_core::Timestamped) trait**: Types must have intrinsic timestamps for temporal ordering
 //! - **Extension traits**: Each operator is provided via an extension trait for composability
-//! - **Temporal correctness**: All operators respect the ordering of items across streams
+//! - **Temporal correctness**: All operators respect the timestamp ordering of items across streams
 //!
 //! ## Operator Categories
 //!
@@ -44,10 +44,10 @@
 //!
 //! When multiple streams are combined:
 //!
-//! 1. Each stream item must implement [`Ordered`], providing a comparable ordering value
+//! 1. Each stream item must implement [`Timestamped`](fluxion_core::Timestamped), providing a comparable timestamp
 //! 2. Operators use [`ordered_merge`](OrderedStreamExt::ordered_merge) internally to sequence items
-//! 3. Items are buffered and emitted in order of their ordering value
-//! 4. Late-arriving items with earlier ordering are placed correctly in the sequence
+//! 3. Items are buffered and emitted in order of their timestamp
+//! 4. Late-arriving items with earlier timestamps are placed correctly in the sequence
 //!
 //! ## Example: Out-of-Order Delivery
 //!
