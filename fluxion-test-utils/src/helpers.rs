@@ -167,6 +167,39 @@ where
     }
 }
 
+/// Assert that the stream has ended (returns None) within a timeout.
+///
+/// This prevents tests from hanging when checking if a stream has terminated.
+/// If the stream doesn't end within the timeout, the test will panic.
+///
+/// # Panics
+/// Panics if:
+/// - The stream returns a value instead of None
+/// - The stream doesn't end within the timeout
+///
+/// # Example
+///
+/// ```rust
+/// use fluxion_test_utils::{test_channel, assert_stream_ended};
+/// # async fn example() {
+/// let (tx, mut stream) = test_channel::<i32>();
+/// drop(tx); // Close the stream
+///
+/// // This will pass because the stream has ended
+/// assert_stream_ended(&mut stream, 500).await;
+/// # }
+/// ```
+pub async fn assert_stream_ended<S, T>(stream: &mut S, timeout_ms: u64)
+where
+    S: Stream<Item = T> + Unpin,
+{
+    match timeout(Duration::from_millis(timeout_ms), stream.next()).await {
+        Ok(Some(_)) => panic!("Expected stream to end but it returned a value"),
+        Ok(None) => {} // Stream ended as expected
+        Err(_) => panic!("Timeout: Stream did not end within {} ms", timeout_ms),
+    }
+}
+
 /// Macro to wrap test bodies with timeout to prevent hanging tests
 #[macro_export]
 macro_rules! with_timeout {

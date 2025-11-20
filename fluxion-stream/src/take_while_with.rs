@@ -148,17 +148,13 @@ where
         let filter = Arc::new(filter);
 
         // Tag each stream with its type - unwrap StreamItem first
-        let source_stream = self.filter_map(|item| async move {
-            match item {
-                StreamItem::Value(value) => Some(Item::<TItem, TFilter>::Source(value)),
-                StreamItem::Error(_) => None, // Skip errors for now - could propagate
-            }
+        let source_stream = self.map(|item| match item {
+            StreamItem::Value(value) => Item::<TItem, TFilter>::Source(value),
+            StreamItem::Error(e) => Item::<TItem, TFilter>::Error(e),
         });
-        let filter_stream = filter_stream.filter_map(|item| async move {
-            match item {
-                StreamItem::Value(value) => Some(Item::<TItem, TFilter>::Filter(value)),
-                StreamItem::Error(_) => None, // Skip errors for now
-            }
+        let filter_stream = filter_stream.map(|item| match item {
+            StreamItem::Value(value) => Item::<TItem, TFilter>::Filter(value),
+            StreamItem::Error(e) => Item::<TItem, TFilter>::Error(e),
         });
 
         // Box the streams to make them the same type
@@ -186,6 +182,7 @@ where
                             }
 
                             match item {
+                                Item::Error(e) => Some(StreamItem::Error(e)),
                                 Item::Filter(filter_val) => {
                                     *filter_state = Some(filter_val.clone().into_inner());
                                     None
@@ -217,6 +214,7 @@ where
 enum Item<TItem, TFilter> {
     Source(TItem),
     Filter(TFilter),
+    Error(fluxion_core::FluxionError),
 }
 
 // Manually implement Send + Sync + Unpin
@@ -250,6 +248,7 @@ where
         match self {
             Self::Source(s) => s.timestamp(),
             Self::Filter(f) => f.timestamp(),
+            Self::Error(_) => panic!("Error items should not be ordered"),
         }
     }
 }

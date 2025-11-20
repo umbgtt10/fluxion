@@ -112,7 +112,8 @@ pub mod test_data;
 pub use chrono_timestamped::ChronoTimestamped;
 pub use error_injection::ErrorInjectingStream;
 pub use helpers::{
-    assert_no_element_emitted, test_channel, test_channel_with_errors, unwrap_stream, unwrap_value,
+    assert_no_element_emitted, assert_stream_ended, test_channel, test_channel_with_errors,
+    unwrap_stream, unwrap_value,
 };
 pub use test_data::{DataVariant, TestData};
 
