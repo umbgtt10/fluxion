@@ -44,7 +44,7 @@ pub trait UnboundedReceiverExt<T> {
     ///     type Inner = Self;
     ///     type Timestamp = u64;
     ///     fn timestamp(&self) -> u64 { self.timestamp }
-    ///     fn inner(&self) -> &Self { self }
+    ///     fn into_inner(self) -> Self { self }
     ///     fn with_timestamp(value: Self, _timestamp: u64) -> Self { value }
     ///     fn with_fresh_timestamp(value: Self) -> Self { value }
     /// }
@@ -62,7 +62,7 @@ pub trait UnboundedReceiverExt<T> {
     ///             DataEvent::Sensor(s) => s.timestamp
     ///         }
     ///     }
-    ///     fn inner(&self) -> &Self { self }
+    ///     fn into_inner(self) -> Self { self }
     ///     fn with_timestamp(value: Self, _timestamp: u64) -> Self { value }
     ///     fn with_fresh_timestamp(value: Self) -> Self { value }
     /// }

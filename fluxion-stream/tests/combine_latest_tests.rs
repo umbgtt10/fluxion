@@ -40,7 +40,7 @@ where
 {
     let item = stream.next().await.expect("expected next combined state");
     let state = item.unwrap();
-    let actual: Vec<TestData> = state.inner().values().clone();
+    let actual: Vec<TestData> = state.clone().into_inner().values().clone();
     assert_eq!(actual, expected);
 }
 
@@ -142,7 +142,7 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues(
 
     // Assert
     let state = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    let actual: Vec<TestData> = state.inner().values().clone();
+    let actual: Vec<TestData> = state.clone().into_inner().values().clone();
     assert_eq!(actual, vec![person_alice(), animal_dog(), plant_rose()]);
 
     drop(plant_tx);
@@ -150,13 +150,13 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues(
     person_tx.send(ChronoTimestamped::new(person_bob()))?;
 
     let state = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    let actual: Vec<TestData> = state.inner().values().clone();
+    let actual: Vec<TestData> = state.clone().into_inner().values().clone();
     assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
 
     animal_tx.send(ChronoTimestamped::new(animal_spider()))?;
 
     let state = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    let actual: Vec<TestData> = state.inner().values().clone();
+    let actual: Vec<TestData> = state.clone().into_inner().values().clone();
     assert_eq!(actual, vec![person_bob(), animal_spider(), plant_rose()]);
 
     Ok(())
@@ -214,7 +214,7 @@ async fn combine_latest_template_test(
 
     // Assert
     let state = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    let actual: Vec<TestData> = state.inner().values().clone();
+    let actual: Vec<TestData> = state.clone().into_inner().values().clone();
     let expected = vec![person_alice(), animal_dog(), plant_rose()];
 
     assert_eq!(actual, expected);
@@ -373,7 +373,7 @@ async fn combine_latest_stream_order_test(
     // Assert
     let state = unwrap_stream(&mut combined_stream, 500).await.unwrap();
     assert_eq!(
-        state.inner().values().clone(),
+        state.clone().into_inner().values().clone(),
         vec![person_alice(), animal_dog(), plant_rose()]
     );
 

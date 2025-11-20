@@ -168,19 +168,19 @@ where
         }
     }
 
-    fn inner(&self) -> &Self::Inner {
-        match self {
-            StreamItem::Value(v) => v.inner(),
-            StreamItem::Error(_) => panic!("called `inner()` on StreamItem::Error"),
-        }
-    }
-
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         StreamItem::Value(T::with_timestamp(value, timestamp))
     }
 
     fn with_fresh_timestamp(value: Self::Inner) -> Self {
         StreamItem::Value(T::with_fresh_timestamp(value))
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        match self {
+            StreamItem::Value(v) => v.into_inner(),
+            StreamItem::Error(_) => panic!("called `into_inner()` on StreamItem::Error"),
+        }
     }
 }
 

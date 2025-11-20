@@ -46,10 +46,6 @@ impl<T: Timestamped> Timestamped for WithPrevious<T> {
         self.current.timestamp()
     }
 
-    fn inner(&self) -> &Self::Inner {
-        self.current.inner()
-    }
-
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self {
             previous: None,
@@ -130,10 +126,6 @@ where
 
     fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
-    }
-
-    fn inner(&self) -> &Self::Inner {
-        self
     }
 
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {

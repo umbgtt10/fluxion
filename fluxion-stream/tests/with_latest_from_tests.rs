@@ -37,7 +37,7 @@ where
     type Inner = Self;
     type Timestamp = u64;
 
-    fn inner(&self) -> &Self::Inner {
+    fn into_inner(self) -> Self::Inner {
         self
     }
 
@@ -79,14 +79,14 @@ async fn test_with_latest_from_basic() -> anyhow::Result<()> {
 
     // Assert CombinedState order: [primary (index 0), secondary (index 1)]
     let element = unwrap_value(Some(unwrap_stream(&mut combined_stream, 500).await));
-    assert_eq!(element.inner().values()[0], animal_cat());
-    assert_eq!(element.inner().values()[1], person_alice());
+    assert_eq!(element.clone().into_inner().values()[0], animal_cat());
+    assert_eq!(element.clone().into_inner().values()[1], person_alice());
 
     // Act - primary emits again
     animal_tx.send(ChronoTimestamped::new(animal_dog()))?;
     let element = unwrap_value(Some(unwrap_stream(&mut combined_stream, 500).await));
-    assert_eq!(element.inner().values()[0], animal_dog());
-    assert_eq!(element.inner().values()[1], person_alice());
+    assert_eq!(element.clone().into_inner().values()[0], animal_dog());
+    assert_eq!(element.clone().into_inner().values()[1], person_alice());
 
     // Act - secondary emits Bob (should NOT emit because only primary triggers emissions)
     person_tx.send(ChronoTimestamped::new(person_bob()))?;
@@ -114,12 +114,12 @@ async fn test_with_latest_from_ordering_preserved() -> anyhow::Result<()> {
 
     // Assert - should get two emissions in order
     let element1 = unwrap_value(Some(unwrap_stream(&mut combined_stream, 500).await));
-    assert_eq!(element1.inner().values()[0], animal_cat());
-    assert_eq!(element1.inner().values()[1], person_alice());
+    assert_eq!(element1.clone().into_inner().values()[0], animal_cat());
+    assert_eq!(element1.clone().into_inner().values()[1], person_alice());
 
     let element2 = unwrap_value(Some(unwrap_stream(&mut combined_stream, 500).await));
-    assert_eq!(element2.inner().values()[0], animal_dog());
-    assert_eq!(element2.inner().values()[1], person_alice());
+    assert_eq!(element2.clone().into_inner().values()[0], animal_dog());
+    assert_eq!(element2.clone().into_inner().values()[1], person_alice());
 
     println!(
         "Element1 order: {}, Element2 order: {}",
@@ -159,9 +159,9 @@ async fn test_with_latest_from_custom_selector() -> anyhow::Result<()> {
     // Assert - should get a String result wrapped in TestWrapper
     let element = unwrap_value(Some(unwrap_stream(&mut combined_stream, 500).await));
     assert!(
-        element.inner().value().contains("Cat"),
+        element.value().contains("Cat"),
         "Expected 'Cat' in result: {}",
-        element.inner().value()
+        element.value()
     );
 
     Ok(())
@@ -201,16 +201,16 @@ async fn test_with_latest_from_secondary_completes_early() -> anyhow::Result<()>
 
     // Assert - should still emit with latest secondary value (Alice)
     let element = unwrap_value(Some(unwrap_stream(&mut combined_stream, 500).await));
-    assert_eq!(element.inner().values()[0], animal_cat());
-    assert_eq!(element.inner().values()[1], person_alice());
+    assert_eq!(element.clone().into_inner().values()[0], animal_cat());
+    assert_eq!(element.clone().into_inner().values()[1], person_alice());
 
     // Primary emits again
     animal_tx.send(ChronoTimestamped::new(animal_dog()))?;
 
     // Assert - should still emit with same secondary value
     let element = unwrap_value(Some(unwrap_stream(&mut combined_stream, 500).await));
-    assert_eq!(element.inner().values()[0], animal_dog());
-    assert_eq!(element.inner().values()[1], person_alice());
+    assert_eq!(element.clone().into_inner().values()[0], animal_dog());
+    assert_eq!(element.clone().into_inner().values()[1], person_alice());
 
     Ok(())
 }
@@ -229,8 +229,8 @@ async fn test_with_latest_from_primary_completes_early() -> anyhow::Result<()> {
 
     // Assert
     let element = unwrap_value(Some(unwrap_stream(&mut combined_stream, 500).await));
-    assert_eq!(element.inner().values()[0], animal_cat());
-    assert_eq!(element.inner().values()[1], person_alice());
+    assert_eq!(element.clone().into_inner().values()[0], animal_cat());
+    assert_eq!(element.clone().into_inner().values()[1], person_alice());
 
     // Act - primary completes
     drop(animal_tx);
@@ -265,8 +265,8 @@ async fn test_with_latest_from_large_number_of_emissions() -> anyhow::Result<()>
     // Assert - should get 100 emissions, all with Alice
     for i in 0..100 {
         let element = unwrap_value(Some(unwrap_stream(&mut combined_stream, 500).await));
-        assert_eq!(element.inner().values()[1], person_alice());
-        if let TestData::Animal(ref animal) = element.inner().values()[0] {
+        assert_eq!(element.clone().into_inner().values()[1], person_alice());
+        if let TestData::Animal(ref animal) = element.clone().into_inner().values()[0] {
             assert_eq!(animal.name, format!("Animal{}", i));
         } else {
             panic!("Expected Animal");
@@ -306,8 +306,8 @@ async fn test_with_latest_from_secondary_updates_latest() -> anyhow::Result<()> 
     person_tx.send(ChronoTimestamped::new(person_alice()))?;
     animal_tx.send(ChronoTimestamped::new(animal_cat()))?;
     let element = unwrap_value(Some(unwrap_stream(&mut combined_stream, 500).await));
-    assert_eq!(element.inner().values()[0], animal_cat());
-    assert_eq!(element.inner().values()[1], person_alice());
+    assert_eq!(element.clone().into_inner().values()[0], animal_cat());
+    assert_eq!(element.clone().into_inner().values()[1], person_alice());
 
     // Act - secondary updates to Bob (no emission yet)
     person_tx.send(ChronoTimestamped::new(person_bob()))?;
@@ -317,8 +317,8 @@ async fn test_with_latest_from_secondary_updates_latest() -> anyhow::Result<()> 
     animal_tx.send(ChronoTimestamped::new(animal_dog()))?;
     // Assert - should emit with latest secondary (Bob)
     let element = unwrap_value(Some(unwrap_stream(&mut combined_stream, 500).await));
-    assert_eq!(element.inner().values()[0], animal_dog());
-    assert_eq!(element.inner().values()[1], person_bob());
+    assert_eq!(element.clone().into_inner().values()[0], animal_dog());
+    assert_eq!(element.clone().into_inner().values()[1], person_bob());
 
     Ok(())
 }
@@ -347,13 +347,13 @@ async fn test_with_latest_from_multiple_concurrent_streams() -> anyhow::Result<(
 
     // Assert stream1
     let element1 = unwrap_value(Some(unwrap_stream(&mut stream1, 500).await));
-    assert_eq!(element1.inner().values()[0], animal_cat());
-    assert_eq!(element1.inner().values()[1], person_alice());
+    assert_eq!(element1.clone().into_inner().values()[0], animal_cat());
+    assert_eq!(element1.clone().into_inner().values()[1], person_alice());
 
     // Assert stream2
     let element2 = unwrap_value(Some(unwrap_stream(&mut stream2, 500).await));
-    assert_eq!(element2.inner().values()[0], animal_dog());
-    assert_eq!(element2.inner().values()[1], person_bob());
+    assert_eq!(element2.clone().into_inner().values()[0], animal_dog());
+    assert_eq!(element2.clone().into_inner().values()[1], person_bob());
 
     Ok(())
 }

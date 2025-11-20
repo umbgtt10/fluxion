@@ -31,10 +31,6 @@ where
     type Inner = Self;
     type Timestamp = u64;
 
-    fn inner(&self) -> &Self::Inner {
-        self
-    }
-
     fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
     }
@@ -51,6 +47,10 @@ where
             value: value.value,
             timestamp: 999999,
         }
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self
     }
 }
 

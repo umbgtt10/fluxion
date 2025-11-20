@@ -17,7 +17,7 @@ async fn test_map_ordered_propagates_errors() -> anyhow::Result<()> {
     // Use combine_with_previous then map to string
     let mut result = FluxionStream::new(stream)
         .combine_with_previous()
-        .map_ordered(|x| format!("Current: {}", x.current.inner()));
+        .map_ordered(|x| format!("Current: {}", &*x.current));
 
     // Act & Assert: Send value
     tx.send(StreamItem::Value(ChronoTimestamped::new(1)))?;
@@ -52,7 +52,7 @@ async fn test_map_ordered_transformation_after_error() -> anyhow::Result<()> {
     // Use combine_with_previous then map
     let mut result = FluxionStream::new(stream)
         .combine_with_previous()
-        .map_ordered(|x| x.current.inner() * 2);
+        .map_ordered(|x| &*x.current * 2);
 
     // Act & AssertSend values
     tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 1)))?;
@@ -93,7 +93,7 @@ async fn test_map_ordered_preserves_error_passthrough() -> anyhow::Result<()> {
 
     let mut result = FluxionStream::new(stream)
         .combine_with_previous()
-        .map_ordered(|x| x.current.inner() * 100);
+        .map_ordered(|x| &*x.current * 100);
 
     // Act & Assert: Error immediately
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
@@ -123,7 +123,7 @@ async fn test_map_ordered_chain_after_error() -> anyhow::Result<()> {
     // Chain combine_with_previous and map
     let mut result = FluxionStream::new(stream)
         .combine_with_previous()
-        .map_ordered(|x| x.current.inner() * 2);
+        .map_ordered(|x| &*x.current * 2);
 
     // Act & Assert: Send value
     tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(5, 1)))?;

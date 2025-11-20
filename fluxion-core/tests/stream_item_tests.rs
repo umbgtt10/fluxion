@@ -238,7 +238,10 @@ fn test_stream_item_ordered_value() {
     let item = StreamItem::Value(ordered);
 
     assert_eq!(item.timestamp(), 100);
-    assert_eq!(item.inner(), &42);
+    match item {
+        StreamItem::Value(v) => assert_eq!(*v, 42),
+        _ => panic!("Expected Value"),
+    }
 }
 
 #[test]
@@ -251,12 +254,12 @@ fn test_stream_item_ordered_error_has_zero_order() {
 }
 
 #[test]
-#[should_panic(expected = "called `inner()` on StreamItem::Error")]
+#[should_panic(expected = "called `into_inner()` on StreamItem::Error")]
 fn test_stream_item_ordered_get_panics_on_error() {
     let item: StreamItem<ChronoTimestamped<i32>> =
         StreamItem::Error(FluxionError::stream_error("test"));
 
-    let _ = item.inner();
+    let _ = item.into_inner();
 }
 
 #[test]
@@ -264,7 +267,10 @@ fn test_stream_item_ordered_with_timestamp() {
     let item: StreamItem<ChronoTimestamped<i32>> = StreamItem::with_timestamp(42, 200);
 
     assert_eq!(item.timestamp(), 200);
-    assert_eq!(item.inner(), &42);
+    match item {
+        StreamItem::Value(v) => assert_eq!(*v, 42),
+        _ => panic!("Expected Value"),
+    }
 }
 
 // Note: CompareByInner tests are skipped as Timestamped doesn't implement CompareByInner

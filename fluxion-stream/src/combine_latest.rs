@@ -99,8 +99,8 @@ where
     /// tx2.send((2, 2).into()).unwrap();
     ///
     /// // Assert
-    /// let result = combined.next().await.unwrap();
-    /// let values = result.inner().values();
+    /// let result = combined.next().await.unwrap().unwrap();
+    /// let values = result.values();
     /// assert_eq!(values.len(), 2);
     /// # }
     /// ```
@@ -204,7 +204,7 @@ where
                         let inner_values: Vec<T::Inner> = state
                             .get_ordered_values()
                             .iter()
-                            .map(|ordered_val| ordered_val.inner().clone())
+                            .map(|ordered_val| ordered_val.clone().into_inner())
                             .collect();
                         let timestamp = state.last_timestamp().expect("State must have timestamp");
                         CombinedState::new(inner_values, timestamp)

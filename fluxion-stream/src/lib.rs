@@ -233,7 +233,7 @@
 //! click_tx.send(("button1".to_string(), 2).into()).unwrap();
 //!
 //! let result = enriched.next().await.unwrap().unwrap();
-//! assert_eq!(result.inner().values().len(), 2); // Has both click and config
+//! assert_eq!(result.values().len(), 2); // Has both click and config
 //! # }
 //! ```
 //!
@@ -335,7 +335,7 @@
 //! event_tx.send((999, 2).into()).unwrap();
 //!
 //! let result = notifications.next().await.unwrap().unwrap();
-//! assert_eq!(*result.inner(), 999);
+//! assert_eq!(*&*result, 999);
 //! # }
 //! ```
 //!
@@ -418,7 +418,7 @@
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(item.current.inner(), &42);
+//! assert_eq!(&*item.current, &42);
 //! }
 //! ```
 //!
@@ -439,7 +439,7 @@
 //! // Chain: filter positives, map to string
 //! let mut composed = FluxionStream::new(stream)
 //!     .filter_ordered(|n| *n > 0)
-//!     .map_ordered(|Timestamped| format!("Value: {}", Timestamped.inner()));
+//!     .map_ordered(|Timestamped| format!("Value: {}", &*Timestamped));
 //!
 //! tx.send(ChronoTimestamped::new(-1)).unwrap();
 //! tx.send(ChronoTimestamped::new(5)).unwrap();
@@ -473,7 +473,7 @@
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(item.current.inner().values().len(), 2);
+//! assert_eq!(item.current.values().len(), 2);
 //! }
 //! ```
 //!
@@ -511,12 +511,12 @@
 //! tx1.send(ChronoTimestamped::new(1)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(item.current.inner(), &1);
+//! assert_eq!(&*item.current, &1);
 //!
 //! tx2.send(ChronoTimestamped::new(2)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
-//! assert_eq!(item.previous.unwrap().inner(), &1);
-//! assert_eq!(item.current.inner(), &2);
+//! assert_eq!(&*item.previous.unwrap(), &1);
+//! assert_eq!(&*item.current, &2);
 //! }
 //! ```
 //!
@@ -544,7 +544,7 @@
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(item.current.inner().values().len(), 2);
+//! assert_eq!(item.current.values().len(), 2);
 //!
 //! tx1.send(ChronoTimestamped::new(3)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
@@ -578,7 +578,7 @@
 //! tx2.send(ChronoTimestamped::new(2)).unwrap();
 //!
 //! let combined = composed.next().await.unwrap().unwrap();
-//! assert_eq!(combined.inner().values().len(), 2);
+//! assert_eq!(combined.values().len(), 2);
 //! }
 //! ```
 //!
@@ -605,11 +605,11 @@
 //! filter_tx.send(ChronoTimestamped::new(true)).unwrap();
 //! tx1.send(ChronoTimestamped::new(1)).unwrap();
 //!
-//! let item = composed.next().await.unwrap().unwrap().inner().clone();
+//! let item = (*composed.next().await.unwrap().unwrap()).clone();
 //! assert_eq!(item, 1);
 //!
 //! tx2.send(ChronoTimestamped::new(2)).unwrap();
-//! let item = composed.next().await.unwrap().unwrap().inner().clone();
+//! let item = (*composed.next().await.unwrap().unwrap()).clone();
 //! assert_eq!(item, 2);
 //! }
 //! ```
@@ -637,12 +637,12 @@
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(item.current.inner(), &42);
+//! assert_eq!(&*item.current, &42);
 //!
 //! source_tx.send(ChronoTimestamped::new(99)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
-//! assert_eq!(item.previous.unwrap().inner(), &42);
-//! assert_eq!(item.current.inner(), &99);
+//! assert_eq!(&*item.previous.unwrap(), &42);
+//! assert_eq!(&*item.current, &99);
 //! }
 //! ```
 //!

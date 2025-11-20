@@ -74,12 +74,12 @@ where
     /// // Assert - first has no previous
     /// let first = paired.next().await.unwrap().unwrap();
     /// assert_eq!(first.previous, None);
-    /// assert_eq!(*first.current.inner(), 1);
+    /// assert_eq!(*&*first.current, 1);
     ///
     /// // Assert - second has previous
     /// let second = paired.next().await.unwrap().unwrap();
-    /// assert_eq!(*second.previous.as_ref().unwrap().inner(), 1);
-    /// assert_eq!(*second.current.inner(), 2);
+    /// assert_eq!(second.previous.as_ref().unwrap().value, 1);
+    /// assert_eq!(*&*second.current, 2);
     /// # }
     /// ```
     ///

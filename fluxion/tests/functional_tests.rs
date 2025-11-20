@@ -37,9 +37,14 @@ async fn test_functional_combine_latest() -> anyhow::Result<()> {
 
     // Assert
     let state = combined.next().await.unwrap();
-    let combined_state = state.inner();
-    assert_eq!(combined_state.values()[0], person_alice());
-    assert_eq!(combined_state.values()[1], animal_dog());
+    match state {
+        StreamItem::Value(ref ts) => {
+            let combined_state = &*ts;
+            assert_eq!(combined_state.values()[0], person_alice());
+            assert_eq!(combined_state.values()[1], animal_dog());
+        }
+        _ => panic!("Expected Value"),
+    }
 
     Ok(())
 }
@@ -58,15 +63,15 @@ async fn test_functional_combine_with_previous() -> anyhow::Result<()> {
     // Assert
     let item = unwrap_value(Some(unwrap_stream(&mut with_previous, 500).await));
     assert!(item.previous.is_none());
-    assert_eq!(item.current.inner(), &person_alice());
+    assert_eq!(&*item.current, &person_alice());
 
     let item = unwrap_value(Some(unwrap_stream(&mut with_previous, 500).await));
-    assert_eq!(item.previous.unwrap().inner(), &person_alice());
-    assert_eq!(item.current.inner(), &person_bob());
+    assert_eq!(&*item.previous.unwrap(), &person_alice());
+    assert_eq!(&*item.current, &person_bob());
 
     let item = unwrap_value(Some(unwrap_stream(&mut with_previous, 500).await));
-    assert_eq!(item.previous.unwrap().inner(), &person_bob());
-    assert_eq!(item.current.inner(), &person_charlie());
+    assert_eq!(&*item.previous.unwrap(), &person_bob());
+    assert_eq!(&*item.current, &person_charlie());
 
     Ok(())
 }
@@ -91,10 +96,26 @@ async fn test_functional_ordered_merge() -> anyhow::Result<()> {
     person_tx.send(ChronoTimestamped::new(person_bob()))?;
 
     // Assert - items emitted in order they were pushed
-    assert_eq!(merged.next().await.unwrap().inner(), &person_alice());
-    assert_eq!(merged.next().await.unwrap().inner(), &animal_dog());
-    assert_eq!(merged.next().await.unwrap().inner(), &plant_rose());
-    assert_eq!(merged.next().await.unwrap().inner(), &person_bob());
+    let v1 = merged.next().await.unwrap();
+    match v1 {
+        StreamItem::Value(ref ts) => assert_eq!(&**ts, &person_alice()),
+        _ => panic!("Expected Value"),
+    }
+    let v2 = merged.next().await.unwrap();
+    match v2 {
+        StreamItem::Value(ref ts) => assert_eq!(&**ts, &animal_dog()),
+        _ => panic!("Expected Value"),
+    }
+    let v3 = merged.next().await.unwrap();
+    match v3 {
+        StreamItem::Value(ref ts) => assert_eq!(&**ts, &plant_rose()),
+        _ => panic!("Expected Value"),
+    }
+    let v4 = merged.next().await.unwrap();
+    match v4 {
+        StreamItem::Value(ref ts) => assert_eq!(&**ts, &person_bob()),
+        _ => panic!("Expected Value"),
+    }
 
     Ok(())
 }
@@ -116,7 +137,11 @@ async fn test_functional_take_latest_when() -> anyhow::Result<()> {
     filter_tx.send(ChronoTimestamped::new(person_alice()))?;
 
     // Assert - latest buffered value emitted when filter updates
-    assert_eq!(filtered.next().await.unwrap().inner(), &person_charlie());
+    let v = filtered.next().await.unwrap();
+    match v {
+        StreamItem::Value(ref ts) => assert_eq!(&**ts, &person_charlie()),
+        _ => panic!("Expected Value"),
+    }
 
     Ok(())
 }
@@ -162,12 +187,12 @@ async fn test_functional_with_latest_from() -> anyhow::Result<()> {
 
     // Assert - primary drives emissions, secondary provides latest value
     let result = combined.next().await.unwrap();
-    assert_eq!(result.inner().values()[0], person_alice());
-    assert_eq!(result.inner().values()[1], animal_dog());
+    assert_eq!(result.clone().into_inner().values()[0], person_alice());
+    assert_eq!(result.clone().into_inner().values()[1], animal_dog());
 
     let result = combined.next().await.unwrap();
-    assert_eq!(result.inner().values()[0], person_bob());
-    assert_eq!(result.inner().values()[1], animal_dog());
+    assert_eq!(result.clone().into_inner().values()[0], person_bob());
+    assert_eq!(result.clone().into_inner().values()[1], animal_dog());
 
     Ok(())
 }
@@ -193,7 +218,7 @@ async fn test_functional_chained_operations() -> anyhow::Result<()> {
     // Assert
     let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert!(item.previous.is_none());
-    assert_eq!(item.current.inner(), &person_charlie());
+    assert_eq!(&*item.current, &person_charlie());
 
     Ok(())
 }

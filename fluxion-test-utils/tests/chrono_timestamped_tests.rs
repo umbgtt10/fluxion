@@ -59,7 +59,7 @@ fn test_chrono_timestamped_get() {
     let timestamped = ChronoTimestamped::new(value.clone());
 
     // Act
-    let reference = timestamped.inner();
+    let reference = &*timestamped;
 
     // Assert
     assert_eq!(reference, &value);

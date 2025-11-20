@@ -104,10 +104,6 @@ impl<T: Clone> Timestamped for ChronoTimestamped<T> {
         self.timestamp.timestamp_nanos_opt().unwrap_or(0) as u64
     }
 
-    fn inner(&self) -> &T {
-        &self.value
-    }
-
     fn with_timestamp(value: T, timestamp: u64) -> Self {
         // Convert u64 nanoseconds back to DateTime
         let secs = (timestamp / 1_000_000_000) as i64;

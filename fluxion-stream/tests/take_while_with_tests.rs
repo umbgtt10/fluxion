@@ -292,7 +292,5 @@ where
     T: Clone,
     S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Unpin,
 {
-    unwrap_value(Some(unwrap_stream(stream, 500).await))
-        .inner()
-        .clone()
+    (&*unwrap_value(Some(unwrap_stream(stream, 500).await))).clone()
 }

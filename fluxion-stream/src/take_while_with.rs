@@ -103,7 +103,7 @@ where
     /// tx_data.send((1, 2).into()).unwrap();
     ///
     /// // Assert
-    /// assert_eq!(gated.next().await.unwrap().unwrap().inner(), &1);
+    /// assert_eq!(&*gated.next().await.unwrap().unwrap(), &1);
     /// # }
     /// ```
     ///
@@ -187,7 +187,7 @@ where
 
                             match item {
                                 Item::Filter(filter_val) => {
-                                    *filter_state = Some(filter_val.inner().clone());
+                                    *filter_state = Some(filter_val.clone().into_inner());
                                     None
                                 }
                                 Item::Source(source_val) => filter_state.as_ref().map_or_else(
@@ -266,10 +266,6 @@ where
 
     fn timestamp(&self) -> Self::Timestamp {
         self.order()
-    }
-
-    fn inner(&self) -> &Self {
-        self
     }
 
     fn with_timestamp(value: Self, _timestamp: Self::Timestamp) -> Self {

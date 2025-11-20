@@ -22,15 +22,15 @@ impl Timestamped for AggregatedEvent {
         self.timestamp
     }
 
-    fn inner(&self) -> &Self::Inner {
-        self
-    }
-
     fn with_timestamp(value: Self::Inner, _timestamp: Self::Timestamp) -> Self {
         value
     }
 
     fn with_fresh_timestamp(value: Self) -> Self {
         value
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self
     }
 }

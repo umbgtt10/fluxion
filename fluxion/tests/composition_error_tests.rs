@@ -17,7 +17,7 @@ async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<(
     let mut result = FluxionStream::new(stream)
         .filter_ordered(|x| *x > 1) // Filter out first item
         .combine_with_previous()
-        .map_ordered(|x| x.current.inner() * 10);
+        .map_ordered(|x| &*x.current * 10);
 
     // Act & Assert Send value (filtered out)
     tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(1, 1)))?;
@@ -63,7 +63,7 @@ async fn test_error_in_long_operator_chain() -> anyhow::Result<()> {
     let mut result = FluxionStream::new(stream)
         .filter_ordered(|x| *x >= 10)
         .combine_with_previous()
-        .map_ordered(|x| x.current.inner() + 5);
+        .map_ordered(|x| &*x.current + 5);
 
     // Act & Assert Send value
     tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 1)))?;
@@ -108,7 +108,7 @@ async fn test_multiple_errors_through_composition() -> anyhow::Result<()> {
         .combine_latest(vec![stream2], |_| true)
         .combine_with_previous()
         .map_ordered(|x| {
-            let state = x.current.inner();
+            let state = &x.current;
             format!("Combined: {:?}", state.values())
         });
 
@@ -148,7 +148,7 @@ async fn test_error_recovery_in_composed_streams() -> anyhow::Result<()> {
     let mut result = source_stream
         .take_latest_when(trigger_stream, |_| true)
         .combine_with_previous()
-        .map_ordered(|x| *x.current.inner());
+        .map_ordered(|x| *&*x.current);
 
     // Send source values
     source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(5, 1)))?;
@@ -183,7 +183,7 @@ async fn test_error_with_emit_when_composition() -> anyhow::Result<()> {
     let mut result = source_stream
         .emit_when(filter_stream, |state| state.values()[0] > state.values()[1])
         .combine_with_previous()
-        .map_ordered(|x| x.current.inner() * 2);
+        .map_ordered(|x| &*x.current * 2);
 
     // Arrange & Act Send filter value first
     filter_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 1)))?;

@@ -46,17 +46,20 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
 
     // Results: seq 3 (Int 60), seq 4 (Int 60 + Str updated), seq 5 (Int 75)
     let result1 = unwrap_stream(&mut pipeline, 500).await.unwrap();
-    let combined1 = result1.inner().values();
+    let state1 = result1.into_inner();
+    let combined1 = state1.values();
     assert!(matches!(combined1[0], Value::Int(60)));
     assert!(matches!(combined1[1], Value::Str(ref s) if s == "initial"));
 
     let result2 = unwrap_stream(&mut pipeline, 500).await.unwrap();
-    let combined2 = result2.inner().values();
+    let state2 = result2.into_inner();
+    let combined2 = state2.values();
     assert!(matches!(combined2[0], Value::Int(60)));
     assert!(matches!(combined2[1], Value::Str(ref s) if s == "updated"));
 
     let result3 = unwrap_stream(&mut pipeline, 500).await.unwrap();
-    let combined3 = result3.inner().values();
+    let state3 = result3.into_inner();
+    let combined3 = state3.values();
     assert!(matches!(combined3[0], Value::Int(75)));
     assert!(matches!(combined3[1], Value::Str(ref s) if s == "updated"));
 

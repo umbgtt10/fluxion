@@ -76,7 +76,7 @@ where
     ///
     /// // Assert - trigger emits the latest data value
     /// let result = sampled.next().await.unwrap().unwrap();
-    /// assert_eq!(*result.inner(), 100);
+    /// assert_eq!(*&*result, 100);
     /// # }
     /// ```
     ///
@@ -145,12 +145,10 @@ where
         let streams: Vec<IndexedStream<T>> = vec![source_stream, filter_stream];
 
         let source_value = Arc::new(Mutex::new(None));
-        let filter_value = Arc::new(Mutex::new(None));
         let filter = Arc::new(filter);
 
         let combined_stream = streams.ordered_merge().filter_map(move |(item, index)| {
             let source_value = Arc::clone(&source_value);
-            let filter_value = Arc::clone(&filter_value);
             let filter = Arc::clone(&filter);
             async move {
                 match item {
@@ -165,19 +163,11 @@ where
                                             return Some(StreamItem::Error(e));
                                         }
                                     };
-                                *source = Some(ordered_value.inner().clone());
+                                *source = Some(ordered_value);
                                 None
                             }
                             1 => {
                                 // Filter stream update - check if we should sample the source
-                                // Lock both values once to avoid multiple lock acquisitions
-                                let mut filter_val =
-                                    match lock_or_error(&filter_value, "take_latest_when filter") {
-                                        Ok(lock) => lock,
-                                        Err(e) => {
-                                            return Some(StreamItem::Error(e));
-                                        }
-                                    };
                                 let source =
                                     match lock_or_error(&source_value, "take_latest_when source") {
                                         Ok(lock) => lock,
@@ -187,20 +177,16 @@ where
                                     };
 
                                 // Update filter value
-                                *filter_val = Some(ordered_value.inner().clone());
+                                let filter_inner = ordered_value.clone().into_inner();
 
                                 // Now check the condition and potentially emit
-                                if let Some(filt) = filter_val.as_ref() {
+                                if filter(&filter_inner) {
                                     if let Some(src) = source.as_ref() {
-                                        if filter(filt) {
-                                            // Use the trigger's timestamp for the emitted value
-                                            Some(StreamItem::Value(T::with_timestamp(
-                                                src.clone(),
-                                                ordered_value.timestamp(),
-                                            )))
-                                        } else {
-                                            None
-                                        }
+                                        // Use the source value with the trigger's timestamp
+                                        Some(StreamItem::Value(T::with_timestamp(
+                                            src.clone().into_inner(),
+                                            ordered_value.timestamp(),
+                                        )))
                                     } else {
                                         None
                                     }

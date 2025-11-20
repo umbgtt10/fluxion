@@ -25,7 +25,7 @@ mod no_coverage_helpers {
         fn timestamp(&self) -> Self::Timestamp {
             self.timestamp
         }
-        fn inner(&self) -> &Self::Inner {
+        fn into_inner(self) -> Self::Inner {
             self
         }
         fn with_timestamp(value: Self, _order: Self::Timestamp) -> Self {
@@ -48,7 +48,7 @@ mod no_coverage_helpers {
         fn timestamp(&self) -> Self::Timestamp {
             self.timestamp
         }
-        fn inner(&self) -> &Self::Inner {
+        fn into_inner(self) -> Self::Inner {
             self
         }
         fn with_timestamp(value: Self, _timestamp: Self::Timestamp) -> Self {
@@ -74,7 +74,7 @@ mod no_coverage_helpers {
                 CombinedEvent::Status(st) => st.timestamp,
             }
         }
-        fn inner(&self) -> &Self::Inner {
+        fn into_inner(self) -> Self::Inner {
             self
         }
         fn with_timestamp(value: Self, _order: Self::Timestamp) -> Self {
@@ -106,14 +106,14 @@ mod no_coverage_helpers {
             // Act
             sensor_reading.timestamp();
             status_update.timestamp();
-            let _ = sensor_reading.inner();
-            let _ = status_update.inner();
+            let _ = &sensor_reading;
+            let _ = &status_update;
             SensorReading::with_timestamp(sensor_reading.clone(), 0);
             StatusUpdate::with_timestamp(status_update.clone(), 0);
             combined_sensor.timestamp();
             combined_status.timestamp();
-            let _ = combined_sensor.inner();
-            let _ = combined_status.inner();
+            let _ = &combined_sensor;
+            let _ = &combined_status;
             CombinedEvent::with_timestamp(combined_sensor, 0);
             CombinedEvent::with_timestamp(combined_status, 0);
         }
@@ -142,14 +142,16 @@ async fn test_into_fluxion_stream_basic_transformation() -> anyhow::Result<()> {
     tx.send(reading2.clone())?;
 
     // Assert
-    assert_eq!(
-        unwrap_stream(&mut stream, 500).await.inner(),
-        &CombinedEvent::Sensor(reading1)
-    );
-    assert_eq!(
-        unwrap_stream(&mut stream, 500).await.inner(),
-        &CombinedEvent::Sensor(reading2)
-    );
+    let item1 = unwrap_stream(&mut stream, 500).await;
+    match item1 {
+        StreamItem::Value(ref v) => assert_eq!(&*v, &CombinedEvent::Sensor(reading1)),
+        _ => panic!("Expected Value"),
+    }
+    let item2 = unwrap_stream(&mut stream, 500).await;
+    match item2 {
+        StreamItem::Value(ref v) => assert_eq!(&*v, &CombinedEvent::Sensor(reading2)),
+        _ => panic!("Expected Value"),
+    }
 
     assert_no_element_emitted(&mut stream, 100).await;
 
@@ -193,10 +195,11 @@ async fn test_into_fluxion_stream_preserves_order() -> anyhow::Result<()> {
 
     // Assert
     for expected in &readings {
-        assert_eq!(
-            unwrap_stream(&mut stream, 500).await.inner(),
-            &CombinedEvent::Sensor(expected.clone())
-        );
+        let item = unwrap_stream(&mut stream, 500).await;
+        match item {
+            StreamItem::Value(ref v) => assert_eq!(&*v, &CombinedEvent::Sensor(expected.clone())),
+            _ => panic!("Expected Value"),
+        }
     }
 
     assert_no_element_emitted(&mut stream, 100).await;
@@ -225,10 +228,11 @@ async fn test_into_fluxion_stream_multiple_items() -> anyhow::Result<()> {
             timestamp: i as u64 * 100,
             temperature: (i * 10),
         };
-        assert_eq!(
-            unwrap_stream(&mut stream, 500).await.inner(),
-            &CombinedEvent::Sensor(expected)
-        );
+        let item = unwrap_stream(&mut stream, 500).await;
+        match item {
+            StreamItem::Value(ref v) => assert_eq!(&*v, &CombinedEvent::Sensor(expected)),
+            _ => panic!("Expected Value"),
+        }
     }
 
     assert_no_element_emitted(&mut stream, 100).await;
@@ -260,10 +264,11 @@ async fn test_into_fluxion_stream_transformation_logic() -> anyhow::Result<()> {
     tx.send(original.clone())?;
 
     // Assert
-    assert_eq!(
-        unwrap_stream(&mut stream, 500).await.inner(),
-        &CombinedEvent::Sensor(expected)
-    );
+    let item = unwrap_stream(&mut stream, 500).await;
+    match item {
+        StreamItem::Value(ref v) => assert_eq!(&*v, &CombinedEvent::Sensor(expected)),
+        _ => panic!("Expected Value"),
+    }
 
     Ok(())
 }

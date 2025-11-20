@@ -78,7 +78,7 @@ where
     ///
     /// // Assert - data emits when enabled
     /// let result = gated.next().await.unwrap().unwrap();
-    /// assert_eq!(*result.inner(), 42);
+    /// assert_eq!(*&*result, 42);
     /// # }
     /// ```
     ///
@@ -173,7 +173,7 @@ where
                                     };
 
                                 // Update source value
-                                *source = Some(ordered_value.inner().clone());
+                                *source = Some(ordered_value.clone().into_inner());
                                 let timestamp = ordered_value.timestamp();
 
                                 if let Some(src) = source.as_ref() {
@@ -215,7 +215,7 @@ where
                                 };
 
                                 // Update filter value
-                                *filter_val = Some(ordered_value.inner().clone());
+                                *filter_val = Some(ordered_value.clone().into_inner());
                                 let timestamp = ordered_value.timestamp();
 
                                 if let Some(src) = source.as_ref() {

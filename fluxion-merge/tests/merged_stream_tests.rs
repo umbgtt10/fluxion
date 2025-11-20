@@ -231,7 +231,11 @@ async fn test_merge_with_parallel_processing() -> anyhow::Result<()> {
 
     // Assert
     let result: Vec<ChronoTimestamped<Repository>> = merged_stream.collect().await;
-    let last = result.last().expect("at least one state").inner();
+    let last = result
+        .last()
+        .expect("at least one state")
+        .clone()
+        .into_inner();
     assert_eq!(
         last.person_name,
         Some("Charlie".to_string()),
@@ -303,7 +307,7 @@ async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
     }
     assert_eq!(count, 20000, "Should have processed all 20000 emissions");
     assert_eq!(
-        final_state.as_ref().map(|ts| *ts.inner()),
+        final_state.as_ref().map(|ts| ts.clone().into_inner()),
         Some(199990000),
         "Final accumulated sum should be correct"
     );
@@ -349,7 +353,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        *state.inner(),
+        state.clone().into_inner(),
         Repository {
             last_animal: Some(Animal::new("Dog".to_string(), 4)),
             last_person: None,
@@ -369,7 +373,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        *state.inner(),
+        state.clone().into_inner(),
         Repository {
             last_animal: Some(Animal::new("Bird".to_string(), 2)),
             last_person: None,
@@ -389,7 +393,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        *state.inner(),
+        state.clone().into_inner(),
         Repository {
             last_animal: Some(Animal::new("Bird".to_string(), 2)),
             last_person: Some(Person::new("Alice".to_string(), 25)),
@@ -411,7 +415,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        *state.inner(),
+        state.clone().into_inner(),
         Repository {
             last_animal: Some(Animal::new("Bird".to_string(), 2)),
             last_person: Some(Person::new("Bob".to_string(), 30)),
@@ -431,7 +435,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        *state.inner(),
+        state.clone().into_inner(),
         Repository {
             last_animal: Some(Animal::new("Bird".to_string(), 2)),
             last_person: Some(Person::new("Bob".to_string(), 30)),
@@ -451,7 +455,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        *state.inner(),
+        state.clone().into_inner(),
         Repository {
             last_animal: Some(Animal::new("Bird".to_string(), 2)),
             last_person: Some(Person::new("Bob".to_string(), 30)),

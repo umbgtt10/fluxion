@@ -59,10 +59,10 @@
 //! ```rust
 //! use fluxion_rx::Timestamped;
 //!
-//! // Items must provide a timestamp and inner value
-//! fn process_timestamped<T: Timestamped>(item: &T) {
-//!     let ts = item.timestamp();  // Get timestamp for ordering
-//!     let value = item.inner();    // Get reference to inner value
+//! // Items must provide a timestamp
+//! fn process_timestamped<T: Timestamped>(item: T) {
+//!     let ts = item.timestamp();     // Get timestamp for ordering
+//!     let value = item.into_inner();  // Extract inner value
 //! }
 //! ```
 //!

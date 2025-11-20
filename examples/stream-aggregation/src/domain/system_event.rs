@@ -17,10 +17,6 @@ impl Timestamped for SystemEvent {
     type Inner = Self;
     type Timestamp = u64;
 
-    fn inner(&self) -> &Self::Inner {
-        self
-    }
-
     fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
     }
@@ -31,5 +27,9 @@ impl Timestamped for SystemEvent {
 
     fn with_fresh_timestamp(value: Self) -> Self {
         value
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self
     }
 }

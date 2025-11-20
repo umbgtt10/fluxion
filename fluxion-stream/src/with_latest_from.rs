@@ -100,7 +100,7 @@ where
     ///
     /// // Assert
     /// let result = combined.next().await.unwrap().unwrap();
-    /// let values = result.inner().values();
+    /// let values = result.values();
     /// assert_eq!(values[0] + values[1], 11);
     /// # }
     /// ```
@@ -173,8 +173,8 @@ where
                                         // values[0] = primary, values[1] = secondary
                                         let combined_state = CombinedState::new(
                                             vec![
-                                                values[0].inner().clone(),
-                                                values[1].inner().clone(),
+                                                values[0].clone().into_inner(),
+                                                values[1].clone().into_inner(),
                                             ],
                                             timestamp,
                                         );

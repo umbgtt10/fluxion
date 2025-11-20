@@ -33,10 +33,6 @@
 ///         self.timestamp
 ///     }
 ///
-///     fn inner(&self) -> &T {
-///         &self.value
-///     }
-///
 ///     fn with_timestamp(value: T, timestamp: Self::Timestamp) -> Self {
 ///         TimestampedEvent { value, timestamp }
 ///     }
@@ -44,6 +40,10 @@
 ///     fn with_fresh_timestamp(value: T) -> Self {
 ///         // In real implementation, get current timestamp
 ///         TimestampedEvent { value, timestamp: 0 }
+///     }
+///
+///     fn into_inner(self) -> Self::Inner {
+///         self.value
 ///     }
 /// }
 /// ```
@@ -58,9 +58,6 @@ pub trait Timestamped: Clone {
     /// Stream operators use this to determine the order of items.
     fn timestamp(&self) -> Self::Timestamp;
 
-    /// Gets a reference to the inner value.
-    fn inner(&self) -> &Self::Inner;
-
     /// Creates a new instance wrapping the given value with the specified timestamp.
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self;
 
@@ -70,9 +67,8 @@ pub trait Timestamped: Clone {
     /// (e.g., Utc::now() for chrono, atomic counter for u64, etc.)
     fn with_fresh_timestamp(value: Self::Inner) -> Self;
 
-    /// Gets the inner value, consuming the wrapper.
-    fn into_inner(self) -> Self::Inner {
-        // Default implementation using clone, can be overridden for efficiency
-        self.inner().clone()
-    }
+    /// Consumes self and returns the inner value.
+    /// For wrapper types like ChronoTimestamped<T>, this extracts T.
+    /// For domain types where Inner = Self, this typically returns self.
+    fn into_inner(self) -> Self::Inner;
 }
