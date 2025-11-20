@@ -40,7 +40,7 @@ pub fn bench_with_latest_from(c: &mut Criterion) {
                         let primary = make_stream(size, payload_size);
                         let secondary = make_stream(size, payload_size);
 
-                        let combined = primary.with_latest_from(secondary, |_state| true);
+                        let combined = primary.with_latest_from(secondary, |state| state.clone());
 
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {

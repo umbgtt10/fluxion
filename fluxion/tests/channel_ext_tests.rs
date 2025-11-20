@@ -144,12 +144,12 @@ async fn test_into_fluxion_stream_basic_transformation() -> anyhow::Result<()> {
     // Assert
     let item1 = unwrap_stream(&mut stream, 500).await;
     match item1 {
-        StreamItem::Value(ref v) => assert_eq!(&*v, &CombinedEvent::Sensor(reading1)),
+        StreamItem::Value(ref v) => assert_eq!(v, &CombinedEvent::Sensor(reading1)),
         _ => panic!("Expected Value"),
     }
     let item2 = unwrap_stream(&mut stream, 500).await;
     match item2 {
-        StreamItem::Value(ref v) => assert_eq!(&*v, &CombinedEvent::Sensor(reading2)),
+        StreamItem::Value(ref v) => assert_eq!(v, &CombinedEvent::Sensor(reading2)),
         _ => panic!("Expected Value"),
     }
 
@@ -197,7 +197,7 @@ async fn test_into_fluxion_stream_preserves_order() -> anyhow::Result<()> {
     for expected in &readings {
         let item = unwrap_stream(&mut stream, 500).await;
         match item {
-            StreamItem::Value(ref v) => assert_eq!(&*v, &CombinedEvent::Sensor(expected.clone())),
+            StreamItem::Value(ref v) => assert_eq!(v, &CombinedEvent::Sensor(expected.clone())),
             _ => panic!("Expected Value"),
         }
     }
@@ -230,7 +230,7 @@ async fn test_into_fluxion_stream_multiple_items() -> anyhow::Result<()> {
         };
         let item = unwrap_stream(&mut stream, 500).await;
         match item {
-            StreamItem::Value(ref v) => assert_eq!(&*v, &CombinedEvent::Sensor(expected)),
+            StreamItem::Value(ref v) => assert_eq!(v, &CombinedEvent::Sensor(expected)),
             _ => panic!("Expected Value"),
         }
     }
@@ -266,7 +266,7 @@ async fn test_into_fluxion_stream_transformation_logic() -> anyhow::Result<()> {
     // Assert
     let item = unwrap_stream(&mut stream, 500).await;
     match item {
-        StreamItem::Value(ref v) => assert_eq!(&*v, &CombinedEvent::Sensor(expected)),
+        StreamItem::Value(ref v) => assert_eq!(v, &CombinedEvent::Sensor(expected)),
         _ => panic!("Expected Value"),
     }
 

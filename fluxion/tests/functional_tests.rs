@@ -36,10 +36,10 @@ async fn test_functional_combine_latest() -> anyhow::Result<()> {
     animal_tx.send(ChronoTimestamped::new(animal_dog()))?;
 
     // Assert
-    let state = combined.next().await.unwrap();
+    let state = unwrap_stream(&mut combined, 100).await;
     match state {
         StreamItem::Value(ref ts) => {
-            let combined_state = &*ts;
+            let combined_state = ts.clone();
             assert_eq!(combined_state.values()[0], person_alice());
             assert_eq!(combined_state.values()[1], animal_dog());
         }
@@ -96,23 +96,19 @@ async fn test_functional_ordered_merge() -> anyhow::Result<()> {
     person_tx.send(ChronoTimestamped::new(person_bob()))?;
 
     // Assert - items emitted in order they were pushed
-    let v1 = merged.next().await.unwrap();
-    match v1 {
+    match unwrap_stream(&mut merged, 100).await {
         StreamItem::Value(ref ts) => assert_eq!(&**ts, &person_alice()),
         _ => panic!("Expected Value"),
     }
-    let v2 = merged.next().await.unwrap();
-    match v2 {
+    match unwrap_stream(&mut merged, 100).await {
         StreamItem::Value(ref ts) => assert_eq!(&**ts, &animal_dog()),
         _ => panic!("Expected Value"),
     }
-    let v3 = merged.next().await.unwrap();
-    match v3 {
+    match unwrap_stream(&mut merged, 100).await {
         StreamItem::Value(ref ts) => assert_eq!(&**ts, &plant_rose()),
         _ => panic!("Expected Value"),
     }
-    let v4 = merged.next().await.unwrap();
-    match v4 {
+    match unwrap_stream(&mut merged, 100).await {
         StreamItem::Value(ref ts) => assert_eq!(&**ts, &person_bob()),
         _ => panic!("Expected Value"),
     }
@@ -137,8 +133,7 @@ async fn test_functional_take_latest_when() -> anyhow::Result<()> {
     filter_tx.send(ChronoTimestamped::new(person_alice()))?;
 
     // Assert - latest buffered value emitted when filter updates
-    let v = filtered.next().await.unwrap();
-    match v {
+    match unwrap_stream(&mut filtered, 100).await {
         StreamItem::Value(ref ts) => assert_eq!(&**ts, &person_charlie()),
         _ => panic!("Expected Value"),
     }
@@ -186,11 +181,11 @@ async fn test_functional_with_latest_from() -> anyhow::Result<()> {
     primary_tx.send(ChronoTimestamped::new(person_bob()))?;
 
     // Assert - primary drives emissions, secondary provides latest value
-    let result = combined.next().await.unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut combined, 100).await));
     assert_eq!(result.clone().into_inner().values()[0], person_alice());
     assert_eq!(result.clone().into_inner().values()[1], animal_dog());
 
-    let result = combined.next().await.unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut combined, 100).await));
     assert_eq!(result.clone().into_inner().values()[0], person_bob());
     assert_eq!(result.clone().into_inner().values()[1], animal_dog());
 

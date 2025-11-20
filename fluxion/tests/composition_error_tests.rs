@@ -148,7 +148,7 @@ async fn test_error_recovery_in_composed_streams() -> anyhow::Result<()> {
     let mut result = source_stream
         .take_latest_when(trigger_stream, |_| true)
         .combine_with_previous()
-        .map_ordered(|x| *&*x.current);
+        .map_ordered(|x| *x.current);
 
     // Send source values
     source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(5, 1)))?;

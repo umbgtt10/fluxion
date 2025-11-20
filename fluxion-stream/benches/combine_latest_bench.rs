@@ -41,10 +41,8 @@ pub fn bench_combine_latest(c: &mut Criterion) {
                         let stream2 = make_stream(size, payload_size);
                         let stream3 = make_stream(size, payload_size);
 
-                        let combined = stream1.combine_latest(
-                            vec![stream2, stream3],
-                            |_state| true, // Accept all
-                        );
+                        let combined =
+                            stream1.combine_latest(vec![stream2, stream3], |_state| true);
 
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {

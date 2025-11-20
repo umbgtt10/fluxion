@@ -18,7 +18,7 @@ async fn test_map_ordered_basic_transformation() -> anyhow::Result<()> {
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
         format!(
             "Previous: {:?}, Current: {}",
-            stream_item.previous.map(|p| (&*p).to_string()),
+            stream_item.previous.map(|p| (*p).to_string()),
             &*stream_item.current
         )
     });

@@ -3,7 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_core::Timestamped;
 use fluxion_stream::take_while_with::TakeWhileExt;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::test_data::{
@@ -292,5 +291,5 @@ where
     T: Clone,
     S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Unpin,
 {
-    (&*unwrap_value(Some(unwrap_stream(stream, 500).await))).clone()
+    (*unwrap_value(Some(unwrap_stream(stream, 500).await))).clone()
 }
