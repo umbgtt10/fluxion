@@ -6,8 +6,7 @@
 use fluxion_core::StreamItem;
 use fluxion_core::Timestamped;
 use fluxion_rx::prelude::*;
-use fluxion_test_utils::{assert_no_element_emitted, helpers::unwrap_stream};
-use futures::StreamExt;
+use fluxion_test_utils::{assert_no_element_emitted, assert_stream_ended, helpers::unwrap_stream};
 use std::time::Duration;
 use tokio::{spawn, sync::mpsc::unbounded_channel, time::sleep};
 
@@ -169,7 +168,7 @@ async fn test_into_fluxion_stream_empty_channel() -> anyhow::Result<()> {
     drop(_tx);
 
     // Assert
-    assert!(stream.next().await.is_none());
+    assert_stream_ended(&mut stream, 500).await;
 
     Ok(())
 }

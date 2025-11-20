@@ -6,12 +6,12 @@ use fluxion_core::StreamItem;
 use fluxion_core::Timestamped;
 use fluxion_rx::{CombinedState, FluxionStream};
 use fluxion_test_utils::helpers::unwrap_stream;
-use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     animal_dog, person_alice, person_bob, person_charlie, plant_rose, TestData,
 };
 use fluxion_test_utils::unwrap_value;
 use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::{assert_stream_ended, test_channel};
 use futures::StreamExt;
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -238,7 +238,7 @@ async fn test_functional_from_unbounded_receiver() -> anyhow::Result<()> {
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         person_bob()
     );
-    assert!(stream.next().await.is_none());
+    assert_stream_ended(&mut stream, 500).await;
 
     Ok(())
 }

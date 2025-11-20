@@ -3,13 +3,12 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
-use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_dave, TestData,
 };
 use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::{assert_stream_ended, test_channel};
 use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value};
-use futures::StreamExt;
 
 #[tokio::test]
 async fn test_map_ordered_basic_transformation() -> anyhow::Result<()> {
@@ -180,7 +179,7 @@ async fn test_map_ordered_empty_stream() -> anyhow::Result<()> {
     drop(tx); // Close the stream
 
     // Assert
-    assert!(stream.next().await.is_none());
+    assert_stream_ended(&mut stream, 500).await;
 
     Ok(())
 }

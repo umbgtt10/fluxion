@@ -7,7 +7,9 @@
 use fluxion_core::Timestamped;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::FluxionStream;
-use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, ChronoTimestamped};
+use fluxion_test_utils::{
+    assert_stream_ended, test_channel_with_errors, unwrap_stream, ChronoTimestamped,
+};
 use futures::StreamExt;
 
 #[tokio::test]
@@ -149,7 +151,7 @@ async fn test_filter_ordered_all_filtered_except_error() -> anyhow::Result<()> {
     drop(tx);
 
     // No more items (all filtered)
-    assert!(result.next().await.is_none());
+    assert_stream_ended(&mut result, 500).await;
 
     Ok(())
 }

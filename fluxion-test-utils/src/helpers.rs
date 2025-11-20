@@ -258,4 +258,36 @@ mod tests {
         let item = unwrap_stream(&mut stream, 500).await;
         unwrap_value(Some(item));
     }
+
+    #[tokio::test]
+    async fn test_assert_stream_ended_success() {
+        let (tx, mut stream) = test_channel::<i32>();
+
+        // Close the stream
+        drop(tx);
+
+        // This should pass because the stream has ended
+        assert_stream_ended(&mut stream, 500).await;
+    }
+
+    #[tokio::test]
+    #[should_panic = "Expected stream to end but it returned a value"]
+    async fn test_assert_stream_ended_returns_value() {
+        let (tx, mut stream) = test_channel::<i32>();
+
+        // Send a value
+        tx.send(42).unwrap();
+
+        // This should panic because the stream returns a value
+        assert_stream_ended(&mut stream, 500).await;
+    }
+
+    #[tokio::test]
+    #[should_panic = "Timeout: Stream did not end within 100 ms"]
+    async fn test_assert_stream_ended_timeout() {
+        let (_tx, mut stream) = test_channel::<i32>();
+
+        // Stream is open but no values sent - will timeout
+        assert_stream_ended(&mut stream, 100).await;
+    }
 }

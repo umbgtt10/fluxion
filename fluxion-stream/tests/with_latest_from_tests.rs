@@ -9,7 +9,7 @@ use fluxion_test_utils::test_data::{
     animal, animal_cat, animal_dog, person_alice, person_bob, TestData,
 };
 use fluxion_test_utils::ChronoTimestamped;
-use fluxion_test_utils::{assert_no_element_emitted, unwrap_value};
+use fluxion_test_utils::{assert_no_element_emitted, assert_stream_ended, unwrap_value};
 use fluxion_test_utils::{helpers::unwrap_stream, test_channel};
 use futures::{FutureExt, StreamExt};
 
@@ -241,7 +241,7 @@ async fn test_with_latest_from_primary_completes_early() -> anyhow::Result<()> {
     drop(person_tx);
 
     // Now the stream should complete
-    assert!(combined_stream.next().await.is_none());
+    assert_stream_ended(&mut combined_stream, 500).await;
 
     Ok(())
 }
@@ -289,7 +289,7 @@ async fn test_with_latest_from_both_streams_close_before_emission() -> anyhow::R
     drop(person_tx);
 
     // Assert - stream should complete with no emissions
-    assert!(combined_stream.next().await.is_none());
+    assert_stream_ended(&mut combined_stream, 500).await;
 
     Ok(())
 }

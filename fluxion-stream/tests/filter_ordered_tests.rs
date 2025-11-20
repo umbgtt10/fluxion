@@ -4,14 +4,13 @@
 
 use fluxion_core::Timestamped;
 use fluxion_stream::FluxionStream;
-use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_dave, person_diane,
     plant_rose, TestData,
 };
 use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::{assert_stream_ended, test_channel};
 use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value};
-use futures::StreamExt;
 
 #[tokio::test]
 async fn test_filter_ordered_basic_predicate() -> anyhow::Result<()> {
@@ -69,7 +68,7 @@ async fn test_filter_ordered_empty_stream() -> anyhow::Result<()> {
     drop(tx); // Close the channel
 
     // Assert
-    assert!(stream.next().await.is_none());
+    assert_stream_ended(&mut stream, 500).await;
 
     Ok(())
 }
@@ -87,7 +86,7 @@ async fn test_filter_ordered_all_filtered_out() -> anyhow::Result<()> {
     drop(tx);
 
     // Assert
-    assert!(stream.next().await.is_none());
+    assert_stream_ended(&mut stream, 500).await;
 
     Ok(())
 }
@@ -226,7 +225,7 @@ async fn test_filter_ordered_single_item() -> anyhow::Result<()> {
     // Assert
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&*result, &person_alice());
-    assert!(stream.next().await.is_none());
+    assert_stream_ended(&mut stream, 500).await;
 
     Ok(())
 }

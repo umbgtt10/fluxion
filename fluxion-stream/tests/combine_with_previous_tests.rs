@@ -4,9 +4,9 @@
 
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
 use fluxion_test_utils::helpers::unwrap_stream;
-use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{person, person_alice, person_bob, person_charlie};
 use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::{assert_stream_ended, test_channel};
 use futures::StreamExt;
 
 #[tokio::test]
@@ -228,7 +228,7 @@ async fn test_combine_with_previous_high_volume_sequential() -> anyhow::Result<(
         last_curr = Some(item.current.value);
     }
     // Stream should now be ended
-    assert!(stream.next().await.is_none());
+    assert_stream_ended(&mut stream, 500).await;
     // Last pair should have a previous
     assert!(last_prev.is_some());
     assert!(last_curr.is_some());
@@ -349,7 +349,7 @@ async fn test_combine_with_previous_single_value_stream() -> anyhow::Result<()> 
     );
 
     // Assert: Stream ends
-    assert!(stream.next().await.is_none());
+    assert_stream_ended(&mut stream, 500).await;
 
     Ok(())
 }
