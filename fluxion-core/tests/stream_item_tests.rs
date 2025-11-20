@@ -2,7 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::{FluxionError, StreamItem, Timestamped, TimestampedWrapper};
+use fluxion_core::{FluxionError, StreamItem, Timestamped as TimestampedTrait};
+use fluxion_test_utils::Timestamped;
 use std::cmp::Ordering;
 
 #[test]
@@ -233,7 +234,7 @@ fn test_stream_item_clone_error() {
 
 #[test]
 fn test_stream_item_ordered_value() {
-    let ordered = TimestampedWrapper::with_timestamp(42, 100);
+    let ordered = Timestamped::with_timestamp(42, 100);
     let item = StreamItem::Value(ordered);
 
     assert_eq!(item.timestamp(), 100);
@@ -243,8 +244,7 @@ fn test_stream_item_ordered_value() {
 #[test]
 #[should_panic(expected = "called `timestamp()` on StreamItem::Error")]
 fn test_stream_item_ordered_error_has_zero_order() {
-    let item: StreamItem<TimestampedWrapper<i32>> =
-        StreamItem::Error(FluxionError::stream_error("test"));
+    let item: StreamItem<Timestamped<i32>> = StreamItem::Error(FluxionError::stream_error("test"));
 
     assert_eq!(item.timestamp(), 0);
 }
@@ -252,22 +252,21 @@ fn test_stream_item_ordered_error_has_zero_order() {
 #[test]
 #[should_panic(expected = "called `inner()` on StreamItem::Error")]
 fn test_stream_item_ordered_get_panics_on_error() {
-    let item: StreamItem<TimestampedWrapper<i32>> =
-        StreamItem::Error(FluxionError::stream_error("test"));
+    let item: StreamItem<Timestamped<i32>> = StreamItem::Error(FluxionError::stream_error("test"));
 
     let _ = item.inner();
 }
 
 #[test]
 fn test_stream_item_ordered_with_timestamp() {
-    let item: StreamItem<TimestampedWrapper<i32>> = StreamItem::with_timestamp(42, 200);
+    let item: StreamItem<Timestamped<i32>> = StreamItem::with_timestamp(42, 200);
 
     assert_eq!(item.timestamp(), 200);
     assert_eq!(item.inner(), &42);
 }
 
-// Note: CompareByInner tests are skipped as TimestampedWrapper doesn't implement CompareByInner
-// These tests would require a custom type that implements both Ordered and CompareByInner
+// Note: CompareByInner tests are skipped as Timestamped doesn't implement CompareByInner
+// These tests would require a custom type that implements both Timestamped and CompareByInner
 #[test]
 fn test_stream_item_chained_map_operations() {
     let item = StreamItem::Value(5);

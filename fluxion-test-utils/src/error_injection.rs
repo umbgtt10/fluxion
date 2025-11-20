@@ -117,14 +117,15 @@ where
 mod tests {
     use super::*;
     use crate::Timestamped;
+    use fluxion_core::Timestamped as TimestampedTrait;
     use futures::{stream, StreamExt};
 
     #[tokio::test]
     async fn test_error_injection_at_position() {
         let items = vec![
-            Timestamped::with_timestamp(1, 1),
-            Timestamped::with_timestamp(2, 2),
-            Timestamped::with_timestamp(3, 3),
+            <Timestamped<_> as TimestampedTrait>::with_timestamp(1, 1_000_000_000),
+            <Timestamped<_> as TimestampedTrait>::with_timestamp(2, 2_000_000_000),
+            <Timestamped<_> as TimestampedTrait>::with_timestamp(3, 3_000_000_000),
         ];
 
         let base_stream = stream::iter(items);
@@ -145,7 +146,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_error_injection_at_start() {
-        let items = vec![Timestamped::with_timestamp(1, 1)];
+        let items = vec![<Timestamped<_> as TimestampedTrait>::with_timestamp(
+            1,
+            1_000_000_000,
+        )];
         let base_stream = stream::iter(items);
         let mut error_stream = ErrorInjectingStream::new(base_stream, 0);
 

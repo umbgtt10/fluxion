@@ -26,10 +26,7 @@ impl Timestamped for MetricData {
     }
 
     fn with_timestamp(inner: Self::Inner, timestamp: Self::Timestamp) -> Self {
-        Self {
-            timestamp,
-            ..inner
-        }
+        Self { timestamp, ..inner }
     }
 
     fn with_fresh_timestamp(value: Self) -> Self {

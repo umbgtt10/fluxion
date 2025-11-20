@@ -51,18 +51,18 @@
 //!
 //! ## Core Concepts
 //!
-//! ### Ordered Trait
+//! ### Timestamped Trait
 //!
-//! All stream operators work with types implementing the [`Ordered`] trait, which
+//! All stream operators work with types implementing the [`Timestamped`] trait, which
 //! provides temporal ordering:
 //!
 //! ```rust
-//! use fluxion_rx::Ordered;
+//! use fluxion_rx::Timestamped;
 //!
-//! // Items must provide an order value
-//! fn process_ordered<T: Ordered>(item: &T) {
-//!     let order = item.order();  // Get temporal order
-//!     let value = item.get();    // Get inner value
+//! // Items must provide a timestamp and inner value
+//! fn process_timestamped<T: Timestamped>(item: &T) {
+//!     let ts = item.timestamp();  // Get timestamp for ordering
+//!     let value = item.inner();    // Get reference to inner value
 //! }
 //! ```
 //!

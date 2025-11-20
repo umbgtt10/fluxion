@@ -13,8 +13,55 @@ use fluxion_test_utils::{assert_no_element_emitted, unwrap_value};
 use fluxion_test_utils::{helpers::unwrap_stream, test_channel};
 use futures::{FutureExt, StreamExt};
 
+// Test wrapper that satisfies Inner = Self for selector return types
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct TestWrapper<T> {
+    timestamp: u64,
+    value: T,
+}
+
+impl<T> TestWrapper<T> {
+    fn new(value: T, timestamp: u64) -> Self {
+        Self { value, timestamp }
+    }
+
+    fn value(&self) -> &T {
+        &self.value
+    }
+}
+
+impl<T> TimestampedTrait for TestWrapper<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    type Inner = Self;
+    type Timestamp = u64;
+
+    fn inner(&self) -> &Self::Inner {
+        self
+    }
+
+    fn timestamp(&self) -> Self::Timestamp {
+        self.timestamp
+    }
+
+    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
+        Self {
+            value: value.value,
+            timestamp,
+        }
+    }
+
+    fn with_fresh_timestamp(value: Self::Inner) -> Self {
+        Self {
+            value: value.value,
+            timestamp: 999999, // Use a dummy timestamp for tests
+        }
+    }
+}
+
 // Identity selector for testing - returns the CombinedState as-is
-fn result_selector(state: &CombinedState<TestData>) -> CombinedState<TestData> {
+fn result_selector(state: &CombinedState<TestData, u64>) -> CombinedState<TestData, u64> {
     state.clone()
 }
 
@@ -98,8 +145,9 @@ async fn test_with_latest_from_custom_selector() -> anyhow::Result<()> {
     let (person_tx, person_stream) = test_channel();
 
     // Custom selector that extracts just one field (e.g., the primary value as a String)
-    let custom_selector = |state: &CombinedState<TestData>| {
-        format!("{:?}", state.values()[0]) // Primary value (index 0) as string
+    let custom_selector = |state: &CombinedState<TestData, u64>| {
+        let description = format!("{:?}", state.values()[0]);
+        TestWrapper::new(description, state.timestamp())
     };
 
     let mut combined_stream = animal_stream.with_latest_from(person_stream, custom_selector);
@@ -108,12 +156,12 @@ async fn test_with_latest_from_custom_selector() -> anyhow::Result<()> {
     person_tx.send(Timestamped::new(person_alice()))?;
     animal_tx.send(Timestamped::new(animal_cat()))?;
 
-    // Assert - should get a String result
+    // Assert - should get a String result wrapped in TestWrapper
     let element = unwrap_value(Some(unwrap_stream(&mut combined_stream, 500).await));
     assert!(
-        element.inner().contains("Cat"),
+        element.inner().value().contains("Cat"),
         "Expected 'Cat' in result: {}",
-        element.inner()
+        element.inner().value()
     );
 
     Ok(())
@@ -309,4 +357,3 @@ async fn test_with_latest_from_multiple_concurrent_streams() -> anyhow::Result<(
 
     Ok(())
 }
-

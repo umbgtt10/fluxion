@@ -19,15 +19,16 @@ mod no_coverage_helpers {
         pub temperature: i32,
     }
 
-    impl Timestamped for SensorReading {
+    impl TimestampedTrait for SensorReading {
         type Inner = Self;
-        fn timestamp(&self) -> u64 {
+        type Timestamp = u64;
+        fn timestamp(&self) -> Self::Timestamp {
             self.timestamp
         }
         fn inner(&self) -> &Self::Inner {
             self
         }
-        fn with_timestamp(value: Self, _timestamp: u64) -> Self {
+        fn with_timestamp(value: Self, _order: Self::Timestamp) -> Self {
             value
         }
         fn with_fresh_timestamp(value: Self) -> Self {
@@ -41,15 +42,16 @@ mod no_coverage_helpers {
         pub code: i32,
     }
 
-    impl Timestamped for StatusUpdate {
+    impl TimestampedTrait for StatusUpdate {
         type Inner = Self;
-        fn timestamp(&self) -> u64 {
+        type Timestamp = u64;
+        fn timestamp(&self) -> Self::Timestamp {
             self.timestamp
         }
         fn inner(&self) -> &Self::Inner {
             self
         }
-        fn with_timestamp(value: Self, _timestamp: u64) -> Self {
+        fn with_timestamp(value: Self, _timestamp: Self::Timestamp) -> Self {
             value
         }
         fn with_fresh_timestamp(value: Self) -> Self {
@@ -63,9 +65,10 @@ mod no_coverage_helpers {
         Status(StatusUpdate),
     }
 
-    impl Timestamped for CombinedEvent {
+    impl TimestampedTrait for CombinedEvent {
         type Inner = Self;
-        fn timestamp(&self) -> u64 {
+        type Timestamp = u64;
+        fn timestamp(&self) -> Self::Timestamp {
             match self {
                 CombinedEvent::Sensor(s) => s.timestamp,
                 CombinedEvent::Status(st) => st.timestamp,
@@ -74,7 +77,7 @@ mod no_coverage_helpers {
         fn inner(&self) -> &Self::Inner {
             self
         }
-        fn with_timestamp(value: Self, _order: u64) -> Self {
+        fn with_timestamp(value: Self, _order: Self::Timestamp) -> Self {
             value
         }
         fn with_fresh_timestamp(value: Self) -> Self {

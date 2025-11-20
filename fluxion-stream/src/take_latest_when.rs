@@ -192,8 +192,10 @@ where
                                 if let Some(filt) = filter_val.as_ref() {
                                     if let Some(src) = source.as_ref() {
                                         if filter(filt) {
-                                            Some(StreamItem::Value(T::with_fresh_timestamp(
+                                            // Use the trigger's timestamp for the emitted value
+                                            Some(StreamItem::Value(T::with_timestamp(
                                                 src.clone(),
+                                                ordered_value.timestamp(),
                                             )))
                                         } else {
                                             None

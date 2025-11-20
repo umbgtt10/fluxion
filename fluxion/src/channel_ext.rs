@@ -40,11 +40,13 @@ pub trait UnboundedReceiverExt<T> {
     ///     temperature: i32,
     /// }
     ///
-    /// impl Ordered for SensorReading {
+    /// impl Timestamped for SensorReading {
     ///     type Inner = Self;
-    ///     fn order(&self) -> u64 { self.timestamp }
-    ///     fn get(&self) -> &Self::Inner { self }
-    ///     fn with_order(value: Self, _order: u64) -> Self { value }
+    ///     type Timestamp = u64;
+    ///     fn timestamp(&self) -> u64 { self.timestamp }
+    ///     fn inner(&self) -> &Self { self }
+    ///     fn with_timestamp(value: Self, _timestamp: u64) -> Self { value }
+    ///     fn with_fresh_timestamp(value: Self) -> Self { value }
     /// }
     ///
     /// #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -52,15 +54,17 @@ pub trait UnboundedReceiverExt<T> {
     ///     Sensor(SensorReading)
     /// }
     ///
-    /// impl Ordered for DataEvent {
+    /// impl Timestamped for DataEvent {
     ///     type Inner = Self;
-    ///     fn order(&self) -> u64 {
+    ///     type Timestamp = u64;
+    ///     fn timestamp(&self) -> u64 {
     ///         match self {
     ///             DataEvent::Sensor(s) => s.timestamp
     ///         }
     ///     }
-    ///     fn get(&self) -> &Self::Inner { self }
-    ///     fn with_order(value: Self, _order: u64) -> Self { value }
+    ///     fn inner(&self) -> &Self { self }
+    ///     fn with_timestamp(value: Self, _timestamp: u64) -> Self { value }
+    ///     fn with_fresh_timestamp(value: Self) -> Self { value }
     /// }
     ///
     /// # #[tokio::main]
