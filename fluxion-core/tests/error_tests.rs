@@ -68,4 +68,3 @@ fn test_result_context_ok() {
     let value = result.context("operation failed").unwrap();
     assert_eq!(value, 42);
 }
-

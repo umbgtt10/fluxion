@@ -3,15 +3,15 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
+use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_stream::take_while_with::TakeWhileExt;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
-use fluxion_test_utils::Timestamped;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, person_alice, person_bob, person_charlie,
 };
+use fluxion_test_utils::Timestamped;
 use fluxion_test_utils::{test_channel, unwrap_stream, unwrap_value};
 use futures::Stream;
-use fluxion_core::Timestamped as TimestampedTrait;
 
 #[tokio::test]
 async fn test_take_while_basic() -> anyhow::Result<()> {
@@ -296,4 +296,3 @@ where
         .inner()
         .clone()
 }
-

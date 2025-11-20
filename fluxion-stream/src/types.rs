@@ -169,7 +169,7 @@ where
 ///
 /// Instead of writing:
 /// ```
-/// # use fluxion_stream::TimestampedStreamItem;
+/// # use fluxion_stream::types::TimestampedStreamItem;
 /// # use fluxion_core::Timestamped;
 /// # use std::fmt::Debug;
 /// fn process_stream<T>()
@@ -180,7 +180,7 @@ where
 ///
 /// You can write:
 /// ```
-/// # use fluxion_stream::TimestampedStreamItem;
+/// # use fluxion_stream::types::TimestampedStreamItem;
 /// fn process_stream<T>()
 /// where
 ///     T: TimestampedStreamItem

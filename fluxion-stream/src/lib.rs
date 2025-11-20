@@ -58,8 +58,8 @@
 //!
 //! # #[tokio::main]
 //! # async fn main() {
-//! let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel();
-//! let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel();
+//! let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel::<Timestamped<i32>>();
+//! let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel::<Timestamped<i32>>();
 //!
 //! let stream1 = FluxionStream::from_unbounded_receiver(rx1);
 //! let stream2 = FluxionStream::from_unbounded_receiver(rx2);
@@ -68,8 +68,8 @@
 //! let mut merged = merged;
 //!
 //! // Send out of order - stream2 sends seq=1, stream1 sends seq=2
-//! tx2.send(Timestamped::with_timestamp(100, 1)).unwrap();
-//! tx1.send(Timestamped::with_timestamp(200, 2)).unwrap();
+//! tx2.send((100, 1).into()).unwrap();
+//! tx1.send((200, 2).into()).unwrap();
 //!
 //! // Items are emitted in temporal order (seq 1, then seq 2)
 //! let first = merged.next().await.unwrap().unwrap();
@@ -211,29 +211,29 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, WithLatestFromExt};
 //! use fluxion_test_utils::Timestamped;
-//! use fluxion_core::Ordered;
+//! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
 //! // User clicks enriched with latest configuration
-//! let (click_tx, click_rx) = tokio::sync::mpsc::unbounded_channel();
-//! let (config_tx, config_rx) = tokio::sync::mpsc::unbounded_channel();
+//! let (click_tx, click_rx) = tokio::sync::mpsc::unbounded_channel::<Timestamped<String>>();
+//! let (config_tx, config_rx) = tokio::sync::mpsc::unbounded_channel::<Timestamped<String>>();
 //!
 //! let clicks = FluxionStream::from_unbounded_receiver(click_rx);
 //! let configs = FluxionStream::from_unbounded_receiver(config_rx);
 //!
 //! let enriched = clicks.with_latest_from(
 //!     configs,
-//!     |state| state.values().clone()
+//!     |state| state.clone()
 //! );
 //! let mut enriched = enriched;
 //!
 //! // Send config first, then click
-//! config_tx.send(Timestamped::with_timestamp("theme=dark".to_string(), 1)).unwrap();
-//! click_tx.send(Timestamped::with_timestamp("button1".to_string(), 2)).unwrap();
+//! config_tx.send(("theme=dark".to_string(), 1).into()).unwrap();
+//! click_tx.send(("button1".to_string(), 2).into()).unwrap();
 //!
 //! let result = enriched.next().await.unwrap().unwrap();
-//! assert_eq!(result.inner().len(), 2); // Has both click and config
+//! assert_eq!(result.inner().values().len(), 2); // Has both click and config
 //! # }
 //! ```
 //!
@@ -249,8 +249,8 @@
 //!
 //! # async fn example() {
 //! // Combine logs from multiple services in temporal order
-//! let (service1_tx, service1_rx) = tokio::sync::mpsc::unbounded_channel();
-//! let (service2_tx, service2_rx) = tokio::sync::mpsc::unbounded_channel();
+//! let (service1_tx, service1_rx) = tokio::sync::mpsc::unbounded_channel::<Timestamped<String>>();
+//! let (service2_tx, service2_rx) = tokio::sync::mpsc::unbounded_channel::<Timestamped<String>>();
 //!
 //! let service1 = FluxionStream::from_unbounded_receiver(service1_rx);
 //! let service2 = FluxionStream::from_unbounded_receiver(service2_rx);
@@ -259,8 +259,8 @@
 //! let mut unified_log = unified_log;
 //!
 //! // Send logs with different timestamps
-//! service1_tx.send(Timestamped::with_timestamp("service1: started".to_string(), 1)).unwrap();
-//! service2_tx.send(Timestamped::with_timestamp("service2: ready".to_string(), 2)).unwrap();
+//! service1_tx.send(("service1: started".to_string(), 1).into()).unwrap();
+//! service2_tx.send(("service2: ready".to_string(), 2).into()).unwrap();
 //!
 //! let first = unified_log.next().await.unwrap().unwrap();
 //! assert_eq!(first.value, "service1: started");
@@ -275,11 +275,11 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
 //! use fluxion_test_utils::Timestamped;
-//! use fluxion_core::Ordered;
+//! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
-//! let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+//! let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Timestamped<i32>>();
 //! let stream = FluxionStream::from_unbounded_receiver(rx);
 //!
 //! // Pair each value with its previous value
@@ -287,9 +287,9 @@
 //! let mut paired = paired;
 //!
 //! // Send values
-//! tx.send(Timestamped::with_timestamp(1, 1)).unwrap();
-//! tx.send(Timestamped::with_timestamp(1, 2)).unwrap(); // Same value
-//! tx.send(Timestamped::with_timestamp(2, 3)).unwrap(); // Changed!
+//! tx.send((1, 1).into()).unwrap();
+//! tx.send((1, 2).into()).unwrap(); // Same value
+//! tx.send((2, 3).into()).unwrap(); // Changed!
 //!
 //! let result = paired.next().await.unwrap().unwrap();
 //! assert!(result.previous.is_none()); // First has no previous
@@ -312,13 +312,13 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, EmitWhenExt};
 //! use fluxion_test_utils::Timestamped;
-//! use fluxion_core::Ordered;
+//! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
 //! // Send notifications only when enabled
-//! let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel();
-//! let (enabled_tx, enabled_rx) = tokio::sync::mpsc::unbounded_channel();
+//! let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel::<Timestamped<i32>>();
+//! let (enabled_tx, enabled_rx) = tokio::sync::mpsc::unbounded_channel::<Timestamped<i32>>();
 //!
 //! let events = FluxionStream::from_unbounded_receiver(event_rx);
 //! let enabled = FluxionStream::from_unbounded_receiver(enabled_rx);
@@ -330,9 +330,9 @@
 //! let mut notifications = notifications;
 //!
 //! // Enable notifications
-//! enabled_tx.send(Timestamped::with_timestamp(1, 1)).unwrap();
+//! enabled_tx.send((1, 1).into()).unwrap();
 //! // Send event
-//! event_tx.send(Timestamped::with_timestamp(999, 2)).unwrap();
+//! event_tx.send((999, 2).into()).unwrap();
 //!
 //! let result = notifications.next().await.unwrap().unwrap();
 //! assert_eq!(*result.inner(), 999);
@@ -400,8 +400,9 @@
 //! ## Basic Chaining Pattern
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, CombineWithPreviousExt, TakeLatestWhenExt, Ordered};
+//! use fluxion_stream::{FluxionStream, CombineWithPreviousExt, TakeLatestWhenExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
+//! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -427,8 +428,9 @@
 //! temporal ordering:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, Ordered};
+//! use fluxion_stream::{FluxionStream};
 //! use fluxion_test_utils::{Timestamped, test_channel};
+//! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -452,8 +454,9 @@
 //! Combine multiple streams and then process the result:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt, Ordered};
+//! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
+//! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -491,8 +494,9 @@
 //! Merge multiple streams in temporal order, then track consecutive values:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, OrderedStreamExt, CombineWithPreviousExt, Ordered};
+//! use fluxion_stream::{FluxionStream, OrderedStreamExt, CombineWithPreviousExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
+//! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -521,8 +525,9 @@
 //! Combine latest values from multiple streams, then track state changes:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt, Ordered};
+//! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
+//! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -553,8 +558,9 @@
 //! Combine streams and continue only while a condition holds:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, CombineLatestExt, TakeWhileExt, Ordered};
+//! use fluxion_stream::{FluxionStream, CombineLatestExt, TakeWhileExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
+//! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -583,6 +589,7 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt, TakeWhileExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
+//! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -612,8 +619,9 @@
 //! Sample latest value on trigger, then pair with previous sampled value:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, TakeLatestWhenExt, CombineWithPreviousExt, Ordered};
+//! use fluxion_stream::{FluxionStream, TakeLatestWhenExt, CombineWithPreviousExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
+//! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {

@@ -4,11 +4,11 @@
 
 //! Error propagation tests for `filter_ordered` operator.
 
+use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::FluxionStream;
-use fluxion_test_utils::{Timestamped, test_channel_with_errors, unwrap_stream};
+use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, Timestamped};
 use futures::StreamExt;
-use fluxion_core::Timestamped as TimestampedTrait;
 
 #[tokio::test]
 async fn test_filter_ordered_propagates_errors() -> anyhow::Result<()> {
@@ -189,5 +189,3 @@ async fn test_filter_ordered_chain_with_map_after_error() -> anyhow::Result<()> 
 
     Ok(())
 }
-
-

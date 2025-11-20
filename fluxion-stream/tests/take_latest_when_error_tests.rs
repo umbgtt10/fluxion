@@ -9,7 +9,7 @@ use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::TakeLatestWhenExt;
 use fluxion_test_utils::{
-    assert_no_element_emitted, Timestamped, test_channel_with_errors, unwrap_stream,
+    assert_no_element_emitted, test_channel_with_errors, unwrap_stream, Timestamped,
 };
 
 #[tokio::test]
@@ -174,7 +174,3 @@ async fn test_take_latest_when_both_streams_have_errors() -> anyhow::Result<()> 
 
     Ok(())
 }
-
-
-
-

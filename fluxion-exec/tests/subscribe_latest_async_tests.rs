@@ -822,4 +822,3 @@ async fn test_subscribe_latest_async_error_aggregation_without_callback() -> any
 
     Ok(())
 }
-

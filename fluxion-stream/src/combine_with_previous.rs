@@ -54,11 +54,12 @@ where
     /// ```rust
     /// use fluxion_stream::{CombineWithPreviousExt, FluxionStream};
     /// use fluxion_test_utils::Timestamped;
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channel
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Timestamped<i32>>();
     ///
     /// // Create stream
     /// let stream = FluxionStream::from_unbounded_receiver(rx);
@@ -67,8 +68,8 @@ where
     /// let mut paired = stream.combine_with_previous();
     ///
     /// // Send values
-    /// tx.send(Timestamped::with_timestamp(1, 1)).unwrap();
-    /// tx.send(Timestamped::with_timestamp(2, 2)).unwrap();
+    /// tx.send((1, 1).into()).unwrap();
+    /// tx.send((2, 2).into()).unwrap();
     ///
     /// // Assert - first has no previous
     /// let first = paired.next().await.unwrap().unwrap();

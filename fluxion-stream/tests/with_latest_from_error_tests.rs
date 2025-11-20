@@ -5,12 +5,54 @@
 //! Error propagation tests for `with_latest_from` operator.
 
 use fluxion_core::Timestamped as TimestampedTrait;
-
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::WithLatestFromExt;
+use fluxion_stream::{CombinedState, WithLatestFromExt};
 use fluxion_test_utils::{
-    assert_no_element_emitted, Timestamped, test_channel_with_errors, unwrap_stream,
+    assert_no_element_emitted, test_channel_with_errors, unwrap_stream, Timestamped,
 };
+
+// Test wrapper that satisfies Inner = Self for selector return types
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct TestWrapper<T> {
+    timestamp: u64,
+    value: T,
+}
+
+impl<T> TestWrapper<T> {
+    fn new(value: T, timestamp: u64) -> Self {
+        Self { value, timestamp }
+    }
+}
+
+impl<T> TimestampedTrait for TestWrapper<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    type Inner = Self;
+    type Timestamp = u64;
+
+    fn inner(&self) -> &Self::Inner {
+        self
+    }
+
+    fn timestamp(&self) -> Self::Timestamp {
+        self.timestamp
+    }
+
+    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
+        Self {
+            value: value.value,
+            timestamp,
+        }
+    }
+
+    fn with_fresh_timestamp(value: Self::Inner) -> Self {
+        Self {
+            value: value.value,
+            timestamp: 999999,
+        }
+    }
+}
 
 #[tokio::test]
 async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> {
@@ -18,7 +60,10 @@ async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> 
     let (primary_tx, primary_stream) = test_channel_with_errors::<Timestamped<i32>>();
     let (secondary_tx, secondary_stream) = test_channel_with_errors::<Timestamped<i32>>();
 
-    let mut result = primary_stream.with_latest_from(secondary_stream, |_| true);
+    let mut result = primary_stream
+        .with_latest_from(secondary_stream, |state: &CombinedState<i32, u64>| {
+            TestWrapper::new(true, state.timestamp())
+        });
 
     // Act & Assert: Send secondary first (required for with_latest_from)
     secondary_tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 1)))?;
@@ -57,7 +102,10 @@ async fn test_with_latest_from_propagates_secondary_error() -> anyhow::Result<()
     let (primary_tx, primary_stream) = test_channel_with_errors::<Timestamped<i32>>();
     let (secondary_tx, secondary_stream) = test_channel_with_errors::<Timestamped<i32>>();
 
-    let mut result = primary_stream.with_latest_from(secondary_stream, |_| true);
+    let mut result = primary_stream
+        .with_latest_from(secondary_stream, |state: &CombinedState<i32, u64>| {
+            TestWrapper::new(true, state.timestamp())
+        });
 
     // Act: Send secondary value first
     secondary_tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 1)))?;
@@ -98,7 +146,10 @@ async fn test_with_latest_from_error_before_secondary_ready() -> anyhow::Result<
     let (primary_tx, primary_stream) = test_channel_with_errors::<Timestamped<i32>>();
     let (secondary_tx, secondary_stream) = test_channel_with_errors::<Timestamped<i32>>();
 
-    let mut result = primary_stream.with_latest_from(secondary_stream, |_| true);
+    let mut result = primary_stream
+        .with_latest_from(secondary_stream, |state: &CombinedState<i32, u64>| {
+            TestWrapper::new(true, state.timestamp())
+        });
 
     // Act: Send error in primary before secondary has value
     primary_tx.send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
@@ -154,7 +205,3 @@ async fn test_with_latest_from_selector_continues_after_error() -> anyhow::Resul
 
     Ok(())
 }
-
-
-
-

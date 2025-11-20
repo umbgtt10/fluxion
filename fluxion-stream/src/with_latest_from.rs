@@ -76,12 +76,13 @@ where
     /// ```rust
     /// use fluxion_stream::{WithLatestFromExt, FluxionStream};
     /// use fluxion_test_utils::Timestamped;
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx_primary, rx_primary) = tokio::sync::mpsc::unbounded_channel();
-    /// let (tx_secondary, rx_secondary) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx_primary, rx_primary) = tokio::sync::mpsc::unbounded_channel::<Timestamped<i32>>();
+    /// let (tx_secondary, rx_secondary) = tokio::sync::mpsc::unbounded_channel::<Timestamped<i32>>();
     ///
     /// // Create streams
     /// let primary = FluxionStream::from_unbounded_receiver(rx_primary);
@@ -90,19 +91,17 @@ where
     /// // Combine streams
     /// let mut combined = primary.with_latest_from(
     ///     secondary,
-    ///     |state| {
-    ///         let values = state.values();
-    ///         values[0] + values[1]
-    ///     }
+    ///     |state| state.clone()
     /// );
     ///
     /// // Send values
-    /// tx_secondary.send(Timestamped::with_timestamp(10, 1)).unwrap();
-    /// tx_primary.send(Timestamped::with_timestamp(1, 2)).unwrap();
+    /// tx_secondary.send((10, 1).into()).unwrap();
+    /// tx_primary.send((1, 2).into()).unwrap();
     ///
     /// // Assert
     /// let result = combined.next().await.unwrap().unwrap();
-    /// assert_eq!(*result.inner(), 11);
+    /// let values = result.inner().values();
+    /// assert_eq!(values[0] + values[1], 11);
     /// # }
     /// ```
     ///

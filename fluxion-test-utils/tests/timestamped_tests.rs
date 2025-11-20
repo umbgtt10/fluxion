@@ -263,4 +263,3 @@ fn test_Timestamped_value_field_public() {
     // Act & Assert
     assert_eq!(Timestamped.value, "public");
 }
-

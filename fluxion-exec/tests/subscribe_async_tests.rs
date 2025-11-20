@@ -700,4 +700,3 @@ async fn test_subscribe_async_error_aggregation_without_callback() -> anyhow::Re
 
     Ok(())
 }
-

@@ -94,4 +94,3 @@ fn test_with_context_on_error() {
     let error_msg = err.to_string();
     assert!(error_msg.contains("Additional context from closure"));
 }
-

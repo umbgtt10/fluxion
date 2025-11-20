@@ -74,7 +74,9 @@ pub fn bench_merge_with(c: &mut Criterion) {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(merged)
-                                as Pin<Box<dyn futures::Stream<Item = Timestamped<Vec<u8>>> + Send>>;
+                                as Pin<
+                                    Box<dyn futures::Stream<Item = Timestamped<Vec<u8>>> + Send>,
+                                >;
                             while let Some(_v) = s.next().await {
                                 black_box(())
                             }

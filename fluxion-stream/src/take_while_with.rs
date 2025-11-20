@@ -80,12 +80,13 @@ where
     /// ```rust
     /// use fluxion_stream::{TakeWhileExt, FluxionStream};
     /// use fluxion_test_utils::Timestamped;
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx_data, rx_data) = tokio::sync::mpsc::unbounded_channel();
-    /// let (tx_gate, rx_gate) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx_data, rx_data) = tokio::sync::mpsc::unbounded_channel::<Timestamped<i32>>();
+    /// let (tx_gate, rx_gate) = tokio::sync::mpsc::unbounded_channel::<Timestamped<bool>>();
     ///
     /// // Create streams
     /// let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
@@ -98,8 +99,8 @@ where
     /// );
     ///
     /// // Send values
-    /// tx_gate.send(Timestamped::with_timestamp(true, 1)).unwrap();
-    /// tx_data.send(Timestamped::with_timestamp(1, 2)).unwrap();
+    /// tx_gate.send((true, 1).into()).unwrap();
+    /// tx_data.send((1, 2).into()).unwrap();
     ///
     /// // Assert
     /// assert_eq!(gated.next().await.unwrap().unwrap().inner(), &1);

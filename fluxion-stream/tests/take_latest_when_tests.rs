@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_stream::take_latest_when::TakeLatestWhenExt;
 use fluxion_test_utils::Timestamped;
 use fluxion_test_utils::{
@@ -14,7 +15,6 @@ use fluxion_test_utils::{
     },
 };
 use futures::StreamExt;
-use fluxion_core::Timestamped as TimestampedTrait;
 
 #[tokio::test]
 async fn test_take_latest_when_empty_streams() -> anyhow::Result<()> {
@@ -202,7 +202,10 @@ async fn test_take_latest_when_filter_toggle_emissions() -> anyhow::Result<()> {
     source_tx.send(Timestamped::new(person_alice()))?;
     filter_tx.send(Timestamped::new(animal_ant()))?; // legs 6 -> true, triggers emission
     assert_eq!(
-        unwrap_stream(&mut output_stream, 500).await.unwrap().inner(),
+        unwrap_stream(&mut output_stream, 500)
+            .await
+            .unwrap()
+            .inner(),
         &person_alice(),
         "Should emit Alice when filter triggers with true predicate"
     );
@@ -215,7 +218,10 @@ async fn test_take_latest_when_filter_toggle_emissions() -> anyhow::Result<()> {
     // Act: filter true again -> should emit the latest buffered source (Bob)
     filter_tx.send(Timestamped::new(animal_ant()))?; // true
     assert_eq!(
-        unwrap_stream(&mut output_stream, 500).await.unwrap().inner(),
+        unwrap_stream(&mut output_stream, 500)
+            .await
+            .unwrap()
+            .inner(),
         &person_bob(),
         "Should emit buffered Bob when filter becomes true"
     );
@@ -227,7 +233,10 @@ async fn test_take_latest_when_filter_toggle_emissions() -> anyhow::Result<()> {
     // Act: filter triggers again -> should sample Charlie
     filter_tx.send(Timestamped::new(animal_ant()))?; // true
     assert_eq!(
-        unwrap_stream(&mut output_stream, 500).await.unwrap().inner(),
+        unwrap_stream(&mut output_stream, 500)
+            .await
+            .unwrap()
+            .inner(),
         &person_charlie(),
         "Should emit Charlie when filter triggers again"
     );
@@ -254,7 +263,10 @@ async fn test_take_latest_when_filter_stream_closes_no_further_emits() -> anyhow
     source_tx.send(Timestamped::new(person_alice()))?;
     filter_tx.send(Timestamped::new(animal_ant()))?; // true - triggers emission of Alice
     assert_eq!(
-        unwrap_stream(&mut output_stream, 500).await.unwrap().inner(),
+        unwrap_stream(&mut output_stream, 500)
+            .await
+            .unwrap()
+            .inner(),
         &person_alice(),
         "First emission should be Alice with filter true"
     );
@@ -299,7 +311,10 @@ async fn test_take_latest_when_source_publishes_before_filter() -> anyhow::Resul
     // Act: Filter publishes with true condition
     filter_tx.send(Timestamped::new(animal_ant()))?; // legs 6 -> true
     assert_eq!(
-        unwrap_stream(&mut output_stream, 500).await.unwrap().inner(),
+        unwrap_stream(&mut output_stream, 500)
+            .await
+            .unwrap()
+            .inner(),
         &person_alice(),
         "Should emit buffered Alice when filter becomes true"
     );
@@ -312,7 +327,10 @@ async fn test_take_latest_when_source_publishes_before_filter() -> anyhow::Resul
     // Act: Filter becomes true again
     filter_tx.send(Timestamped::new(animal_ant()))?; // legs 6 -> true
     assert_eq!(
-        unwrap_stream(&mut output_stream, 500).await.unwrap().inner(),
+        unwrap_stream(&mut output_stream, 500)
+            .await
+            .unwrap()
+            .inner(),
         &person_bob(),
         "Should emit buffered Bob when filter becomes true again"
     );
@@ -350,7 +368,10 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() -> a
     // Act: Filter becomes true
     filter_tx.send(Timestamped::new(animal_ant()))?; // legs 6 -> true
     assert_eq!(
-        unwrap_stream(&mut output_stream, 500).await.unwrap().inner(),
+        unwrap_stream(&mut output_stream, 500)
+            .await
+            .unwrap()
+            .inner(),
         &person_dave(),
         "Should only emit latest value (Dave), not earlier buffered values"
     );
@@ -364,7 +385,10 @@ async fn test_take_latest_when_multiple_source_updates_while_filter_false() -> a
 
     // Assert: Emits when filter triggers
     assert_eq!(
-        unwrap_stream(&mut output_stream, 500).await.unwrap().inner(),
+        unwrap_stream(&mut output_stream, 500)
+            .await
+            .unwrap()
+            .inner(),
         &person_alice(),
         "Should emit Alice immediately when filter is true"
     );
@@ -397,7 +421,10 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() -> anyhow::Resul
     // Act: Filter becomes true
     filter_tx.send(Timestamped::new(animal_ant()))?; // legs 6 -> true
     assert_eq!(
-        unwrap_stream(&mut output_stream, 500).await.unwrap().inner(),
+        unwrap_stream(&mut output_stream, 500)
+            .await
+            .unwrap()
+            .inner(),
         &person(String::from("Person9999"), 9999u32)
     );
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -412,7 +439,10 @@ async fn test_take_latest_when_buffer_does_not_grow_unbounded() -> anyhow::Resul
     // Act: Filter true again
     filter_tx.send(Timestamped::new(animal_ant()))?; // legs 6 -> true
     assert_eq!(
-        unwrap_stream(&mut output_stream, 500).await.unwrap().inner(),
+        unwrap_stream(&mut output_stream, 500)
+            .await
+            .unwrap()
+            .inner(),
         &person(String::from("Person19999"), 19999u32)
     );
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -436,7 +466,10 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() -> anyhow::Re
     assert_no_element_emitted(&mut output_stream, 100).await;
     filter_tx.send(Timestamped::new(animal(String::new(), 0)))?;
     assert_eq!(
-        unwrap_stream(&mut output_stream, 500).await.unwrap().inner(),
+        unwrap_stream(&mut output_stream, 500)
+            .await
+            .unwrap()
+            .inner(),
         &person(String::new(), 0),
         "Should handle empty string and zero age"
     );
@@ -445,7 +478,10 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() -> anyhow::Re
     source_tx.send(Timestamped::new(person_alice()))?;
     filter_tx.send(Timestamped::new(animal_dog()))?;
     assert_eq!(
-        unwrap_stream(&mut output_stream, 500).await.unwrap().inner(),
+        unwrap_stream(&mut output_stream, 500)
+            .await
+            .unwrap()
+            .inner(),
         &person_alice()
     );
 
@@ -520,4 +556,3 @@ async fn test_take_latest_when_filter_panics() {
     // Assert
     let _ = output_stream.next().await;
 }
-

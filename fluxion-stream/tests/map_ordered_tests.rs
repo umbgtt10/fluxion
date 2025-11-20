@@ -2,15 +2,15 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
-use fluxion_test_utils::Timestamped;
 use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_dave, TestData,
 };
+use fluxion_test_utils::Timestamped;
 use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value};
 use futures::StreamExt;
-use fluxion_core::Timestamped as TimestampedTrait;
 
 #[tokio::test]
 async fn test_map_ordered_basic_transformation() -> anyhow::Result<()> {
@@ -364,4 +364,3 @@ async fn test_map_ordered_boolean_logic() -> anyhow::Result<()> {
 
     Ok(())
 }
-

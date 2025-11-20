@@ -4,9 +4,9 @@
 
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
 use fluxion_test_utils::helpers::unwrap_stream;
-use fluxion_test_utils::Timestamped;
 use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{person, person_alice, person_bob, person_charlie};
+use fluxion_test_utils::Timestamped;
 use futures::StreamExt;
 
 #[tokio::test]
@@ -353,4 +353,3 @@ async fn test_combine_with_previous_single_value_stream() -> anyhow::Result<()> 
 
     Ok(())
 }
-

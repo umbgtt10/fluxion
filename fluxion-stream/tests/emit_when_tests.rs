@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_stream::emit_when::EmitWhenExt;
 use fluxion_stream::CombinedState;
 use fluxion_test_utils::Timestamped;
@@ -15,7 +16,6 @@ use fluxion_test_utils::{
     unwrap_value,
 };
 use futures::StreamExt;
-use fluxion_core::Timestamped as TimestampedTrait;
 
 #[tokio::test]
 async fn test_emit_when_empty_streams() -> anyhow::Result<()> {
@@ -640,4 +640,3 @@ async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
 
     Ok(())
 }
-

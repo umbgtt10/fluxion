@@ -4,7 +4,7 @@
 
 use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_rx::FluxionStream;
-use fluxion_test_utils::{Timestamped, unwrap_stream};
+use fluxion_test_utils::{unwrap_stream, Timestamped};
 use tokio::sync::mpsc::unbounded_channel;
 
 #[tokio::test]
@@ -56,6 +56,3 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-
-

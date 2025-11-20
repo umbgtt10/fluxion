@@ -8,7 +8,7 @@ use fluxion_core::Timestamped as TimestampedTrait;
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::CombineLatestExt;
-use fluxion_test_utils::{Timestamped, test_channel_with_errors, unwrap_stream};
+use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, Timestamped};
 
 #[tokio::test]
 async fn test_combine_latest_propagates_error_from_primary_stream() -> anyhow::Result<()> {
@@ -228,7 +228,3 @@ async fn test_combine_latest_filter_predicate_continues_after_error() -> anyhow:
 
     Ok(())
 }
-
-
-
-

@@ -3,11 +3,11 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_ordered_merge::OrderedMergeExt;
-use fluxion_test_utils::Timestamped;
 use fluxion_test_utils::test_data::{
     animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_rose,
     plant_sunflower, TestData,
 };
+use fluxion_test_utils::Timestamped;
 use futures::StreamExt;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -315,4 +315,3 @@ async fn test_ordered_merge_maximum_concurrent_streams() -> anyhow::Result<()> {
 
     Ok(())
 }
-

@@ -4,10 +4,10 @@
 
 //! Error propagation tests for `map_ordered` operator.
 
+use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::FluxionStream;
-use fluxion_test_utils::{Timestamped, test_channel_with_errors, unwrap_stream};
-use fluxion_core::Timestamped as TimestampedTrait;
+use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, Timestamped};
 
 #[tokio::test]
 async fn test_map_ordered_propagates_errors() -> anyhow::Result<()> {
@@ -150,5 +150,3 @@ async fn test_map_ordered_chain_after_error() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-

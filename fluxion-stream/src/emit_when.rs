@@ -51,12 +51,13 @@ where
     /// ```rust
     /// use fluxion_stream::{EmitWhenExt, FluxionStream};
     /// use fluxion_test_utils::Timestamped;
+    /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx_data, rx_data) = tokio::sync::mpsc::unbounded_channel();
-    /// let (tx_enable, rx_enable) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx_data, rx_data) = tokio::sync::mpsc::unbounded_channel::<Timestamped<i32>>();
+    /// let (tx_enable, rx_enable) = tokio::sync::mpsc::unbounded_channel::<Timestamped<i32>>();
     ///
     /// // Create streams
     /// let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
@@ -72,8 +73,8 @@ where
     /// );
     ///
     /// // Send values
-    /// tx_enable.send(Timestamped::with_timestamp(1, 1)).unwrap();  // Enabled
-    /// tx_data.send(Timestamped::with_timestamp(42, 2)).unwrap();
+    /// tx_enable.send((1, 1).into()).unwrap();  // Enabled
+    /// tx_data.send((42, 2).into()).unwrap();
     ///
     /// // Assert - data emits when enabled
     /// let result = gated.next().await.unwrap().unwrap();
