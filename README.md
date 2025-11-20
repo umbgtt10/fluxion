@@ -1,11 +1,11 @@
 # Fluxion
 
 [![CI](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml/badge.svg)](https://github.com/umbgtt10/fluxion/actions/workflows/ci.yml)
+[![Documentation](https://docs.rs/fluxion-rx/badge.svg)](https://docs.rs/fluxion-rx)
 [![codecov](https://codecov.io/gh/umbgtt10/fluxion/branch/main/graph/badge.svg)](https://codecov.io/gh/umbgtt10/fluxion)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Crates.io](https://img.shields.io/crates/v/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
 [![Downloads](https://img.shields.io/crates/d/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
-[![Documentation](https://docs.rs/fluxion-rx/badge.svg)](https://docs.rs/fluxion-rx)
 
 A reactive stream processing library for Rust with temporal ordering guarantee, efficient async execution and friendly fluent API.
 
@@ -15,7 +15,6 @@ A reactive stream processing library for Rust with temporal ordering guarantee, 
 - [Features](#features)
 - [Independent Code Reviews](#independent-code-reviews)
 - [Quick Start](#quick-start)
-- [Operator Documentation](#operator-documentation)
 - [Core Concepts](#core-concepts)
 - [Documentation](#documentation)
 - [Development](#development)
@@ -182,12 +181,12 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
 }
 ```
 
+## Core Concepts
+
 ### 📚 Operator Documentation
 
 - **[All Operators](docs/FLUXION_OPERATOR_SUMMARY.md)** - Complete operator reference
 - **[Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md)** - Planned future operators
-
-## Core Concepts
 
 ### Stream Operators
 

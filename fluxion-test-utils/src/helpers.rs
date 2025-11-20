@@ -2,14 +2,14 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::sequenced::Sequenced;
-use crate::test_data::TestData;
-use fluxion_core::{FluxionError, Result, StreamItem};
+use fluxion_core::StreamItem;
 use futures::stream::StreamExt;
 use futures::Stream;
 use std::time::Duration;
+use tokio::select;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::time::sleep;
+use tokio::time::timeout;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// Unwraps a `StreamItem::Value`, panicking if it's an error.
@@ -74,15 +74,12 @@ pub fn unwrap_value<T>(item: Option<StreamItem<T>>) -> T {
 /// ```
 pub async fn unwrap_stream<T, S>(stream: &mut S, timeout_ms: u64) -> StreamItem<T>
 where
-    S: futures::stream::Stream<Item = StreamItem<T>> + Unpin,
+    S: Stream<Item = StreamItem<T>> + Unpin,
 {
-    use futures::StreamExt;
-    use tokio::time::{timeout, Duration};
-
     match timeout(Duration::from_millis(timeout_ms), stream.next()).await {
         Ok(Some(item)) => item,
         Ok(None) => panic!("Expected StreamItem but stream ended"),
-        Err(_) => panic!("Timeout: No item received within 500ms"),
+        Err(_) => panic!("Timeout: No item received within {} ms", timeout_ms),
     }
 }
 
@@ -159,7 +156,7 @@ pub async fn assert_no_element_emitted<S, T>(stream: &mut S, timeout_ms: u64)
 where
     S: Stream<Item = T> + Unpin,
 {
-    tokio::select! {
+    select! {
         _state = stream.next() => {
             panic!(
                 "Unexpected combination emitted, expected no output."
@@ -170,122 +167,62 @@ where
     }
 }
 
-/// Expect the next value from a stream, returning an error if none available
-///
-/// # Errors
-/// Returns an error if the stream ends before yielding the next item or the value mismatches.
-pub async fn expect_next_value<S>(stream: &mut S, expected: TestData) -> Result<()>
-where
-    S: Stream<Item = TestData> + Unpin,
-{
-    let item = stream
-        .next()
-        .await
-        .ok_or_else(|| FluxionError::stream_error("Expected next item but stream ended"))?;
-
-    if item == expected {
-        Ok(())
-    } else {
-        Err(FluxionError::stream_error(format!(
-            "Expected {expected:?}, got {item:?}"
-        )))
-    }
-}
-
-/// Expect the next value from a stream, panicking if none available (for backward compatibility)
-///
-/// # Panics
-/// Panics if the stream ends before yielding the next item.
-pub async fn expect_next_value_unchecked<S>(stream: &mut S, expected: TestData)
-where
-    S: Stream<Item = TestData> + Unpin,
-{
-    let item = stream.next().await.expect("expected next item");
-    assert_eq!(item, expected);
-}
-
-/// Expect the next timestamped value from a stream, returning an error if none available
-///
-/// # Errors
-/// Returns an error if the stream ends before yielding the next item or the value mismatches.
-pub async fn expect_next_timestamped<S>(stream: &mut S, expected: TestData) -> Result<()>
-where
-    S: Stream<Item = Sequenced<TestData>> + Unpin,
-{
-    let item = stream.next().await.ok_or_else(|| {
-        FluxionError::stream_error("Expected next timestamped item but stream ended")
-    })?;
-
-    if item.value == expected {
-        Ok(())
-    } else {
-        Err(FluxionError::stream_error(format!(
-            "Expected {expected:?}, got {:?}",
-            item.value
-        )))
-    }
-}
-
-/// Expect the next timestamped value from a stream, panicking if none available (for backward compatibility)
-///
-/// # Panics
-/// Panics if the stream ends before yielding the next item.
-pub async fn expect_next_timestamped_unchecked<S>(stream: &mut S, expected: TestData)
-where
-    S: Stream<Item = Sequenced<TestData>> + Unpin,
-{
-    let item = stream.next().await.expect("expected next item");
-    assert_eq!(item.value, expected);
-}
-
-/// Expect the next pair from a `with_latest_from` stream, returning an error if none available
-///
-/// # Errors
-/// Returns an error if the stream ends before yielding the next pair or the values mismatch.
-pub async fn expect_next_pair<S>(
-    stream: &mut S,
-    expected_left: TestData,
-    expected_right: TestData,
-) -> Result<()>
-where
-    S: Stream<Item = (Sequenced<TestData>, Sequenced<TestData>)> + Unpin,
-{
-    let (left, right) = stream
-        .next()
-        .await
-        .ok_or_else(|| FluxionError::stream_error("Expected next pair but stream ended"))?;
-
-    if left.value == expected_left && right.value == expected_right {
-        Ok(())
-    } else {
-        Err(FluxionError::stream_error(format!(
-            "Expected ({expected_left:?}, {expected_right:?}), got ({:?}, {:?})",
-            left.value, right.value
-        )))
-    }
-}
-
-/// Expect the next pair from a `with_latest_from` stream, panicking if none available (for backward compatibility)
-///
-/// # Panics
-/// Panics if the stream ends before yielding the next pair.
-pub async fn expect_next_pair_unchecked<S>(
-    stream: &mut S,
-    expected_left: TestData,
-    expected_right: TestData,
-) where
-    S: Stream<Item = (Sequenced<TestData>, Sequenced<TestData>)> + Unpin,
-{
-    let (left, right) = stream.next().await.expect("expected next pair");
-    assert_eq!((left.value, right.value), (expected_left, expected_right));
-}
-
 /// Macro to wrap test bodies with timeout to prevent hanging tests
 #[macro_export]
 macro_rules! with_timeout {
     ($test_body:expr) => {
-        tokio::time::timeout(std::time::Duration::from_secs(5), async { $test_body })
+        timeout(Duration::from_secs(5), async { $test_body })
             .await
             .expect("Test timed out after 5 seconds")
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fluxion_core::FluxionError;
+
+    #[tokio::test]
+    async fn test_assert_no_element_emitted() {
+        let (_tx, mut stream) = test_channel::<i32>();
+
+        // This should pass as no elements are sent
+        assert_no_element_emitted(&mut stream, 100).await;
+    }
+
+    #[tokio::test]
+    #[should_panic = "Timeout: No item received within 100 ms"]
+    async fn test_unwrap_stream_timeout() {
+        let (_tx, mut stream) = test_channel::<i32>();
+
+        // This should panic due to timeout
+        unwrap_stream(&mut stream, 100).await;
+    }
+
+    #[tokio::test]
+    #[should_panic = "Expected StreamItem but stream ended"]
+    async fn test_unwrap_stream_empty() {
+        let (tx, mut stream) = test_channel::<i32>();
+
+        // Close the stream immediately
+        drop(tx);
+
+        // This should panic because the stream ends
+        unwrap_stream(&mut stream, 500).await;
+    }
+
+    #[tokio::test]
+    #[should_panic = "Expected Value but got Error: Stream processing error: injected error"]
+    async fn test_unwrap_stream_error_injected() {
+        let (tx, mut stream) = test_channel_with_errors::<i32>();
+
+        tx.send(StreamItem::Error(FluxionError::stream_error(
+            "injected error",
+        )))
+        .unwrap();
+
+        // This should panic because unwrap_value expects a Value
+        let item = unwrap_stream(&mut stream, 500).await;
+        unwrap_value(Some(item));
+    }
 }

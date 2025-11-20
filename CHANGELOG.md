@@ -8,17 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **API**: New `UnboundedReceiverExt::into_fluxion_stream` extension trait for transforming `UnboundedReceiver<T>` to `FluxionStream<U>`
-  - Provides type erasure via boxing to enable combining receivers of different types
-  - Returns `FluxionStream<Pin<Box<dyn Stream + Send + Sync>>>` for easy composition
-  - Enables clean stream aggregation patterns (see `examples/stream-aggregation`)
-- **Testing**: Comprehensive integration tests for `UnboundedReceiverExt` (8 test cases covering transformation, ordering, combining, and high-volume scenarios)
-- **Testing**: New test helper `unwrap_stream` in `fluxion-test-utils` for async stream assertions with timeout
-- **Testing**: New test helper `assert_no_element_emitted` for verifying stream completion
+- **CI/CD**: Integrated Tarpaulin for code coverage tracking in CI pipeline
+- **Testing**: Added comprehensive unit tests for `channel_ext` module
+- **Testing**: Added missing test coverage across multiple modules
+- **Documentation**: Expanded test documentation with links to example files
+- **Documentation**: Added self-contained examples for `subscribe_async` and `subscribe_latest_async`
+  - Examples demonstrate sequential processing and burst cancellation patterns
+  - Include inline data structures for easy understanding
 
 ### Changed
-- **Examples**: Simplified `stream-aggregation` example using `into_fluxion_stream` - removed manual boxing and type annotations
-- **Testing**: Re-exported `unwrap_stream` helper from `fluxion-test-utils` crate root for easier imports
+- **Testing**: Consolidated and cleaned up test suite organization
+  - Merged duplicate test files and removed redundant tests
+  - Simplified test code for better maintainability
+  - Improved test naming conventions for clarity
+- **Documentation**: Fixed all doc tests in `fluxion-exec` crate
+  - Replaced `tokio_test::block_on` with `#[tokio::main]` for self-contained examples
+  - All 8 doc tests now compile and run successfully
+- **Testing**: Refactored tests to use create/compose/send/next pattern for stream composition
+- **Documentation**: Enhanced README with automated example synchronization
+  - Added subscribe_async_example and subscribe_latest_async_example
+  - Dependencies automatically extracted from test files and synced to README
+
+### Fixed
+- **Tests**: Fixed fundamental test failures in core functionality
+- **Tests**: Resolved Tarpaulin integration issues in CI
+- **API**: Fixed bad design issue in `channel_ext` module
+- **Documentation**: Corrected doc test compilation errors
 
 ## [0.2.1] - 2025-11-18
 
