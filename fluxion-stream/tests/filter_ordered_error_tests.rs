@@ -4,21 +4,21 @@
 
 //! Error propagation tests for `filter_ordered` operator.
 
-use fluxion_core::Timestamped as TimestampedTrait;
+use fluxion_core::Timestamped;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::FluxionStream;
-use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, Timestamped};
+use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, ChronoTimestamped};
 use futures::StreamExt;
 
 #[tokio::test]
 async fn test_filter_ordered_propagates_errors() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut result = FluxionStream::new(stream).filter_ordered(|x| x % 2 == 0);
 
     // Act & Assert: First item (1) filtered out
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(1, 1)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(1, 1)))?;
 
     // Error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
@@ -28,7 +28,7 @@ async fn test_filter_ordered_propagates_errors() -> anyhow::Result<()> {
     ));
 
     // Value that passes filter
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(2, 2)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(2, 2)))?;
 
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -36,10 +36,10 @@ async fn test_filter_ordered_propagates_errors() -> anyhow::Result<()> {
     ));
 
     // Value filtered out
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(3, 3)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(3, 3)))?;
 
     // Value that passes
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(4, 4)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(4, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if *v.inner() == 4
@@ -53,14 +53,14 @@ async fn test_filter_ordered_propagates_errors() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_filter_ordered_predicate_after_error() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     // Only pass values > 18
     let mut result = FluxionStream::new(stream).filter_ordered(|x| *x > 18);
 
     // Values that don't pass
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 1)))?;
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(15, 2)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 1)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(15, 2)))?;
 
     // Error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
@@ -70,19 +70,19 @@ async fn test_filter_ordered_predicate_after_error() -> anyhow::Result<()> {
     ));
 
     // Values that pass filter
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(20, 3)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(20, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if *v.inner() == 20
     ));
 
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(25, 4)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(25, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if *v.inner() == 25
     ));
 
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(30, 5)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(30, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if *v.inner() == 30
@@ -96,7 +96,7 @@ async fn test_filter_ordered_predicate_after_error() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_filter_ordered_error_at_start() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut result = FluxionStream::new(stream).filter_ordered(|x| *x > 1);
 
@@ -108,13 +108,13 @@ async fn test_filter_ordered_error_at_start() -> anyhow::Result<()> {
     ));
 
     // Filtered values
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(2, 2)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(2, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if *v.inner() == 2
     ));
 
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(3, 3)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(3, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if *v.inner() == 3
@@ -128,12 +128,12 @@ async fn test_filter_ordered_error_at_start() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_filter_ordered_all_filtered_except_error() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut result = FluxionStream::new(stream).filter_ordered(|x| x % 2 == 0);
 
     // Act & Assert: Send odd number (filtered)
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(1, 1)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(1, 1)))?;
 
     // Error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
@@ -143,7 +143,7 @@ async fn test_filter_ordered_all_filtered_except_error() -> anyhow::Result<()> {
     ));
 
     // More odd numbers (filtered)
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(5, 3)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(5, 3)))?;
 
     // Close stream
     drop(tx);
@@ -157,7 +157,7 @@ async fn test_filter_ordered_all_filtered_except_error() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_filter_ordered_chain_with_map_after_error() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     // Chain filter and map
     let mut result = FluxionStream::new(stream)
@@ -166,7 +166,7 @@ async fn test_filter_ordered_chain_with_map_after_error() -> anyhow::Result<()> 
         .map_ordered(|x| x.current.inner() / 10);
 
     // Act & Assert: Send values
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 1)))?; // Filtered
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 1)))?; // Filtered
 
     // Error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
@@ -176,13 +176,13 @@ async fn test_filter_ordered_chain_with_map_after_error() -> anyhow::Result<()> 
     ));
 
     // Values that pass filter
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(20, 2)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(20, 2)))?;
     assert!(matches!(result.next().await.unwrap(), StreamItem::Value(2)));
 
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(30, 3)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(30, 3)))?;
     assert!(matches!(result.next().await.unwrap(), StreamItem::Value(3)));
 
-    tx.send(StreamItem::Value(Timestamped::with_timestamp(40, 4)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(40, 4)))?;
     assert!(matches!(result.next().await.unwrap(), StreamItem::Value(4)));
 
     drop(tx);

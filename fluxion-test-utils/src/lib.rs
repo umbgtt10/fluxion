@@ -26,7 +26,7 @@
 //!
 //! ```rust
 //! use fluxion_test_utils::Timestamped;
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //! let item = Timestamped::new(42);  // Auto-timestamped with current time
 //! assert_eq!(item.value, 42);
 //! // Timestamps use chrono::Utc::now()
@@ -64,7 +64,7 @@
 //!
 //! ```rust
 //! use fluxion_test_utils::Timestamped;
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //!
 //! // Create timestamped values with explicit ordering
 //! let first = Timestamped::with_timestamp(100, 1);
@@ -101,23 +101,23 @@
 
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 pub mod animal;
+pub mod chrono_timestamped;
 pub mod error_injection;
 pub mod helpers;
 pub mod person;
 pub mod plant;
 pub mod test_data;
-pub mod timestamped;
 
 // Re-export commonly used test utilities
+pub use chrono_timestamped::ChronoTimestamped;
 pub use error_injection::ErrorInjectingStream;
 pub use helpers::{
     assert_no_element_emitted, test_channel, test_channel_with_errors, unwrap_stream, unwrap_value,
 };
 pub use test_data::{DataVariant, TestData};
-pub use timestamped::Timestamped;
 
 // Legacy alias for backward compatibility - use Timestamped directly
 pub mod sequenced {
     #[deprecated(since = "0.1.0", note = "Use `Timestamped` instead")]
-    pub use super::timestamped::Timestamped as Sequenced;
+    pub use super::chrono_timestamped::ChronoTimestamped as Sequenced;
 }

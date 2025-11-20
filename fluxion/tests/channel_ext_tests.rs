@@ -4,7 +4,7 @@
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 use fluxion_core::StreamItem;
-use fluxion_core::Timestamped as TimestampedTrait;
+use fluxion_core::Timestamped;
 use fluxion_rx::prelude::*;
 use fluxion_test_utils::{assert_no_element_emitted, helpers::unwrap_stream};
 use futures::StreamExt;
@@ -19,7 +19,7 @@ mod no_coverage_helpers {
         pub temperature: i32,
     }
 
-    impl TimestampedTrait for SensorReading {
+    impl Timestamped for SensorReading {
         type Inner = Self;
         type Timestamp = u64;
         fn timestamp(&self) -> Self::Timestamp {
@@ -42,7 +42,7 @@ mod no_coverage_helpers {
         pub code: i32,
     }
 
-    impl TimestampedTrait for StatusUpdate {
+    impl Timestamped for StatusUpdate {
         type Inner = Self;
         type Timestamp = u64;
         fn timestamp(&self) -> Self::Timestamp {
@@ -65,7 +65,7 @@ mod no_coverage_helpers {
         Status(StatusUpdate),
     }
 
-    impl TimestampedTrait for CombinedEvent {
+    impl Timestamped for CombinedEvent {
         type Inner = Self;
         type Timestamp = u64;
         fn timestamp(&self) -> Self::Timestamp {

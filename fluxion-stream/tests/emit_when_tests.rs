@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::Timestamped as TimestampedTrait;
+use fluxion_core::Timestamped;
 use fluxion_stream::emit_when::EmitWhenExt;
 use fluxion_stream::CombinedState;
-use fluxion_test_utils::Timestamped;
+use fluxion_test_utils::ChronoTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -22,8 +22,8 @@ async fn test_emit_when_empty_streams() -> anyhow::Result<()> {
     // Arrange
     let filter_fn = |_: &CombinedState<TestData>| -> bool { true };
 
-    let (source_tx, source_stream) = test_channel::<Timestamped<TestData>>();
-    let (filter_tx, filter_stream) = test_channel::<Timestamped<TestData>>();
+    let (source_tx, source_stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (filter_tx, filter_stream) = test_channel::<ChronoTimestamped<TestData>>();
     drop(source_tx);
     drop(filter_tx);
 
@@ -61,8 +61,8 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Alice age=25, Dog legs=4 => 25 > 4 = true
-    source_tx.send(Timestamped::new(person_alice()))?;
-    filter_tx.send(Timestamped::new(animal_dog()))?;
+    source_tx.send(ChronoTimestamped::new(person_alice()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_dog()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -73,7 +73,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
     );
 
     // Act: Update filter to spider (8 legs), still alice age=25 => 25 > 8 = true
-    filter_tx.send(Timestamped::new(animal_spider()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_spider()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -84,7 +84,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
     );
 
     // Act: Update filter to ant (6 legs), still alice => 25 > 6 = true
-    filter_tx.send(Timestamped::new(animal_ant()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_ant()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -119,8 +119,8 @@ async fn test_emit_when_threshold_comparison() -> anyhow::Result<()> {
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Rose height=15, Sunflower height=180 => diff=165 > 50 = true
-    source_tx.send(Timestamped::new(plant_rose()))?;
-    filter_tx.send(Timestamped::new(plant_sunflower()))?;
+    source_tx.send(ChronoTimestamped::new(plant_rose()))?;
+    filter_tx.send(ChronoTimestamped::new(plant_sunflower()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -131,7 +131,7 @@ async fn test_emit_when_threshold_comparison() -> anyhow::Result<()> {
     );
 
     // Act: Update source to Sunflower => diff=0 < 50 = false
-    source_tx.send(Timestamped::new(plant_sunflower()))?;
+    source_tx.send(ChronoTimestamped::new(plant_sunflower()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -161,8 +161,8 @@ async fn test_emit_when_name_length_comparison() -> anyhow::Result<()> {
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Charlie (7) > Dog (3) = true
-    source_tx.send(Timestamped::new(person_charlie()))?;
-    filter_tx.send(Timestamped::new(animal_dog()))?;
+    source_tx.send(ChronoTimestamped::new(person_charlie()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_dog()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -173,13 +173,13 @@ async fn test_emit_when_name_length_comparison() -> anyhow::Result<()> {
     );
 
     // Act: Bob (3) > Dog (3) = false
-    source_tx.send(Timestamped::new(person_bob()))?;
+    source_tx.send(ChronoTimestamped::new(person_bob()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Update filter to Cat (3), Bob (3) > Cat (3) = false
-    filter_tx.send(Timestamped::new(animal_cat()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_cat()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -209,16 +209,16 @@ async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Res
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Setup filter first - Dog with 4 legs
-    filter_tx.send(Timestamped::new(animal_dog()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_dog()))?;
 
     // Act: Alice age=25 (odd) > 4 but not even => false
-    source_tx.send(Timestamped::new(person_alice()))?;
+    source_tx.send(ChronoTimestamped::new(person_alice()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Bob age=30 (even) > 4 => true
-    source_tx.send(Timestamped::new(person_bob()))?;
+    source_tx.send(ChronoTimestamped::new(person_bob()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -229,7 +229,7 @@ async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Res
     );
 
     // Act: Dave age=28 (even) > 4 => true
-    source_tx.send(Timestamped::new(person_dave()))?;
+    source_tx.send(ChronoTimestamped::new(person_dave()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -240,7 +240,7 @@ async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Res
     );
 
     // Act: Charlie age=35 (odd) => false
-    source_tx.send(Timestamped::new(person_charlie()))?;
+    source_tx.send(ChronoTimestamped::new(person_charlie()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -271,16 +271,16 @@ async fn test_emit_when_stateful_comparison() -> anyhow::Result<()> {
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Set threshold to Bob age=30
-    filter_tx.send(Timestamped::new(person_bob()))?;
+    filter_tx.send(ChronoTimestamped::new(person_bob()))?;
 
     // Act: Alice age=25 <= 30 = false
-    source_tx.send(Timestamped::new(person_alice()))?;
+    source_tx.send(ChronoTimestamped::new(person_alice()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Charlie age=35 > 30 = true
-    source_tx.send(Timestamped::new(person_charlie()))?;
+    source_tx.send(ChronoTimestamped::new(person_charlie()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -291,7 +291,7 @@ async fn test_emit_when_stateful_comparison() -> anyhow::Result<()> {
     );
 
     // Act: Diane age=40 > 30 = true
-    source_tx.send(Timestamped::new(person_diane()))?;
+    source_tx.send(ChronoTimestamped::new(person_diane()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -302,13 +302,13 @@ async fn test_emit_when_stateful_comparison() -> anyhow::Result<()> {
     );
 
     // Act: Raise threshold to Diane age=40
-    filter_tx.send(Timestamped::new(person_diane()))?;
+    filter_tx.send(ChronoTimestamped::new(person_diane()))?;
 
     // Assert: Diane (40) > 40 = false, so no new emission
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Send Bob age=30 as new source => 30 > 40 = false
-    source_tx.send(Timestamped::new(person_bob()))?;
+    source_tx.send(ChronoTimestamped::new(person_bob()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -330,8 +330,8 @@ async fn test_emit_when_filter_stream_closes() -> anyhow::Result<()> {
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Establish both values
-    source_tx.send(Timestamped::new(person_alice()))?;
-    filter_tx.send(Timestamped::new(animal_dog()))?;
+    source_tx.send(ChronoTimestamped::new(person_alice()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_dog()))?;
 
     // Assert: Should emit
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -341,7 +341,7 @@ async fn test_emit_when_filter_stream_closes() -> anyhow::Result<()> {
     drop(filter_tx);
 
     // Act: Update source
-    source_tx.send(Timestamped::new(person_bob()))?;
+    source_tx.send(ChronoTimestamped::new(person_bob()))?;
 
     // Assert: Should still emit using last known filter value
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -369,13 +369,13 @@ async fn test_emit_when_both_values_required() -> anyhow::Result<()> {
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Send only source, no filter yet
-    source_tx.send(Timestamped::new(person_alice()))?;
+    source_tx.send(ChronoTimestamped::new(person_alice()))?;
 
     // Assert: Nothing emitted yet (no filter value)
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Now send filter
-    filter_tx.send(Timestamped::new(animal_dog()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_dog()))?;
 
     // Assert: Now it should emit
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -409,21 +409,21 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() -> anyhow::
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Alice age=25, Bird legs=2 => 25 >= 20 = true
-    source_tx.send(Timestamped::new(person_alice()))?;
-    filter_tx.send(Timestamped::new(animal_bird()))?;
+    source_tx.send(ChronoTimestamped::new(person_alice()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_bird()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(emitted_item.inner(), &person_alice());
 
     // Act: Update filter to Dog legs=4 => 25 >= 40 = false
-    filter_tx.send(Timestamped::new(animal_dog()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_dog()))?;
 
     // Assert: No emission because condition now false
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Update filter back to Bird => 25 >= 20 = true
-    filter_tx.send(Timestamped::new(animal_bird()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_bird()))?;
 
     // Assert: Should emit again
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -454,20 +454,20 @@ async fn test_emit_when_delta_based_filtering() -> anyhow::Result<()> {
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Alice age=25, Bob age=30 => diff=5 <= 10 = false
-    source_tx.send(Timestamped::new(person_alice()))?;
-    filter_tx.send(Timestamped::new(person_bob()))?;
+    source_tx.send(ChronoTimestamped::new(person_alice()))?;
+    filter_tx.send(ChronoTimestamped::new(person_bob()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Update source to Diane age=40 => diff=10 (not > 10) = false
-    source_tx.send(Timestamped::new(person_diane()))?;
+    source_tx.send(ChronoTimestamped::new(person_diane()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Update filter to Alice age=25 => diff=15 > 10 = true
-    filter_tx.send(Timestamped::new(person_alice()))?;
+    filter_tx.send(ChronoTimestamped::new(person_alice()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -502,20 +502,20 @@ async fn test_emit_when_cross_type_comparison() -> anyhow::Result<()> {
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Dog legs=4, Alice age=25 => 4 != 25 = false
-    source_tx.send(Timestamped::new(animal_dog()))?;
-    filter_tx.send(Timestamped::new(person_alice()))?;
+    source_tx.send(ChronoTimestamped::new(animal_dog()))?;
+    filter_tx.send(ChronoTimestamped::new(person_alice()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Update source to Spider legs=8, still Alice => 8 != 25 = false
-    source_tx.send(Timestamped::new(animal_spider()))?;
+    source_tx.send(ChronoTimestamped::new(animal_spider()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Update source to Ant legs=6, still Alice => 6 != 25 = false
-    source_tx.send(Timestamped::new(animal_ant()))?;
+    source_tx.send(ChronoTimestamped::new(animal_ant()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
@@ -534,8 +534,8 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Establish both values
-    source_tx.send(Timestamped::new(person_alice()))?;
-    filter_tx.send(Timestamped::new(animal_dog()))?;
+    source_tx.send(ChronoTimestamped::new(person_alice()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_dog()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -545,7 +545,7 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
     drop(source_tx);
 
     // Act: Update filter
-    filter_tx.send(Timestamped::new(animal_cat()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_cat()))?;
 
     // Assert: Should emit latest source value
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -556,7 +556,7 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
     );
 
     // Act: Update filter again
-    filter_tx.send(Timestamped::new(animal_spider()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_spider()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -578,8 +578,12 @@ async fn test_emit_when_filter_panics() {
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act
-    source_tx.send(Timestamped::new(person_alice())).unwrap();
-    filter_tx.send(Timestamped::new(animal_dog())).unwrap();
+    source_tx
+        .send(ChronoTimestamped::new(person_alice()))
+        .unwrap();
+    filter_tx
+        .send(ChronoTimestamped::new(animal_dog()))
+        .unwrap();
 
     // Assert: Should panic when filter is evaluated
     let _ = output_stream.next().await;
@@ -612,28 +616,28 @@ async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act: Diane age=40 (even), Dog legs=4 => 40 % 4 = 0 ✓
-    source_tx.send(Timestamped::new(person_diane()))?;
-    filter_tx.send(Timestamped::new(animal_dog()))?;
+    source_tx.send(ChronoTimestamped::new(person_diane()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_dog()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(emitted_item.inner(), &person_diane());
 
     // Act: Bob age=30 (even), Dog legs=4 => 30 % 4 = 2 ✗
-    source_tx.send(Timestamped::new(person_bob()))?;
+    source_tx.send(ChronoTimestamped::new(person_bob()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Update filter to Ant legs=6 => 30 % 6 = 0 ✓
-    filter_tx.send(Timestamped::new(animal_ant()))?;
+    filter_tx.send(ChronoTimestamped::new(animal_ant()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(emitted_item.inner(), &person_bob());
 
     // Act: Alice age=25 (odd) => fails even check ✗
-    source_tx.send(Timestamped::new(person_alice()))?;
+    source_tx.send(ChronoTimestamped::new(person_alice()))?;
 
     // Assert
     assert_no_element_emitted(&mut output_stream, 100).await;

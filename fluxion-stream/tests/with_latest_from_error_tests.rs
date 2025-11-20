@@ -4,11 +4,11 @@
 
 //! Error propagation tests for `with_latest_from` operator.
 
-use fluxion_core::Timestamped as TimestampedTrait;
+use fluxion_core::Timestamped;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::{CombinedState, WithLatestFromExt};
 use fluxion_test_utils::{
-    assert_no_element_emitted, test_channel_with_errors, unwrap_stream, Timestamped,
+    assert_no_element_emitted, test_channel_with_errors, unwrap_stream, ChronoTimestamped,
 };
 
 // Test wrapper that satisfies Inner = Self for selector return types
@@ -24,7 +24,7 @@ impl<T> TestWrapper<T> {
     }
 }
 
-impl<T> TimestampedTrait for TestWrapper<T>
+impl<T> Timestamped for TestWrapper<T>
 where
     T: Clone + Send + Sync + 'static,
 {
@@ -57,8 +57,8 @@ where
 #[tokio::test]
 async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> {
     // Arrange
-    let (primary_tx, primary_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (secondary_tx, secondary_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (primary_tx, primary_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (secondary_tx, secondary_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut result = primary_stream
         .with_latest_from(secondary_stream, |state: &CombinedState<i32, u64>| {
@@ -66,9 +66,9 @@ async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> 
         });
 
     // Act & Assert: Send secondary first (required for with_latest_from)
-    secondary_tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 1)))?;
+    secondary_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 1)))?;
     assert_no_element_emitted(&mut result, 100).await;
-    primary_tx.send(StreamItem::Value(Timestamped::with_timestamp(1, 2)))?;
+    primary_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(1, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -84,7 +84,7 @@ async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> 
     );
 
     // Continue with more values
-    primary_tx.send(StreamItem::Value(Timestamped::with_timestamp(3, 4)))?;
+    primary_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(3, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -99,8 +99,8 @@ async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> 
 #[tokio::test]
 async fn test_with_latest_from_propagates_secondary_error() -> anyhow::Result<()> {
     // Arrange
-    let (primary_tx, primary_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (secondary_tx, secondary_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (primary_tx, primary_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (secondary_tx, secondary_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut result = primary_stream
         .with_latest_from(secondary_stream, |state: &CombinedState<i32, u64>| {
@@ -108,9 +108,9 @@ async fn test_with_latest_from_propagates_secondary_error() -> anyhow::Result<()
         });
 
     // Act: Send secondary value first
-    secondary_tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 1)))?;
+    secondary_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 1)))?;
     assert_no_element_emitted(&mut result, 100).await;
-    primary_tx.send(StreamItem::Value(Timestamped::with_timestamp(1, 2)))?;
+    primary_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(1, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -126,9 +126,9 @@ async fn test_with_latest_from_propagates_secondary_error() -> anyhow::Result<()
     ));
 
     // Update secondary with new value
-    secondary_tx.send(StreamItem::Value(Timestamped::with_timestamp(30, 5)))?;
+    secondary_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(30, 5)))?;
     assert_no_element_emitted(&mut result, 100).await;
-    primary_tx.send(StreamItem::Value(Timestamped::with_timestamp(2, 6)))?;
+    primary_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(2, 6)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -143,8 +143,8 @@ async fn test_with_latest_from_propagates_secondary_error() -> anyhow::Result<()
 #[tokio::test]
 async fn test_with_latest_from_error_before_secondary_ready() -> anyhow::Result<()> {
     // Arrange
-    let (primary_tx, primary_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (secondary_tx, secondary_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (primary_tx, primary_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (secondary_tx, secondary_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut result = primary_stream
         .with_latest_from(secondary_stream, |state: &CombinedState<i32, u64>| {
@@ -169,16 +169,16 @@ async fn test_with_latest_from_error_before_secondary_ready() -> anyhow::Result<
 #[tokio::test]
 async fn test_with_latest_from_selector_continues_after_error() -> anyhow::Result<()> {
     // Arrange
-    let (primary_tx, primary_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (secondary_tx, secondary_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (primary_tx, primary_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (secondary_tx, secondary_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     // Custom selector - pass through combined state
     let mut result = primary_stream.with_latest_from(secondary_stream, |combined| combined.clone());
 
     // Act & Assert: Send secondary first
-    secondary_tx.send(StreamItem::Value(Timestamped::with_timestamp(100, 1)))?;
+    secondary_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(100, 1)))?;
     assert_no_element_emitted(&mut result, 100).await;
-    primary_tx.send(StreamItem::Value(Timestamped::with_timestamp(1, 2)))?;
+    primary_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(1, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -192,9 +192,9 @@ async fn test_with_latest_from_selector_continues_after_error() -> anyhow::Resul
     ));
 
     // Update secondary
-    secondary_tx.send(StreamItem::Value(Timestamped::with_timestamp(200, 4)))?;
+    secondary_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(200, 4)))?;
     assert_no_element_emitted(&mut result, 100).await;
-    primary_tx.send(StreamItem::Value(Timestamped::with_timestamp(3, 5)))?;
+    primary_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(3, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)

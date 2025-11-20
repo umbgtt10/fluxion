@@ -4,27 +4,27 @@
 
 //! Error propagation tests for `emit_when` operator.
 
-use fluxion_core::Timestamped as TimestampedTrait;
+use fluxion_core::Timestamped;
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::EmitWhenExt;
-use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, Timestamped};
+use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, ChronoTimestamped};
 use futures::StreamExt;
 
 #[tokio::test]
 async fn test_emit_when_propagates_source_error() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (filter_tx, filter_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (source_tx, source_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (filter_tx, filter_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 
     // Act
-    filter_tx.send(StreamItem::Value(Timestamped::with_timestamp(15, 1)))?;
+    filter_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(15, 1)))?;
 
     // Send source value
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 2)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 2)))?;
 
     // Send error in source
     source_tx.send(StreamItem::Error(FluxionError::stream_error(
@@ -38,7 +38,7 @@ async fn test_emit_when_propagates_source_error() -> anyhow::Result<()> {
     ));
 
     // Continue with value
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(30, 3)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(30, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -53,17 +53,17 @@ async fn test_emit_when_propagates_source_error() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_emit_when_propagates_filter_error() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (filter_tx, filter_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (source_tx, source_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (filter_tx, filter_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 
     // Act
-    filter_tx.send(StreamItem::Value(Timestamped::with_timestamp(5, 1)))?;
+    filter_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(5, 1)))?;
 
     // Send source value
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 2)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 2)))?;
 
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -81,8 +81,8 @@ async fn test_emit_when_propagates_filter_error() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
-    filter_tx.send(StreamItem::Value(Timestamped::with_timestamp(15, 4)))?;
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(20, 3)))?;
+    filter_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(15, 4)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(20, 3)))?;
 
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -98,18 +98,18 @@ async fn test_emit_when_propagates_filter_error() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_emit_when_predicate_continues_after_error() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (filter_tx, filter_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (source_tx, source_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (filter_tx, filter_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     // Only emit when source > filter
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 
     // Send filter value
-    filter_tx.send(StreamItem::Value(Timestamped::with_timestamp(15, 1)))?;
+    filter_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(15, 1)))?;
 
     // Send source value (doesn't pass predicate)
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 2)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 2)))?;
 
     // Send error in source
     source_tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
@@ -119,8 +119,8 @@ async fn test_emit_when_predicate_continues_after_error() -> anyhow::Result<()> 
     ));
 
     // Send value that passes predicate
-    filter_tx.send(StreamItem::Value(Timestamped::with_timestamp(25, 4)))?;
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(30, 5)))?;
+    filter_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(25, 4)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(30, 5)))?;
 
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -136,15 +136,15 @@ async fn test_emit_when_predicate_continues_after_error() -> anyhow::Result<()> 
 #[tokio::test]
 async fn test_emit_when_both_streams_have_errors() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (filter_tx, filter_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (source_tx, source_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (filter_tx, filter_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 
     // Act & Assert: Send initial values
-    filter_tx.send(StreamItem::Value(Timestamped::with_timestamp(5, 1)))?;
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 2)))?;
+    filter_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(5, 1)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -175,8 +175,8 @@ async fn test_emit_when_both_streams_have_errors() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_emit_when_error_before_filter_ready() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (filter_tx, filter_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (source_tx, source_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (filter_tx, filter_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
@@ -189,8 +189,8 @@ async fn test_emit_when_error_before_filter_ready() -> anyhow::Result<()> {
     ));
 
     // Continue
-    filter_tx.send(StreamItem::Value(Timestamped::with_timestamp(5, 2)))?;
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 1)))?;
+    filter_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(5, 2)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 1)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)

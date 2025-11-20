@@ -4,28 +4,28 @@
 
 //! Error propagation tests for `take_latest_when` operator.
 
-use fluxion_core::Timestamped as TimestampedTrait;
+use fluxion_core::Timestamped;
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::TakeLatestWhenExt;
 use fluxion_test_utils::{
-    assert_no_element_emitted, test_channel_with_errors, unwrap_stream, Timestamped,
+    assert_no_element_emitted, test_channel_with_errors, unwrap_stream, ChronoTimestamped,
 };
 
 #[tokio::test]
 async fn test_take_latest_when_propagates_source_error() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (trigger_tx, trigger_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (source_tx, source_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (trigger_tx, trigger_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |_| true);
 
     // Act & Assert: Send source values
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(1, 1)))?;
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(2, 2)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(1, 1)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(2, 2)))?;
 
     // Send trigger
-    trigger_tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 4)))?;
+    trigger_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
         StreamItem::Value(_)
@@ -41,8 +41,8 @@ async fn test_take_latest_when_propagates_source_error() -> anyhow::Result<()> {
     ));
 
     // Continue with values
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(3, 3)))?;
-    trigger_tx.send(StreamItem::Value(Timestamped::with_timestamp(20, 5)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(3, 3)))?;
+    trigger_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(20, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
         StreamItem::Value(_)
@@ -57,19 +57,19 @@ async fn test_take_latest_when_propagates_source_error() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_take_latest_when_propagates_trigger_error() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (trigger_tx, trigger_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (source_tx, source_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (trigger_tx, trigger_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |_| true);
 
     // Send source values
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(1, 1)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(1, 1)))?;
     assert_no_element_emitted(&mut triggered_stream, 500).await;
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(2, 2)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(2, 2)))?;
     assert_no_element_emitted(&mut triggered_stream, 500).await;
 
     // Send trigger
-    trigger_tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 3)))?;
+    trigger_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
         StreamItem::Value(_)
@@ -85,7 +85,7 @@ async fn test_take_latest_when_propagates_trigger_error() -> anyhow::Result<()> 
     ));
 
     // Continue
-    trigger_tx.send(StreamItem::Value(Timestamped::with_timestamp(30, 5)))?;
+    trigger_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(30, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
         StreamItem::Value(_)
@@ -100,16 +100,16 @@ async fn test_take_latest_when_propagates_trigger_error() -> anyhow::Result<()> 
 #[tokio::test]
 async fn test_take_latest_when_filter_predicate_after_error() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (trigger_tx, trigger_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (source_tx, source_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (trigger_tx, trigger_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     // Only emit when trigger is > 50
     let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |t| *t > 50);
 
     // Send source values
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(1, 1)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(1, 1)))?;
     assert_no_element_emitted(&mut triggered_stream, 500).await;
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(2, 2)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(2, 2)))?;
     assert_no_element_emitted(&mut triggered_stream, 500).await;
 
     // Send error in source
@@ -120,8 +120,8 @@ async fn test_take_latest_when_filter_predicate_after_error() -> anyhow::Result<
     ));
 
     // Send value and trigger that passes filter
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(3, 3)))?;
-    trigger_tx.send(StreamItem::Value(Timestamped::with_timestamp(100, 5)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(3, 3)))?;
+    trigger_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(100, 5)))?;
 
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
@@ -137,15 +137,15 @@ async fn test_take_latest_when_filter_predicate_after_error() -> anyhow::Result<
 #[tokio::test]
 async fn test_take_latest_when_both_streams_have_errors() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel_with_errors::<Timestamped<i32>>();
-    let (trigger_tx, trigger_stream) = test_channel_with_errors::<Timestamped<i32>>();
+    let (source_tx, source_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (trigger_tx, trigger_stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
 
     let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |_| true);
 
     // Send initial values
-    source_tx.send(StreamItem::Value(Timestamped::with_timestamp(1, 1)))?;
+    source_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(1, 1)))?;
     assert_no_element_emitted(&mut triggered_stream, 500).await;
-    trigger_tx.send(StreamItem::Value(Timestamped::with_timestamp(10, 2)))?;
+    trigger_tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
         StreamItem::Value(_)

@@ -22,14 +22,14 @@ use std::task::{Context, Poll};
 /// ```rust
 /// use fluxion_test_utils::Timestamped;
 /// use fluxion_test_utils::ErrorInjectingStream;
-/// use fluxion_core::{StreamItem, Timestamped as TimestampedTrait};
+/// use fluxion_core::{StreamItem, Timestamped };
 /// use futures::{stream, StreamExt};
 ///
 /// # async fn example() {
 /// let items = vec![
-///     <Timestamped<i32> as TimestampedTrait>::with_timestamp(1, 1),
-///     <Timestamped<i32> as TimestampedTrait>::with_timestamp(2, 2),
-///     <Timestamped<i32> as TimestampedTrait>::with_timestamp(3, 3),
+///     <Timestamped<i32> >::with_timestamp(1, 1),
+///     <Timestamped<i32> >::with_timestamp(2, 2),
+///     <Timestamped<i32> >::with_timestamp(3, 3),
 /// ];
 ///
 /// let base_stream = stream::iter(items);
@@ -116,16 +116,16 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Timestamped;
-    use fluxion_core::Timestamped as TimestampedTrait;
+    use crate::ChronoTimestamped;
+    use fluxion_core::Timestamped;
     use futures::{stream, StreamExt};
 
     #[tokio::test]
     async fn test_error_injection_at_position() {
         let items = vec![
-            <Timestamped<_> as TimestampedTrait>::with_timestamp(1, 1_000_000_000),
-            <Timestamped<_> as TimestampedTrait>::with_timestamp(2, 2_000_000_000),
-            <Timestamped<_> as TimestampedTrait>::with_timestamp(3, 3_000_000_000),
+            <ChronoTimestamped<_>>::with_timestamp(1, 1_000_000_000),
+            <ChronoTimestamped<_>>::with_timestamp(2, 2_000_000_000),
+            <ChronoTimestamped<_>>::with_timestamp(3, 3_000_000_000),
         ];
 
         let base_stream = stream::iter(items);
@@ -146,10 +146,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_error_injection_at_start() {
-        let items = vec![<Timestamped<_> as TimestampedTrait>::with_timestamp(
-            1,
-            1_000_000_000,
-        )];
+        let items = vec![<ChronoTimestamped<_>>::with_timestamp(1, 1_000_000_000)];
         let base_stream = stream::iter(items);
         let mut error_stream = ErrorInjectingStream::new(base_stream, 0);
 

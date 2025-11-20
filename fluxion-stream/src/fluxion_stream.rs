@@ -126,7 +126,7 @@ where
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
     /// use fluxion_test_utils::{Timestamped, test_channel};
-    /// use fluxion_core::Timestamped as TimestampedTrait;
+    /// use fluxion_core::Timestamped ;
     /// use futures::StreamExt;
     ///
     /// # #[tokio::main]
@@ -209,7 +209,7 @@ where
     /// ```rust
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped as TimestampedTrait;
+    /// use fluxion_core::Timestamped ;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -285,7 +285,7 @@ where
     /// ```rust
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped as TimestampedTrait;
+    /// use fluxion_core::Timestamped ;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -360,7 +360,7 @@ where
     /// ```rust
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped as TimestampedTrait;
+    /// use fluxion_core::Timestamped ;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -434,7 +434,7 @@ where
     /// ```rust
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped as TimestampedTrait;
+    /// use fluxion_core::Timestamped ;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -519,7 +519,7 @@ where
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombinedState};
     /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped as TimestampedTrait;
+    /// use fluxion_core::Timestamped ;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -594,7 +594,7 @@ where
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombinedState};
     /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped as TimestampedTrait;
+    /// use fluxion_core::Timestamped ;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -682,7 +682,7 @@ where
     /// ```rust
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped as TimestampedTrait;
+    /// use fluxion_core::Timestamped ;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -761,7 +761,7 @@ where
     /// ```rust
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped as TimestampedTrait;
+    /// use fluxion_core::Timestamped ;
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///

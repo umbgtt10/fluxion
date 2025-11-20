@@ -211,7 +211,7 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, WithLatestFromExt};
 //! use fluxion_test_utils::Timestamped;
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
@@ -275,7 +275,7 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
 //! use fluxion_test_utils::Timestamped;
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
@@ -312,7 +312,7 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, EmitWhenExt};
 //! use fluxion_test_utils::Timestamped;
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
@@ -402,7 +402,7 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineWithPreviousExt, TakeLatestWhenExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -430,7 +430,7 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream};
 //! use fluxion_test_utils::{Timestamped, test_channel};
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -456,7 +456,7 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -496,7 +496,7 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt, CombineWithPreviousExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -527,7 +527,7 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -560,7 +560,7 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, TakeWhileExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -589,7 +589,7 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt, TakeWhileExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
@@ -621,7 +621,7 @@
 //! ```rust
 //! use fluxion_stream::{FluxionStream, TakeLatestWhenExt, CombineWithPreviousExt};
 //! use fluxion_test_utils::{Timestamped, test_channel};
-//! use fluxion_core::Timestamped as TimestampedTrait;
+//! use fluxion_core::Timestamped ;
 //! use futures::StreamExt;
 //!
 //! async fn example() {

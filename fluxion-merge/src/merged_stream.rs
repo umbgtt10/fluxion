@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_ordered_merge::OrderedMergeExt;
-use fluxion_test_utils::Timestamped;
+use fluxion_test_utils::ChronoTimestamped;
 use futures::stream::{empty, Empty, Stream, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
@@ -55,17 +55,17 @@ where
         self,
         new_stream: NewStream,
         process_fn: F,
-    ) -> MergedStream<impl Stream<Item = Timestamped<T>>, State, Timestamped<T>>
+    ) -> MergedStream<impl Stream<Item = ChronoTimestamped<T>>, State, ChronoTimestamped<T>>
     where
-        NewStream: Stream<Item = Timestamped<NewItem>> + Send + Sync + 'static,
-        F: FnMut(Timestamped<NewItem>, &mut State) -> Timestamped<T>
+        NewStream: Stream<Item = ChronoTimestamped<NewItem>> + Send + Sync + 'static,
+        F: FnMut(ChronoTimestamped<NewItem>, &mut State) -> ChronoTimestamped<T>
             + Send
             + Sync
             + Clone
             + 'static,
         NewItem: Send + Sync + 'static,
         T: Send + Sync + Ord + Unpin + 'static,
-        Item: Into<Timestamped<T>>,
+        Item: Into<ChronoTimestamped<T>>,
     {
         let shared_state = Arc::clone(&self.state);
         let new_stream_mapped = new_stream.then(move |timestamped_item| {
@@ -81,9 +81,9 @@ where
 
         let merged_stream = vec![
             Box::pin(self_stream_mapped)
-                as Pin<Box<dyn Stream<Item = Timestamped<T>> + Send + Sync>>,
+                as Pin<Box<dyn Stream<Item = ChronoTimestamped<T>> + Send + Sync>>,
             Box::pin(new_stream_mapped)
-                as Pin<Box<dyn Stream<Item = Timestamped<T>> + Send + Sync>>,
+                as Pin<Box<dyn Stream<Item = ChronoTimestamped<T>> + Send + Sync>>,
         ]
         .ordered_merge();
 

@@ -80,7 +80,7 @@ where
     /// ```rust
     /// use fluxion_stream::{TakeWhileExt, FluxionStream};
     /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Timestamped as TimestampedTrait;
+    /// use fluxion_core::Timestamped ;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
