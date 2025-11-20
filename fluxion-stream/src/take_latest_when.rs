@@ -181,15 +181,12 @@ where
 
                                 // Now check the condition and potentially emit
                                 if filter(&filter_inner) {
-                                    if let Some(src) = source.as_ref() {
-                                        // Use the source value with the trigger's timestamp
-                                        Some(StreamItem::Value(T::with_timestamp(
+                                    source.as_ref().map(|src| {
+                                        StreamItem::Value(T::with_timestamp(
                                             src.clone().into_inner(),
                                             ordered_value.timestamp(),
-                                        )))
-                                    } else {
-                                        None
-                                    }
+                                        ))
+                                    })
                                 } else {
                                     None
                                 }
