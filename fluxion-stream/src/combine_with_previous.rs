@@ -4,7 +4,7 @@
 
 use crate::fluxion_stream::FluxionStream;
 use crate::types::WithPrevious;
-use fluxion_core::{Ordered, StreamItem};
+use fluxion_core::{StreamItem, Timestamped};
 use futures::{future::ready, Stream, StreamExt};
 
 /// Extension trait providing the `combine_with_previous` operator for ordered streams.
@@ -13,7 +13,7 @@ use futures::{future::ready, Stream, StreamExt};
 /// stateful processing and change detection.
 pub trait CombineWithPreviousExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: Ordered + Clone + Send + Sync + 'static,
+    T: Timestamped + Clone + Send + Sync + 'static,
 {
     /// Pairs each stream element with its previous element.
     ///
@@ -55,7 +55,6 @@ where
     /// use fluxion_stream::{CombineWithPreviousExt, FluxionStream};
     /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
-    /// use fluxion_core::Ordered;
     ///
     /// # async fn example() {
     /// // Create channel
@@ -97,7 +96,7 @@ where
 impl<T, S> CombineWithPreviousExt<T> for S
 where
     S: Stream<Item = StreamItem<T>> + Send + Sized + 'static,
-    T: Ordered + Clone + Send + Sync + 'static,
+    T: Timestamped + Clone + Send + Sync + 'static,
 {
     fn combine_with_previous(
         self,
@@ -115,4 +114,3 @@ where
         FluxionStream::new(result)
     }
 }
-

@@ -18,8 +18,9 @@ pub enum DataEvent {
 
 impl Timestamped for DataEvent {
     type Inner = DataEvent;
+    type Timestamp = u64;
 
-    fn timestamp(&self) -> u64 {
+    fn timestamp(&self) -> Self::Timestamp {
         match self {
             DataEvent::Sensor(s) => s.timestamp,
             DataEvent::Metric(m) => m.timestamp,
@@ -31,7 +32,7 @@ impl Timestamped for DataEvent {
         self
     }
 
-    fn with_timestamp(value: Self::Inner, _timestamp: u64) -> Self {
+    fn with_timestamp(value: Self::Inner, _timestamp: Self::Timestamp) -> Self {
         value // Just return the value since it already has the timestamp
     }
 

@@ -7,31 +7,30 @@ use futures::Stream;
 use std::fmt::Debug;
 use std::pin::Pin;
 
-use crate::Ordered;
-use fluxion_core::{into_stream::IntoStream, StreamItem};
+use fluxion_core::{into_stream::IntoStream, StreamItem, Timestamped};
 
 // Re-export low-level types from fluxion-ordered-merge
 pub use fluxion_ordered_merge::{OrderedMerge, OrderedMergeExt};
 
-/// Extension trait providing high-level ordered merge for `Ordered` streams.
+/// Extension trait providing high-level ordered merge for `Timestamped` streams.
 ///
-/// This trait merges multiple streams of ordered items, emitting all values from
+/// This trait merges multiple streams of timestamped items, emitting all values from
 /// all streams in temporal order. Unlike `combine_latest`, this emits every value
 /// from every stream (not just when all have emitted).
 pub trait OrderedStreamExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: Clone + Debug + Ordered + Ord + Send + Sync + Unpin + 'static,
+    T: Clone + Debug + Timestamped + Ord + Send + Sync + Unpin + 'static,
 {
     /// Merges multiple ordered streams, emitting all values in temporal order.
     ///
     /// This operator takes multiple streams and merges them into a single stream where
-    /// all values are emitted in order based on their `Ordered::order()` value. Every
+    /// all values are emitted in order based on their `Timestamped::timestamp()` value. Every
     /// value from every stream is emitted exactly once.
     ///
     /// # Behavior
     ///
     /// - Emits **all** values from all streams (unlike `combine_latest`)
-    /// - Values are ordered by their `Ordered::order()` timestamp
+    /// - Values are ordered by their `Timestamped::timestamp()` timestamp
     /// - Does not wait for all streams to emit before starting
     /// - Continues until all input streams are exhausted
     ///
@@ -66,7 +65,6 @@ where
     /// use fluxion_stream::{OrderedStreamExt, FluxionStream};
     /// use fluxion_test_utils::Timestamped;
     /// use futures::StreamExt;
-    /// use fluxion_core::Ordered;
     ///
     /// # async fn example() {
     /// // Create channels
@@ -113,7 +111,7 @@ where
 
 impl<T, S> OrderedStreamExt<T> for S
 where
-    T: Clone + Debug + Ordered + Ord + Send + Sync + Unpin + 'static,
+    T: Clone + Debug + Timestamped + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
 {
     fn ordered_merge<IS>(
@@ -135,4 +133,3 @@ where
         FluxionStream::new(result)
     }
 }
-

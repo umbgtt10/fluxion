@@ -7,7 +7,7 @@
 //! This module provides stream wrappers that can inject `StreamItem::Error` values
 //! into streams for testing error propagation behavior in stream operators.
 
-use fluxion_core::{FluxionError, Ordered, StreamItem};
+use fluxion_core::{FluxionError, StreamItem, Timestamped};
 use futures::Stream;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -85,7 +85,7 @@ impl<S> ErrorInjectingStream<S> {
 impl<S> Stream for ErrorInjectingStream<S>
 where
     S: Stream + Unpin,
-    S::Item: Ordered,
+    S::Item: Timestamped,
 {
     type Item = StreamItem<S::Item>;
 

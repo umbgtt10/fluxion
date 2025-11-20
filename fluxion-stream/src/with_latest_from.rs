@@ -9,10 +9,9 @@ use std::sync::{Arc, Mutex};
 
 use crate::ordered_merge::OrderedMergeExt;
 use crate::types::CombinedState;
-use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_error;
-use fluxion_core::{CompareByInner, OrderedWrapper, StreamItem, TimestampedWrapper};
+use fluxion_core::{CompareByInner, StreamItem, Timestamped};
 
 /// Extension trait providing the `with_latest_from` operator for ordered streams.
 ///
@@ -20,7 +19,7 @@ use fluxion_core::{CompareByInner, OrderedWrapper, StreamItem, TimestampedWrappe
 /// when the primary stream emits, using the latest value from the secondary stream.
 pub trait WithLatestFromExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
 {
     /// Combines elements from the primary stream (self) with the latest element from the secondary stream (other).
@@ -44,7 +43,7 @@ where
     ///
     /// # Returns
     ///
-    /// A stream of `OrderedWrapper<R>` where each emission contains the result of applying
+    /// A stream of `R` where each emission contains the result of applying
     /// `result_selector` to the combined state, ordered by the primary stream's order.
     ///
     /// # Type Parameters
@@ -77,7 +76,6 @@ where
     /// ```rust
     /// use fluxion_stream::{WithLatestFromExt, FluxionStream};
     /// use fluxion_test_utils::Timestamped;
-    /// use fluxion_core::Ordered;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
@@ -115,29 +113,29 @@ where
     fn with_latest_from<IS, R>(
         self,
         other: IS,
-        result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send>
+        result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + Send + Sync + 'static,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<R>> + Send>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
-        R: Clone + Debug + Send + Sync + 'static;
+        R: Timestamped<Inner = R, Timestamp = T::Timestamp> + Clone + Debug + Send + Sync + 'static;
 }
 
 impl<T, P> WithLatestFromExt<T> for P
 where
-    T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
     P: Stream<Item = StreamItem<T>> + Sized + Unpin + Send + Sync + 'static,
 {
     fn with_latest_from<IS, R>(
         self,
         other: IS,
-        result_selector: impl Fn(&CombinedState<T::Inner>) -> R + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<OrderedWrapper<R>>> + Send>
+        result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + Send + Sync + 'static,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<R>> + Send>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
-        R: Clone + Debug + Send + Sync + 'static,
+        R: Timestamped<Inner = R, Timestamp = T::Timestamp> + Clone + Debug + Send + Sync + 'static,
     {
         type PinnedStream<T> =
             std::pin::Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;
@@ -161,7 +159,7 @@ where
                 async move {
                     match item {
                         StreamItem::Value(value) => {
-                            let _timestamp = value.timestamp();
+                            let timestamp = value.timestamp();
                             // Update state with new value
                             match lock_or_error(&state, "with_latest_from state") {
                                 Ok(mut guard) => {
@@ -174,18 +172,19 @@ where
                                         let values = guard.get_values();
 
                                         // values[0] = primary, values[1] = secondary
-                                        let combined_state = CombinedState::new(vec![
-                                            values[0].inner().clone(),
-                                            values[1].inner().clone(),
-                                        ]);
+                                        let combined_state = CombinedState::new(
+                                            vec![
+                                                values[0].inner().clone(),
+                                                values[1].inner().clone(),
+                                            ],
+                                            timestamp,
+                                        );
 
                                         // Apply the result selector to transform the combined state
                                         let result = selector(&combined_state);
 
-                                        // Wrap result with a fresh timestamp
-                                        Some(StreamItem::Value(
-                                            TimestampedWrapper::with_fresh_timestamp(result),
-                                        ))
+                                        // Return result directly (R implements Timestamped)
+                                        Some(StreamItem::Value(result))
                                     } else {
                                         // Secondary stream emitted, just update state but don't emit
                                         None
@@ -235,4 +234,3 @@ impl<T: Clone> IntermediateState<T> {
             .collect()
     }
 }
-

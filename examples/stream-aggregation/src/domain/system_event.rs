@@ -15,16 +15,17 @@ pub struct SystemEvent {
 
 impl Timestamped for SystemEvent {
     type Inner = Self;
+    type Timestamp = u64;
 
     fn inner(&self) -> &Self::Inner {
         self
     }
 
-    fn timestamp(&self) -> u64 {
+    fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
     }
 
-    fn with_timestamp(inner: Self::Inner, timestamp: u64) -> Self {
+    fn with_timestamp(inner: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self {
             timestamp,
             ..inner

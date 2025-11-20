@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_core::StreamItem;
+use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_rx::{CombinedState, FluxionStream};
 use fluxion_test_utils::helpers::unwrap_stream;
 use fluxion_test_utils::test_channel;
@@ -222,6 +222,3 @@ async fn test_functional_from_unbounded_receiver() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-
-

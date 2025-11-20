@@ -4,10 +4,9 @@
 
 use crate::types::CombinedState;
 use crate::FluxionStream;
-use crate::Ordered;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_error;
-use fluxion_core::StreamItem;
+use fluxion_core::{StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
@@ -20,7 +19,7 @@ use std::sync::{Arc, Mutex};
 /// emitting source values only when the combined state passes a predicate.
 pub trait EmitWhenExt<T>: Stream<Item = fluxion_core::StreamItem<T>> + Sized
 where
-    T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     /// Emits source stream values only when the filter condition is satisfied.
@@ -113,7 +112,7 @@ where
     fn emit_when<IS>(
         self,
         filter_stream: IS,
-        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
+        filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
     ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
         IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
@@ -125,13 +124,13 @@ type IndexedStream<T> =
 impl<T, S> EmitWhenExt<T> for S
 where
     S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
-    T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     fn emit_when<IS>(
         self,
         filter_stream: IS,
-        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
+        filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
     ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
         IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
@@ -174,11 +173,14 @@ where
 
                                 // Update source value
                                 *source = Some(ordered_value.inner().clone());
+                                let timestamp = ordered_value.timestamp();
 
                                 if let Some(src) = source.as_ref() {
                                     if let Some(filt) = filter_val.as_ref() {
-                                        let combined_state =
-                                            CombinedState::new(vec![src.clone(), filt.clone()]);
+                                        let combined_state = CombinedState::new(
+                                            vec![src.clone(), filt.clone()],
+                                            timestamp,
+                                        );
                                         if filter(&combined_state) {
                                             Some(StreamItem::Value(T::with_fresh_timestamp(
                                                 src.clone(),
@@ -213,11 +215,14 @@ where
 
                                 // Update filter value
                                 *filter_val = Some(ordered_value.inner().clone());
+                                let timestamp = ordered_value.timestamp();
 
                                 if let Some(src) = source.as_ref() {
                                     if let Some(filt) = filter_val.as_ref() {
-                                        let combined_state =
-                                            CombinedState::new(vec![src.clone(), filt.clone()]);
+                                        let combined_state = CombinedState::new(
+                                            vec![src.clone(), filt.clone()],
+                                            timestamp,
+                                        );
                                         if filter(&combined_state) {
                                             Some(StreamItem::Value(T::with_fresh_timestamp(
                                                 src.clone(),
@@ -247,4 +252,3 @@ where
         FluxionStream::new(result)
     }
 }
-

@@ -5,7 +5,7 @@
 //! Extension methods for tokio UnboundedReceiver to create FluxionStreams.
 
 use crate::FluxionStream;
-use fluxion_core::{Ordered, StreamItem};
+use fluxion_core::{StreamItem, Timestamped};
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
 use std::pin::Pin;
@@ -80,12 +80,12 @@ pub trait UnboundedReceiverExt<T> {
     ) -> FluxionStream<Pin<Box<dyn Stream<Item = StreamItem<U>> + Send + Sync>>>
     where
         F: FnMut(T) -> U + Send + Sync + 'static,
-        U: Ordered<Inner = U> + Clone + Debug + Ord + Send + Sync + Unpin + 'static;
+        U: Timestamped<Inner = U> + Clone + Debug + Ord + Send + Sync + Unpin + 'static;
 }
 
 impl<T> UnboundedReceiverExt<T> for UnboundedReceiver<T>
 where
-    T: Ordered<Inner = T> + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T: Timestamped<Inner = T> + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     fn into_fluxion_stream<U, F>(
         self,
@@ -93,7 +93,7 @@ where
     ) -> FluxionStream<Pin<Box<dyn Stream<Item = StreamItem<U>> + Send + Sync>>>
     where
         F: FnMut(T) -> U + Send + Sync + 'static,
-        U: Ordered<Inner = U> + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+        U: Timestamped<Inner = U> + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     {
         FluxionStream::new(Box::pin(
             UnboundedReceiverStream::new(self).map(move |value| StreamItem::Value(mapper(value))),

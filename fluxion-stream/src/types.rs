@@ -40,8 +40,9 @@ impl<T> WithPrevious<T> {
 
 impl<T: Timestamped> Timestamped for WithPrevious<T> {
     type Inner = T::Inner;
+    type Timestamp = T::Timestamp;
 
-    fn timestamp(&self) -> u64 {
+    fn timestamp(&self) -> Self::Timestamp {
         self.current.timestamp()
     }
 
@@ -49,7 +50,7 @@ impl<T: Timestamped> Timestamped for WithPrevious<T> {
         self.current.inner()
     }
 
-    fn with_timestamp(value: Self::Inner, timestamp: u64) -> Self {
+    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self {
             previous: None,
             current: T::with_timestamp(value, timestamp),
@@ -79,25 +80,28 @@ impl<T: Timestamped> Timestamped for WithPrevious<T> {
 /// ```
 /// use fluxion_stream::CombinedState;
 ///
-/// let state = CombinedState::new(vec![1, 2, 3]);
+/// let state = CombinedState::new(vec![1, 2, 3], 0);
 /// assert_eq!(state.values().len(), 3);
 /// assert_eq!(state.values()[0], 1);
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct CombinedState<V>
+pub struct CombinedState<V, TS = u64>
 where
     V: Clone + Debug + Ord,
+    TS: Clone + Debug + Ord,
 {
     state: Vec<V>,
+    timestamp: TS,
 }
 
-impl<V> CombinedState<V>
+impl<V, TS> CombinedState<V, TS>
 where
     V: Clone + Debug + Ord,
+    TS: Clone + Debug + Ord,
 {
-    /// Creates a new CombinedState with the given vector of values.
-    pub fn new(state: Vec<V>) -> Self {
-        Self { state }
+    /// Creates a new CombinedState with the given vector of values and timestamp.
+    pub fn new(state: Vec<V>, timestamp: TS) -> Self {
+        Self { state, timestamp }
     }
 
     /// Returns a reference to the internal values vector.
@@ -116,27 +120,32 @@ where
     }
 }
 
-impl<V> Timestamped for CombinedState<V>
+impl<V, TS> Timestamped for CombinedState<V, TS>
 where
     V: Clone + Debug + Ord,
+    TS: Clone + Debug + Ord + Copy + Send + Sync,
 {
     type Inner = Self;
+    type Timestamp = TS;
 
-    fn timestamp(&self) -> u64 {
-        // CombinedState doesn't have its own timestamp - it's always wrapped by a Timestamped type
-        // This should never be called directly
-        panic!("CombinedState::timestamp() should not be called directly")
+    fn timestamp(&self) -> Self::Timestamp {
+        self.timestamp
     }
 
     fn inner(&self) -> &Self::Inner {
         self
     }
 
-    fn with_timestamp(value: Self::Inner, _timestamp: u64) -> Self {
-        value
+    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
+        Self {
+            state: value.state,
+            timestamp,
+        }
     }
 
     fn with_fresh_timestamp(value: Self::Inner) -> Self {
+        // For now, recycle the timestamp from the value itself
+        // Later we can discuss whether to create a fresh one or use one from aggregated events
         value
     }
 

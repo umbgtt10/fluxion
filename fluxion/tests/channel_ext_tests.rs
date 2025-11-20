@@ -19,7 +19,7 @@ mod no_coverage_helpers {
         pub temperature: i32,
     }
 
-    impl fluxion_core::Timestamped for SensorReading {
+    impl Timestamped for SensorReading {
         type Inner = Self;
         fn timestamp(&self) -> u64 {
             self.timestamp
@@ -41,7 +41,7 @@ mod no_coverage_helpers {
         pub code: i32,
     }
 
-    impl fluxion_core::Timestamped for StatusUpdate {
+    impl Timestamped for StatusUpdate {
         type Inner = Self;
         fn timestamp(&self) -> u64 {
             self.timestamp
@@ -63,7 +63,7 @@ mod no_coverage_helpers {
         Status(StatusUpdate),
     }
 
-    impl fluxion_core::Timestamped for CombinedEvent {
+    impl Timestamped for CombinedEvent {
         type Inner = Self;
         fn timestamp(&self) -> u64 {
             match self {

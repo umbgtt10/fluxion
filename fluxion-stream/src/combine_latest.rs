@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_error;
-use fluxion_core::{CompareByInner, Ordered, OrderedWrapper, StreamItem, TimestampedWrapper};
+use fluxion_core::{CompareByInner, StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 
 /// Extension trait providing the `combine_latest` operator for ordered streams.
@@ -22,8 +22,9 @@ use fluxion_ordered_merge::OrderedMergeExt;
 /// values from each stream.
 pub trait CombineLatestExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
+    T::Timestamp: Clone + Debug + Ord + Send + Sync,
 {
     /// Combines this stream with multiple other streams, emitting when any stream emits.
     ///
@@ -47,7 +48,7 @@ where
     ///
     /// # Returns
     ///
-    /// A stream of `OrderedWrapper<CombinedState<T::Inner>>` where each emission contains
+    /// A stream of timestamped `CombinedState<T::Inner>` where each emission contains
     /// the latest values from all streams, preserving the temporal order of the triggering value.
     ///
     /// # Errors
@@ -111,33 +112,40 @@ where
     fn combine_latest<IS>(
         self,
         others: Vec<IS>,
-        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
+        filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
     ) -> FluxionStream<
-        impl Stream<Item = StreamItem<OrderedWrapper<CombinedState<T::Inner>>>> + Send + Unpin,
+        impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Send + Unpin,
     >
     where
         IS: IntoStream<Item = StreamItem<T>>,
-        IS::Stream: Send + Sync + 'static;
+        IS::Stream: Send + Sync + 'static,
+        CombinedState<T::Inner, T::Timestamp>:
+            Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>;
 }
 
 type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>>;
 
 impl<T, S> CombineLatestExt<T> for S
 where
-    T: Ordered + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
+    T::Timestamp: Debug,
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
+    CombinedState<T::Inner, T::Timestamp>:
+        Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>,
 {
     fn combine_latest<IS>(
         self,
         others: Vec<IS>,
-        filter: impl Fn(&CombinedState<T::Inner>) -> bool + Send + Sync + 'static,
+        filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
     ) -> FluxionStream<
-        impl Stream<Item = StreamItem<OrderedWrapper<CombinedState<T::Inner>>>> + Send + Unpin,
+        impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Send + Unpin,
     >
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
+        CombinedState<T::Inner, T::Timestamp>:
+            Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>,
     {
         use StreamItem;
         let mut streams: PinnedStreams<T> = vec![];
@@ -198,16 +206,13 @@ where
                             .iter()
                             .map(|ordered_val| ordered_val.inner().clone())
                             .collect();
-                        let combined = CombinedState::new(inner_values);
-                        TimestampedWrapper::with_fresh_timestamp(combined)
+                        let timestamp = state.last_timestamp().expect("State must have timestamp");
+                        CombinedState::new(inner_values, timestamp)
                     })
                 })
                 .filter(move |item| {
                     match item {
-                        StreamItem::Value(ordered_combined) => {
-                            let combined_state = ordered_combined.inner();
-                            ready(filter(combined_state))
-                        }
+                        StreamItem::Value(combined_state) => ready(filter(combined_state)),
                         StreamItem::Error(_) => ready(true), // Always emit errors
                     }
                 }),
@@ -220,17 +225,18 @@ where
 #[derive(Clone, Debug)]
 struct IntermediateState<V>
 where
-    V: Clone + Send + Sync + Ord + CompareByInner,
+    V: Clone + Send + Sync + Ord + CompareByInner + Timestamped,
 {
     state: Vec<Option<V>>,
     ordered_values: Vec<V>,
     stream_index_to_position: Vec<usize>,
     is_initialized: bool,
+    last_timestamp: Option<V::Timestamp>,
 }
 
 impl<V> IntermediateState<V>
 where
-    V: Clone + Send + Sync + Ord + CompareByInner,
+    V: Clone + Send + Sync + Ord + CompareByInner + Timestamped,
 {
     pub fn new(num_streams: usize) -> Self {
         Self {
@@ -238,6 +244,7 @@ where
             ordered_values: Vec::new(),
             stream_index_to_position: vec![0; num_streams],
             is_initialized: false,
+            last_timestamp: None,
         }
     }
 
@@ -245,11 +252,16 @@ where
         &self.ordered_values
     }
 
+    pub fn last_timestamp(&self) -> Option<V::Timestamp> {
+        self.last_timestamp
+    }
+
     pub fn is_complete(&self) -> bool {
         self.state.iter().all(Option::is_some)
     }
 
     pub fn insert(&mut self, index: usize, value: V) {
+        self.last_timestamp = Some(value.timestamp());
         self.state[index] = Some(value.clone());
 
         if !self.is_initialized && self.is_complete() {
@@ -283,4 +295,3 @@ where
         }
     }
 }
-

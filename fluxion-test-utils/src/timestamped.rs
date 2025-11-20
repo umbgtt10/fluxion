@@ -97,8 +97,9 @@ impl<T: fmt::Display> fmt::Display for Timestamped<T> {
 
 impl<T: Clone> TimestampedTrait for Timestamped<T> {
     type Inner = T;
+    type Timestamp = u64;
 
-    fn timestamp(&self) -> u64 {
+    fn timestamp(&self) -> Self::Timestamp {
         // Convert DateTime to nanoseconds since Unix epoch
         self.timestamp.timestamp_nanos_opt().unwrap_or(0) as u64
     }

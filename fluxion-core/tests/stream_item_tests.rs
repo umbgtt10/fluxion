@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::{FluxionError, Ordered, StreamItem, TimestampedWrapper};
+use fluxion_core::{FluxionError, StreamItem, Timestamped, TimestampedWrapper};
 use std::cmp::Ordering;
 
 #[test]

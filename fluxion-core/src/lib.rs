@@ -12,9 +12,5 @@ pub mod stream_item;
 
 pub use self::compare_by_inner::CompareByInner;
 pub use self::error::{FluxionError, IntoFluxionError, Result, ResultExt};
-pub use self::ordered::{Timestamped, TimestampedWrapper};
+pub use self::ordered::Timestamped;
 pub use self::stream_item::StreamItem;
-
-// Compatibility aliases for migration
-pub use self::ordered::Timestamped as Ordered;
-pub use self::ordered::TimestampedWrapper as OrderedWrapper;

@@ -2,19 +2,19 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_core::StreamItem;
+use fluxion_core::Timestamped as TimestampedTrait;
 use fluxion_rx::{CombinedState, FluxionStream, TimestampedWrapper};
 use fluxion_stream::WithPrevious;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::helpers::unwrap_stream;
-use fluxion_test_utils::Timestamped;
 use fluxion_test_utils::test_channel;
 use fluxion_test_utils::test_data::{
     animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane, plant_rose,
     TestData,
 };
 use fluxion_test_utils::unwrap_value;
+use fluxion_test_utils::Timestamped;
 use futures::StreamExt;
 
 static FILTER: fn(&TestData) -> bool = |_| true;
@@ -1717,8 +1717,3 @@ async fn test_take_while_with_in_middle_of_chain() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-
-
-
-

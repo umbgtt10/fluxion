@@ -159,8 +159,9 @@ where
     T: crate::Timestamped,
 {
     type Inner = T::Inner;
+    type Timestamp = T::Timestamp;
 
-    fn timestamp(&self) -> u64 {
+    fn timestamp(&self) -> Self::Timestamp {
         match self {
             StreamItem::Value(v) => v.timestamp(),
             StreamItem::Error(_) => panic!("called `timestamp()` on StreamItem::Error"),
@@ -174,7 +175,7 @@ where
         }
     }
 
-    fn with_timestamp(value: Self::Inner, timestamp: u64) -> Self {
+    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         StreamItem::Value(T::with_timestamp(value, timestamp))
     }
 

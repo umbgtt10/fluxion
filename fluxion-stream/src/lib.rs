@@ -682,7 +682,6 @@ pub mod with_latest_from;
 pub use combine_latest::CombineLatestExt;
 pub use combine_with_previous::CombineWithPreviousExt;
 pub use emit_when::EmitWhenExt;
-pub use fluxion_core::{Ordered, OrderedWrapper};
 pub use fluxion_stream::FluxionStream;
 pub use ordered_merge::OrderedStreamExt;
 pub use take_latest_when::TakeLatestWhenExt;
@@ -691,4 +690,3 @@ pub use types::{
     CombinedState, OrderedInner, OrderedInnerUnwrapped, OrderedStreamItem, WithPrevious,
 };
 pub use with_latest_from::WithLatestFromExt;
-
