@@ -129,11 +129,14 @@ async fn test_into_fluxion_stream_basic_transformation() -> anyhow::Result<()> {
     tx.send(reading2.clone())?;
 
     // Assert
-    let result1 = unwrap_stream(&mut stream, 500).await;
-    assert_eq!(result1.get(), &CombinedEvent::Sensor(reading1));
-
-    let result2 = unwrap_stream(&mut stream, 500).await;
-    assert_eq!(result2.get(), &CombinedEvent::Sensor(reading2));
+    assert_eq!(
+        unwrap_stream(&mut stream, 500).await.get(),
+        &CombinedEvent::Sensor(reading1)
+    );
+    assert_eq!(
+        unwrap_stream(&mut stream, 500).await.get(),
+        &CombinedEvent::Sensor(reading2)
+    );
 
     assert_no_element_emitted(&mut stream, 100).await;
 
@@ -177,8 +180,10 @@ async fn test_into_fluxion_stream_preserves_order() -> anyhow::Result<()> {
 
     // Assert
     for expected in &readings {
-        let result = unwrap_stream(&mut stream, 500).await;
-        assert_eq!(result.get(), &CombinedEvent::Sensor(expected.clone()));
+        assert_eq!(
+            unwrap_stream(&mut stream, 500).await.get(),
+            &CombinedEvent::Sensor(expected.clone())
+        );
     }
 
     assert_no_element_emitted(&mut stream, 100).await;
@@ -203,12 +208,14 @@ async fn test_into_fluxion_stream_multiple_items() -> anyhow::Result<()> {
 
     // Assert
     for i in 0..5 {
-        let result = unwrap_stream(&mut stream, 500).await;
         let expected = SensorReading {
             timestamp: i as u64 * 100,
             temperature: (i * 10),
         };
-        assert_eq!(result.get(), &CombinedEvent::Sensor(expected));
+        assert_eq!(
+            unwrap_stream(&mut stream, 500).await.get(),
+            &CombinedEvent::Sensor(expected)
+        );
     }
 
     assert_no_element_emitted(&mut stream, 100).await;
@@ -240,8 +247,10 @@ async fn test_into_fluxion_stream_transformation_logic() -> anyhow::Result<()> {
     tx.send(original.clone())?;
 
     // Assert
-    let result = unwrap_stream(&mut stream, 500).await;
-    assert_eq!(result.get(), &CombinedEvent::Sensor(expected));
+    assert_eq!(
+        unwrap_stream(&mut stream, 500).await.get(),
+        &CombinedEvent::Sensor(expected)
+    );
 
     Ok(())
 }
@@ -269,11 +278,8 @@ async fn test_into_fluxion_stream_can_combine_with_other_streams() -> anyhow::Re
     })?;
 
     // Assert - both items should be in the merged stream
-    let result1 = unwrap_stream(&mut merged, 500).await;
-    assert_eq!(result1.order(), 100);
-
-    let result2 = unwrap_stream(&mut merged, 500).await;
-    assert_eq!(result2.order(), 200);
+    assert_eq!(unwrap_stream(&mut merged, 500).await.order(), 100);
+    assert_eq!(unwrap_stream(&mut merged, 500).await.order(), 200);
 
     assert_no_element_emitted(&mut merged, 100).await;
 
@@ -305,11 +311,8 @@ async fn test_into_fluxion_stream_late_sends() -> anyhow::Result<()> {
     });
 
     // Assert
-    let result1 = unwrap_stream(&mut stream, 500).await;
-    assert_eq!(result1.order(), 100);
-
-    let result2 = unwrap_stream(&mut stream, 500).await;
-    assert_eq!(result2.order(), 200);
+    assert_eq!(unwrap_stream(&mut stream, 500).await.order(), 100);
+    assert_eq!(unwrap_stream(&mut stream, 500).await.order(), 200);
 
     Ok(())
 }
@@ -333,8 +336,7 @@ async fn test_into_fluxion_stream_high_volume() -> anyhow::Result<()> {
 
     // Assert
     for i in 0..COUNT {
-        let result = unwrap_stream(&mut stream, 500).await;
-        assert_eq!(result.order(), i as u64);
+        assert_eq!(unwrap_stream(&mut stream, 500).await.order(), i as u64);
     }
 
     assert_no_element_emitted(&mut stream, 100).await;

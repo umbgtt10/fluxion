@@ -21,8 +21,10 @@ async fn test_combine_latest_propagates_error_from_primary_stream() -> anyhow::R
     tx2.send(StreamItem::Value(Sequenced::with_sequence(10, 2)))?;
 
     // First emission combines both values
-    let result1 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result1, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Value(_)
+    ));
 
     // Send error from primary stream
     tx1.send(StreamItem::Error(FluxionError::stream_error(
@@ -30,16 +32,20 @@ async fn test_combine_latest_propagates_error_from_primary_stream() -> anyhow::R
     )))?;
 
     // Should propagate error
-    let result2 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result2, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Continue with more values
     tx1.send(StreamItem::Value(Sequenced::with_sequence(3, 5)))?;
     tx2.send(StreamItem::Value(Sequenced::with_sequence(20, 4)))?;
 
     // Should emit value after error
-    let result3 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result3, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(tx1);
     drop(tx2);
@@ -59,8 +65,10 @@ async fn test_combine_latest_propagates_error_from_secondary_stream() -> anyhow:
     tx2.send(StreamItem::Value(Sequenced::with_sequence(10, 3)))?;
 
     // First emission should succeed
-    let result1 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result1, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Value(_)
+    ));
 
     // Send error from secondary stream
     tx2.send(StreamItem::Error(FluxionError::stream_error(
@@ -68,15 +76,19 @@ async fn test_combine_latest_propagates_error_from_secondary_stream() -> anyhow:
     )))?;
 
     // Should propagate error from secondary
-    let result2 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result2, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Continue with more values
     tx2.send(StreamItem::Value(Sequenced::with_sequence(30, 5)))?;
 
     // Stream should continue after error
-    let result3 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result3, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(tx1);
     drop(tx2);
@@ -95,26 +107,34 @@ async fn test_combine_latest_multiple_errors_from_different_streams() -> anyhow:
     tx1.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))?;
     tx2.send(StreamItem::Value(Sequenced::with_sequence(10, 2)))?;
 
-    let result1 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result1, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Value(_)
+    ));
 
     // Error from first stream
     tx1.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
 
-    let result2 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result2, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Error from second stream
     tx2.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
 
-    let result3 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result3, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Continue with values
     tx1.send(StreamItem::Value(Sequenced::with_sequence(2, 3)))?;
 
-    let result4 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result4, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(tx1);
     drop(tx2);
@@ -136,16 +156,20 @@ async fn test_combine_latest_error_at_start() -> anyhow::Result<()> {
     )))?;
 
     // First item should be the error
-    let result1 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result1, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Send values
     tx1.send(StreamItem::Value(Sequenced::with_sequence(1, 1)))?;
     tx2.send(StreamItem::Value(Sequenced::with_sequence(10, 3)))?;
 
     // Should continue processing
-    let result2 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result2, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(tx1);
     drop(tx2);
@@ -173,14 +197,18 @@ async fn test_combine_latest_filter_predicate_continues_after_error() -> anyhow:
         "Error in middle",
     )))?;
 
-    let result1 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result1, StreamItem::Error(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Error(_)
+    ));
 
     // Send value that passes filter
     tx1.send(StreamItem::Value(Sequenced::with_sequence(2, 2)))?;
 
-    let result2 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result2, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Value(_)
+    ));
 
     // Send value that doesn't pass filter
     tx1.send(StreamItem::Value(Sequenced::with_sequence(0, 3)))?;
@@ -188,8 +216,10 @@ async fn test_combine_latest_filter_predicate_continues_after_error() -> anyhow:
     // Send another value that passes
     tx1.send(StreamItem::Value(Sequenced::with_sequence(3, 5)))?;
 
-    let result3 = unwrap_stream(&mut combined, 100).await;
-    assert!(matches!(result3, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut combined, 100).await,
+        StreamItem::Value(_)
+    ));
 
     drop(tx1);
     drop(tx2);
