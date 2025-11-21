@@ -30,12 +30,12 @@ async fn test_merge_with_empty_streams() -> anyhow::Result<()> {
     drop(tx2);
 
     // Act
-    let result_stream = MergedStream::seed(0)
-        .merge_with::<_, _, Sequenced<i32>>(empty_stream1, |_item: TestData, state: &mut i32| {
+    let result_stream = MergedStream::seed::<Sequenced<i32>>(0)
+        .merge_with(empty_stream1, |_item: TestData, state: &mut i32| {
             *state += 1;
             *state
         })
-        .merge_with::<_, _, Sequenced<i32>>(empty_stream2, |_item: TestData, state: &mut i32| {
+        .merge_with(empty_stream2, |_item: TestData, state: &mut i32| {
             *state += 1;
             *state
         });
@@ -58,21 +58,15 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
     drop(empty_tx);
 
     // Use a simple counter state to verify emissions from the non-empty stream
-    let mut merged_stream = MergedStream::seed(0usize)
-        .merge_with::<_, _, Sequenced<usize>>(
-            non_empty_stream,
-            |_item: TestData, state: &mut usize| {
-                *state += 1;
-                *state
-            },
-        )
-        .merge_with::<_, _, Sequenced<usize>>(
-            empty_stream,
-            |_item: TestData, state: &mut usize| {
-                *state += 1; // will never run in this test
-                *state
-            },
-        );
+    let mut merged_stream = MergedStream::seed::<Sequenced<usize>>(0usize)
+        .merge_with(non_empty_stream, |_item: TestData, state: &mut usize| {
+            *state += 1;
+            *state
+        })
+        .merge_with(empty_stream, |_item: TestData, state: &mut usize| {
+            *state += 1; // will never run in this test
+            *state
+        });
 
     // Act
     non_empty_tx.send(Sequenced::new(person_alice()))?;
@@ -124,15 +118,13 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream2 = UnboundedReceiverStream::new(rx2);
 
-    let mut merged_stream = MergedStream::seed(Repository::new())
-        .merge_with::<_, _, Sequenced<Repository>>(
-            stream1,
-            |item: TestData, state: &mut Repository| state.from_testdata(item),
-        )
-        .merge_with::<_, _, Sequenced<Repository>>(
-            stream2,
-            |item: TestData, state: &mut Repository| state.from_testdata(item),
-        );
+    let mut merged_stream = MergedStream::seed::<Sequenced<Repository>>(Repository::new())
+        .merge_with(stream1, |item: TestData, state: &mut Repository| {
+            state.from_testdata(item)
+        })
+        .merge_with(stream2, |item: TestData, state: &mut Repository| {
+            state.from_testdata(item)
+        });
 
     // Act
     tx1.send(Sequenced::new(person_alice()))?;
@@ -197,15 +189,13 @@ async fn test_merge_with_parallel_processing() -> anyhow::Result<()> {
     let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream2 = UnboundedReceiverStream::new(rx2);
 
-    let merged_stream = MergedStream::seed(Repository::new())
-        .merge_with::<_, _, Sequenced<Repository>>(
-            stream1,
-            |item: TestData, state: &mut Repository| state.from_testdata(item),
-        )
-        .merge_with::<_, _, Sequenced<Repository>>(
-            stream2,
-            |item: TestData, state: &mut Repository| state.from_testdata(item),
-        );
+    let merged_stream = MergedStream::seed::<Sequenced<Repository>>(Repository::new())
+        .merge_with(stream1, |item: TestData, state: &mut Repository| {
+            state.from_testdata(item)
+        })
+        .merge_with(stream2, |item: TestData, state: &mut Repository| {
+            state.from_testdata(item)
+        });
 
     // Act
     tokio::spawn(async move {
@@ -248,8 +238,8 @@ async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
     let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let large_stream2 = UnboundedReceiverStream::new(rx2);
 
-    let mut merged_stream = MergedStream::seed(0)
-        .merge_with::<_, _, Sequenced<i32>>(large_stream1, |item: TestData, state: &mut i32| {
+    let mut merged_stream = MergedStream::seed::<Sequenced<i32>>(0)
+        .merge_with(large_stream1, |item: TestData, state: &mut i32| {
             let num: i32 = match item {
                 TestData::Person(p) => p.age as i32,
                 TestData::Animal(a) => a.legs as i32,
@@ -258,7 +248,7 @@ async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
             *state += num;
             *state
         })
-        .merge_with::<_, _, Sequenced<i32>>(large_stream2, |item: TestData, state: &mut i32| {
+        .merge_with(large_stream2, |item: TestData, state: &mut i32| {
             let num: i32 = match item {
                 TestData::Person(p) => p.age as i32,
                 TestData::Animal(a) => a.legs as i32,
@@ -308,14 +298,14 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let plant_stream = UnboundedReceiverStream::new(plant_rx);
 
-    let mut merged_stream = MergedStream::seed(Repository::new())
-        .merge_with::<_, _, Sequenced<Repository>>(animal_stream, |item: TestData, state| {
+    let mut merged_stream = MergedStream::seed::<Sequenced<Repository>>(Repository::new())
+        .merge_with(animal_stream, |item: TestData, state| {
             state.from_testdata(item)
         })
-        .merge_with::<_, _, Sequenced<Repository>>(person_stream, |item: TestData, state| {
+        .merge_with(person_stream, |item: TestData, state| {
             state.from_testdata(item)
         })
-        .merge_with::<_, _, Sequenced<Repository>>(plant_stream, |item: TestData, state| {
+        .merge_with(plant_stream, |item: TestData, state| {
             state.from_testdata(item)
         });
 
@@ -572,7 +562,7 @@ async fn test_merge_with_user_closure_panics() {
     let stream = UnboundedReceiverStream::new(rx);
 
     // Create a merge_with stream where the closure panics on the second emission
-    let mut merged_stream = MergedStream::seed(0usize).merge_with::<_, _, Sequenced<usize>>(
+    let mut merged_stream = MergedStream::seed::<Sequenced<usize>>(0usize).merge_with(
         stream,
         |_item: TestData, state: &mut usize| {
             *state += 1;
@@ -605,11 +595,10 @@ async fn test_merge_with_into_fluxion_stream_standalone() -> anyhow::Result<()> 
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
     let stream = UnboundedReceiverStream::new(rx);
 
-    let merged =
-        MergedStream::seed(0).merge_with::<_, _, Sequenced<i32>>(stream, |value, state| {
-            *state += value;
-            *state
-        });
+    let merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
+        *state += value;
+        *state
+    });
 
     // Act: Convert to FluxionStream without chaining
     let mut fluxion_stream = merged.into_fluxion_stream();
@@ -638,11 +627,10 @@ async fn test_merge_with_into_fluxion_stream_empty() -> anyhow::Result<()> {
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
     let stream = UnboundedReceiverStream::new(rx);
 
-    let merged =
-        MergedStream::seed(0).merge_with::<_, _, Sequenced<i32>>(stream, |value, state| {
-            *state += value;
-            *state
-        });
+    let merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
+        *state += value;
+        *state
+    });
 
     // Act: Convert empty stream to FluxionStream
     let mut fluxion_stream = merged.into_fluxion_stream();
@@ -662,11 +650,10 @@ async fn test_merge_with_single_stream_interleaved_emissions() -> anyhow::Result
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
     let stream = UnboundedReceiverStream::new(rx);
 
-    let mut merged =
-        MergedStream::seed(0).merge_with::<_, _, Sequenced<i32>>(stream, |value, state| {
-            *state += value;
-            *state
-        });
+    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
+        *state += value;
+        *state
+    });
 
     // Act & Assert: Send and verify one at a time
     tx.send(Sequenced::with_timestamp(5, 1))?;
@@ -711,7 +698,7 @@ async fn test_merge_with_state_mutation_complex() -> anyhow::Result<()> {
         last_value: None,
     };
 
-    let mut merged = MergedStream::seed(initial_state).merge_with::<_, _, Sequenced<ComplexState>>(
+    let mut merged = MergedStream::seed::<Sequenced<ComplexState>>(initial_state).merge_with(
         stream,
         |value, state| {
             state.sum += value;
@@ -767,12 +754,12 @@ async fn test_merge_with_timestamp_ordering_preserved() -> anyhow::Result<()> {
     let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<i32>>();
     let stream2 = UnboundedReceiverStream::new(rx2);
 
-    let mut merged = MergedStream::seed(Vec::new())
-        .merge_with::<_, _, Sequenced<Vec<(i32, u64)>>>(stream1, |value, state| {
+    let mut merged = MergedStream::seed::<Sequenced<Vec<(i32, u64)>>>(Vec::new())
+        .merge_with(stream1, |value, state| {
             state.push((value, 1));
             state.clone()
         })
-        .merge_with::<_, _, Sequenced<Vec<(i32, u64)>>>(stream2, |value, state| {
+        .merge_with(stream2, |value, state| {
             state.push((value, 2));
             state.clone()
         });
@@ -827,12 +814,12 @@ async fn test_merge_with_clone_closure() -> anyhow::Result<()> {
     let stream2 = UnboundedReceiverStream::new(rx2);
 
     let multiplier = 2;
-    let mut merged = MergedStream::seed(0)
-        .merge_with::<_, _, Sequenced<i32>>(stream1, move |value, state| {
+    let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
+        .merge_with(stream1, move |value, state| {
             *state += value * multiplier;
             *state
         })
-        .merge_with::<_, _, Sequenced<i32>>(stream2, move |value, state| {
+        .merge_with(stream2, move |value, state| {
             *state += value * multiplier;
             *state
         });

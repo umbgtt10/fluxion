@@ -1757,8 +1757,8 @@ async fn test_merge_with_chaining_with_map_ordered() -> anyhow::Result<()> {
     let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
 
     // Act: Chain merge_with with map_ordered that doubles the counter
-    let mut result = MergedStream::seed(0)
-        .merge_with::<_, _, Sequenced<usize>>(stream, |_item: TestData, state| {
+    let mut result = MergedStream::seed::<Sequenced<usize>>(0)
+        .merge_with(stream, |_item: TestData, state| {
             *state += 1;
             *state
         })
@@ -1796,8 +1796,8 @@ async fn test_merge_with_chaining_with_filter_ordered() -> anyhow::Result<()> {
     let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
 
     // Act: Chain merge_with with filter_ordered (only values > 2)
-    let mut result = MergedStream::seed(0)
-        .merge_with::<_, _, Sequenced<usize>>(stream, |_item: TestData, state| {
+    let mut result = MergedStream::seed::<Sequenced<usize>>(0)
+        .merge_with(stream, |_item: TestData, state| {
             *state += 1;
             *state
         })
@@ -1846,8 +1846,8 @@ async fn test_merge_with_chaining_multiple_operators() -> anyhow::Result<()> {
     let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
 
     // Act: Chain merge_with with map, filter, and another map
-    let mut result = MergedStream::seed(0)
-        .merge_with::<_, _, Sequenced<usize>>(stream, |_item: TestData, state| {
+    let mut result = MergedStream::seed::<Sequenced<usize>>(0)
+        .merge_with(stream, |_item: TestData, state| {
             *state += 1;
             *state
         })

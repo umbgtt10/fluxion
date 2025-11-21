@@ -28,8 +28,21 @@ impl<State> MergedStream<Empty<()>, State, ()>
 where
     State: Send + 'static,
 {
-    pub fn seed(initial_state: State) -> Self {
-        Self {
+    /// Creates a new `MergedStream` with initial state and output wrapper type.
+    ///
+    /// Specify the output wrapper type once here to avoid turbofish on every `merge_with`.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use fluxion_stream::MergedStream;
+    /// # use fluxion_test_utils::Sequenced;
+    /// let stream = MergedStream::seed::<Sequenced<i32>>(0);
+    /// ```
+    pub fn seed<OutWrapper>(initial_state: State) -> MergedStream<Empty<()>, State, OutWrapper>
+    where
+        State: Send + 'static,
+    {
+        MergedStream {
             inner: empty(),
             state: Arc::new(Mutex::new(initial_state)),
             _marker: PhantomData,
@@ -39,7 +52,7 @@ where
 
 impl<S, State, Item> MergedStream<S, State, Item>
 where
-    S: Stream<Item = Item> + Send + Sync + 'static,
+    S: Stream + Send + Sync + 'static,
     State: Send + Sync + 'static,
     Item: Send + Ord + Unpin + 'static,
 {
@@ -54,12 +67,13 @@ where
     /// # Parameters
     /// - `new_stream`: The new Timestamped stream to merge
     /// - `process_fn`: Function to process inner values with mutable access to shared state
-    pub fn merge_with<NewStream, F, OutWrapper>(
+    pub fn merge_with<NewStream, F>(
         self,
         new_stream: NewStream,
         process_fn: F,
-    ) -> MergedStream<impl Stream<Item = OutWrapper>, State, OutWrapper>
+    ) -> MergedStream<impl Stream<Item = Item>, State, Item>
     where
+        S::Item: Into<Item>,
         NewStream: Stream + Send + Sync + 'static,
         NewStream::Item: Timestamped + Send + Sync + Ord + Unpin + 'static,
         <NewStream::Item as Timestamped>::Inner: Clone + Send + Sync + 'static,
@@ -67,16 +81,15 @@ where
         F: FnMut(
                 <NewStream::Item as Timestamped>::Inner,
                 &mut State,
-            ) -> <OutWrapper as Timestamped>::Inner
+            ) -> <Item as Timestamped>::Inner
             + Send
             + Sync
             + Clone
             + 'static,
-        OutWrapper: Timestamped + Send + Sync + Ord + Unpin + 'static,
-        OutWrapper::Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug,
-        OutWrapper::Inner: Clone + Send + Sync + 'static,
-        <NewStream::Item as Timestamped>::Timestamp: Into<OutWrapper::Timestamp> + Copy,
-        Item: Into<OutWrapper>,
+        Item: Timestamped + Send + Sync + Ord + Unpin + 'static,
+        Item::Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug,
+        Item::Inner: Clone + Send + Sync + 'static,
+        <NewStream::Item as Timestamped>::Timestamp: Into<Item::Timestamp> + Copy,
     {
         let shared_state = Arc::clone(&self.state);
         let new_stream_mapped = new_stream.then(move |timestamped_item| {
@@ -87,15 +100,15 @@ where
                 let inner_value = timestamped_item.into_inner();
                 let mut state = shared_state.lock().await;
                 let result_value = process_fn(inner_value, &mut *state);
-                OutWrapper::with_timestamp(result_value, timestamp.into())
+                Item::with_timestamp(result_value, timestamp.into())
             }
         });
 
         let self_stream_mapped = self.inner.map(Into::into);
 
         let merged_stream = vec![
-            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = OutWrapper> + Send + Sync>>,
-            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = OutWrapper> + Send + Sync>>,
+            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Item> + Send + Sync>>,
+            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Item> + Send + Sync>>,
         ]
         .ordered_merge();
 
@@ -129,8 +142,9 @@ where
     /// let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<i32>>();
     ///
     /// // Chain merge_with with other operators in one expression
-    /// let mut result = MergedStream::seed(0)
-    ///     .merge_with::<_, _, Sequenced<i32>>(
+    /// // Note: Type specified ONCE in seed, not on every merge_with!
+    /// let mut result = MergedStream::seed::<Sequenced<i32>>(0)
+    ///     .merge_with(
     ///         tokio_stream::wrappers::UnboundedReceiverStream::new(rx1),
     ///         |value, state| {
     ///             *state += value;
