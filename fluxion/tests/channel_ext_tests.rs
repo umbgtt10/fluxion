@@ -103,18 +103,25 @@ mod no_coverage_helpers {
             let combined_status = CombinedEvent::Status(status_update.clone());
 
             // Act
+            sensor_reading.clone().into_inner();
             sensor_reading.timestamp();
-            status_update.timestamp();
-            let _ = &sensor_reading;
-            let _ = &status_update;
             SensorReading::with_timestamp(sensor_reading.clone(), 0);
+            SensorReading::with_fresh_timestamp(sensor_reading.clone());
+
+            status_update.clone().into_inner();
+            status_update.timestamp();
             StatusUpdate::with_timestamp(status_update.clone(), 0);
+            StatusUpdate::with_fresh_timestamp(status_update.clone());
+
             combined_sensor.timestamp();
+            combined_sensor.clone().into_inner();
+            CombinedEvent::with_timestamp(combined_sensor.clone(), 0);
+            CombinedEvent::with_fresh_timestamp(combined_sensor.clone());
+
             combined_status.timestamp();
-            let _ = &combined_sensor;
-            let _ = &combined_status;
-            CombinedEvent::with_timestamp(combined_sensor, 0);
-            CombinedEvent::with_timestamp(combined_status, 0);
+            combined_status.clone().into_inner();
+            CombinedEvent::with_timestamp(combined_status.clone(), 0);
+            CombinedEvent::with_fresh_timestamp(combined_status.clone());
         }
     }
 }

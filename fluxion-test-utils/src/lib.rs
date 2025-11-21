@@ -107,6 +107,7 @@ pub mod person;
 pub mod plant;
 pub mod sequenced;
 pub mod test_data;
+pub mod test_wrapper;
 
 // Re-export commonly used test utilities
 pub use error_injection::ErrorInjectingStream;

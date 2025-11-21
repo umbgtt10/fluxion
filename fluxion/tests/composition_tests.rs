@@ -13,56 +13,10 @@ use fluxion_test_utils::test_data::{
     animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane, plant_rose,
     TestData,
 };
+use fluxion_test_utils::test_wrapper::TestWrapper;
 use fluxion_test_utils::unwrap_value;
 use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
-
-// Test wrapper that satisfies Inner = Self for selector return types
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct TestWrapper<T> {
-    timestamp: u64,
-    value: T,
-}
-
-impl<T> TestWrapper<T> {
-    fn new(value: T, timestamp: u64) -> Self {
-        Self { value, timestamp }
-    }
-
-    fn value(&self) -> &T {
-        &self.value
-    }
-}
-
-impl<T> Timestamped for TestWrapper<T>
-where
-    T: Clone + Send + Sync + 'static,
-{
-    type Inner = Self;
-    type Timestamp = u64;
-
-    fn into_inner(self) -> Self::Inner {
-        self
-    }
-
-    fn timestamp(&self) -> Self::Timestamp {
-        self.timestamp
-    }
-
-    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
-        Self {
-            value: value.value,
-            timestamp,
-        }
-    }
-
-    fn with_fresh_timestamp(value: Self::Inner) -> Self {
-        Self {
-            value: value.value,
-            timestamp: 999999, // Use a dummy timestamp for tests
-        }
-    }
-}
 
 static FILTER: fn(&TestData) -> bool = |_| true;
 static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;

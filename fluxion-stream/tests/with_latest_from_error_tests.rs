@@ -7,52 +7,10 @@
 use fluxion_core::Timestamped;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::{CombinedState, WithLatestFromExt};
+use fluxion_test_utils::test_wrapper::TestWrapper;
 use fluxion_test_utils::{
     assert_no_element_emitted, test_channel_with_errors, unwrap_stream, Sequenced,
 };
-
-// Test wrapper that satisfies Inner = Self for selector return types
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct TestWrapper<T> {
-    timestamp: u64,
-    value: T,
-}
-
-impl<T> TestWrapper<T> {
-    fn new(value: T, timestamp: u64) -> Self {
-        Self { value, timestamp }
-    }
-}
-
-impl<T> Timestamped for TestWrapper<T>
-where
-    T: Clone + Send + Sync + 'static,
-{
-    type Inner = Self;
-    type Timestamp = u64;
-
-    fn timestamp(&self) -> Self::Timestamp {
-        self.timestamp
-    }
-
-    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
-        Self {
-            value: value.value,
-            timestamp,
-        }
-    }
-
-    fn with_fresh_timestamp(value: Self::Inner) -> Self {
-        Self {
-            value: value.value,
-            timestamp: 999999,
-        }
-    }
-
-    fn into_inner(self) -> Self::Inner {
-        self
-    }
-}
 
 #[tokio::test]
 async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> {

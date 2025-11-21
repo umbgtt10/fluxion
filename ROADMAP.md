@@ -67,12 +67,15 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 ## 🚀 Version 0.3.0 - Test & Bench
 **Essential Features:**
 - [X] All tests consolidated and buautified
-- [ ] 1 fully functional example application showing the wrapped integration path
 - [ ] At least one error operator implemented, documented and tested
 - [ ] Code coverage metrix available and integrated in the PITCH
 - [X] Code coverage integrated in the CI with badge on the README
 - [ ] Benches exaustive
 - [ ] Integrate merge_with in fluxion-stream. Remove the separate crate.
+- [ ] 1 fully functional example application showing
+    - [ ] the wrapped integration path
+    - [ ] the usage of merge_with integrated with the other operators
+
 
 **Documentation:**
 - [X] `Subscribe` and `SubscribeLatest` documented

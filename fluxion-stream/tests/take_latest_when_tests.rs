@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-#![allow(unused_imports)]
-use fluxion_core::Timestamped;
 use fluxion_stream::take_latest_when::TakeLatestWhenExt;
 use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{
