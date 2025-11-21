@@ -552,3 +552,87 @@ When implementing later:
 - ✅ Type inference works for all common cases
 - ✅ No performance regression
 - ✅ Documentation is clear and complete
+
+---
+
+## Implementation Plan - Commit Structure
+
+### **Commit 1: Prepare fluxion-stream for stateful operators**
+*Foundation work, no breaking changes*
+- Add internal utilities for state management if needed
+- Verify existing StreamItem patterns are compatible
+- Run all existing tests to establish baseline
+- **Why separate**: Ensures core infrastructure is solid before migration
+
+### **Commit 2: Move MergedStream to fluxion-stream**
+*File relocation and module setup*
+- Move `fluxion-merge/src/merged_stream.rs`  `fluxion-stream/src/merge_with.rs`
+- Add `pub mod merge_with;` to `fluxion-stream/src/lib.rs`
+- Update internal imports but keep StreamItem output commented/feature-flagged
+- Move supporting types/helpers
+- **Why separate**: Clean file movement without mixing logical changes
+
+### **Commit 3: Convert Stream output to StreamItem<T>**
+*Core breaking change - the heart of Option 1*
+- Change `Stream::Item` from `T` to `StreamItem<T::Inner>`
+- Update `poll_next` implementation to wrap in StreamItem
+- Update `merge_with` signature to work with StreamItem
+- **Why separate**: This is THE critical change - isolate for easy review/revert
+
+### **Commit 4: Update all tests for StreamItem output**
+*Fix compilation and test assertions*
+- Move tests from `fluxion-merge/tests/` to `fluxion-stream/tests/merge_with_tests.rs`
+- Change `Sequenced<T>`  `StreamItem<T>` in type annotations
+- Remove all turbofish syntax (verify inference works!)
+- Ensure all existing tests pass
+- **Why separate**: Large mechanical changes, easy to verify correctness
+
+### **Commit 5: Add integration tests for operator chaining**
+*Prove the value of the refactoring*
+- Add tests showing `merge_with().combine_latest()`
+- Add tests showing `merge_with().with_latest_from()`
+- Add tests showing mixed chains
+- Add examples demonstrating turbofish elimination
+- **Why separate**: New functionality proof - these are the "hero" examples
+
+### **Commit 6: Move benchmarks and cleanup fluxion-merge crate**
+*Remove old infrastructure*
+- Move `fluxion-merge/benches/`  `fluxion-stream/benches/merge_with_bench.rs`
+- Update benchmark code for StreamItem
+- Remove `fluxion-merge` from workspace `Cargo.toml`
+- Delete `fluxion-merge/` directory
+- Remove fluxion-merge dependencies from other crates
+- **Why separate**: Destructive changes isolated from constructive ones
+
+### **Commit 7: Documentation and polish**
+*Final user-facing updates*
+- Update `fluxion-stream/README.md` with merge_with examples
+- Update main `README.md` to remove fluxion-merge references
+- Add comprehensive doc comments showing the new API
+- Update CHANGELOG.md with migration guide
+- Add before/after examples showing turbofish elimination
+- **Why separate**: Documentation-only commit is easy to review and update
+
+### Benefits of This Structure
+1. **Bisectable**: Each commit compiles and tests pass (except #3 which breaks tests fixed in #4)
+2. **Reviewable**: Each commit has a single clear purpose
+3. **Revertable**: Can roll back individual changes if issues found
+4. **Documentable**: Git history tells the story of the migration
+5. **Parallel work**: Could theoretically split across people (though not recommended)
+
+### Risk Mitigation
+- Commits 3-4 could be squashed if you prefer (breaking change + fix together)
+- Each commit should run CI/tests to catch issues early
+- Keep branch rebased on main to avoid merge conflicts
+- Tag before starting: `git tag pre-merge-with-refactor main`
+
+### Estimated Timeline
+- Commit 1: 30 minutes (prep work)
+- Commit 2: 45 minutes (file moves)
+- Commit 3: 1-2 hours (core changes, careful testing)
+- Commit 4: 1-2 hours (update all tests)
+- Commit 5: 1 hour (new tests)
+- Commit 6: 45 minutes (cleanup)
+- Commit 7: 1 hour (docs)
+
+**Total: 5-7 hours** spread across logical checkpoints
