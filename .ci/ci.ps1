@@ -55,6 +55,7 @@ Invoke-StepAction "Cargo check (all targets & features)" { cargo check --all-tar
 Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-targets --all-features -- -D warnings }
 Invoke-StepAction "Release build" { cargo build --release --all-targets --all-features --verbose }
 Invoke-StepAction "Tests" { cargo test --all-features --all-targets --verbose }
+Invoke-StepAction "Benchmark compilation" { cargo bench --no-run --all-features --verbose }
 Invoke-StepAction "Docs (deny doc warnings)" { cargo doc --no-deps --all-features --verbose }
 
 Invoke-StepAction "Install nightly toolchain" { rustup toolchain install nightly }
