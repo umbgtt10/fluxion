@@ -37,11 +37,10 @@ impl<T> Sequenced<T> {
         }
     }
 
-    pub const fn with_timestamp(value: T, timestamp: u64) -> Self {
+    pub fn with_timestamp(value: T, timestamp: u64) -> Self {
         Self { value, timestamp }
     }
 
-    /// Gets the inner value, consuming the wrapper.
     pub fn into_inner(self) -> T {
         self.value
     }
@@ -71,7 +70,7 @@ where
     type Timestamp = u64;
 
     fn into_inner(self) -> Self::Inner {
-        self.value
+        Self::into_inner(self)
     }
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -79,7 +78,7 @@ where
     }
 
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
-        Self { value, timestamp }
+        Self::with_timestamp(value, timestamp)
     }
 
     fn with_fresh_timestamp(value: Self::Inner) -> Self {
