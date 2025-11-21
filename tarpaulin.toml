@@ -6,8 +6,5 @@ engine = "Llvm"
 out = ["Html", "Xml"]
 
 [run]
-fail-under = 60
-exclude-files = [
-    "examples/**",
-    "crates/fluxion-test-utils/**",
-]
+fail-under = 90
+exclude-files = [ "examples/**" ]

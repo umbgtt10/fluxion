@@ -412,7 +412,6 @@ async fn test_subscribe_latest_async_example() -> anyhow::Result<()> {
 - **[fluxion-stream](fluxion-stream/README.md)** - Stream operators and composition patterns
 - **[fluxion-exec](fluxion-exec/README.md)** - Async execution and subscription utilities
 - **[fluxion-core](fluxion-core/README.md)** - Core traits, types, and utilities
-- **[fluxion-merge](fluxion-merge/README.md)** - Stream merging operators
 - **[fluxion-ordered-merge](fluxion-ordered-merge/README.md)** - Generic ordered merging
 - **[fluxion-test-utils](fluxion-test-utils/README.md)** - Testing helpers and fixtures
 
@@ -470,7 +469,6 @@ This repository is organized as a Cargo workspace with the following crates:
 - **[fluxion-stream](fluxion-stream/README.md)** - Stream operators and combinators
 - **[fluxion-exec](fluxion-exec/README.md)** - Execution utilities and subscriptions
 - **[fluxion-core](fluxion-core/README.md)** - Core traits, types, and utilities
-- **[fluxion-merge](fluxion-merge/README.md)** - Stream merging operators
 - **[fluxion-ordered-merge](fluxion-ordered-merge/README.md)** - Generic ordered merging implementation
 - **[fluxion-test-utils](fluxion-test-utils/README.md)** - Test helpers and fixtures
 

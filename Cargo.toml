@@ -7,7 +7,6 @@ members = [
     "fluxion-stream",
     "fluxion-exec",
     "fluxion-test-utils",
-    "fluxion-merge",
     "examples/stream-aggregation",
 ]
 
@@ -50,4 +49,3 @@ fluxion-ordered-merge = { version = "0.2.1", path = "fluxion-ordered-merge" }
 fluxion-stream = { version = "0.2.1", path = "fluxion-stream" }
 fluxion-exec = { version = "0.2.1", path = "fluxion-exec" }
 fluxion-test-utils = { version = "0.2.1", path = "fluxion-test-utils" }
-fluxion-merge = { version = "0.2.1", path = "fluxion-merge" }

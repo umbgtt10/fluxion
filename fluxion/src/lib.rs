@@ -101,9 +101,6 @@ pub use fluxion_stream::{CombinedState, WithPrevious};
 // Re-export exec utilities
 pub use fluxion_exec;
 
-// Re-export merge utilities
-pub use fluxion_merge;
-
 // Re-export convenience extensions
 pub use channel_ext::UnboundedReceiverExt;
 

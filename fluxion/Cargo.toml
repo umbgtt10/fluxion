@@ -15,7 +15,6 @@ readme = "../README.md"
 fluxion-core = { workspace = true }
 fluxion-stream = { workspace = true }
 fluxion-exec = { workspace = true }
-fluxion-merge = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
