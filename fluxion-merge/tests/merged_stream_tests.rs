@@ -31,18 +31,18 @@ async fn test_merge_with_empty_streams() -> anyhow::Result<()> {
 
     // Act
     let result_stream = MergedStream::seed(0)
-        .merge_with(
+        .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<i32>, i32, u64>(
             empty_stream1,
-            |ts_new_item: Sequenced<TestData>, state: &mut i32| {
+            |_item: TestData, state: &mut i32| {
                 *state += 1;
-                Sequenced::with_timestamp(*state, ts_new_item.timestamp())
+                *state
             },
         )
-        .merge_with(
+        .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<i32>, i32, u64>(
             empty_stream2,
-            |ts_new_item: Sequenced<TestData>, state: &mut i32| {
+            |_item: TestData, state: &mut i32| {
                 *state += 1;
-                Sequenced::with_timestamp(*state, ts_new_item.timestamp())
+                *state
             },
         );
 
@@ -65,24 +65,18 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
 
     // Use a simple counter state to verify emissions from the non-empty stream
     let mut merged_stream = MergedStream::seed(0usize)
-        .merge_with(
+        .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<usize>, usize, u64>(
             non_empty_stream,
-            |ts_new_item: Sequenced<TestData>, state: &mut usize| {
-                let seq = ts_new_item.timestamp();
-                let _inner = ts_new_item.into_inner();
+            |_item: TestData, state: &mut usize| {
                 *state += 1;
-                let out = *state;
-                Sequenced::with_timestamp(out, seq)
+                *state
             },
         )
-        .merge_with(
+        .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<usize>, usize, u64>(
             empty_stream,
-            |ts_new_item: Sequenced<TestData>, state: &mut usize| {
-                let seq = ts_new_item.timestamp();
-                let _inner = ts_new_item.into_inner();
+            |_item: TestData, state: &mut usize| {
                 *state += 1; // will never run in this test
-                let out = *state;
-                Sequenced::with_timestamp(out, seq)
+                *state
             },
         );
 
@@ -90,7 +84,7 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
     non_empty_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
-    let state = merged_stream.next().await.unwrap();
+    let state: Sequenced<usize> = merged_stream.next().await.unwrap();
     assert_eq!(
         state.into_inner(),
         1,
@@ -101,7 +95,7 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
     non_empty_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
-    let state = merged_stream.next().await.unwrap();
+    let state: Sequenced<usize> = merged_stream.next().await.unwrap();
     assert_eq!(
         state.into_inner(),
         2,
@@ -112,7 +106,7 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
     non_empty_tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert
-    let state = merged_stream.next().await.unwrap();
+    let state: Sequenced<usize> = merged_stream.next().await.unwrap();
     assert_eq!(
         state.into_inner(),
         3,
@@ -131,24 +125,20 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     let stream2 = UnboundedReceiverStream::new(rx2);
 
     let mut merged_stream = MergedStream::seed(Repository::new())
-        .merge_with(
+        .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<Repository>, Repository, u64>(
             stream1,
-            |ts_new_item: Sequenced<TestData>, state: &mut Repository| {
-                state.from_testdata_timestamped(ts_new_item)
-            },
+            |item: TestData, state: &mut Repository| state.from_testdata(item),
         )
-        .merge_with(
+        .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<Repository>, Repository, u64>(
             stream2,
-            |ts_new_item: Sequenced<TestData>, state: &mut Repository| {
-                state.from_testdata_timestamped(ts_new_item)
-            },
+            |item: TestData, state: &mut Repository| state.from_testdata(item),
         );
 
     // Act
     tx1.send(Sequenced::new(person_alice()))?;
 
     // Assert
-    let state = merged_stream.next().await.unwrap();
+    let state: Sequenced<Repository> = merged_stream.next().await.unwrap();
     assert_eq!(
         state.value.person_name,
         Some("Alice".to_string()),
@@ -159,7 +149,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     tx2.send(Sequenced::new(person_bob()))?;
 
     // Assert
-    let state = merged_stream.next().await.unwrap();
+    let state: Sequenced<Repository> = merged_stream.next().await.unwrap();
     assert_eq!(
         state.value.person_name,
         Some("Bob".to_string()),
@@ -170,7 +160,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     tx1.send(Sequenced::new(person_charlie()))?;
 
     // Assert
-    let state = merged_stream.next().await.unwrap();
+    let state: Sequenced<Repository> = merged_stream.next().await.unwrap();
     assert_eq!(
         state.value.person_name,
         Some("Charlie".to_string()),
@@ -181,7 +171,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     tx2.send(Sequenced::new(person_dave()))?;
 
     // Assert
-    let state = merged_stream.next().await.unwrap();
+    let state: Sequenced<Repository> = merged_stream.next().await.unwrap();
     assert_eq!(
         state.value.person_name,
         Some("Dave".to_string()),
@@ -200,17 +190,13 @@ async fn test_merge_with_parallel_processing() -> anyhow::Result<()> {
     let stream2 = UnboundedReceiverStream::new(rx2);
 
     let merged_stream = MergedStream::seed(Repository::new())
-        .merge_with(
+        .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<Repository>, Repository, u64>(
             stream1,
-            |ts_new_item: Sequenced<TestData>, state: &mut Repository| {
-                state.from_testdata_timestamped(ts_new_item)
-            },
+            |item: TestData, state: &mut Repository| state.from_testdata(item),
         )
-        .merge_with(
+        .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<Repository>, Repository, u64>(
             stream2,
-            |ts_new_item: Sequenced<TestData>, state: &mut Repository| {
-                state.from_testdata_timestamped(ts_new_item)
-            },
+            |item: TestData, state: &mut Repository| state.from_testdata(item),
         );
 
     // Act
@@ -256,32 +242,28 @@ async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
     let large_stream2 = UnboundedReceiverStream::new(rx2);
 
     let mut merged_stream = MergedStream::seed(0)
-        .merge_with(
+        .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<i32>, i32, u64>(
             large_stream1,
-            |ts_new_item: Sequenced<TestData>, state: &mut i32| {
-                let seq = ts_new_item.timestamp();
-                let item = ts_new_item.into_inner();
+            |item: TestData, state: &mut i32| {
                 let num: i32 = match item {
                     TestData::Person(p) => p.age as i32,
                     TestData::Animal(a) => a.legs as i32,
                     TestData::Plant(pl) => pl.height as i32,
                 };
                 *state += num;
-                Sequenced::with_timestamp(*state, seq)
+                *state
             },
         )
-        .merge_with(
+        .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<i32>, i32, u64>(
             large_stream2,
-            |ts_new_item: Sequenced<TestData>, state: &mut i32| {
-                let seq = ts_new_item.timestamp();
-                let item = ts_new_item.into_inner();
+            |item: TestData, state: &mut i32| {
                 let num: i32 = match item {
                     TestData::Person(p) => p.age as i32,
                     TestData::Animal(a) => a.legs as i32,
                     TestData::Plant(pl) => pl.height as i32,
                 };
                 *state += num;
-                Sequenced::with_timestamp(*state, seq)
+                *state
             },
         );
 
@@ -297,7 +279,7 @@ async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
     let mut count = 0;
     let mut final_state = None;
     for _ in 0..20000 {
-        let state = merged_stream.next().await.unwrap();
+        let state: Sequenced<i32> = merged_stream.next().await.unwrap();
         count += 1;
         final_state = Some(state);
     }
@@ -323,16 +305,21 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let plant_stream = UnboundedReceiverStream::new(plant_rx);
 
-    let mut merged_stream = MergedStream::seed(Repository::new())
-        .merge_with(animal_stream, |ts_new_item: Sequenced<TestData>, state| {
-            state.from_testdata_timestamped(ts_new_item)
-        })
-        .merge_with(person_stream, |ts_new_item: Sequenced<TestData>, state| {
-            state.from_testdata_timestamped(ts_new_item)
-        })
-        .merge_with(plant_stream, |ts_new_item: Sequenced<TestData>, state| {
-            state.from_testdata_timestamped(ts_new_item)
-        });
+    let mut merged_stream: MergedStream<_, _, Sequenced<Repository>> = MergedStream::seed(
+        Repository::new(),
+    )
+    .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<Repository>, Repository, u64>(
+        animal_stream,
+        |item: TestData, state| state.from_testdata(item),
+    )
+    .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<Repository>, Repository, u64>(
+        person_stream,
+        |item: TestData, state| state.from_testdata(item),
+    )
+    .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<Repository>, Repository, u64>(
+        plant_stream,
+        |item: TestData, state| state.from_testdata(item),
+    );
 
     // Act
     animal_tx.send(Sequenced::new(animal_dog()))?;
@@ -549,16 +536,20 @@ impl Repository {
         }
     }
 
+    pub fn from_testdata(&mut self, data: TestData) -> Self {
+        match data {
+            TestData::Person(p) => self.from_person(p),
+            TestData::Animal(a) => self.from_animal(a),
+            TestData::Plant(pl) => self.from_plant(pl),
+        }
+    }
+
     /// Accept a Timestamped TestData and return a Timestamped Repository where
     /// the output preserves the incoming sequence. This centralizes sequence
     /// handling inside the repository helper instead of in every caller.
     pub fn from_testdata_timestamped(&mut self, ts: Sequenced<TestData>) -> Sequenced<Self> {
         let seq = ts.timestamp();
-        let out = match ts.into_inner() {
-            TestData::Person(p) => self.from_person(p),
-            TestData::Animal(a) => self.from_animal(a),
-            TestData::Plant(pl) => self.from_plant(pl),
-        };
+        let out = self.from_testdata(ts.into_inner());
         Sequenced::with_timestamp(out, seq)
     }
 }
@@ -571,23 +562,21 @@ async fn test_merge_with_user_closure_panics() {
     let stream = UnboundedReceiverStream::new(rx);
 
     // Create a merge_with stream where the closure panics on the second emission
-    let mut merged_stream = MergedStream::seed(0usize).merge_with(
+    let mut merged_stream: MergedStream<_, _, Sequenced<usize>> = MergedStream::seed(0usize)
+        .merge_with::<_, _, Sequenced<TestData>, TestData, Sequenced<usize>, usize, u64>(
         stream,
-        |ts_new_item: Sequenced<TestData>, state: &mut usize| {
-            let seq = ts_new_item.timestamp();
-            let _inner = ts_new_item.into_inner();
+        |_item: TestData, state: &mut usize| {
             *state += 1;
             if *state == 2 {
                 panic!("User closure panicked on purpose");
             }
-            let out = *state;
-            Sequenced::with_timestamp(out, seq)
+            *state
         },
     );
 
     // Act: First emission should succeed
     tx.send(Sequenced::new(person_alice())).unwrap();
-    let first = merged_stream.next().await.unwrap();
+    let first: Sequenced<usize> = merged_stream.next().await.unwrap();
     assert_eq!(
         first.into_inner(),
         1,

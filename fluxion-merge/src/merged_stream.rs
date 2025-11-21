@@ -48,36 +48,47 @@ where
     /// Uses [`fluxion_ordered_merge`] to combine the streams while preserving
     /// temporal order based on sequence numbers.
     ///
+    /// The closure receives unwrapped values and returns unwrapped values - timestamp
+    /// propagation is handled automatically by the operator.
+    ///
     /// # Parameters
     /// - `new_stream`: The new Timestamped stream to merge
-    /// - `process_fn`: Function to process each item with mutable access to shared state
-    pub fn merge_with<NewStream, F, InItem, OutItem>(
+    /// - `process_fn`: Function to process inner values with mutable access to shared state
+    pub fn merge_with<NewStream, F, InWrapper, InItem, OutWrapper, OutItem, TS>(
         self,
         new_stream: NewStream,
         process_fn: F,
-    ) -> MergedStream<impl Stream<Item = OutItem>, State, OutItem>
+    ) -> MergedStream<impl Stream<Item = OutWrapper>, State, OutWrapper>
     where
-        NewStream: Stream<Item = InItem> + Send + Sync + 'static,
+        NewStream: Stream<Item = InWrapper> + Send + Sync + 'static,
         F: FnMut(InItem, &mut State) -> OutItem + Send + Sync + Clone + 'static,
-        InItem: Timestamped + Send + Sync + Ord + Unpin + 'static,
-        OutItem: Timestamped + Send + Sync + Ord + Unpin + 'static,
-        Item: Into<OutItem>,
+        InWrapper:
+            Timestamped<Inner = InItem, Timestamp = TS> + Send + Sync + Ord + Unpin + 'static,
+        InItem: Clone + Send + Sync + 'static,
+        OutWrapper:
+            Timestamped<Inner = OutItem, Timestamp = TS> + Send + Sync + Ord + Unpin + 'static,
+        OutItem: Clone + Send + Sync + 'static,
+        TS: Ord + Copy + Send + Sync + std::fmt::Debug,
+        Item: Into<OutWrapper>,
     {
         let shared_state = Arc::clone(&self.state);
         let new_stream_mapped = new_stream.then(move |timestamped_item| {
             let shared_state = Arc::clone(&shared_state);
             let mut process_fn = process_fn.clone();
             async move {
+                let timestamp = timestamped_item.timestamp();
+                let inner_value = timestamped_item.into_inner();
                 let mut state = shared_state.lock().await;
-                process_fn(timestamped_item, &mut *state)
+                let result_value = process_fn(inner_value, &mut *state);
+                OutWrapper::with_timestamp(result_value, timestamp)
             }
         });
 
         let self_stream_mapped = self.inner.map(Into::into);
 
         let merged_stream = vec![
-            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = OutItem> + Send + Sync>>,
-            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = OutItem> + Send + Sync>>,
+            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = OutWrapper> + Send + Sync>>,
+            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = OutWrapper> + Send + Sync>>,
         ]
         .ordered_merge();
 

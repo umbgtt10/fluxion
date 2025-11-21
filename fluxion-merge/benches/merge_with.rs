@@ -58,18 +58,27 @@ pub fn bench_merge_with(c: &mut Criterion) {
                         }
 
                         let merged = MergedStream::seed(SharedState::default())
-                            .merge_with(new_stream1, |new_item, state| {
-                                state.update1();
-                                Sequenced::new(new_item.into_inner())
-                            })
-                            .merge_with(new_stream2, |new_item, state| {
-                                state.update2();
-                                Sequenced::new(new_item.into_inner())
-                            })
-                            .merge_with(new_stream3, |new_item, state| {
-                                state.update3();
-                                Sequenced::new(new_item.into_inner())
-                            });
+                            .merge_with::<_, _, Sequenced<Vec<u8>>, Vec<u8>, Sequenced<Vec<u8>>, Vec<u8>, u64>(
+                                new_stream1,
+                                |new_item: Vec<u8>, state| {
+                                    state.update1();
+                                    new_item
+                                },
+                            )
+                            .merge_with::<_, _, Sequenced<Vec<u8>>, Vec<u8>, Sequenced<Vec<u8>>, Vec<u8>, u64>(
+                                new_stream2,
+                                |new_item: Vec<u8>, state| {
+                                    state.update2();
+                                    new_item
+                                },
+                            )
+                            .merge_with::<_, _, Sequenced<Vec<u8>>, Vec<u8>, Sequenced<Vec<u8>>, Vec<u8>, u64>(
+                                new_stream3,
+                                |new_item: Vec<u8>, state| {
+                                    state.update3();
+                                    new_item
+                                },
+                            );
 
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
