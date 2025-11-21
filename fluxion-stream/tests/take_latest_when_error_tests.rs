@@ -4,8 +4,6 @@
 
 //! Error propagation tests for `take_latest_when` operator.
 
-use fluxion_core::Timestamped;
-
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::TakeLatestWhenExt;
 use fluxion_test_utils::{

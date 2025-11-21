@@ -117,7 +117,6 @@ where
 mod tests {
     use super::*;
     use crate::ChronoTimestamped;
-    use fluxion_core::Timestamped;
     use futures::{stream, StreamExt};
 
     #[tokio::test]

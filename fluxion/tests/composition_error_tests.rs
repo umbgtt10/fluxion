@@ -3,7 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 //! Error propagation tests for composed stream operations.
 
-use fluxion_core::Timestamped;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::{CombineLatestExt, EmitWhenExt, FluxionStream, TakeLatestWhenExt};
 use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, ChronoTimestamped};

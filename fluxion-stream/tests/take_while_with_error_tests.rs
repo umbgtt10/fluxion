@@ -4,8 +4,6 @@
 
 //! Error propagation tests for `take_while_with` operator.
 
-use fluxion_core::Timestamped;
-
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::TakeWhileExt;
 use fluxion_test_utils::{

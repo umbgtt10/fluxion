@@ -34,19 +34,15 @@ async fn test_merge_with_empty_streams() -> anyhow::Result<()> {
         .merge_with(
             empty_stream1,
             |ts_new_item: ChronoTimestamped<TestData>, state: &mut i32| {
-                let seq = ts_new_item.timestamp();
-                let _ = ts_new_item.into_inner();
-                let out = *state;
-                ChronoTimestamped::with_timestamp(out, seq)
+                *state += 1;
+                ChronoTimestamped::with_timestamp(*state, ts_new_item.timestamp())
             },
         )
         .merge_with(
             empty_stream2,
             |ts_new_item: ChronoTimestamped<TestData>, state: &mut i32| {
-                let seq = ts_new_item.timestamp();
-                let _ = ts_new_item.into_inner();
-                let out = *state;
-                ChronoTimestamped::with_timestamp(out, seq)
+                *state += 1;
+                ChronoTimestamped::with_timestamp(*state, ts_new_item.timestamp())
             },
         );
 
@@ -154,7 +150,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        state.person_name,
+        state.value.person_name,
         Some("Alice".to_string()),
         "Repository should contain Alice after first emission"
     );
@@ -165,7 +161,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        state.person_name,
+        state.value.person_name,
         Some("Bob".to_string()),
         "Repository should contain Bob after second emission"
     );
@@ -176,7 +172,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        state.person_name,
+        state.value.person_name,
         Some("Charlie".to_string()),
         "Repository should contain Charlie after third emission"
     );
@@ -187,7 +183,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     // Assert
     let state = merged_stream.next().await.unwrap();
     assert_eq!(
-        state.person_name,
+        state.value.person_name,
         Some("Dave".to_string()),
         "Repository should contain Dave after fourth emission"
     );
