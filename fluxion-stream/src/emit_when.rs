@@ -13,7 +13,7 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-/// Extension trait providing the `emit_when` operator for ordered streams.
+/// Extension trait providing the `emit_when` operator for timestamped streams.
 ///
 /// This operator gates a source stream based on conditions from a filter stream,
 /// emitting source values only when the combined state passes a predicate.

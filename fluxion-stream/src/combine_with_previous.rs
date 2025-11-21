@@ -7,7 +7,7 @@ use crate::types::WithPrevious;
 use fluxion_core::{StreamItem, Timestamped};
 use futures::{future::ready, Stream, StreamExt};
 
-/// Extension trait providing the `combine_with_previous` operator for ordered streams.
+/// Extension trait providing the `combine_with_previous` operator for timestamped streams.
 ///
 /// This operator pairs each stream element with its predecessor, enabling
 /// stateful processing and change detection.

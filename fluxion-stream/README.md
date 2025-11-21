@@ -13,7 +13,7 @@ Stream combinators for async Rust with strong temporal-ordering guarantees. This
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Core Concepts](#core-concepts)
-  - [Ordered Trait](#ordered-trait)
+  - [Timestamped Trait](#timestamped-trait)
   - [Temporal Ordering](#temporal-ordering)
   - [Error Propagation](#error-propagation)
 - [Stream Operators](#stream-operators)
@@ -184,7 +184,7 @@ let merged = stream1.ordered_merge(vec![stream2, stream3]);
 
 **Behavior:**
 - Emits all items from all streams
-- Items emitted in order of their `order()` value
+- Items emitted in order of their `timestamp()` value
 - Buffers items to ensure correct ordering
 - Completes when all input streams complete
 

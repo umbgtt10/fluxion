@@ -15,7 +15,7 @@ use fluxion_core::lock_utilities::lock_or_error;
 use fluxion_core::{CompareByInner, StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 
-/// Extension trait providing the `combine_latest` operator for ordered streams.
+/// Extension trait providing the `combine_latest` operator for timestamped streams.
 ///
 /// This trait enables combining multiple streams where each emission waits for
 /// at least one value from all streams, then emits the combination of the latest

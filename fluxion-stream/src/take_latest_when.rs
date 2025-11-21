@@ -12,7 +12,7 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-/// Extension trait providing the `take_latest_when` operator for ordered streams.
+/// Extension trait providing the `take_latest_when` operator for timestamped streams.
 ///
 /// This operator samples the latest value from a source stream whenever a filter
 /// stream emits a value that passes a predicate.

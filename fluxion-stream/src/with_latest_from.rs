@@ -13,7 +13,7 @@ use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_error;
 use fluxion_core::{CompareByInner, StreamItem, Timestamped};
 
-/// Extension trait providing the `with_latest_from` operator for ordered streams.
+/// Extension trait providing the `with_latest_from` operator for timestamped streams.
 ///
 /// This operator combines a primary stream with a secondary stream, emitting only
 /// when the primary stream emits, using the latest value from the secondary stream.
