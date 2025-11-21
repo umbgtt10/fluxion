@@ -1,15 +1,52 @@
 $repo = "C:\Projects\fluxion"
 Set-Location $repo
-$files = Get-ChildItem -Path $repo -Recurse -Filter *.rs -File -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch '\\target\\' -and $_.FullName -notmatch '\\.git\\' }
+$files = Get-ChildItem -Path $repo -Recurse -Filter *.rs -File -ErrorAction SilentlyContinue | Where-Object {
+    $_.FullName -notmatch '\\target\\' -and
+    $_.FullName -notmatch '\\.git\\' -and
+    $_.FullName -notmatch '\\examples\\'
+}
 if (-not $files -or $files.Count -eq 0) {
     Write-Output "No .rs files found"
     exit 0
 }
+
+function Count-CodeLines {
+    param([string]$FilePath)
+    $content = Get-Content -LiteralPath $FilePath -ErrorAction SilentlyContinue
+    $codeLines = 0
+    $inBlockComment = $false
+
+    foreach ($line in $content) {
+        $trimmed = $line.Trim()
+
+        # Handle block comments
+        if ($trimmed -match '^/\*') {
+            $inBlockComment = $true
+        }
+        if ($inBlockComment) {
+            if ($trimmed -match '\*/\s*$') {
+                $inBlockComment = $false
+            }
+            continue
+        }
+
+        # Skip empty lines and single-line comments
+        if ($trimmed -eq '' -or $trimmed -match '^//') {
+            continue
+        }
+
+        # Count this as a code line
+        $codeLines++
+    }
+
+    return $codeLines
+}
+
 $total = 0
 $prod = 0
 $detail = @()
 foreach ($f in $files) {
-    $lines = (Get-Content -LiteralPath $f.FullName -ErrorAction SilentlyContinue | Measure-Object -Line).Lines
+    $lines = Count-CodeLines -FilePath $f.FullName
     $total += $lines
     if ($f.FullName -match '\\src\\') { $kind='productive'; $prod += $lines } else { $kind='other' }
     $detail += [pscustomobject]@{Path=$f.FullName; Lines=$lines; Kind=$kind}
