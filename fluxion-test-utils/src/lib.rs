@@ -101,24 +101,18 @@
 
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 pub mod animal;
-pub mod chrono_timestamped;
 pub mod error_injection;
 pub mod helpers;
 pub mod person;
 pub mod plant;
+pub mod sequenced;
 pub mod test_data;
 
 // Re-export commonly used test utilities
-pub use chrono_timestamped::ChronoTimestamped;
 pub use error_injection::ErrorInjectingStream;
 pub use helpers::{
     assert_no_element_emitted, assert_stream_ended, test_channel, test_channel_with_errors,
     unwrap_stream, unwrap_value,
 };
+pub use sequenced::ChronoTimestamped;
 pub use test_data::{DataVariant, TestData};
-
-// Legacy alias for backward compatibility - use Timestamped directly
-pub mod sequenced {
-    #[deprecated(since = "0.1.0", note = "Use `Timestamped` instead")]
-    pub use super::chrono_timestamped::ChronoTimestamped as Sequenced;
-}
