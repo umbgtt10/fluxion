@@ -54,21 +54,28 @@ where
     /// # Parameters
     /// - `new_stream`: The new Timestamped stream to merge
     /// - `process_fn`: Function to process inner values with mutable access to shared state
-    pub fn merge_with<NewStream, F, InWrapper, InItem, OutWrapper, OutItem, TS>(
+    pub fn merge_with<NewStream, F, OutWrapper>(
         self,
         new_stream: NewStream,
         process_fn: F,
     ) -> MergedStream<impl Stream<Item = OutWrapper>, State, OutWrapper>
     where
-        NewStream: Stream<Item = InWrapper> + Send + Sync + 'static,
-        F: FnMut(InItem, &mut State) -> OutItem + Send + Sync + Clone + 'static,
-        InWrapper:
-            Timestamped<Inner = InItem, Timestamp = TS> + Send + Sync + Ord + Unpin + 'static,
-        InItem: Clone + Send + Sync + 'static,
-        OutWrapper:
-            Timestamped<Inner = OutItem, Timestamp = TS> + Send + Sync + Ord + Unpin + 'static,
-        OutItem: Clone + Send + Sync + 'static,
-        TS: Ord + Copy + Send + Sync + std::fmt::Debug,
+        NewStream: Stream + Send + Sync + 'static,
+        NewStream::Item: Timestamped + Send + Sync + Ord + Unpin + 'static,
+        <NewStream::Item as Timestamped>::Inner: Clone + Send + Sync + 'static,
+        <NewStream::Item as Timestamped>::Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug,
+        F: FnMut(
+                <NewStream::Item as Timestamped>::Inner,
+                &mut State,
+            ) -> <OutWrapper as Timestamped>::Inner
+            + Send
+            + Sync
+            + Clone
+            + 'static,
+        OutWrapper: Timestamped + Send + Sync + Ord + Unpin + 'static,
+        OutWrapper::Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug,
+        OutWrapper::Inner: Clone + Send + Sync + 'static,
+        <NewStream::Item as Timestamped>::Timestamp: Into<OutWrapper::Timestamp> + Copy,
         Item: Into<OutWrapper>,
     {
         let shared_state = Arc::clone(&self.state);
@@ -80,7 +87,7 @@ where
                 let inner_value = timestamped_item.into_inner();
                 let mut state = shared_state.lock().await;
                 let result_value = process_fn(inner_value, &mut *state);
-                OutWrapper::with_timestamp(result_value, timestamp)
+                OutWrapper::with_timestamp(result_value, timestamp.into())
             }
         });
 
@@ -123,7 +130,7 @@ where
     ///
     /// // Chain merge_with with other operators in one expression
     /// let mut result = MergedStream::seed(0)
-    ///     .merge_with::<_, _, _, _, Sequenced<i32>, i32, u64>(
+    ///     .merge_with::<_, _, Sequenced<i32>>(
     ///         tokio_stream::wrappers::UnboundedReceiverStream::new(rx1),
     ///         |value, state| {
     ///             *state += value;
@@ -131,7 +138,10 @@ where
     ///         }
     ///     )
     ///     .into_fluxion_stream()
-    ///     .map_ordered(|x| x * 2)
+    ///     .map_ordered(|seq| {
+    ///         let value = seq.into_inner();
+    ///         Sequenced::new(value * 2)
+    ///     })
     ///     .filter_ordered(|&x| x > 10);
     /// # }
     /// ```

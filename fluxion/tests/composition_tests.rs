@@ -5,6 +5,7 @@
 use fluxion_core::StreamItem;
 use fluxion_core::Timestamped;
 use fluxion_rx::{CombinedState, FluxionStream};
+use fluxion_stream::MergedStream;
 use fluxion_stream::WithPrevious;
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::helpers::unwrap_stream;
@@ -17,6 +18,7 @@ use fluxion_test_utils::test_wrapper::TestWrapper;
 use fluxion_test_utils::unwrap_value;
 use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
+use tokio::sync::mpsc;
 
 static FILTER: fn(&TestData) -> bool = |_| true;
 static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;
@@ -1744,6 +1746,153 @@ async fn test_take_while_with_in_middle_of_chain() -> anyhow::Result<()> {
 
     assert_eq!(&result1.value, &person_bob());
     assert_eq!(&result2.value, &person_charlie());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_merge_with_chaining_with_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
+
+    // Act: Chain merge_with with map_ordered that doubles the counter
+    let mut result = MergedStream::seed(0)
+        .merge_with::<_, _, Sequenced<usize>>(stream, |_item: TestData, state| {
+            *state += 1;
+            *state
+        })
+        .into_fluxion_stream()
+        .map_ordered(|seq| {
+            let value = seq.into_inner();
+            Sequenced::new(value * 2)
+        });
+
+    // Send first value
+    tx.send(Sequenced::new(person_alice()))?;
+
+    // Assert first result: state=1, doubled=2
+    let StreamItem::Value(first) = result.next().await.unwrap() else {
+        panic!("Expected Value");
+    };
+    assert_eq!(first.into_inner(), 2, "First emission: (0+1)*2 = 2");
+
+    // Send second value
+    tx.send(Sequenced::new(person_bob()))?;
+
+    // Assert second result: state=2, doubled=4
+    let StreamItem::Value(second) = result.next().await.unwrap() else {
+        panic!("Expected Value");
+    };
+    assert_eq!(second.into_inner(), 4, "Second emission: (1+1)*2 = 4");
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_merge_with_chaining_with_filter_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
+
+    // Act: Chain merge_with with filter_ordered (only values > 2)
+    let mut result = MergedStream::seed(0)
+        .merge_with::<_, _, Sequenced<usize>>(stream, |_item: TestData, state| {
+            *state += 1;
+            *state
+        })
+        .into_fluxion_stream()
+        .filter_ordered(|&value| value > 2);
+
+    // Send first value - state will be 1 (filtered out)
+    tx.send(Sequenced::new(person_alice()))?;
+
+    // Send second value - state will be 2 (filtered out)
+    tx.send(Sequenced::new(person_bob()))?;
+
+    // Send third value - state will be 3 (kept)
+    tx.send(Sequenced::new(person_charlie()))?;
+
+    // Assert: only the third emission passes the filter
+    let StreamItem::Value(first_kept) = result.next().await.unwrap() else {
+        panic!("Expected Value");
+    };
+    assert_eq!(
+        first_kept.into_inner(),
+        3,
+        "Third emission passes filter: 3 > 2"
+    );
+
+    // Send fourth value - state will be 4 (kept)
+    tx.send(Sequenced::new(person_dave()))?;
+
+    // Assert: fourth emission also passes
+    let StreamItem::Value(second_kept) = result.next().await.unwrap() else {
+        panic!("Expected Value");
+    };
+    assert_eq!(
+        second_kept.into_inner(),
+        4,
+        "Fourth emission passes filter: 4 > 2"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_merge_with_chaining_multiple_operators() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
+
+    // Act: Chain merge_with with map, filter, and another map
+    let mut result = MergedStream::seed(0)
+        .merge_with::<_, _, Sequenced<usize>>(stream, |_item: TestData, state| {
+            *state += 1;
+            *state
+        })
+        .into_fluxion_stream()
+        .map_ordered(|seq| {
+            let value = seq.into_inner();
+            Sequenced::new(value * 3)
+        })
+        .filter_ordered(|&value| value > 6)
+        .map_ordered(|seq| {
+            let value = seq.into_inner();
+            Sequenced::new(value + 10)
+        });
+
+    // Send first value - state: 1, *3=3 (filtered out: 3 <= 6)
+    tx.send(Sequenced::new(person_alice()))?;
+
+    // Send second value - state: 2, *3=6 (filtered out: 6 <= 6)
+    tx.send(Sequenced::new(person_bob()))?;
+
+    // Send third value - state: 3, *3=9, +10=19 (kept: 9 > 6)
+    tx.send(Sequenced::new(person_charlie()))?;
+
+    // Assert: first kept value
+    let StreamItem::Value(first_kept) = result.next().await.unwrap() else {
+        panic!("Expected Value");
+    };
+    assert_eq!(
+        first_kept.into_inner(),
+        19,
+        "Third emission: 3*3=9, 9+10=19"
+    );
+
+    // Send fourth value - state: 4, *3=12, +10=22 (kept: 12 > 6)
+    tx.send(Sequenced::new(person_dave()))?;
+
+    // Assert: second kept value
+    let StreamItem::Value(second_kept) = result.next().await.unwrap() else {
+        panic!("Expected Value");
+    };
+    assert_eq!(
+        second_kept.into_inner(),
+        22,
+        "Fourth emission: 4*3=12, 12+10=22"
+    );
 
     Ok(())
 }
