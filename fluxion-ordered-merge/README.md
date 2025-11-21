@@ -6,7 +6,7 @@ Generic ordered stream merging utilities for async Rust.
 
 ## Overview
 
-This crate provides low-level utilities for merging async streams with temporal ordering guarantees. Unlike `fluxion-merge`, which is specialized for Fluxion streams, this crate works with any stream type implementing the `Timestamped` trait.
+This crate provides low-level utilities for merging async streams with temporal ordering guarantees. It works with any stream type implementing the `Timestamped` trait and serves as a building block for higher-level operators like `merge_with` in `fluxion-stream`.
 
 ## Features
 
@@ -17,7 +17,7 @@ This crate provides low-level utilities for merging async streams with temporal 
 
 ## Usage
 
-This crate is primarily used as a building block for higher-level merge operators. Most users should use `fluxion-merge` instead.
+This crate is primarily used as a building block for higher-level merge operators. Most users should use the `merge_with` operator from `fluxion-stream` instead.
 
 ### Example
 
@@ -54,7 +54,7 @@ The ordered merge algorithm:
 
 1. Polls all input streams concurrently
 2. Buffers items that arrive out of order
-3. Emits items strictly by sequence number
+3. Emits items strictly by timestamp order
 4. Handles stream completion correctly
 
 This ensures temporal ordering even when upstream streams emit at different rates or out of sequence.

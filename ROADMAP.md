@@ -66,25 +66,35 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 ## 🚀 Version 0.3.0 - Test & Bench
 **Essential Features:**
-- [X] All tests consolidated and buautified
+- ✅ All tests consolidated and buautified
 - [ ] At least one error operator implemented, documented and tested
 - [ ] Code coverage metrix available and integrated in the PITCH
-- [X] Code coverage integrated in the CI with badge on the README
+- ✅ Code coverage integrated in the CI with badge on the README
 - [ ] Benches exaustive
-- [ ] Integrate merge_with in fluxion-stream. Remove the separate crate.
+- ✅ Integrate `merge_with` in fluxion-stream. Remove the separate crate.
 - [ ] 1 fully functional example application showing
     - [ ] the wrapped integration path
-    - [ ] the usage of merge_with integrated with the other operators
+    - [ ] the usage of `merge_with` integrated with the other operators
 
 
 **Documentation:**
-- [X] `Subscribe` and `SubscribeLatest` documented
-- [X] docs finalized
+- ✅ `subcscribe` and `subscribe_latest` documented
+- ✅ `merge_with`  documented
+- ✅ docs finalized
 
 **Quality Gates:**
 - [ ] performance table available and comprehensible
 
-## 🚀 Version 0.4.0 - Wasm & Runtime abstraction
+## 🚀 Version 0.4.0 - More of it
+**Essential Features:**
+- [ ] Implement 5 more oeprators from the operator roadmap
+- [ ] Implement one more eror handling operator from the operator roadmap
+
+**Documentation:**
+
+**Quality Gates:**
+
+## 🚀 Version 0.5.0 - Wasm & Runtime abstraction
 **Essential Features:**
 - [ ] Implement runtime abstraction
 

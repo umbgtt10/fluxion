@@ -188,7 +188,7 @@ let merged = stream1.ordered_merge(vec![stream2, stream3]);
 - Buffers items to ensure correct ordering
 - Completes when all input streams complete
 
-[Full documentation](src/ordered_merge.rs)
+[Full documentation](src/ordered_merge.rs) | [Tests](tests/merge_ordered_tests.rs)
 
 ### Filtering Operators
 
@@ -290,7 +290,7 @@ Maps values while preserving ordering wrapper.
 let mapped = stream.map_ordered(|x| x * 2);
 ```
 
-[Tests](tests/map_ordered_tests.rs)
+[Full documentation](src/map_ordered.rs) | [Tests](tests/map_ordered_tests.rs)
 
 #### `filter_ordered`
 Filters values while preserving ordering wrapper.
@@ -299,7 +299,7 @@ Filters values while preserving ordering wrapper.
 let filtered = stream.filter_ordered(|x| *x > 10);
 ```
 
-[Tests](tests/filter_ordered_tests.rs)
+[Full documentation](src/filter_ordered.rs) | [Tests](tests/filter_ordered_tests.rs)
 
 ## Operator Selection Guide
 
