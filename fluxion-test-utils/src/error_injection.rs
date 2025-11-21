@@ -20,16 +20,16 @@ use std::task::{Context, Poll};
 /// # Examples
 ///
 /// ```rust
-/// use fluxion_test_utils::ChronoTimestamped;
+/// use fluxion_test_utils::Sequenced;
 /// use fluxion_test_utils::ErrorInjectingStream;
 /// use fluxion_core::{StreamItem, Timestamped };
 /// use futures::{stream, StreamExt};
 ///
 /// # async fn example() {
 /// let items = vec![
-///     <ChronoTimestamped<i32> >::with_timestamp(1, 1),
-///     <ChronoTimestamped<i32> >::with_timestamp(2, 2),
-///     <ChronoTimestamped<i32> >::with_timestamp(3, 3),
+///     <Sequenced<i32> >::with_timestamp(1, 1),
+///     <Sequenced<i32> >::with_timestamp(2, 2),
+///     <Sequenced<i32> >::with_timestamp(3, 3),
 /// ];
 ///
 /// let base_stream = stream::iter(items);
@@ -65,10 +65,10 @@ impl<S> ErrorInjectingStream<S> {
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_test_utils::{ChronoTimestamped, ErrorInjectingStream};
+    /// use fluxion_test_utils::{Sequenced, ErrorInjectingStream};
     /// use futures::stream;
     ///
-    /// let items = vec![ChronoTimestamped::new(1), ChronoTimestamped::new(2)];
+    /// let items = vec![Sequenced::new(1), Sequenced::new(2)];
     /// let base = stream::iter(items);
     /// let error_stream = ErrorInjectingStream::new(base, 1);
     /// // Will inject error at position 1 (after first value)
@@ -116,16 +116,15 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ChronoTimestamped;
-    use fluxion_core::Timestamped;
+    use crate::Sequenced;
     use futures::{stream, StreamExt};
 
     #[tokio::test]
     async fn test_error_injection_at_position() {
         let items = vec![
-            <ChronoTimestamped<_>>::with_timestamp(1, 1_000_000_000),
-            <ChronoTimestamped<_>>::with_timestamp(2, 2_000_000_000),
-            <ChronoTimestamped<_>>::with_timestamp(3, 3_000_000_000),
+            <Sequenced<_>>::with_timestamp(1, 1_000_000_000),
+            <Sequenced<_>>::with_timestamp(2, 2_000_000_000),
+            <Sequenced<_>>::with_timestamp(3, 3_000_000_000),
         ];
 
         let base_stream = stream::iter(items);
@@ -146,7 +145,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_error_injection_at_start() {
-        let items = vec![<ChronoTimestamped<_>>::with_timestamp(1, 1_000_000_000)];
+        let items = vec![<Sequenced<_>>::with_timestamp(1, 1_000_000_000)];
         let base_stream = stream::iter(items);
         let mut error_stream = ErrorInjectingStream::new(base_stream, 0);
 

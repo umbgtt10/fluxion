@@ -72,6 +72,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - [ ] Code coverage metrix available and integrated in the PITCH
 - [X] Code coverage integrated in the CI with badge on the README
 - [ ] Benches exaustive
+- [ ] Integrate merge_with in fluxion-stream. Remove the separate crate.
 
 **Documentation:**
 - [X] `Subscribe` and `SubscribeLatest` documented

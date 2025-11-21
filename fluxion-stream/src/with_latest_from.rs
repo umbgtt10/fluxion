@@ -13,7 +13,7 @@ use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_error;
 use fluxion_core::{CompareByInner, StreamItem, Timestamped};
 
-/// Extension trait providing the `with_latest_from` operator for ordered streams.
+/// Extension trait providing the `with_latest_from` operator for timestamped streams.
 ///
 /// This operator combines a primary stream with a secondary stream, emitting only
 /// when the primary stream emits, using the latest value from the secondary stream.
@@ -75,14 +75,14 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{WithLatestFromExt, FluxionStream};
-    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_test_utils::Sequenced;
     /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx_primary, rx_primary) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
-    /// let (tx_secondary, rx_secondary) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+    /// let (tx_primary, rx_primary) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+    /// let (tx_secondary, rx_secondary) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
     ///
     /// // Create streams
     /// let primary = FluxionStream::from_unbounded_receiver(rx_primary);

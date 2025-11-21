@@ -30,15 +30,15 @@ pub trait Timestamped: Clone {
 }
 ```
 
-### ChronoTimestamped<T>
+### Sequenced<T>
 
-A ready-to-use implementation of `Timestamped` using chrono timestamps (available in `fluxion-test-utils`):
+A ready-to-use implementation of `Timestamped` using monotonically growing sequence numbers (available in `fluxion-test-utils`):
 
 ```rust
-use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::Sequenced;
 use fluxion_core::Timestamped;
 
-let item = ChronoTimestamped::new(42);
+let item = Sequenced::new(42);
 assert_eq!(item.value, 42);
 // Timestamp uses chrono::Utc::now()
 ```

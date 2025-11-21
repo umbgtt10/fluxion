@@ -20,16 +20,15 @@
 //!
 //! # Key Types
 //!
-//! ## `Timestamped<T>`
+//! ## `Sequenced<T>`
 //!
 //! A wrapper type that adds temporal ordering to test values:
 //!
 //! ```rust
-//! use fluxion_test_utils::ChronoTimestamped;
-//! use fluxion_core::Timestamped ;
-//! let item = ChronoTimestamped::new(42);  // Auto-timestamped with current time
-//! assert_eq!(item.value, 42);
-//! // Timestamps use chrono::Utc::now()
+//! use fluxion_test_utils::Sequenced;
+//! use fluxion_core::Timestamped;
+//! let item = Sequenced::new(42);  // Auto-assigned counter-based timestamp
+//! assert_eq!(item.value, 42);  // Access inner value via field
 //! ```
 //!
 //! ## TestData and Variants
@@ -63,13 +62,13 @@
 //! ## Creating Ordered Test Values
 //!
 //! ```rust
-//! use fluxion_test_utils::ChronoTimestamped;
-//! use fluxion_core::Timestamped ;
+//! use fluxion_test_utils::Sequenced;
+//! use fluxion_core::Timestamped;
 //!
 //! // Create timestamped values with explicit ordering
-//! let first = ChronoTimestamped::with_timestamp(100, 1);
-//! let second = ChronoTimestamped::with_timestamp(200, 2);
-//! let third = ChronoTimestamped::with_timestamp(300, 3);
+//! let first = Sequenced::with_timestamp(100, 1);
+//! let second = Sequenced::with_timestamp(200, 2);
+//! let third = Sequenced::with_timestamp(300, 3);
 //!
 //! // Verify ordering
 //! assert!(first.timestamp() < second.timestamp());
@@ -77,7 +76,8 @@
 //!
 //! // Access inner values
 //! assert_eq!(first.value, 100);
-//! assert_eq!(*second.get(), 200);
+//! assert_eq!(second.value, 200);
+//! assert_eq!(third.value, 300);
 //! ```
 //!
 //! ## Using Assertion Helpers
@@ -101,24 +101,18 @@
 
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 pub mod animal;
-pub mod chrono_timestamped;
 pub mod error_injection;
 pub mod helpers;
 pub mod person;
 pub mod plant;
+pub mod sequenced;
 pub mod test_data;
 
 // Re-export commonly used test utilities
-pub use chrono_timestamped::ChronoTimestamped;
 pub use error_injection::ErrorInjectingStream;
 pub use helpers::{
     assert_no_element_emitted, assert_stream_ended, test_channel, test_channel_with_errors,
     unwrap_stream, unwrap_value,
 };
+pub use sequenced::Sequenced;
 pub use test_data::{DataVariant, TestData};
-
-// Legacy alias for backward compatibility - use Timestamped directly
-pub mod sequenced {
-    #[deprecated(since = "0.1.0", note = "Use `Timestamped` instead")]
-    pub use super::chrono_timestamped::ChronoTimestamped as Sequenced;
-}

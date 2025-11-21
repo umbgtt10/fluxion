@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem, Timestamped};
-use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::Sequenced;
 use std::cmp::Ordering;
 
 #[test]
@@ -234,12 +234,12 @@ fn test_stream_item_clone_error() {
 
 #[test]
 fn test_stream_item_ordered_value() {
-    let ordered = ChronoTimestamped::with_timestamp(42, 100);
+    let ordered = Sequenced::with_timestamp(42, 100);
     let item = StreamItem::Value(ordered);
 
     assert_eq!(item.timestamp(), 100);
     match item {
-        StreamItem::Value(v) => assert_eq!(*v, 42),
+        StreamItem::Value(v) => assert_eq!(v.value, 42),
         _ => panic!("Expected Value"),
     }
 }
@@ -247,8 +247,7 @@ fn test_stream_item_ordered_value() {
 #[test]
 #[should_panic(expected = "called `timestamp()` on StreamItem::Error")]
 fn test_stream_item_ordered_error_has_zero_order() {
-    let item: StreamItem<ChronoTimestamped<i32>> =
-        StreamItem::Error(FluxionError::stream_error("test"));
+    let item: StreamItem<Sequenced<i32>> = StreamItem::Error(FluxionError::stream_error("test"));
 
     assert_eq!(item.timestamp(), 0);
 }
@@ -256,19 +255,18 @@ fn test_stream_item_ordered_error_has_zero_order() {
 #[test]
 #[should_panic(expected = "called `into_inner()` on StreamItem::Error")]
 fn test_stream_item_ordered_get_panics_on_error() {
-    let item: StreamItem<ChronoTimestamped<i32>> =
-        StreamItem::Error(FluxionError::stream_error("test"));
+    let item: StreamItem<Sequenced<i32>> = StreamItem::Error(FluxionError::stream_error("test"));
 
     let _ = item.into_inner();
 }
 
 #[test]
 fn test_stream_item_ordered_with_timestamp() {
-    let item: StreamItem<ChronoTimestamped<i32>> = StreamItem::with_timestamp(42, 200);
+    let item: StreamItem<Sequenced<i32>> = StreamItem::with_timestamp(42, 200);
 
     assert_eq!(item.timestamp(), 200);
     match item {
-        StreamItem::Value(v) => assert_eq!(*v, 42),
+        StreamItem::Value(v) => assert_eq!(v.value, 42),
         _ => panic!("Expected Value"),
     }
 }

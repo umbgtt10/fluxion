@@ -13,7 +13,7 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-/// Extension trait providing the `emit_when` operator for ordered streams.
+/// Extension trait providing the `emit_when` operator for timestamped streams.
 ///
 /// This operator gates a source stream based on conditions from a filter stream,
 /// emitting source values only when the combined state passes a predicate.
@@ -50,14 +50,14 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{EmitWhenExt, FluxionStream};
-    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_test_utils::Sequenced;
     /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx_data, rx_data) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
-    /// let (tx_enable, rx_enable) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+    /// let (tx_data, rx_data) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+    /// let (tx_enable, rx_enable) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
     ///
     /// // Create streams
     /// let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
@@ -78,7 +78,7 @@ where
     ///
     /// // Assert - data emits when enabled
     /// let result = gated.next().await.unwrap().unwrap();
-    /// assert_eq!(*&*result, 42);
+    /// assert_eq!(result.value, 42);
     /// # }
     /// ```
     ///

@@ -4,7 +4,7 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_merge::MergedStream;
-use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::Sequenced;
 use futures::stream::{self, StreamExt};
 use std::hint::black_box;
 use std::pin::Pin;
@@ -13,9 +13,9 @@ use tokio::runtime::Runtime;
 fn make_stream(
     size: usize,
     payload_size: usize,
-) -> impl futures::Stream<Item = ChronoTimestamped<Vec<u8>>> {
-    let items: Vec<ChronoTimestamped<Vec<u8>>> = (0..size)
-        .map(|_i| ChronoTimestamped::new(vec![0u8; payload_size]))
+) -> impl futures::Stream<Item = Sequenced<Vec<u8>>> {
+    let items: Vec<Sequenced<Vec<u8>>> = (0..size)
+        .map(|_i| Sequenced::new(vec![0u8; payload_size]))
         .collect();
     stream::iter(items)
 }
@@ -58,28 +58,32 @@ pub fn bench_merge_with(c: &mut Criterion) {
                         }
 
                         let merged = MergedStream::seed(SharedState::default())
-                            .merge_with(new_stream1, |new_item, state| {
-                                state.update1();
-                                ChronoTimestamped::new(new_item.into_inner())
-                            })
-                            .merge_with(new_stream2, |new_item, state| {
-                                state.update2();
-                                ChronoTimestamped::new(new_item.into_inner())
-                            })
-                            .merge_with(new_stream3, |new_item, state| {
-                                state.update3();
-                                ChronoTimestamped::new(new_item.into_inner())
-                            });
+                            .merge_with::<_, _, Sequenced<Vec<u8>>, Vec<u8>, Sequenced<Vec<u8>>, Vec<u8>, u64>(
+                                new_stream1,
+                                |new_item: Vec<u8>, state| {
+                                    state.update1();
+                                    new_item
+                                },
+                            )
+                            .merge_with::<_, _, Sequenced<Vec<u8>>, Vec<u8>, Sequenced<Vec<u8>>, Vec<u8>, u64>(
+                                new_stream2,
+                                |new_item: Vec<u8>, state| {
+                                    state.update2();
+                                    new_item
+                                },
+                            )
+                            .merge_with::<_, _, Sequenced<Vec<u8>>, Vec<u8>, Sequenced<Vec<u8>>, Vec<u8>, u64>(
+                                new_stream3,
+                                |new_item: Vec<u8>, state| {
+                                    state.update3();
+                                    new_item
+                                },
+                            );
 
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(merged)
-                                as Pin<
-                                    Box<
-                                        dyn futures::Stream<Item = ChronoTimestamped<Vec<u8>>>
-                                            + Send,
-                                    >,
-                                >;
+                                as Pin<Box<dyn futures::Stream<Item = Sequenced<Vec<u8>>> + Send>>;
                             while let Some(_v) = s.next().await {
                                 black_box(())
                             }

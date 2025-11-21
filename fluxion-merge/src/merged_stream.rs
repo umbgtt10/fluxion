@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::Timestamped;
 use fluxion_ordered_merge::OrderedMergeExt;
-use fluxion_test_utils::ChronoTimestamped;
 use futures::stream::{empty, Empty, Stream, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 /// A stateful stream merger that combines multiple Timestamped streams while maintaining state.
 ///
 /// Internally uses [`fluxion_ordered_merge`] to merge streams in order
-/// based on their sequence numbers, ensuring temporal consistency across merged streams.
+/// based on their timestamps, ensuring temporal consistency across merged streams.
 #[pin_project]
 pub struct MergedStream<S, State, Item> {
     #[pin]
@@ -46,44 +46,49 @@ where
     /// Merges a new Timestamped stream into the existing merged stream.
     ///
     /// Uses [`fluxion_ordered_merge`] to combine the streams while preserving
-    /// temporal order based on sequence numbers.
+    /// temporal order based on timestamps.
+    ///
+    /// The closure receives unwrapped values and returns unwrapped values - timestamp
+    /// propagation is handled automatically by the operator.
     ///
     /// # Parameters
     /// - `new_stream`: The new Timestamped stream to merge
-    /// - `process_fn`: Function to process each item with mutable access to shared state
-    pub fn merge_with<NewStream, F, NewItem, T>(
+    /// - `process_fn`: Function to process inner values with mutable access to shared state
+    pub fn merge_with<NewStream, F, InWrapper, InItem, OutWrapper, OutItem, TS>(
         self,
         new_stream: NewStream,
         process_fn: F,
-    ) -> MergedStream<impl Stream<Item = ChronoTimestamped<T>>, State, ChronoTimestamped<T>>
+    ) -> MergedStream<impl Stream<Item = OutWrapper>, State, OutWrapper>
     where
-        NewStream: Stream<Item = ChronoTimestamped<NewItem>> + Send + Sync + 'static,
-        F: FnMut(ChronoTimestamped<NewItem>, &mut State) -> ChronoTimestamped<T>
-            + Send
-            + Sync
-            + Clone
-            + 'static,
-        NewItem: Send + Sync + 'static,
-        T: Send + Sync + Ord + Unpin + 'static,
-        Item: Into<ChronoTimestamped<T>>,
+        NewStream: Stream<Item = InWrapper> + Send + Sync + 'static,
+        F: FnMut(InItem, &mut State) -> OutItem + Send + Sync + Clone + 'static,
+        InWrapper:
+            Timestamped<Inner = InItem, Timestamp = TS> + Send + Sync + Ord + Unpin + 'static,
+        InItem: Clone + Send + Sync + 'static,
+        OutWrapper:
+            Timestamped<Inner = OutItem, Timestamp = TS> + Send + Sync + Ord + Unpin + 'static,
+        OutItem: Clone + Send + Sync + 'static,
+        TS: Ord + Copy + Send + Sync + std::fmt::Debug,
+        Item: Into<OutWrapper>,
     {
         let shared_state = Arc::clone(&self.state);
         let new_stream_mapped = new_stream.then(move |timestamped_item| {
             let shared_state = Arc::clone(&shared_state);
             let mut process_fn = process_fn.clone();
             async move {
+                let timestamp = timestamped_item.timestamp();
+                let inner_value = timestamped_item.into_inner();
                 let mut state = shared_state.lock().await;
-                process_fn(timestamped_item, &mut *state)
+                let result_value = process_fn(inner_value, &mut *state);
+                OutWrapper::with_timestamp(result_value, timestamp)
             }
         });
 
         let self_stream_mapped = self.inner.map(Into::into);
 
         let merged_stream = vec![
-            Box::pin(self_stream_mapped)
-                as Pin<Box<dyn Stream<Item = ChronoTimestamped<T>> + Send + Sync>>,
-            Box::pin(new_stream_mapped)
-                as Pin<Box<dyn Stream<Item = ChronoTimestamped<T>> + Send + Sync>>,
+            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = OutWrapper> + Send + Sync>>,
+            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = OutWrapper> + Send + Sync>>,
         ]
         .ordered_merge();
 

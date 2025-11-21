@@ -15,7 +15,7 @@ use std::sync::{Arc, Mutex};
 type PinnedItemStream<TItem, TFilter> =
     Pin<Box<dyn Stream<Item = Item<TItem, TFilter>> + Send + Sync + 'static>>;
 
-/// Extension trait providing the `take_while_with` operator for ordered streams.
+/// Extension trait providing the `take_while_with` operator for timestamped streams.
 ///
 /// This operator conditionally emits elements from a source stream based on values
 /// from a separate filter stream. The stream terminates when the filter condition
@@ -79,14 +79,14 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{TakeWhileExt, FluxionStream};
-    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_test_utils::Sequenced;
     /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx_data, rx_data) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
-    /// let (tx_gate, rx_gate) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<bool>>();
+    /// let (tx_data, rx_data) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+    /// let (tx_gate, rx_gate) = tokio::sync::mpsc::unbounded_channel::<Sequenced<bool>>();
     ///
     /// // Create streams
     /// let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
@@ -103,7 +103,7 @@ where
     /// tx_data.send((1, 2).into()).unwrap();
     ///
     /// // Assert
-    /// assert_eq!(&*gated.next().await.unwrap().unwrap(), &1);
+    /// assert_eq!(&gated.next().await.unwrap().unwrap().value, &1);
     /// # }
     /// ```
     ///
@@ -244,11 +244,11 @@ where
     TItem: Timestamped,
     TFilter: Timestamped<Timestamp = TItem::Timestamp>,
 {
-    fn order(&self) -> TItem::Timestamp {
+    fn timestamp_value(&self) -> TItem::Timestamp {
         match self {
             Self::Source(s) => s.timestamp(),
             Self::Filter(f) => f.timestamp(),
-            Self::Error(_) => panic!("Error items should not be ordered"),
+            Self::Error(_) => panic!("Error items cannot provide timestamps"),
         }
     }
 }
@@ -263,7 +263,7 @@ where
     type Timestamp = TItem::Timestamp;
 
     fn timestamp(&self) -> Self::Timestamp {
-        self.order()
+        self.timestamp_value()
     }
 
     fn with_timestamp(value: Self, _timestamp: Self::Timestamp) -> Self {
@@ -285,7 +285,7 @@ where
     TFilter: Timestamped<Timestamp = TItem::Timestamp>,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.order() == other.order()
+        self.timestamp_value() == other.timestamp_value()
     }
 }
 
@@ -312,6 +312,6 @@ where
     TFilter: Timestamped<Timestamp = TItem::Timestamp> + Eq,
 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.order().cmp(&other.order())
+        self.timestamp_value().cmp(&other.timestamp_value())
     }
 }

@@ -104,10 +104,10 @@ async fn main() {
 
 ### Implementation
 
-Fluxion provides the `ChronoTimestamped<T>` wrapper in the `fluxion-test-utils` crate:
+Fluxion provides the `Sequenced<T>` wrapper in the `fluxion-test-utils` crate:
 
 ```rust
-use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::Sequenced;
 
 // Your domain type doesn't need timestamp information
 #[derive(Clone, Debug)]
@@ -116,15 +116,15 @@ struct Event {
 }
 
 // Test infrastructure adds timestamps
-let event1 = ChronoTimestamped::with_timestamp(Event { data: "first".into() }, 100);
-let event2 = ChronoTimestamped::with_timestamp(Event { data: "second".into() }, 200);
+let event1 = Sequenced::with_timestamp(Event { data: "first".into() }, 100);
+let event2 = Sequenced::with_timestamp(Event { data: "second".into() }, 200);
 ```
 
 ### Usage
 
 ```rust
 use fluxion_rx::prelude::*;
-use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::Sequenced;
 use tokio::sync::mpsc;
 use futures::StreamExt;
 
@@ -141,9 +141,9 @@ async fn test_ordered_filtering() {
         .filter_ordered(|e| &*e.data.starts_with('f'));
 
     // Push events in arbitrary order
-    tx.send(ChronoTimestamped::with_timestamp(Event { data: "third".into() }, 300)).unwrap();
-    tx.send(ChronoTimestamped::with_timestamp(Event { data: "first".into() }, 100)).unwrap();
-    tx.send(ChronoTimestamped::with_timestamp(Event { data: "second".into() }, 200)).unwrap();
+    tx.send(Sequenced::with_timestamp(Event { data: "third".into() }, 300)).unwrap();
+    tx.send(Sequenced::with_timestamp(Event { data: "first".into() }, 100)).unwrap();
+    tx.send(Sequenced::with_timestamp(Event { data: "second".into() }, 200)).unwrap();
     drop(tx);
 
     // Stream will reorder by timestamp: 100, 200, 300
@@ -157,7 +157,7 @@ async fn test_ordered_filtering() {
 - ✅ Full control over event sequencing
 - ✅ Domain objects stay clean (no test-specific fields)
 - ✅ Perfect for testing edge cases (duplicates, gaps, reordering)
-- ✅ Uses `ChronoTimestamped<T>` wrapper from `fluxion-test-utils`
+- ✅ Uses `Sequenced<T>` wrapper from `fluxion-test-utils`
 
 ## Pattern 3: Wrapper Timestamps (Integration)
 
@@ -259,7 +259,7 @@ async fn main() {
 | Pattern | Timestamp Source | Use Case | Domain Impact | Infrastructure |
 |---------|------------------|----------|---------------|----------------|
 | **Intrinsic** | Event's own timestamp | Production event streams | Timestamp is part of domain | Minimal |
-| **Extrinsic** | Test harness | Unit/integration testing | Domain stays clean | `ChronoTimestamped<T>` wrapper |
+| **Extrinsic** | Test harness | Unit/integration testing | Domain stays clean | `Sequenced<T>` wrapper |
 | **Wrapper** | Added at boundary | Third-party integration | Adapter layer adds field | Ingestion adapter |
 
 ## Choosing the Right Pattern
@@ -286,7 +286,7 @@ async fn main() {
 
 1. **Production Code**: Use intrinsic timestamps whenever possible - it's the most natural and efficient.
 
-2. **Testing**: Use `ChronoTimestamped<T>` from `fluxion-test-utils` to keep tests clean and flexible.
+2. **Testing**: Use `Sequenced<T>` from `fluxion-test-utils` to keep tests clean and flexible.
 
 3. **Integration Boundaries**: Add timestamps as early as possible in your pipeline, ideally at the point of ingestion.
 
@@ -310,4 +310,4 @@ See the `examples/stream-aggregation` directory for a **complete production exam
 
 Run it: `cargo run --example stream-aggregation`
 
-For testing examples, see the test suites in `fluxion-stream/tests/` which extensively use `ChronoTimestamped<T>` for controlled timestamp scenarios.
+For testing examples, see the test suites in `fluxion-stream/tests/` which extensively use `Sequenced<T>` for controlled timestamp scenarios.

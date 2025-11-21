@@ -7,7 +7,7 @@ use crate::types::WithPrevious;
 use fluxion_core::{StreamItem, Timestamped};
 use futures::{future::ready, Stream, StreamExt};
 
-/// Extension trait providing the `combine_with_previous` operator for ordered streams.
+/// Extension trait providing the `combine_with_previous` operator for timestamped streams.
 ///
 /// This operator pairs each stream element with its predecessor, enabling
 /// stateful processing and change detection.
@@ -53,13 +53,13 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{CombineWithPreviousExt, FluxionStream};
-    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_test_utils::Sequenced;
     /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channel
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
     ///
     /// // Create stream
     /// let stream = FluxionStream::from_unbounded_receiver(rx);
@@ -74,12 +74,12 @@ where
     /// // Assert - first has no previous
     /// let first = paired.next().await.unwrap().unwrap();
     /// assert_eq!(first.previous, None);
-    /// assert_eq!(*&*first.current, 1);
+    /// assert_eq!(first.current.value, 1);
     ///
     /// // Assert - second has previous
     /// let second = paired.next().await.unwrap().unwrap();
     /// assert_eq!(second.previous.as_ref().unwrap().value, 1);
-    /// assert_eq!(*&*second.current, 2);
+    /// assert_eq!(second.current.value, 2);
     /// # }
     /// ```
     ///

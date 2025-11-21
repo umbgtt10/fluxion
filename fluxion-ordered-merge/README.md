@@ -23,20 +23,21 @@ This crate is primarily used as a building block for higher-level merge operator
 
 ```rust
 use fluxion_ordered_merge::ordered_merge;
-use fluxion_core::{Ordered, OrderedItem};
+use fluxion_test_utils::Sequenced;
+use fluxion_core::Timestamped;
 use futures::StreamExt;
 
 #[tokio::main]
 async fn main() {
-    // Create ordered streams
+    // Create timestamped streams
     let stream1 = futures::stream::iter(vec![
-        OrderedItem::new(1, 1),
-        OrderedItem::new(3, 3),
+        Sequenced::with_timestamp(1, 1),
+        Sequenced::with_timestamp(3, 3),
     ]);
 
     let stream2 = futures::stream::iter(vec![
-        OrderedItem::new(2, 2),
-        OrderedItem::new(4, 4),
+        Sequenced::with_timestamp(2, 2),
+        Sequenced::with_timestamp(4, 4),
     ]);
 
     // Merge with ordering guarantees

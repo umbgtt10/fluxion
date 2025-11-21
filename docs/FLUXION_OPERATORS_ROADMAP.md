@@ -10,7 +10,7 @@ Operators planned for implementation in future versions of Fluxion.
 
 ---
 
-## High Priority (Version 0.0.5)
+## High Priority (Version 0.3.0)
 
 ### `scan` 🚀
 **Accumulate state across stream**

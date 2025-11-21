@@ -21,7 +21,7 @@ pub trait OrderedStreamExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Clone + Debug + Timestamped + Ord + Send + Sync + Unpin + 'static,
 {
-    /// Merges multiple ordered streams, emitting all values in temporal order.
+    /// Merges multiple timestamped streams, emitting all values in temporal order.
     ///
     /// This operator takes multiple streams and merges them into a single stream where
     /// all values are emitted in order based on their `Timestamped::timestamp()` value. Every
@@ -63,14 +63,14 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{OrderedStreamExt, FluxionStream};
-    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_test_utils::Sequenced;
     /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
-    /// let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+    /// let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+    /// let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
     ///
     /// // Create streams
     /// let stream1 = FluxionStream::from_unbounded_receiver(rx1);
