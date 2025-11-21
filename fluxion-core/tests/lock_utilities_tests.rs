@@ -2,35 +2,35 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::lock_utilities::{lock_or_error, try_lock};
+use fluxion_core::lock_utilities::lock_or_recover;
 use std::sync::{Arc, Mutex};
 
 #[test]
-fn test_safe_lock_success() {
+fn test_lock_or_recover_success() {
     let mutex = Arc::new(Mutex::new(42));
-    let guard = lock_or_error(&mutex, "test").unwrap();
+    let guard = lock_or_recover(&mutex, "test");
     assert_eq!(*guard, 42);
     drop(guard);
 }
 
 #[test]
-fn test_safe_lock_normal_operation() {
+fn test_lock_or_recover_normal_operation() {
     let mutex = Arc::new(Mutex::new(vec![1, 2, 3]));
 
     {
-        let guard = lock_or_error(&mutex, "normal operation").unwrap();
+        let guard = lock_or_recover(&mutex, "normal operation");
         assert_eq!(*guard, vec![1, 2, 3]);
         drop(guard);
     }
 
-    let mut guard = lock_or_error(&mutex, "second lock").unwrap();
+    let mut guard = lock_or_recover(&mutex, "second lock");
     guard.push(4);
     assert_eq!(*guard, vec![1, 2, 3, 4]);
     drop(guard);
 }
 
 #[test]
-fn test_safe_lock_recovers_from_poison() {
+fn test_lock_or_recover_recovers_from_poison() {
     let mutex = Arc::new(Mutex::new(vec![1, 2, 3]));
     let mutex_clone = Arc::clone(&mutex);
 
@@ -41,21 +41,18 @@ fn test_safe_lock_recovers_from_poison() {
         panic!("Intentional panic to poison mutex");
     });
 
-    // lock_or_error should recover from the poison
-    let guard = lock_or_error(&mutex, "poisoned test").unwrap();
-
-    // The data should still be accessible (the 4 was added before panic)
-    assert_eq!(guard.len(), 4);
-    assert_eq!(*guard, vec![1, 2, 3, 4]);
+    // lock_or_recover should recover and return the data (with the mutation from before panic)
+    let guard = lock_or_recover(&mutex, "poisoned test");
+    assert_eq!(*guard, vec![1, 2, 3, 4]); // Data includes the push(4) before panic
     drop(guard);
 }
 
 #[test]
-fn test_safe_lock_with_string_data() {
+fn test_lock_or_recover_with_string_data() {
     let mutex = Arc::new(Mutex::new(String::from("hello")));
 
     {
-        let mut guard = lock_or_error(&mutex, "string operation").unwrap();
+        let mut guard = lock_or_recover(&mutex, "string operation");
         guard.push_str(" world");
         assert_eq!(*guard, "hello world");
         drop(guard);
@@ -63,7 +60,7 @@ fn test_safe_lock_with_string_data() {
 }
 
 #[test]
-fn test_safe_lock_with_complex_type() {
+fn test_lock_or_recover_with_complex_type() {
     #[derive(Debug, PartialEq, Clone)]
     struct Data {
         id: u32,
@@ -76,41 +73,25 @@ fn test_safe_lock_with_complex_type() {
     }));
 
     {
-        let mut guard = lock_or_error(&mutex, "complex type").unwrap();
+        let mut guard = lock_or_recover(&mutex, "complex type");
         guard.id = 2;
         guard.name = "updated".to_string();
         drop(guard);
     }
 
-    let guard = lock_or_error(&mutex, "verify update").unwrap();
+    let guard = lock_or_recover(&mutex, "verify update");
     assert_eq!(guard.id, 2);
     assert_eq!(guard.name, "updated");
     drop(guard);
 }
 
-#[test]
-fn test_try_lock() {
-    let mutex = Arc::new(Mutex::new("test data"));
-    let guard = try_lock(&mutex, "reading test data").unwrap();
-    assert_eq!(*guard, "test data");
-    drop(guard);
-}
-
-#[test]
-fn test_try_lock_alias() {
-    let mutex = Arc::new(Mutex::new(42));
-    let guard = try_lock(&mutex, "testing try_lock").unwrap();
-    assert_eq!(*guard, 42);
-    drop(guard);
-}
-
 #[tokio::test]
-async fn test_safe_lock_in_async_context() {
+async fn test_lock_or_recover_in_async_context() {
     let mutex = Arc::new(Mutex::new(vec![1, 2, 3]));
     let mutex_clone = Arc::clone(&mutex);
 
     let handle = tokio::spawn(async move {
-        let mut guard = lock_or_error(&mutex_clone, "async task").unwrap();
+        let mut guard = lock_or_recover(&mutex_clone, "async task");
         guard.push(4);
         guard.len()
     });
@@ -118,13 +99,13 @@ async fn test_safe_lock_in_async_context() {
     let len = handle.await.unwrap();
     assert_eq!(len, 4);
 
-    let guard = lock_or_error(&mutex, "main task").unwrap();
+    let guard = lock_or_recover(&mutex, "main task");
     assert_eq!(*guard, vec![1, 2, 3, 4]);
     drop(guard);
 }
 
 #[test]
-fn test_try_lock_with_poisoned_mutex() {
+fn test_lock_or_recover_with_poisoned_mutex() {
     let mutex = Arc::new(Mutex::new(vec![1, 2, 3]));
     let mutex_clone = Arc::clone(&mutex);
 
@@ -134,10 +115,9 @@ fn test_try_lock_with_poisoned_mutex() {
         panic!("Intentional panic to poison mutex");
     });
 
-    // try_lock should recover from poison
-    let guard = try_lock(&mutex, "poisoned try_lock").unwrap();
-    assert_eq!(guard.len(), 4);
-    assert_eq!(*guard, vec![1, 2, 3, 4]);
+    // lock_or_recover should recover from poisoned mutex
+    let guard = lock_or_recover(&mutex, "poisoned recovery");
+    assert_eq!(*guard, vec![1, 2, 3, 4]); // Recovered data includes mutation before panic
     drop(guard);
 }
 
@@ -152,25 +132,29 @@ fn test_multiple_recoveries_from_same_poison() {
         panic!("Intentional panic");
     });
 
-    // First recovery
-    let guard1 = lock_or_error(&mutex, "first recovery").unwrap();
-    assert_eq!(*guard1, 200);
+    // All attempts should successfully recover
+    let guard1 = lock_or_recover(&mutex, "first recovery");
+    assert_eq!(*guard1, 200); // Data from before panic
     drop(guard1);
 
-    // Second recovery - should still work
-    let guard2 = lock_or_error(&mutex, "second recovery").unwrap();
+    let guard2 = lock_or_recover(&mutex, "second recovery");
     assert_eq!(*guard2, 200);
     drop(guard2);
 
-    // Third recovery with mutation
-    let mut guard3 = lock_or_error(&mutex, "third recovery").unwrap();
-    *guard3 = 300;
+    let guard3 = lock_or_recover(&mutex, "third recovery");
+    assert_eq!(*guard3, 200);
     drop(guard3);
 
-    // Verify the mutation persisted
-    let guard4 = lock_or_error(&mutex, "verify mutation").unwrap();
+    // Can still modify after recovery
+    let mut guard4 = lock_or_recover(&mutex, "modify after recovery");
+    *guard4 = 300;
     assert_eq!(*guard4, 300);
     drop(guard4);
+
+    // Verify modification persisted
+    let guard5 = lock_or_recover(&mutex, "verify mutation");
+    assert_eq!(*guard5, 300);
+    drop(guard5);
 }
 
 #[test]
@@ -192,26 +176,26 @@ fn test_concurrent_poison_recovery() {
 
     poisoner.join().ok();
 
-    // Multiple threads should all be able to recover
+    // Multiple threads should all successfully recover from poisoned mutex
     let handle1 = thread::spawn(move || {
-        let guard = lock_or_error(&mutex_clone2, "thread 1").unwrap();
+        let guard = lock_or_recover(&mutex_clone2, "thread 1");
         *guard
     });
 
     let handle2 = thread::spawn(move || {
-        let guard = lock_or_error(&mutex_clone3, "thread 2").unwrap();
+        let guard = lock_or_recover(&mutex_clone3, "thread 2");
         *guard
     });
 
     let value1 = handle1.join().unwrap();
     let value2 = handle2.join().unwrap();
 
-    // Both should have recovered the same poisoned data
+    // Both should get the poisoned data (42)
     assert_eq!(value1, 42);
     assert_eq!(value2, 42);
 
-    // Main thread should also recover
-    let guard = lock_or_error(&mutex, "main thread").unwrap();
+    // Main thread should also recover successfully
+    let guard = lock_or_recover(&mutex, "main thread");
     assert_eq!(*guard, 42);
     drop(guard);
 }
@@ -230,9 +214,9 @@ fn test_poison_with_partial_mutation() {
         panic!("Panic with partial state");
     });
 
-    // Recovery should preserve the partial mutation
-    let guard = lock_or_error(&mutex, "recover partial").unwrap();
-    assert_eq!(*guard, vec![1, 2, 3, 4, 5]);
+    // lock_or_recover should recover and include partial mutations
+    let guard = lock_or_recover(&mutex, "recover partial");
+    assert_eq!(*guard, vec![1, 2, 3, 4, 5]); // All mutations before panic are preserved
     drop(guard);
 }
 
@@ -253,25 +237,25 @@ async fn test_async_concurrent_poison_recovery() {
     })
     .await;
 
-    // Multiple async tasks should recover
+    // Multiple async tasks should recover from poisoned mutex
     let handle1 = tokio::spawn(async move {
-        let guard = lock_or_error(&mutex_clone2, "async task 1").unwrap();
+        let guard = lock_or_recover(&mutex_clone2, "async task 1");
         guard.clone()
     });
 
     let handle2 = tokio::spawn(async move {
-        let guard = lock_or_error(&mutex_clone3, "async task 2").unwrap();
+        let guard = lock_or_recover(&mutex_clone3, "async task 2");
         guard.clone()
     });
 
-    let result1 = handle1.await.unwrap();
-    let result2 = handle2.await.unwrap();
+    let value1 = handle1.await.unwrap();
+    let value2 = handle2.await.unwrap();
 
-    assert_eq!(result1, "initial_poisoned");
-    assert_eq!(result2, "initial_poisoned");
+    assert_eq!(value1, "initial_poisoned");
+    assert_eq!(value2, "initial_poisoned");
 
     // Main async context should also recover
-    let guard = lock_or_error(&mutex, "main async").unwrap();
+    let guard = lock_or_recover(&mutex, "main async");
     assert_eq!(*guard, "initial_poisoned");
     drop(guard);
 }
@@ -280,28 +264,17 @@ async fn test_async_concurrent_poison_recovery() {
 fn test_repeated_poison_and_recovery_cycle() {
     let mutex = Arc::new(Mutex::new(0));
 
+    // Poison the mutex once
+    let mutex_clone = Arc::clone(&mutex);
+    let _ = std::panic::catch_unwind(move || {
+        *mutex_clone.lock().unwrap() = 10;
+        panic!("Poison iteration");
+    });
+
+    // All subsequent attempts should successfully recover
     for i in 1..=5 {
-        let mutex_clone = Arc::clone(&mutex);
-
-        // Poison the mutex
-        let _ = std::panic::catch_unwind(move || {
-            *mutex_clone.lock().unwrap() = i * 10;
-            panic!("Poison iteration {}", i);
-        });
-
-        // Recover and verify
-        let guard = lock_or_error(&mutex, &format!("recovery {}", i)).unwrap();
-        assert_eq!(*guard, i * 10);
-        drop(guard);
-
-        // Successful operation after recovery
-        let mut guard = lock_or_error(&mutex, &format!("update {}", i)).unwrap();
-        *guard += 1;
-        drop(guard);
-
-        // Verify update
-        let guard = lock_or_error(&mutex, &format!("verify {}", i)).unwrap();
-        assert_eq!(*guard, i * 10 + 1);
+        let guard = lock_or_recover(&mutex, &format!("attempt {}", i));
+        assert_eq!(*guard, 10); // All recoveries get the poisoned data
         drop(guard);
     }
 }

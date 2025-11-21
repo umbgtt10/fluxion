@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **BREAKING**: Refactored lock utilities to use recovery-based approach
+  - Renamed `lock_or_error` → `lock_or_recover` for honest naming
+  - Changed return type from `Result<MutexGuard<T>, FluxionError>` to `MutexGuard<T>`
+  - Always recovers from poisoned mutexes (aligns with Rust stdlib behavior)
+  - Removed `try_lock` wrapper function (redundant)
+  - Simplified all operators using locks: removed ~100 lines of unreachable error-handling code
+  - Updated operators: `combine_latest`, `with_latest_from`, `take_latest_when`, `take_while_with`, `emit_when`
+  - Test suite reduced from 14 to 12 tests (removed redundant tests)
+  - All 1,500+ tests passing
 - **BREAKING**: Migrated from `Ordered` trait to `Timestamped` trait
   - Renamed core trait from `Ordered` to `Timestamped` for better clarity
   - Method changes:
@@ -56,6 +65,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Testing**: Added `assert_stream_ended` utility function integrated across all test files
 
 ### Improved
+- **Code Quality**: Eliminated dead code in lock error handling
+  - Removed unreachable error branches that were showing as uncovered in codecov
+  - Lock recovery behavior now matches Rust standard library semantics
+  - Clearer API with honest function naming (`lock_or_recover` instead of `lock_or_error`)
 - **Testing**: Consolidated and cleaned up test suite organization
   - Merged duplicate test files and removed redundant tests
   - Simplified test code for better maintainability

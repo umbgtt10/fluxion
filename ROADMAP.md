@@ -79,7 +79,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 **Documentation:**
 - ✅ `subcscribe` and `subscribe_latest` documented
-- ✅ `merge_with`  documented
+- ✅ `merge_with` documented
 - ✅ docs finalized
 
 **Quality Gates:**

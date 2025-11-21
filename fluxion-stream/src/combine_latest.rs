@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::lock_or_error;
+use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{CompareByInner, StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 
@@ -170,20 +170,13 @@ where
                     async move {
                         match item {
                             StreamItem::Value(value) => {
-                                match lock_or_error(&state, "combine_latest state") {
-                                    Ok(mut guard) => {
-                                        guard.insert(index, value);
+                                let mut guard = lock_or_recover(&state, "combine_latest state");
+                                guard.insert(index, value);
 
-                                        if guard.is_complete() {
-                                            Some(StreamItem::Value(guard.clone()))
-                                        } else {
-                                            None
-                                        }
-                                    }
-                                    Err(e) => {
-                                        error!("Failed to acquire lock in combine_latest: {}", e);
-                                        Some(StreamItem::Error(e))
-                                    }
+                                if guard.is_complete() {
+                                    Some(StreamItem::Value(guard.clone()))
+                                } else {
+                                    None
                                 }
                             }
                             StreamItem::Error(e) => {

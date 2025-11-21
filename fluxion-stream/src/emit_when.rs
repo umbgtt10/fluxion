@@ -5,7 +5,7 @@
 use crate::types::CombinedState;
 use crate::FluxionStream;
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::lock_or_error;
+use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
@@ -157,20 +157,8 @@ where
                             0 => {
                                 // Source stream update
                                 // Lock both values once to avoid multiple lock acquisitions
-                                let mut source =
-                                    match lock_or_error(&source_value, "emit_when source") {
-                                        Ok(lock) => lock,
-                                        Err(e) => {
-                                            return Some(StreamItem::Error(e));
-                                        }
-                                    };
-                                let filter_val =
-                                    match lock_or_error(&filter_value, "emit_when filter") {
-                                        Ok(lock) => lock,
-                                        Err(e) => {
-                                            return Some(StreamItem::Error(e));
-                                        }
-                                    };
+                                let mut source = lock_or_recover(&source_value, "emit_when source");
+                                let filter_val = lock_or_recover(&filter_value, "emit_when filter");
 
                                 // Update source value
                                 *source = Some(ordered_value.clone().into_inner());
@@ -200,19 +188,8 @@ where
                                 // Filter stream update
                                 // Lock both values once to avoid multiple lock acquisitions
                                 let mut filter_val =
-                                    match lock_or_error(&filter_value, "emit_when filter") {
-                                        Ok(lock) => lock,
-                                        Err(e) => {
-                                            return Some(StreamItem::Error(e));
-                                        }
-                                    };
-                                let source = match lock_or_error(&source_value, "emit_when source")
-                                {
-                                    Ok(lock) => lock,
-                                    Err(e) => {
-                                        return Some(StreamItem::Error(e));
-                                    }
-                                };
+                                    lock_or_recover(&filter_value, "emit_when filter");
+                                let source = lock_or_recover(&source_value, "emit_when source");
 
                                 // Update filter value
                                 *filter_val = Some(ordered_value.clone().into_inner());

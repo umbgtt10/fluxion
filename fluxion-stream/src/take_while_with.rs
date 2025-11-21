@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::FluxionStream;
-use fluxion_core::lock_utilities::lock_or_error;
+use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{FluxionError, StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::StreamExt;
@@ -173,34 +173,30 @@ where
 
                 async move {
                     // Restrict the mutex guard's lifetime to the smallest possible scope
-                    match lock_or_error(&state, "take_while_with state") {
-                        Ok(mut guard) => {
-                            let (filter_state, terminated) = &mut *guard;
+                    let mut guard = lock_or_recover(&state, "take_while_with state");
+                    let (filter_state, terminated) = &mut *guard;
 
-                            if *terminated {
-                                return None;
-                            }
+                    if *terminated {
+                        return None;
+                    }
 
-                            match item {
-                                Item::Error(e) => Some(StreamItem::Error(e)),
-                                Item::Filter(filter_val) => {
-                                    *filter_state = Some(filter_val.clone().into_inner());
+                    match item {
+                        Item::Error(e) => Some(StreamItem::Error(e)),
+                        Item::Filter(filter_val) => {
+                            *filter_state = Some(filter_val.clone().into_inner());
+                            None
+                        }
+                        Item::Source(source_val) => filter_state.as_ref().map_or_else(
+                            || None,
+                            |fval| {
+                                if filter(fval) {
+                                    Some(StreamItem::Value(source_val.clone()))
+                                } else {
+                                    *terminated = true;
                                     None
                                 }
-                                Item::Source(source_val) => filter_state.as_ref().map_or_else(
-                                    || None,
-                                    |fval| {
-                                        if filter(fval) {
-                                            Some(StreamItem::Value(source_val.clone()))
-                                        } else {
-                                            *terminated = true;
-                                            None
-                                        }
-                                    },
-                                ),
-                            }
-                        }
-                        Err(e) => Some(StreamItem::Error(e)),
+                            },
+                        ),
                     }
                 }
             }

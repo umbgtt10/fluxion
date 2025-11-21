@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use crate::ordered_merge::OrderedMergeExt;
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::lock_or_error;
+use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{CompareByInner, StreamItem, Timestamped};
 
 /// Extension trait providing the `with_latest_from` operator for timestamped streams.
@@ -160,36 +160,32 @@ where
                         StreamItem::Value(value) => {
                             let timestamp = value.timestamp();
                             // Update state with new value
-                            match lock_or_error(&state, "with_latest_from state") {
-                                Ok(mut guard) => {
-                                    guard.insert(stream_index, value);
+                            let mut guard = lock_or_recover(&state, "with_latest_from state");
+                            guard.insert(stream_index, value);
 
-                                    // Only emit if:
-                                    // 1. Both streams have emitted at least once (is_complete)
-                                    // 2. The PRIMARY stream (index 0) triggered this emission
-                                    if guard.is_complete() && stream_index == 0 {
-                                        let values = guard.get_values();
+                            // Only emit if:
+                            // 1. Both streams have emitted at least once (is_complete)
+                            // 2. The PRIMARY stream (index 0) triggered this emission
+                            if guard.is_complete() && stream_index == 0 {
+                                let values = guard.get_values();
 
-                                        // values[0] = primary, values[1] = secondary
-                                        let combined_state = CombinedState::new(
-                                            vec![
-                                                values[0].clone().into_inner(),
-                                                values[1].clone().into_inner(),
-                                            ],
-                                            timestamp,
-                                        );
+                                // values[0] = primary, values[1] = secondary
+                                let combined_state = CombinedState::new(
+                                    vec![
+                                        values[0].clone().into_inner(),
+                                        values[1].clone().into_inner(),
+                                    ],
+                                    timestamp,
+                                );
 
-                                        // Apply the result selector to transform the combined state
-                                        let result = selector(&combined_state);
+                                // Apply the result selector to transform the combined state
+                                let result = selector(&combined_state);
 
-                                        // Return result directly (R implements Timestamped)
-                                        Some(StreamItem::Value(result))
-                                    } else {
-                                        // Secondary stream emitted, just update state but don't emit
-                                        None
-                                    }
-                                }
-                                Err(e) => Some(StreamItem::Error(e)),
+                                // Return result directly (R implements Timestamped)
+                                Some(StreamItem::Value(result))
+                            } else {
+                                // Secondary stream emitted, just update state but don't emit
+                                None
                             }
                         }
                         StreamItem::Error(e) => Some(StreamItem::Error(e)),

@@ -2,8 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::error::{FluxionError, Result};
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 // Conditional logging based on tracing feature
 #[cfg(feature = "tracing")]
@@ -20,108 +19,45 @@ macro_rules! warn {
     };
 }
 
-/// Safely acquire a lock on a Mutex, converting poison errors to `FluxionError`
+/// Safely acquire a lock on a Mutex, recovering from poison errors
 ///
 /// This function handles the case where a thread panicked while holding the lock,
-/// which would normally cause a `PoisonError`. Instead, we recover the data and
-/// continue, logging the poison error.
+/// which would normally cause a `PoisonError`. Instead of propagating the error,
+/// this function recovers the mutex guard and continues execution, logging a warning
+/// about the poison.
 ///
 /// When a mutex is poisoned, it means a thread panicked while holding the lock,
 /// potentially leaving the protected data in an inconsistent state. This function
-/// attempts to recover by extracting the guard anyway.
+/// follows Rust's standard library behavior of allowing recovery from poison by
+/// extracting the guard from the PoisonError.
 ///
 /// # Arguments
 ///
 /// * `mutex` - The `Arc<Mutex<T>>` to lock
-/// * `context` - A description of what lock is being acquired (for error messages)
+/// * `context` - A description of what lock is being acquired (for logging)
 ///
 /// # Returns
 ///
-/// A `Result` containing the `MutexGuard` on success, or a `FluxionError::LockError` on failure
+/// Always returns the `MutexGuard`, recovering from poison if necessary.
 ///
 /// # Examples
 ///
 /// ```no_run
 /// use std::sync::{Arc, Mutex};
-/// use fluxion_core::lock_utilities::lock_or_error;
+/// use fluxion_core::lock_utilities::lock_or_recover;
 ///
 /// let state = Arc::new(Mutex::new(42));
-/// match lock_or_error(&state, "counter state") {
-///     Ok(guard) => println!("Value: {}", *guard),
-///     Err(e) => eprintln!("Failed to lock: {}", e),
-/// };
+/// let guard = lock_or_recover(&state, "counter state");
+/// println!("Value: {}", *guard);
 /// ```
 ///
-/// # Errors
+/// # Panics
 ///
-/// Returns `FluxionError::LockError` in the following cases:
-///
-/// - The mutex is poisoned (a thread panicked while holding it) AND recovery fails
-/// - Lock acquisition fails for other platform-specific reasons
-///
-/// Note: In most cases, poisoned locks are recovered automatically by extracting
-/// the inner guard. Only unrecoverable lock failures return an error.
-///
-/// # Recovery Behavior
-///
-/// If the mutex is poisoned, this function:
-/// 1. Logs a warning about the poison error
-/// 2. Attempts to extract the guard from the poison error
-/// 3. Returns the recovered guard if successful
-/// 4. Only returns an error if recovery is impossible
-pub fn lock_or_error<'a, T>(mutex: &'a Arc<Mutex<T>>, context: &str) -> Result<MutexGuard<'a, T>> {
-    mutex
-        .lock()
-        .map_err(|_poison_err: PoisonError<MutexGuard<T>>| {
-            // Log the poison error but recover the data
-            warn!("Mutex poisoned for {}: recovering data", context);
-            FluxionError::lock_error(context)
-        })
-        .or_else(|_err| {
-            // If we got a poison error, we can still recover the data
-            match mutex.lock() {
-                Ok(guard) => Ok(guard),
-                Err(poison_err) => {
-                    // Recover from poison by extracting the guard
-                    Ok(poison_err.into_inner())
-                }
-            }
-        })
-}
-
-/// Attempt to acquire a lock with a timeout context
-///
-/// This is a convenience wrapper around `lock_or_error` that provides
-/// additional context about timeout scenarios. Currently, it functions
-/// identically to `lock_or_error` but is provided for semantic clarity when
-/// dealing with time-sensitive operations.
-///
-/// # Arguments
-///
-/// * `mutex` - The `Arc<Mutex<T>>` to lock
-/// * `operation` - Description of the operation being performed
-///
-/// # Returns
-///
-/// A `Result` containing the `MutexGuard` on success, or a `FluxionError::LockError` on failure
-///
-/// # Errors
-///
-/// Returns `FluxionError::LockError` if the lock cannot be acquired.
-/// See [`lock_or_error`] for detailed error conditions.
-///
-/// # Examples
-///
-/// ```no_run
-/// use std::sync::{Arc, Mutex};
-/// use fluxion_core::lock_utilities::try_lock;
-///
-/// let state = Arc::new(Mutex::new(vec![1, 2, 3]));
-/// match try_lock(&state, "processing queue") {
-///     Ok(mut guard) => guard.push(4),
-///     Err(e) => eprintln!("Lock failed: {}", e),
-/// };
-/// ```
-pub fn try_lock<'a, T>(mutex: &'a Arc<Mutex<T>>, operation: &str) -> Result<MutexGuard<'a, T>> {
-    lock_or_error(mutex, operation)
+/// This function will panic if the underlying mutex implementation fails in a way
+/// that doesn't produce a PoisonError (extremely rare, platform-specific failure).
+pub fn lock_or_recover<'a, T>(mutex: &'a Arc<Mutex<T>>, _context: &str) -> MutexGuard<'a, T> {
+    mutex.lock().unwrap_or_else(|poison_err| {
+        warn!("Mutex poisoned for {}: recovering", _context);
+        poison_err.into_inner()
+    })
 }

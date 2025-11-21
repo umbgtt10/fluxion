@@ -4,7 +4,7 @@
 
 use crate::FluxionStream;
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::lock_or_error;
+use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
@@ -157,24 +157,14 @@ where
                             0 => {
                                 // Source stream update - just cache the value, don't emit
                                 let mut source =
-                                    match lock_or_error(&source_value, "take_latest_when source") {
-                                        Ok(lock) => lock,
-                                        Err(e) => {
-                                            return Some(StreamItem::Error(e));
-                                        }
-                                    };
+                                    lock_or_recover(&source_value, "take_latest_when source");
                                 *source = Some(ordered_value);
                                 None
                             }
                             1 => {
                                 // Filter stream update - check if we should sample the source
                                 let source =
-                                    match lock_or_error(&source_value, "take_latest_when source") {
-                                        Ok(lock) => lock,
-                                        Err(e) => {
-                                            return Some(StreamItem::Error(e));
-                                        }
-                                    };
+                                    lock_or_recover(&source_value, "take_latest_when source");
 
                                 // Update filter value
                                 let filter_inner = ordered_value.clone().into_inner();
