@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Benchmarks**: Comprehensive performance benchmarking suite for all stream operators
+  - Added 10 operator benchmarks: `map_ordered`, `filter_ordered`, `combine_latest`, `combine_with_previous`, `with_latest_from`, `merge_with`, `ordered_merge`, `emit_when`, `take_latest_when`, `take_while_with`
+  - Benchmarks test multiple payload sizes (0, 128 bytes) and stream sizes (100, 1K, 10K elements)
+  - Created `BENCHMARKS.md` with comprehensive performance documentation
+  - Added `.ci/benchmarks.ps1` script to automate benchmark execution and documentation generation
+  - All benchmarks use Criterion.rs for statistical analysis
+- **Documentation**: Added benchmark links to all operator documentation in `fluxion-stream/README.md`
+  - Each operator now includes links to: Full documentation | Tests | Benchmarks
+- **Documentation**: Added `merge_with` operator documentation
+  - Comprehensive documentation in `fluxion-stream/README.md` under Combination Operators
+  - Added to operator selection guide table
+  - Added to `FLUXION_OPERATOR_SUMMARY.md` with usage examples
+  - Included in order attribute semantics table
+
 ### Changed
 - **BREAKING**: Refactored lock utilities to use recovery-based approach
   - Renamed `lock_or_error` → `lock_or_recover` for honest naming

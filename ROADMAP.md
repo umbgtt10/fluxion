@@ -70,6 +70,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ Code coverage metrix available and integrated in the PITCH
 - ✅ Code coverage integrated in the CI with badge on the README
 - ✅ Integrate `merge_with` in fluxion-stream. Remove the separate crate.
+- ✅ Benches exaustive
 
 **Documentation:**
 - ✅ `subcscribe` and `subscribe_latest` documented
@@ -79,7 +80,6 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 ## 🚀 Version 0.3.0 - Bench & Sample Application
 **Essential Features:**
 - [ ] At least one error operator implemented, documented and tested
-- [ ] Benches exaustive
 - [ ] 1 fully functional example application showing
     - [ ] the wrapped integration path
     - [ ] the usage of `merge_with` integrated with the other operators

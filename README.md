@@ -39,6 +39,10 @@ A reactive stream processing library for Rust with temporal ordering guarantee, 
 - **[Unwrap](assessments/UNWRAP_EXPECT_ASSESSMENT.md)**
 - **[Mutex](assessments/RWLOCK_VS_MUTEX_ASSESSMENT.md)**
 
+### 📋 Benchmarks
+
+- **[Benchmark Results](benchmarks/BENCHMARKS.md)**
+
 ## Quick Start
 
 Add Fluxion to your `Cargo.toml`:
