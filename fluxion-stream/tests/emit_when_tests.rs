@@ -379,7 +379,7 @@ async fn test_emit_when_both_values_required() -> anyhow::Result<()> {
     // Assert: Now it should emit
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        emitted_item.get(),
+        &*emitted_item,
         &person_alice(),
         "Expected Alice to be emitted after both values are present"
     );
@@ -413,7 +413,7 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() -> anyhow::
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
-    assert_eq!(emitted_item.get(), &person_alice());
+    assert_eq!(&*emitted_item, &person_alice());
 
     // Act: Update filter to Dog legs=4 => 25 >= 40 = false
     filter_tx.send(Sequenced::new(animal_dog()))?;
@@ -426,7 +426,7 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() -> anyhow::
 
     // Assert: Should emit again
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
-    assert_eq!(emitted_item.get(), &person_alice());
+    assert_eq!(&*emitted_item, &person_alice());
 
     Ok(())
 }
@@ -471,7 +471,7 @@ async fn test_emit_when_delta_based_filtering() -> anyhow::Result<()> {
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        emitted_item.get(),
+        &*emitted_item,
         &person_diane(),
         "Expected Diane to be emitted when age difference > 10"
     );
@@ -538,7 +538,7 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
-    assert_eq!(emitted_item.get(), &person_alice());
+    assert_eq!(&*emitted_item, &person_alice());
 
     // Act: Close source stream
     drop(source_tx);
@@ -616,7 +616,7 @@ async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
-    assert_eq!(emitted_item.get(), &person_diane());
+    assert_eq!(&*emitted_item, &person_diane());
 
     // Act: Bob age=30 (even), Dog legs=4 => 30 % 4 = 2 ✗
     source_tx.send(Sequenced::new(person_bob()))?;
@@ -629,7 +629,7 @@ async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
-    assert_eq!(emitted_item.get(), &person_bob());
+    assert_eq!(&*emitted_item, &person_bob());
 
     // Act: Alice age=25 (odd) => fails even check ✗
     source_tx.send(Sequenced::new(person_alice()))?;

@@ -45,11 +45,6 @@ impl<T> Sequenced<T> {
     pub fn into_inner(self) -> T {
         self.value
     }
-
-    /// Gets a reference to the inner value.
-    pub const fn get(&self) -> &T {
-        &self.value
-    }
 }
 
 impl<T> From<(T, u64)> for Sequenced<T> {

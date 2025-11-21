@@ -64,7 +64,7 @@
 //!
 //! ```rust
 //! use fluxion_test_utils::Sequenced;
-//! use fluxion_core::Timestamped ;
+//! use fluxion_core::Timestamped;
 //!
 //! // Create timestamped values with explicit ordering
 //! let first = Sequenced::with_timestamp(100, 1);
@@ -77,7 +77,8 @@
 //!
 //! // Access inner values
 //! assert_eq!(first.value, 100);
-//! assert_eq!(*second.get(), 200);
+//! assert_eq!(second.value, 200);
+//! assert_eq!(third.value, 300);
 //! ```
 //!
 //! ## Using Assertion Helpers
