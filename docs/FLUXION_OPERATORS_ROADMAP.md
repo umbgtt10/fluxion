@@ -10,7 +10,7 @@ Operators planned for implementation in future versions of Fluxion.
 
 ---
 
-## High Priority (Version 0.3.0)
+## High Priority (Version 0.4.0)
 
 ### `scan` 🚀
 **Accumulate state across stream**
@@ -67,7 +67,7 @@ let distinct = stream.distinct_until_changed();
 
 ---
 
-## Medium Priority (Version 1.2.0)
+## Medium Priority (Version 0.5.0)
 
 ### `buffer` 💭
 **Collect items into batches**
@@ -134,7 +134,7 @@ let with_default = stream.start_with(default_value);
 
 ---
 
-## Lower Priority (Version 2.0.0)
+## Lower Priority (Version 0.6.0)
 
 ### `retry` 📝
 **Retry failed operations**
@@ -227,7 +227,7 @@ let sequential = stream.concat_map(|item| async_operation(item));
 
 ---
 
-## Research Phase (Future)
+## Research Phase 1.X.0
 
 ### `partition` 📝
 **Split stream into two based on predicate**

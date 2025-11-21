@@ -4,7 +4,6 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_core::StreamItem;
-use fluxion_ordered_merge::OrderedMergeExt;
 use fluxion_stream::FluxionStream;
 use fluxion_test_utils::Sequenced;
 use futures::stream::{self, StreamExt};
@@ -26,8 +25,8 @@ fn make_stream(
 /// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_ordered_merge(c: &mut Criterion) {
     let mut group = c.benchmark_group("ordered_merge");
-    let sizes = [100usize, 1000usize, 10_000usize];
-    let payload_sizes = [0usize, 128usize];
+    let sizes = [100usize, 1000usize, 10000];
+    let payload_sizes = [16usize, 32usize, 64usize, 128usize];
     let num_streams_variants = [2usize, 3usize, 5usize];
 
     for &size in &sizes {
@@ -41,11 +40,12 @@ pub fn bench_ordered_merge(c: &mut Criterion) {
                     &(size, payload_size, num_streams),
                     |bencher, &(size, payload_size, num_streams)| {
                         bencher.iter(|| {
-                            let streams: Vec<_> = (0..num_streams)
+                            let first_stream = make_stream(size, payload_size);
+                            let other_streams: Vec<_> = (1..num_streams)
                                 .map(|_| make_stream(size, payload_size))
                                 .collect();
 
-                            let merged = streams.ordered_merge();
+                            let merged = first_stream.ordered_merge(other_streams);
 
                             let rt = Runtime::new().unwrap();
                             rt.block_on(async move {

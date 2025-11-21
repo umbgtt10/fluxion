@@ -7,6 +7,7 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | Operator | Category | Purpose | Emissions Driven By |
 |----------|----------|---------|---------------------|
 | [`ordered_merge`](#ordered_merge) | Combining | Merge multiple streams temporally | All streams |
+| [`merge_with`](#merge_with) | Combining | Stateful merging with shared state | All streams |
 | [`combine_latest`](#combine_latest) | Combining | Combine latest from all streams | Any stream |
 | [`with_latest_from`](#with_latest_from) | Combining | Sample secondary on primary | Primary only |
 | [`combine_with_previous`](#combine_with_previous) | Windowing | Pair consecutive values | Source |
@@ -30,6 +31,32 @@ let merged = stream1.ordered_merge(vec![stream2, stream3]);
 - Emits items from all streams in temporal sequence order
 - No transformation—items pass through as-is
 - Foundation for multi-source event aggregation
+- See API docs for detailed examples
+
+---
+
+#### `merge_with`
+**Stateful merging of multiple streams with shared state**
+
+```rust
+let merged = MergedStream::seed::<Sequenced<Event>>(Repository::new())
+    .merge_with(user_stream, |event, repo| {
+        repo.users.insert(event.user_id, event.user);
+        Event::UserAdded(event.user_id)
+    })
+    .merge_with(order_stream, |event, repo| {
+        repo.orders.insert(event.order_id, event.order);
+        Event::OrderCreated(event.order_id)
+    })
+    .into_fluxion_stream();
+```
+
+- Maintains shared mutable state across all merged streams
+- Each processing function has mutable access to state
+- Processes events in temporal order (uses `ordered_merge` internally)
+- Chain multiple `merge_with` calls for complex state management
+- Convert to `FluxionStream` via `into_fluxion_stream()` for operator chaining
+- Essential for repository pattern and event sourcing
 - See API docs for detailed examples
 
 ---
@@ -247,6 +274,7 @@ Every item in a Fluxion stream has an `order` attribute (accessed via `.order()`
 | Operator | Order of Emitted Values | Rationale |
 |----------|-------------------------|-----------|
 | `ordered_merge` | Original source order | Pass-through operator |
+| `merge_with` | Original source order | Stateful transformation preserves source timing |
 | `map_ordered` | Original source order | Transformation preserves timing |
 | `filter_ordered` | Original source order | Filtering preserves timing |
 | `combine_with_previous` | Current value's order | Window driven by current item |

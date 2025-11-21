@@ -23,8 +23,8 @@ fn make_stream(
 /// # Panics
 ///
 /// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
-pub fn bench_with_latest_from(c: &mut Criterion) {
-    let mut group = c.benchmark_group("with_latest_from");
+pub fn bench_map_ordered(c: &mut Criterion) {
+    let mut group = c.benchmark_group("map_ordered");
     let sizes = [100usize, 1000usize, 10000];
     let payload_sizes = [16usize, 32usize, 64usize, 128usize];
 
@@ -37,14 +37,15 @@ pub fn bench_with_latest_from(c: &mut Criterion) {
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
                     bencher.iter(|| {
-                        let primary = make_stream(size, payload_size);
-                        let secondary = make_stream(size, payload_size);
+                        let stream = make_stream(size, payload_size);
 
-                        let combined = primary.with_latest_from(secondary, |state| state.clone());
+                        // Simple transformation: compute length of payload
+                        let mapped = stream
+                            .map_ordered(|sequenced: Sequenced<Vec<u8>>| sequenced.value.len());
 
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            let mut s = Box::pin(combined);
+                            let mut s = Box::pin(mapped);
                             while let Some(v) = s.next().await {
                                 black_box(v);
                             }

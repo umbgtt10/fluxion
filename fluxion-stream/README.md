@@ -146,7 +146,7 @@ let combined = stream1.combine_latest(
 - Maintains latest value from each stream
 - Preserves temporal ordering based on triggering stream
 
-[Full documentation](src/combine_latest.rs) | [Tests](tests/combine_latest_tests.rs)
+[Full documentation](src/combine_latest.rs) | [Tests](tests/combine_latest_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#combine_latest---latest-values-from-all-streams)
 
 #### `with_latest_from`
 Samples secondary streams only when primary stream emits.
@@ -169,7 +169,7 @@ let enriched = user_clicks.with_latest_from(
 - Primary stream drives the emission timing
 - Secondary streams provide context
 
-[Full documentation](src/with_latest_from.rs) | [Tests](tests/with_latest_from_tests.rs)
+[Full documentation](src/with_latest_from.rs) | [Tests](tests/with_latest_from_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#with_latest_from---augment-with-secondary-stream)
 
 #### `ordered_merge`
 Merges multiple streams preserving temporal order.
@@ -188,7 +188,48 @@ let merged = stream1.ordered_merge(vec![stream2, stream3]);
 - Buffers items to ensure correct ordering
 - Completes when all input streams complete
 
-[Full documentation](src/ordered_merge.rs) | [Tests](tests/merge_ordered_tests.rs)
+[Full documentation](src/ordered_merge.rs) | [Tests](tests/merge_ordered_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#ordered_merge---temporal-ordering-of-multiple-streams)
+
+#### `merge_with`
+Stateful merging of multiple streams with shared state.
+
+**Use case:** Repository pattern, event sourcing, aggregating events into domain state
+
+```rust
+use fluxion_stream::MergedStream;
+use fluxion_test_utils::Sequenced;
+
+struct Repository {
+    users: HashMap<UserId, User>,
+    orders: HashMap<OrderId, Order>,
+}
+
+let merged = MergedStream::seed::<Sequenced<Event>>(Repository::new())
+    .merge_with(user_stream, |event, repo| {
+        repo.users.insert(event.user_id, event.user);
+        Event::UserAdded(event.user_id)
+    })
+    .merge_with(order_stream, |event, repo| {
+        repo.orders.insert(event.order_id, event.order);
+        Event::OrderCreated(event.order_id)
+    })
+    .into_fluxion_stream();
+```
+
+**Behavior:**
+- Maintains shared mutable state across all merged streams
+- Processes events in temporal order (uses `ordered_merge` internally)
+- Each `merge_with` call adds a new stream to the merge
+- State is locked per-item for thread safety
+- Can chain with other operators via `into_fluxion_stream()`
+
+**Key Features:**
+- **Stateful**: Shared state accessible to all processing functions
+- **Composable**: Chain multiple `merge_with` calls
+- **Type-safe**: Output type specified once in `seed()`
+- **Ordered**: Temporal ordering guaranteed across all streams
+
+[Full documentation](src/merge_with.rs) | [Tests](tests/merge_with_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#merge_with---repository-pattern-merging)
 
 ### Filtering Operators
 
@@ -212,7 +253,7 @@ let gated = source.emit_when(
 - Maintains temporal ordering
 - Completes when source completes
 
-[Full documentation](src/emit_when.rs) | [Tests](tests/emit_when_tests.rs)
+[Full documentation](src/emit_when.rs) | [Tests](tests/emit_when_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#emit_when---conditional-emission-with-secondary-stream)
 
 #### `take_latest_when`
 Samples source when filter condition is met.
@@ -234,7 +275,7 @@ let sampled = source.take_latest_when(
 - Discards intermediate values (only latest matters)
 - Useful for sampling / snapshot patterns
 
-[Full documentation](src/take_latest_when.rs) | [Tests](tests/take_latest_when_tests.rs)
+[Full documentation](src/take_latest_when.rs) | [Tests](tests/take_latest_when_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#take_latest_when---sampling-with-trigger-stream)
 
 #### `take_while_with`
 Emits while condition holds, terminates when false.
@@ -256,7 +297,7 @@ let bounded = source.take_while_with(
 - First false terminates immediately
 - Preserves temporal ordering until termination
 
-[Full documentation](src/take_while_with.rs) | [Tests](tests/take_while_with_tests.rs)
+[Full documentation](src/take_while_with.rs) | [Tests](tests/take_while_with_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#take_while_with---conditional-stream-termination)
 
 ### Transformation Operators
 
@@ -279,7 +320,7 @@ let pairs = stream.combine_with_previous();
 - Useful for change detection and delta calculations
 - Preserves temporal ordering
 
-[Full documentation](src/combine_with_previous.rs) | [Tests](tests/combine_with_previous_tests.rs)
+[Full documentation](src/combine_with_previous.rs) | [Tests](tests/combine_with_previous_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#combine_with_previous---sliding-window-pairing)
 
 ### Utility Operators
 
@@ -290,7 +331,7 @@ Maps values while preserving ordering wrapper.
 let mapped = stream.map_ordered(|x| x * 2);
 ```
 
-[Full documentation](src/map_ordered.rs) | [Tests](tests/map_ordered_tests.rs)
+[Full documentation](src/map_ordered.rs) | [Tests](tests/map_ordered_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#map_ordered---value-transformation)
 
 #### `filter_ordered`
 Filters values while preserving ordering wrapper.
@@ -299,7 +340,7 @@ Filters values while preserving ordering wrapper.
 let filtered = stream.filter_ordered(|x| *x > 10);
 ```
 
-[Full documentation](src/filter_ordered.rs) | [Tests](tests/filter_ordered_tests.rs)
+[Full documentation](src/filter_ordered.rs) | [Tests](tests/filter_ordered_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#filter_ordered---conditional-filtering)
 
 ## Operator Selection Guide
 
@@ -309,6 +350,7 @@ let filtered = stream.filter_ordered(|x| *x > 10);
 |----------|-------------|--------|----------|
 | `combine_latest` | Any stream emits | Latest from all streams | Dashboards, state aggregation |
 | `with_latest_from` | Primary emits | Primary + context | Enriching events with state |
+| `merge_with` | Any stream emits | Transformed via state | Repository pattern, event sourcing |
 
 ### When You Need All Items
 

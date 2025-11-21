@@ -25,8 +25,8 @@ fn make_stream(
 /// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_combine_with_previous(c: &mut Criterion) {
     let mut group = c.benchmark_group("combine_with_previous");
-    let sizes = [100usize, 1000usize, 10_000usize];
-    let payload_sizes = [0usize, 128usize];
+    let sizes = [100usize, 1000usize, 10000];
+    let payload_sizes = [16usize, 32usize, 64usize, 128usize];
 
     for &size in &sizes {
         for &payload_size in &payload_sizes {
