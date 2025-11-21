@@ -104,9 +104,13 @@ impl<S, State, Item> Stream for MergedStream<S, State, Item>
 where
     S: Stream<Item = Item>,
 {
-    type Item = Item;
+    type Item = fluxion_core::StreamItem<Item>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.project().inner.poll_next(cx)
+        match self.project().inner.poll_next(cx) {
+            Poll::Ready(Some(item)) => Poll::Ready(Some(fluxion_core::StreamItem::Value(item))),
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending,
+        }
     }
 }
