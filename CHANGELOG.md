@@ -17,7 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Added `with_fresh_timestamp(value)` for auto-timestamping
     - Added `into_inner(self) -> Self::Inner` (required method, no default)
   - All stream operators updated to use new trait
-  - Test utilities migrated: `Sequenced<T>` (deprecated) → `ChronoTimestamped<T>`
   - More idiomatic Rust: leverages `Deref` pattern for borrowing
 
 ### Fixed
@@ -31,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: Comprehensive documentation consistency review
   - Updated INTEGRATION.md with current `Timestamped` trait examples
   - Updated all README files across workspace
-  - Fixed all code examples to use `ChronoTimestamped<T>`
+  - Fixed all code examples to use `Sequenced<T>`
   - Synchronized code samples with actual test implementations
 
 ### Added

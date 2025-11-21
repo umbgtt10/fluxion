@@ -53,13 +53,13 @@
 //!
 //! ```
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt};
-//! use fluxion_test_utils::ChronoTimestamped;
+//! use fluxion_test_utils::Sequenced;
 //! use futures::StreamExt;
 //!
 //! # #[tokio::main]
 //! # async fn main() {
-//! let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
-//! let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+//! let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
 //!
 //! let stream1 = FluxionStream::from_unbounded_receiver(rx1);
 //! let stream2 = FluxionStream::from_unbounded_receiver(rx2);
@@ -210,14 +210,14 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, WithLatestFromExt};
-//! use fluxion_test_utils::ChronoTimestamped;
+//! use fluxion_test_utils::Sequenced;
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
 //! // User clicks enriched with latest configuration
-//! let (click_tx, click_rx) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<String>>();
-//! let (config_tx, config_rx) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<String>>();
+//! let (click_tx, click_rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<String>>();
+//! let (config_tx, config_rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<String>>();
 //!
 //! let clicks = FluxionStream::from_unbounded_receiver(click_rx);
 //! let configs = FluxionStream::from_unbounded_receiver(config_rx);
@@ -244,13 +244,13 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt};
-//! use fluxion_test_utils::ChronoTimestamped;
+//! use fluxion_test_utils::Sequenced;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
 //! // Combine logs from multiple services in temporal order
-//! let (service1_tx, service1_rx) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<String>>();
-//! let (service2_tx, service2_rx) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<String>>();
+//! let (service1_tx, service1_rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<String>>();
+//! let (service2_tx, service2_rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<String>>();
 //!
 //! let service1 = FluxionStream::from_unbounded_receiver(service1_rx);
 //! let service2 = FluxionStream::from_unbounded_receiver(service2_rx);
@@ -274,12 +274,12 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
-//! use fluxion_test_utils::ChronoTimestamped;
+//! use fluxion_test_utils::Sequenced;
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
-//! let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+//! let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
 //! let stream = FluxionStream::from_unbounded_receiver(rx);
 //!
 //! // Pair each value with its previous value
@@ -311,14 +311,14 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, EmitWhenExt};
-//! use fluxion_test_utils::ChronoTimestamped;
+//! use fluxion_test_utils::Sequenced;
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
 //! // Send notifications only when enabled
-//! let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
-//! let (enabled_tx, enabled_rx) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+//! let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let (enabled_tx, enabled_rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
 //!
 //! let events = FluxionStream::from_unbounded_receiver(event_rx);
 //! let enabled = FluxionStream::from_unbounded_receiver(enabled_rx);
@@ -401,20 +401,20 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineWithPreviousExt, TakeLatestWhenExt};
-//! use fluxion_test_utils::{ChronoTimestamped, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (source_tx, source_stream) = test_channel::<ChronoTimestamped<i32>>();
-//! let (filter_tx, filter_stream) = test_channel::<ChronoTimestamped<i32>>();
+//! let (source_tx, source_stream) = test_channel::<Sequenced<i32>>();
+//! let (filter_tx, filter_stream) = test_channel::<Sequenced<i32>>();
 //!
 //! // Chain: sample when filter emits, then pair with previous value
 //! let sampled = source_stream.take_latest_when(filter_stream, |_| true);
 //! let mut composed = FluxionStream::new(sampled).combine_with_previous();
 //!
-//! source_tx.send(ChronoTimestamped::new(42)).unwrap();
-//! filter_tx.send(ChronoTimestamped::new(1)).unwrap();
+//! source_tx.send(Sequenced::new(42)).unwrap();
+//! filter_tx.send(Sequenced::new(1)).unwrap();
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
@@ -429,20 +429,20 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream};
-//! use fluxion_test_utils::{ChronoTimestamped, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx, stream) = test_channel::<ChronoTimestamped<i32>>();
+//! let (tx, stream) = test_channel::<Sequenced<i32>>();
 //!
 //! // Chain: filter positives, map to string
 //! let mut composed = FluxionStream::new(stream)
 //!     .filter_ordered(|n| *n > 0)
 //!     .map_ordered(|Timestamped| format!("Value: {}", &*Timestamped));
 //!
-//! tx.send(ChronoTimestamped::new(-1)).unwrap();
-//! tx.send(ChronoTimestamped::new(5)).unwrap();
+//! tx.send(Sequenced::new(-1)).unwrap();
+//! tx.send(Sequenced::new(5)).unwrap();
 //!
 //! let result = composed.next().await.unwrap().unwrap();
 //! assert_eq!(result, "Value: 5");
@@ -455,21 +455,21 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt};
-//! use fluxion_test_utils::{ChronoTimestamped, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, stream1) = test_channel::<ChronoTimestamped<i32>>();
-//! let (tx2, stream2) = test_channel::<ChronoTimestamped<i32>>();
+//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
 //!
 //! // Chain: combine latest from both streams, then track changes
 //! let mut composed = stream1
 //!     .combine_latest(vec![stream2], |_| true)
 //!     .combine_with_previous();
 //!
-//! tx1.send(ChronoTimestamped::new(1)).unwrap();
-//! tx2.send(ChronoTimestamped::new(2)).unwrap();
+//! tx1.send(Sequenced::new(1)).unwrap();
+//! tx2.send(Sequenced::new(2)).unwrap();
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
@@ -495,25 +495,25 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt, CombineWithPreviousExt};
-//! use fluxion_test_utils::{ChronoTimestamped, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, stream1) = test_channel::<ChronoTimestamped<i32>>();
-//! let (tx2, stream2) = test_channel::<ChronoTimestamped<i32>>();
+//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
 //!
 //! // Merge streams in temporal order, then pair consecutive values
 //! let mut composed = stream1
 //!     .ordered_merge(vec![FluxionStream::new(stream2)])
 //!     .combine_with_previous();
 //!
-//! tx1.send(ChronoTimestamped::new(1)).unwrap();
+//! tx1.send(Sequenced::new(1)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
 //! assert_eq!(&*item.current, &1);
 //!
-//! tx2.send(ChronoTimestamped::new(2)).unwrap();
+//! tx2.send(Sequenced::new(2)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert_eq!(&*item.previous.unwrap(), &1);
 //! assert_eq!(&*item.current, &2);
@@ -526,27 +526,27 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt};
-//! use fluxion_test_utils::{ChronoTimestamped, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, stream1) = test_channel::<ChronoTimestamped<i32>>();
-//! let (tx2, stream2) = test_channel::<ChronoTimestamped<i32>>();
+//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
 //!
 //! // Combine latest, then track previous combined state
 //! let mut composed = stream1
 //!     .combine_latest(vec![stream2], |_| true)
 //!     .combine_with_previous();
 //!
-//! tx1.send(ChronoTimestamped::new(1)).unwrap();
-//! tx2.send(ChronoTimestamped::new(2)).unwrap();
+//! tx1.send(Sequenced::new(1)).unwrap();
+//! tx2.send(Sequenced::new(2)).unwrap();
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
 //! assert_eq!(item.current.values().len(), 2);
 //!
-//! tx1.send(ChronoTimestamped::new(3)).unwrap();
+//! tx1.send(Sequenced::new(3)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
 //! // Previous state had [1, 2], current has [3, 2]
 //! assert!(item.previous.is_some());
@@ -559,23 +559,23 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, TakeWhileExt};
-//! use fluxion_test_utils::{ChronoTimestamped, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, stream1) = test_channel::<ChronoTimestamped<i32>>();
-//! let (tx2, stream2) = test_channel::<ChronoTimestamped<i32>>();
-//! let (filter_tx, filter_stream) = test_channel::<ChronoTimestamped<bool>>();
+//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
+//! let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 //!
 //! // Combine latest values, but stop when filter becomes false
 //! let mut composed = stream1
 //!     .combine_latest(vec![stream2], |_| true)
 //!     .take_while_with(filter_stream, |f| *f);
 //!
-//! filter_tx.send(ChronoTimestamped::new(true)).unwrap();
-//! tx1.send(ChronoTimestamped::new(1)).unwrap();
-//! tx2.send(ChronoTimestamped::new(2)).unwrap();
+//! filter_tx.send(Sequenced::new(true)).unwrap();
+//! tx1.send(Sequenced::new(1)).unwrap();
+//! tx2.send(Sequenced::new(2)).unwrap();
 //!
 //! let combined = composed.next().await.unwrap().unwrap();
 //! assert_eq!(combined.values().len(), 2);
@@ -588,27 +588,27 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt, TakeWhileExt};
-//! use fluxion_test_utils::{ChronoTimestamped, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (tx1, stream1) = test_channel::<ChronoTimestamped<i32>>();
-//! let (tx2, stream2) = test_channel::<ChronoTimestamped<i32>>();
-//! let (filter_tx, filter_stream) = test_channel::<ChronoTimestamped<bool>>();
+//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
+//! let (filter_tx, filter_stream) = test_channel::<Sequenced<bool>>();
 //!
 //! // Merge all values in order, but stop when filter says so
 //! let mut composed = stream1
 //!     .ordered_merge(vec![FluxionStream::new(stream2)])
 //!     .take_while_with(filter_stream, |f| *f);
 //!
-//! filter_tx.send(ChronoTimestamped::new(true)).unwrap();
-//! tx1.send(ChronoTimestamped::new(1)).unwrap();
+//! filter_tx.send(Sequenced::new(true)).unwrap();
+//! tx1.send(Sequenced::new(1)).unwrap();
 //!
 //! let item = (*composed.next().await.unwrap().unwrap()).clone();
 //! assert_eq!(item, 1);
 //!
-//! tx2.send(ChronoTimestamped::new(2)).unwrap();
+//! tx2.send(Sequenced::new(2)).unwrap();
 //! let item = (*composed.next().await.unwrap().unwrap()).clone();
 //! assert_eq!(item, 2);
 //! }
@@ -620,26 +620,26 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, TakeLatestWhenExt, CombineWithPreviousExt};
-//! use fluxion_test_utils::{ChronoTimestamped, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //! use futures::StreamExt;
 //!
 //! async fn example() {
-//! let (source_tx, source_stream) = test_channel::<ChronoTimestamped<i32>>();
-//! let (filter_tx, filter_stream) = test_channel::<ChronoTimestamped<i32>>();
+//! let (source_tx, source_stream) = test_channel::<Sequenced<i32>>();
+//! let (filter_tx, filter_stream) = test_channel::<Sequenced<i32>>();
 //!
 //! // Sample source when filter emits, then track consecutive samples
 //! let sampled = source_stream.take_latest_when(filter_stream, |_| true);
 //! let mut composed = FluxionStream::new(sampled).combine_with_previous();
 //!
-//! source_tx.send(ChronoTimestamped::new(42)).unwrap();
-//! filter_tx.send(ChronoTimestamped::new(0)).unwrap();
+//! source_tx.send(Sequenced::new(42)).unwrap();
+//! filter_tx.send(Sequenced::new(0)).unwrap();
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
 //! assert_eq!(&*item.current, &42);
 //!
-//! source_tx.send(ChronoTimestamped::new(99)).unwrap();
+//! source_tx.send(Sequenced::new(99)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert_eq!(&*item.previous.unwrap(), &42);
 //! assert_eq!(&*item.current, &99);

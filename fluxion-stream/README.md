@@ -65,7 +65,7 @@ pub trait Timestamped: Clone {
 ```
 
 **Implementations:**
-- `ChronoTimestamped<T>` - Test utility from `fluxion-test-utils` using chrono timestamps
+- `Sequenced<T>` - Test utility from `fluxion-test-utils` using monotonically growing sequence numbers
 - Custom domain types - Implement for your types (e.g., events with built-in timestamps)
 
 ### Temporal Ordering

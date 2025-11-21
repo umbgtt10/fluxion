@@ -15,20 +15,20 @@ static GLOBAL_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 /// Uses a monotonically increasing sequence counter to establish a total ordering of events.
 /// The sequence is assigned when the value is created.
 #[derive(Debug, Clone)]
-pub struct ChronoTimestamped<T> {
+pub struct Sequenced<T> {
     pub value: T,
     timestamp: u64,
 }
 
-impl<T: PartialEq> PartialEq for ChronoTimestamped<T> {
+impl<T: PartialEq> PartialEq for Sequenced<T> {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value && self.timestamp == other.timestamp
     }
 }
 
-impl<T: Eq> Eq for ChronoTimestamped<T> {}
+impl<T: Eq> Eq for Sequenced<T> {}
 
-impl<T> ChronoTimestamped<T> {
+impl<T> Sequenced<T> {
     /// Creates a new timestamped value with an automatically assigned sequence number.
     pub fn new(value: T) -> Self {
         Self {
@@ -57,14 +57,14 @@ impl<T> ChronoTimestamped<T> {
     }
 }
 
-impl<T> From<(T, u64)> for ChronoTimestamped<T> {
+impl<T> From<(T, u64)> for Sequenced<T> {
     fn from((value, timestamp): (T, u64)) -> Self {
         Self { value, timestamp }
     }
 }
 
-// Allow converting () into any ChronoTimestamped<T> for seed streams
-impl<T> From<()> for ChronoTimestamped<T>
+// Allow converting () into any Sequenced<T> for seed streams
+impl<T> From<()> for Sequenced<T>
 where
     T: Default + Clone + Send + Sync + 'static,
 {
@@ -73,7 +73,7 @@ where
     }
 }
 
-impl<T> Timestamped for ChronoTimestamped<T>
+impl<T> Timestamped for Sequenced<T>
 where
     T: Clone + Send + Sync + 'static,
 {
@@ -97,7 +97,7 @@ where
     }
 }
 
-impl<T> PartialOrd for ChronoTimestamped<T>
+impl<T> PartialOrd for Sequenced<T>
 where
     T: Eq,
 {
@@ -106,7 +106,7 @@ where
     }
 }
 
-impl<T> Ord for ChronoTimestamped<T>
+impl<T> Ord for Sequenced<T>
 where
     T: Eq,
 {
@@ -115,7 +115,7 @@ where
     }
 }
 
-impl<T> Deref for ChronoTimestamped<T> {
+impl<T> Deref for Sequenced<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -123,19 +123,19 @@ impl<T> Deref for ChronoTimestamped<T> {
     }
 }
 
-impl<T> DerefMut for ChronoTimestamped<T> {
+impl<T> DerefMut for Sequenced<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.value
     }
 }
 
-impl<T: fmt::Display> fmt::Display for ChronoTimestamped<T> {
+impl<T: fmt::Display> fmt::Display for Sequenced<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.value)
     }
 }
 
-impl<T: Ord> CompareByInner for ChronoTimestamped<T> {
+impl<T: Ord> CompareByInner for Sequenced<T> {
     fn cmp_inner(&self, other: &Self) -> Ordering {
         self.value.cmp(&other.value)
     }

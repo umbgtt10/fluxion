@@ -75,14 +75,14 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{CombineLatestExt, FluxionStream};
-    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_test_utils::Sequenced;
     /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
-    /// let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+    /// let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+    /// let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
     ///
     /// // Create streams
     /// let stream1 = FluxionStream::from_unbounded_receiver(rx1);

@@ -25,9 +25,9 @@
 //! A wrapper type that adds temporal ordering to test values:
 //!
 //! ```rust
-//! use fluxion_test_utils::ChronoTimestamped;
+//! use fluxion_test_utils::Sequenced;
 //! use fluxion_core::Timestamped ;
-//! let item = ChronoTimestamped::new(42);  // Auto-timestamped with current time
+//! let item = Sequenced::new(42);  // Auto-timestamped with current time
 //! assert_eq!(item.value, 42);
 //! // Timestamps use chrono::Utc::now()
 //! ```
@@ -63,13 +63,13 @@
 //! ## Creating Ordered Test Values
 //!
 //! ```rust
-//! use fluxion_test_utils::ChronoTimestamped;
+//! use fluxion_test_utils::Sequenced;
 //! use fluxion_core::Timestamped ;
 //!
 //! // Create timestamped values with explicit ordering
-//! let first = ChronoTimestamped::with_timestamp(100, 1);
-//! let second = ChronoTimestamped::with_timestamp(200, 2);
-//! let third = ChronoTimestamped::with_timestamp(300, 3);
+//! let first = Sequenced::with_timestamp(100, 1);
+//! let second = Sequenced::with_timestamp(200, 2);
+//! let third = Sequenced::with_timestamp(300, 3);
 //!
 //! // Verify ordering
 //! assert!(first.timestamp() < second.timestamp());
@@ -114,5 +114,5 @@ pub use helpers::{
     assert_no_element_emitted, assert_stream_ended, test_channel, test_channel_with_errors,
     unwrap_stream, unwrap_value,
 };
-pub use sequenced::ChronoTimestamped;
+pub use sequenced::Sequenced;
 pub use test_data::{DataVariant, TestData};

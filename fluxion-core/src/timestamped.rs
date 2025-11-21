@@ -68,7 +68,7 @@ pub trait Timestamped: Clone {
     fn with_fresh_timestamp(value: Self::Inner) -> Self;
 
     /// Consumes self and returns the inner value.
-    /// For wrapper types like `ChronoTimestamped<T>`, this extracts `T`.
+    /// For wrapper types like `Sequenced<T>`, this extracts `T`.
     /// For domain types where `Inner = Self`, this typically returns `self`.
     fn into_inner(self) -> Self::Inner;
 }

@@ -8,7 +8,7 @@ use fluxion_test_utils::test_data::{
     animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
     person_dave, person_diane, plant_rose, TestData,
 };
-use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::Sequenced;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::spawn;
@@ -39,7 +39,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() -> a
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
-    let (tx, rx) = unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -71,34 +71,34 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() -> a
     });
 
     // Act - emit items one at a time, waiting for each to be processed
-    tx.send(ChronoTimestamped::new(person_alice()))?;
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.expect("Alice processed");
 
-    tx.send(ChronoTimestamped::new(person_bob()))?;
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.expect("Bob processed");
 
-    tx.send(ChronoTimestamped::new(person_charlie()))?;
+    tx.send(Sequenced::new(person_charlie()))?;
     notify_rx.recv().await.expect("Charlie processed");
 
-    tx.send(ChronoTimestamped::new(person_diane()))?;
+    tx.send(Sequenced::new(person_diane()))?;
     notify_rx.recv().await.expect("Diane processed");
 
-    tx.send(ChronoTimestamped::new(person_dave()))?;
+    tx.send(Sequenced::new(person_dave()))?;
     notify_rx.recv().await.expect("Dave processed");
 
-    tx.send(ChronoTimestamped::new(animal_dog()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
     notify_rx.recv().await.expect("Dog processed");
 
-    tx.send(ChronoTimestamped::new(animal_cat()))?;
+    tx.send(Sequenced::new(animal_cat()))?;
     notify_rx.recv().await.expect("Cat processed");
 
-    tx.send(ChronoTimestamped::new(animal_ant()))?;
+    tx.send(Sequenced::new(animal_ant()))?;
     notify_rx.recv().await.expect("Ant processed");
 
-    tx.send(ChronoTimestamped::new(animal_spider()))?;
+    tx.send(Sequenced::new(animal_spider()))?;
     notify_rx.recv().await.expect("Spider processed");
 
-    tx.send(ChronoTimestamped::new(plant_rose()))?;
+    tx.send(Sequenced::new(plant_rose()))?;
     notify_rx.recv().await.expect("Rose processed");
 
     // Assert
@@ -138,7 +138,7 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() ->
     let (start_tx, mut start_rx) = unbounded_channel::<()>();
     let start_tx_shared = Arc::new(Mutex::new(Some(start_tx)));
 
-    let (tx, rx) = unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -186,14 +186,14 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() ->
     });
 
     // Act
-    tx.send(ChronoTimestamped::new(person_alice()))?;
+    tx.send(Sequenced::new(person_alice()))?;
     start_rx.recv().await.expect("first processing started");
 
     // While the first item is blocked, send 4 more items rapidly
-    tx.send(ChronoTimestamped::new(person_bob()))?;
-    tx.send(ChronoTimestamped::new(person_charlie()))?;
-    tx.send(ChronoTimestamped::new(person_diane()))?;
-    tx.send(ChronoTimestamped::new(person_dave()))?; // latest
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(person_charlie()))?;
+    tx.send(Sequenced::new(person_diane()))?;
+    tx.send(Sequenced::new(person_dave()))?; // latest
 
     // Unblock the first processing, allowing it to complete
     let _ = gate_tx.send(());
@@ -231,7 +231,7 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() ->
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
-    let (tx, rx) = unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -269,19 +269,19 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() ->
     });
 
     // Act
-    tx.send(ChronoTimestamped::new(person_alice()))?;
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.expect("Alice processed");
 
-    tx.send(ChronoTimestamped::new(person_bob()))?; // Error
+    tx.send(Sequenced::new(person_bob()))?; // Error
     notify_rx.recv().await.expect("Bob handled (error)");
 
-    tx.send(ChronoTimestamped::new(person_charlie()))?;
+    tx.send(Sequenced::new(person_charlie()))?;
     notify_rx.recv().await.expect("Charlie processed");
 
-    tx.send(ChronoTimestamped::new(person_dave()))?; // Error
+    tx.send(Sequenced::new(person_dave()))?; // Error
     notify_rx.recv().await.expect("Dave handled (error)");
 
-    tx.send(ChronoTimestamped::new(animal_dog()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
     notify_rx.recv().await.expect("Dog processed");
 
     // Assert
@@ -306,7 +306,7 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() -
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
-    let (tx, rx) = unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -347,20 +347,20 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() -
     });
 
     // Act
-    tx.send(ChronoTimestamped::new(person_alice()))?;
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.expect("Alice processed");
 
-    tx.send(ChronoTimestamped::new(person_bob()))?;
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.expect("Bob processed");
 
-    tx.send(ChronoTimestamped::new(person_charlie()))?;
+    tx.send(Sequenced::new(person_charlie()))?;
     notify_rx.recv().await.expect("Charlie processed");
 
     // Cancel further processing
     cancellation_token.cancel();
 
-    tx.send(ChronoTimestamped::new(person_dave()))?;
-    tx.send(ChronoTimestamped::new(animal_dog()))?;
+    tx.send(Sequenced::new(person_dave()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
     let processed = {
@@ -385,7 +385,7 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
-    let (tx, rx) = unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -427,19 +427,19 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
     });
 
     // Act
-    tx.send(ChronoTimestamped::new(person_alice()))?;
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.expect("Alice processed");
 
-    tx.send(ChronoTimestamped::new(animal_dog()))?; // Error
+    tx.send(Sequenced::new(animal_dog()))?; // Error
     notify_rx.recv().await.expect("Dog handled (error)");
 
-    tx.send(ChronoTimestamped::new(person_bob()))?;
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.expect("Bob processed");
 
     cancellation_token.cancel();
 
-    tx.send(ChronoTimestamped::new(person_diane()))?;
-    tx.send(ChronoTimestamped::new(animal_cat()))?;
+    tx.send(Sequenced::new(person_diane()))?;
+    tx.send(Sequenced::new(animal_cat()))?;
 
     // Assert
     let processed = {
@@ -470,7 +470,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
     let (finish_tx, finish_rx) = unbounded_channel::<()>();
     let finish_rx_shared = Arc::new(Mutex::new(finish_rx));
 
-    let (tx, rx) = unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -525,7 +525,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
     // Act - Drive N sequential processings while always having the next item queued
     let n = 10;
 
-    tx.send(ChronoTimestamped::new(person_alice()))?;
+    tx.send(Sequenced::new(person_alice()))?;
 
     for i in 0..n {
         // Wait until current processing has started
@@ -533,7 +533,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
 
         // Queue next item before finishing current to try to induce overlap
         if i + 1 < n {
-            tx.send(ChronoTimestamped::new(person_alice()))?;
+            tx.send(Sequenced::new(person_alice()))?;
         }
 
         // Now allow current processing to complete and wait for completion notification
@@ -561,7 +561,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_
     let collected_items = Arc::new(Mutex::new(Vec::<TestData>::new()));
     let collected_items_clone = collected_items.clone();
 
-    let (tx, rx) = unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -613,7 +613,7 @@ async fn test_subscribe_latest_async_high_volume() -> anyhow::Result<()> {
     let (flood_done_tx, flood_done_rx) = unbounded_channel::<()>();
     let flood_done_rx_shared = Arc::new(Mutex::new(Some(flood_done_rx)));
 
-    let (tx, rx) = unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -667,14 +667,14 @@ async fn test_subscribe_latest_async_high_volume() -> anyhow::Result<()> {
     });
 
     // Act - Block first, flood many, ensure flood is done, then release gate
-    tx.send(ChronoTimestamped::new(person_alice()))?;
+    tx.send(Sequenced::new(person_alice()))?;
     start_rx.recv().await.expect("first processing started");
 
     // Flood with many identical items, then a distinct last item
     for _ in 0..500 {
-        tx.send(ChronoTimestamped::new(person_alice()))?;
+        tx.send(Sequenced::new(person_alice()))?;
     }
-    tx.send(ChronoTimestamped::new(person_bob()))?; // sentinel latest
+    tx.send(Sequenced::new(person_bob()))?; // sentinel latest
 
     // Signal that flooding (including Bob) is complete
     let _ = flood_done_tx.send(());
@@ -708,7 +708,7 @@ async fn test_subscribe_latest_async_single_item() -> anyhow::Result<()> {
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
-    let (tx, rx) = unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
 
@@ -741,7 +741,7 @@ async fn test_subscribe_latest_async_single_item() -> anyhow::Result<()> {
     });
 
     // Act - Send only one item
-    tx.send(ChronoTimestamped::new(person_alice()))?;
+    tx.send(Sequenced::new(person_alice()))?;
 
     // Wait for item to complete
     notify_rx.recv().await.unwrap();
@@ -764,7 +764,7 @@ async fn test_subscribe_latest_async_single_item() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_subscribe_latest_async_error_aggregation_without_callback() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
     let (notify_tx, mut notify_rx) = unbounded_channel();
@@ -793,16 +793,16 @@ async fn test_subscribe_latest_async_error_aggregation_without_callback() -> any
     });
 
     // Act - Send mix of valid and invalid items
-    tx.send(ChronoTimestamped::new(person_alice()))?;
+    tx.send(Sequenced::new(person_alice()))?;
     notify_rx.recv().await.unwrap();
 
-    tx.send(ChronoTimestamped::new(animal_dog()))?; // Error
+    tx.send(Sequenced::new(animal_dog()))?; // Error
     notify_rx.recv().await.unwrap();
 
-    tx.send(ChronoTimestamped::new(person_bob()))?;
+    tx.send(Sequenced::new(person_bob()))?;
     notify_rx.recv().await.unwrap();
 
-    tx.send(ChronoTimestamped::new(animal_cat()))?; // Error
+    tx.send(Sequenced::new(animal_cat()))?; // Error
     notify_rx.recv().await.unwrap();
 
     drop(tx);

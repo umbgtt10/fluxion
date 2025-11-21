@@ -4,7 +4,7 @@
 
 use fluxion_core::Timestamped;
 use fluxion_merge::MergedStream;
-use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{
     animal::Animal,
     person::Person,
@@ -21,11 +21,11 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 #[tokio::test]
 async fn test_merge_with_empty_streams() -> anyhow::Result<()> {
     // Arrange
-    let (tx1, rx1) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let empty_stream1 = UnboundedReceiverStream::new(rx1);
     drop(tx1);
 
-    let (tx2, rx2) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let empty_stream2 = UnboundedReceiverStream::new(rx2);
     drop(tx2);
 
@@ -33,21 +33,21 @@ async fn test_merge_with_empty_streams() -> anyhow::Result<()> {
     let result_stream = MergedStream::seed(0)
         .merge_with(
             empty_stream1,
-            |ts_new_item: ChronoTimestamped<TestData>, state: &mut i32| {
+            |ts_new_item: Sequenced<TestData>, state: &mut i32| {
                 *state += 1;
-                ChronoTimestamped::with_timestamp(*state, ts_new_item.timestamp())
+                Sequenced::with_timestamp(*state, ts_new_item.timestamp())
             },
         )
         .merge_with(
             empty_stream2,
-            |ts_new_item: ChronoTimestamped<TestData>, state: &mut i32| {
+            |ts_new_item: Sequenced<TestData>, state: &mut i32| {
                 *state += 1;
-                ChronoTimestamped::with_timestamp(*state, ts_new_item.timestamp())
+                Sequenced::with_timestamp(*state, ts_new_item.timestamp())
             },
         );
 
     // Assert
-    let result: Vec<ChronoTimestamped<i32>> = result_stream.collect().await;
+    let result: Vec<Sequenced<i32>> = result_stream.collect().await;
     assert_eq!(result, vec![], "Empty streams should produce empty result");
 
     Ok(())
@@ -56,10 +56,10 @@ async fn test_merge_with_empty_streams() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<()> {
     // Arrange
-    let (non_empty_tx, non_empty_rx) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (non_empty_tx, non_empty_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let non_empty_stream = UnboundedReceiverStream::new(non_empty_rx);
 
-    let (empty_tx, empty_rx) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (empty_tx, empty_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let empty_stream = UnboundedReceiverStream::new(empty_rx);
     drop(empty_tx);
 
@@ -67,27 +67,27 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
     let mut merged_stream = MergedStream::seed(0usize)
         .merge_with(
             non_empty_stream,
-            |ts_new_item: ChronoTimestamped<TestData>, state: &mut usize| {
+            |ts_new_item: Sequenced<TestData>, state: &mut usize| {
                 let seq = ts_new_item.timestamp();
                 let _inner = ts_new_item.into_inner();
                 *state += 1;
                 let out = *state;
-                ChronoTimestamped::with_timestamp(out, seq)
+                Sequenced::with_timestamp(out, seq)
             },
         )
         .merge_with(
             empty_stream,
-            |ts_new_item: ChronoTimestamped<TestData>, state: &mut usize| {
+            |ts_new_item: Sequenced<TestData>, state: &mut usize| {
                 let seq = ts_new_item.timestamp();
                 let _inner = ts_new_item.into_inner();
                 *state += 1; // will never run in this test
                 let out = *state;
-                ChronoTimestamped::with_timestamp(out, seq)
+                Sequenced::with_timestamp(out, seq)
             },
         );
 
     // Act
-    non_empty_tx.send(ChronoTimestamped::new(person_alice()))?;
+    non_empty_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -98,7 +98,7 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
     );
 
     // Act
-    non_empty_tx.send(ChronoTimestamped::new(person_bob()))?;
+    non_empty_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -109,7 +109,7 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
     );
 
     // Act
-    non_empty_tx.send(ChronoTimestamped::new(person_charlie()))?;
+    non_empty_tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -124,28 +124,28 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
 #[tokio::test]
 async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     // Arrange
-    let (tx1, rx1) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream1 = UnboundedReceiverStream::new(rx1);
 
-    let (tx2, rx2) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream2 = UnboundedReceiverStream::new(rx2);
 
     let mut merged_stream = MergedStream::seed(Repository::new())
         .merge_with(
             stream1,
-            |ts_new_item: ChronoTimestamped<TestData>, state: &mut Repository| {
+            |ts_new_item: Sequenced<TestData>, state: &mut Repository| {
                 state.from_testdata_timestamped(ts_new_item)
             },
         )
         .merge_with(
             stream2,
-            |ts_new_item: ChronoTimestamped<TestData>, state: &mut Repository| {
+            |ts_new_item: Sequenced<TestData>, state: &mut Repository| {
                 state.from_testdata_timestamped(ts_new_item)
             },
         );
 
     // Act
-    tx1.send(ChronoTimestamped::new(person_alice()))?;
+    tx1.send(Sequenced::new(person_alice()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -156,7 +156,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     );
 
     // Act
-    tx2.send(ChronoTimestamped::new(person_bob()))?;
+    tx2.send(Sequenced::new(person_bob()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -167,7 +167,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     );
 
     // Act
-    tx1.send(ChronoTimestamped::new(person_charlie()))?;
+    tx1.send(Sequenced::new(person_charlie()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -178,7 +178,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     );
 
     // Act
-    tx2.send(ChronoTimestamped::new(person_dave()))?;
+    tx2.send(Sequenced::new(person_dave()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -193,40 +193,40 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_merge_with_parallel_processing() -> anyhow::Result<()> {
     // Arrange
-    let (tx1, rx1) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream1 = UnboundedReceiverStream::new(rx1);
 
-    let (tx2, rx2) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream2 = UnboundedReceiverStream::new(rx2);
 
     let merged_stream = MergedStream::seed(Repository::new())
         .merge_with(
             stream1,
-            |ts_new_item: ChronoTimestamped<TestData>, state: &mut Repository| {
+            |ts_new_item: Sequenced<TestData>, state: &mut Repository| {
                 state.from_testdata_timestamped(ts_new_item)
             },
         )
         .merge_with(
             stream2,
-            |ts_new_item: ChronoTimestamped<TestData>, state: &mut Repository| {
+            |ts_new_item: Sequenced<TestData>, state: &mut Repository| {
                 state.from_testdata_timestamped(ts_new_item)
             },
         );
 
     // Act
     tokio::spawn(async move {
-        tx1.send(ChronoTimestamped::new(person_alice())).unwrap();
-        tx1.send(ChronoTimestamped::new(person_bob())).unwrap();
-        tx1.send(ChronoTimestamped::new(person_charlie())).unwrap();
+        tx1.send(Sequenced::new(person_alice())).unwrap();
+        tx1.send(Sequenced::new(person_bob())).unwrap();
+        tx1.send(Sequenced::new(person_charlie())).unwrap();
     });
 
     tokio::spawn(async move {
-        tx2.send(ChronoTimestamped::new(animal_dog())).unwrap();
-        tx2.send(ChronoTimestamped::new(animal_spider())).unwrap();
+        tx2.send(Sequenced::new(animal_dog())).unwrap();
+        tx2.send(Sequenced::new(animal_spider())).unwrap();
     });
 
     // Assert
-    let result: Vec<ChronoTimestamped<Repository>> = merged_stream.collect().await;
+    let result: Vec<Sequenced<Repository>> = merged_stream.collect().await;
     let last = result
         .last()
         .expect("at least one state")
@@ -249,16 +249,16 @@ async fn test_merge_with_parallel_processing() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
     // Arrange
-    let (tx1, rx1) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let large_stream1 = UnboundedReceiverStream::new(rx1);
 
-    let (tx2, rx2) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let large_stream2 = UnboundedReceiverStream::new(rx2);
 
     let mut merged_stream = MergedStream::seed(0)
         .merge_with(
             large_stream1,
-            |ts_new_item: ChronoTimestamped<TestData>, state: &mut i32| {
+            |ts_new_item: Sequenced<TestData>, state: &mut i32| {
                 let seq = ts_new_item.timestamp();
                 let item = ts_new_item.into_inner();
                 let num: i32 = match item {
@@ -267,12 +267,12 @@ async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
                     TestData::Plant(pl) => pl.height as i32,
                 };
                 *state += num;
-                ChronoTimestamped::with_timestamp(*state, seq)
+                Sequenced::with_timestamp(*state, seq)
             },
         )
         .merge_with(
             large_stream2,
-            |ts_new_item: ChronoTimestamped<TestData>, state: &mut i32| {
+            |ts_new_item: Sequenced<TestData>, state: &mut i32| {
                 let seq = ts_new_item.timestamp();
                 let item = ts_new_item.into_inner();
                 let num: i32 = match item {
@@ -281,16 +281,16 @@ async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
                     TestData::Plant(pl) => pl.height as i32,
                 };
                 *state += num;
-                ChronoTimestamped::with_timestamp(*state, seq)
+                Sequenced::with_timestamp(*state, seq)
             },
         );
 
     // Act
     for i in 0..10000 {
-        tx1.send(ChronoTimestamped::new(person(i.to_string(), i as u32)))?;
+        tx1.send(Sequenced::new(person(i.to_string(), i as u32)))?;
     }
     for i in 10000..20000 {
-        tx2.send(ChronoTimestamped::new(person(i.to_string(), i as u32)))?;
+        tx2.send(Sequenced::new(person(i.to_string(), i as u32)))?;
     }
 
     // Assert
@@ -314,37 +314,28 @@ async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     // Arrange
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let animal_stream = UnboundedReceiverStream::new(animal_rx);
 
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let person_stream = UnboundedReceiverStream::new(person_rx);
 
-    let (plant_tx, plant_rx) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let plant_stream = UnboundedReceiverStream::new(plant_rx);
 
     let mut merged_stream = MergedStream::seed(Repository::new())
-        .merge_with(
-            animal_stream,
-            |ts_new_item: ChronoTimestamped<TestData>, state| {
-                state.from_testdata_timestamped(ts_new_item)
-            },
-        )
-        .merge_with(
-            person_stream,
-            |ts_new_item: ChronoTimestamped<TestData>, state| {
-                state.from_testdata_timestamped(ts_new_item)
-            },
-        )
-        .merge_with(
-            plant_stream,
-            |ts_new_item: ChronoTimestamped<TestData>, state| {
-                state.from_testdata_timestamped(ts_new_item)
-            },
-        );
+        .merge_with(animal_stream, |ts_new_item: Sequenced<TestData>, state| {
+            state.from_testdata_timestamped(ts_new_item)
+        })
+        .merge_with(person_stream, |ts_new_item: Sequenced<TestData>, state| {
+            state.from_testdata_timestamped(ts_new_item)
+        })
+        .merge_with(plant_stream, |ts_new_item: Sequenced<TestData>, state| {
+            state.from_testdata_timestamped(ts_new_item)
+        });
 
     // Act
-    animal_tx.send(ChronoTimestamped::new(animal_dog()))?;
+    animal_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -364,7 +355,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     );
 
     // Act
-    animal_tx.send(ChronoTimestamped::new(animal_bird()))?;
+    animal_tx.send(Sequenced::new(animal_bird()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -384,7 +375,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     );
 
     // Act
-    person_tx.send(ChronoTimestamped::new(person_alice()))?;
+    person_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -404,9 +395,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     );
 
     // Act
-    person_tx
-        .send(ChronoTimestamped::new(person_bob()))
-        .unwrap();
+    person_tx.send(Sequenced::new(person_bob())).unwrap();
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -426,7 +415,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     );
 
     // Act
-    plant_tx.send(ChronoTimestamped::new(plant_fern()))?;
+    plant_tx.send(Sequenced::new(plant_fern()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -446,7 +435,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     );
 
     // Act
-    plant_tx.send(ChronoTimestamped::new(plant_oak()))?;
+    plant_tx.send(Sequenced::new(plant_oak()))?;
 
     // Assert
     let state = merged_stream.next().await.unwrap();
@@ -563,17 +552,14 @@ impl Repository {
     /// Accept a Timestamped TestData and return a Timestamped Repository where
     /// the output preserves the incoming sequence. This centralizes sequence
     /// handling inside the repository helper instead of in every caller.
-    pub fn from_testdata_timestamped(
-        &mut self,
-        ts: ChronoTimestamped<TestData>,
-    ) -> ChronoTimestamped<Self> {
+    pub fn from_testdata_timestamped(&mut self, ts: Sequenced<TestData>) -> Sequenced<Self> {
         let seq = ts.timestamp();
         let out = match ts.into_inner() {
             TestData::Person(p) => self.from_person(p),
             TestData::Animal(a) => self.from_animal(a),
             TestData::Plant(pl) => self.from_plant(pl),
         };
-        ChronoTimestamped::with_timestamp(out, seq)
+        Sequenced::with_timestamp(out, seq)
     }
 }
 
@@ -581,13 +567,13 @@ impl Repository {
 #[should_panic(expected = "User closure panicked on purpose")]
 async fn test_merge_with_user_closure_panics() {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
 
     // Create a merge_with stream where the closure panics on the second emission
     let mut merged_stream = MergedStream::seed(0usize).merge_with(
         stream,
-        |ts_new_item: ChronoTimestamped<TestData>, state: &mut usize| {
+        |ts_new_item: Sequenced<TestData>, state: &mut usize| {
             let seq = ts_new_item.timestamp();
             let _inner = ts_new_item.into_inner();
             *state += 1;
@@ -595,12 +581,12 @@ async fn test_merge_with_user_closure_panics() {
                 panic!("User closure panicked on purpose");
             }
             let out = *state;
-            ChronoTimestamped::with_timestamp(out, seq)
+            Sequenced::with_timestamp(out, seq)
         },
     );
 
     // Act: First emission should succeed
-    tx.send(ChronoTimestamped::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_alice())).unwrap();
     let first = merged_stream.next().await.unwrap();
     assert_eq!(
         first.into_inner(),
@@ -609,6 +595,6 @@ async fn test_merge_with_user_closure_panics() {
     );
 
     // Act: Second emission triggers panic
-    tx.send(ChronoTimestamped::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_bob())).unwrap();
     let _second = merged_stream.next().await; // This will panic
 }

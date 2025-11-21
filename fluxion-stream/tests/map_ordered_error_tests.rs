@@ -6,12 +6,12 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::FluxionStream;
-use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, ChronoTimestamped};
+use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, Sequenced};
 
 #[tokio::test]
 async fn test_map_ordered_propagates_errors() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Use combine_with_previous then map to string
     let mut result = FluxionStream::new(stream)
@@ -19,7 +19,7 @@ async fn test_map_ordered_propagates_errors() -> anyhow::Result<()> {
         .map_ordered(|x| format!("Current: {}", &*x.current));
 
     // Act & Assert: Send value
-    tx.send(StreamItem::Value(ChronoTimestamped::new(1)))?;
+    tx.send(StreamItem::Value(Sequenced::new(1)))?;
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref v) if v == "Current: 1")
     );
@@ -32,7 +32,7 @@ async fn test_map_ordered_propagates_errors() -> anyhow::Result<()> {
     ));
 
     // Continue
-    tx.send(StreamItem::Value(ChronoTimestamped::new(2)))?;
+    tx.send(StreamItem::Value(Sequenced::new(2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -46,7 +46,7 @@ async fn test_map_ordered_propagates_errors() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_map_ordered_transformation_after_error() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Use combine_with_previous then map
     let mut result = FluxionStream::new(stream)
@@ -54,13 +54,13 @@ async fn test_map_ordered_transformation_after_error() -> anyhow::Result<()> {
         .map_ordered(|x| &*x.current * 2);
 
     // Act & AssertSend values
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 1)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(20)
     ));
 
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(20, 2)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(40)
@@ -74,7 +74,7 @@ async fn test_map_ordered_transformation_after_error() -> anyhow::Result<()> {
     ));
 
     // Continue after error
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(40, 4)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(40, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(80)
@@ -88,7 +88,7 @@ async fn test_map_ordered_transformation_after_error() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_map_ordered_preserves_error_passthrough() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = FluxionStream::new(stream)
         .combine_with_previous()
@@ -103,7 +103,7 @@ async fn test_map_ordered_preserves_error_passthrough() -> anyhow::Result<()> {
     ),);
 
     // Continue with value
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(2, 2)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
 
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -117,7 +117,7 @@ async fn test_map_ordered_preserves_error_passthrough() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_map_ordered_chain_after_error() -> anyhow::Result<()> {
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Chain combine_with_previous and map
     let mut result = FluxionStream::new(stream)
@@ -125,7 +125,7 @@ async fn test_map_ordered_chain_after_error() -> anyhow::Result<()> {
         .map_ordered(|x| &*x.current * 2);
 
     // Act & Assert: Send value
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(5, 1)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 1)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(10)
@@ -139,7 +139,7 @@ async fn test_map_ordered_chain_after_error() -> anyhow::Result<()> {
     ));
 
     // Continue
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(15, 3)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(15, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(30)

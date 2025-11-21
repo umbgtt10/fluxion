@@ -53,13 +53,13 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{CombineWithPreviousExt, FluxionStream};
-    /// use fluxion_test_utils::ChronoTimestamped;
+    /// use fluxion_test_utils::Sequenced;
     /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channel
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<ChronoTimestamped<i32>>();
+    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
     ///
     /// // Create stream
     /// let stream = FluxionStream::from_unbounded_receiver(rx);

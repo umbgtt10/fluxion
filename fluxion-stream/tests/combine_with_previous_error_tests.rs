@@ -6,24 +6,24 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::CombineWithPreviousExt;
-use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, ChronoTimestamped};
+use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, Sequenced};
 
 #[tokio::test]
 async fn test_combine_with_previous_propagates_errors() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
 
     // Act: First item - no previous
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(1, 1)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
     // Second item - has previous
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(2, 2)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -37,7 +37,7 @@ async fn test_combine_with_previous_propagates_errors() -> anyhow::Result<()> {
     ));
 
     // Fourth item - continues after error
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(4, 4)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -50,7 +50,7 @@ async fn test_combine_with_previous_propagates_errors() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_combine_with_previous_error_at_first_item() -> anyhow::Result<()> {
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
 
@@ -62,7 +62,7 @@ async fn test_combine_with_previous_error_at_first_item() -> anyhow::Result<()> 
     ),);
 
     // Continue with value
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(2, 2)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
 
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(_)),
@@ -77,12 +77,12 @@ async fn test_combine_with_previous_error_at_first_item() -> anyhow::Result<()> 
 #[tokio::test]
 async fn test_combine_with_previous_multiple_errors() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
 
     // Act & Assert: First value
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(1, 1)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -96,7 +96,7 @@ async fn test_combine_with_previous_multiple_errors() -> anyhow::Result<()> {
     ));
 
     // Value
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(3, 3)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -110,7 +110,7 @@ async fn test_combine_with_previous_multiple_errors() -> anyhow::Result<()> {
     ));
 
     // Value
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(5, 5)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -124,12 +124,12 @@ async fn test_combine_with_previous_multiple_errors() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_combine_with_previous_preserves_pairing_after_error() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
 
     // Act && Assert: First value
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(10, 1)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -143,13 +143,13 @@ async fn test_combine_with_previous_preserves_pairing_after_error() -> anyhow::R
     ));
 
     // More values - pairing should still work
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(30, 3)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(30, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
-    tx.send(StreamItem::Value(ChronoTimestamped::with_timestamp(40, 4)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(40, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -163,7 +163,7 @@ async fn test_combine_with_previous_preserves_pairing_after_error() -> anyhow::R
 #[tokio::test]
 async fn test_combine_with_previous_single_item_stream_with_error() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
 

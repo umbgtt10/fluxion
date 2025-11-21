@@ -7,7 +7,7 @@ use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_fern,
     plant_rose, plant_sunflower, TestData,
 };
-use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
 use rstest::rstest;
 use tokio::sync::mpsc;
@@ -1323,9 +1323,9 @@ async fn test_ordered_merge_permutations(
     // regardless of channel order or send pattern
 
     // Arrange - create three channels
-    let (person_tx, person_rx) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
-    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
-    let (plant_tx, plant_rx) = mpsc::unbounded_channel::<ChronoTimestamped<TestData>>();
+    let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
 
     let person_stream = UnboundedReceiverStream::new(person_rx);
     let animal_stream = UnboundedReceiverStream::new(animal_rx);
@@ -1361,9 +1361,7 @@ async fn test_ordered_merge_permutations(
                     2 => person_charlie(),
                     _ => panic!("Too many person values"),
                 };
-                person_tx
-                    .send(ChronoTimestamped::new(value.clone()))
-                    .unwrap();
+                person_tx.send(Sequenced::new(value.clone())).unwrap();
                 expected_order.push(value);
                 person_idx += 1;
             }
@@ -1374,9 +1372,7 @@ async fn test_ordered_merge_permutations(
                     2 => animal_cat(),
                     _ => panic!("Too many animal values"),
                 };
-                animal_tx
-                    .send(ChronoTimestamped::new(value.clone()))
-                    .unwrap();
+                animal_tx.send(Sequenced::new(value.clone())).unwrap();
                 expected_order.push(value);
                 animal_idx += 1;
             }
@@ -1387,9 +1383,7 @@ async fn test_ordered_merge_permutations(
                     2 => plant_fern(),
                     _ => panic!("Too many plant values"),
                 };
-                plant_tx
-                    .send(ChronoTimestamped::new(value.clone()))
-                    .unwrap();
+                plant_tx.send(Sequenced::new(value.clone())).unwrap();
                 expected_order.push(value);
                 plant_idx += 1;
             }

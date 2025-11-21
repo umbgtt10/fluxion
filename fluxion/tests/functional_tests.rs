@@ -10,7 +10,7 @@ use fluxion_test_utils::test_data::{
     animal_dog, person_alice, person_bob, person_charlie, plant_rose, TestData,
 };
 use fluxion_test_utils::unwrap_value;
-use fluxion_test_utils::ChronoTimestamped;
+use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{assert_stream_ended, test_channel};
 use futures::StreamExt;
 use tokio::sync::mpsc::unbounded_channel;
@@ -23,8 +23,8 @@ static RESULT_SELECTOR: fn(&CombinedState<TestData>) -> CombinedState<TestData> 
 #[tokio::test]
 async fn test_functional_combine_latest() -> anyhow::Result<()> {
     // Arrange
-    let (person_tx, person_stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let (animal_tx, animal_stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
 
     let person_stream = FluxionStream::new(person_stream);
     let animal_stream = FluxionStream::new(animal_stream);
@@ -32,8 +32,8 @@ async fn test_functional_combine_latest() -> anyhow::Result<()> {
     let mut combined = person_stream.combine_latest(vec![animal_stream], ALWAYS_TRUE_COMBINED);
 
     // Act
-    person_tx.send(ChronoTimestamped::new(person_alice()))?;
-    animal_tx.send(ChronoTimestamped::new(animal_dog()))?;
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
     let state = unwrap_stream(&mut combined, 100).await;
@@ -52,13 +52,13 @@ async fn test_functional_combine_latest() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_functional_combine_with_previous() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut with_previous = FluxionStream::new(stream).combine_with_previous();
 
     // Act
-    tx.send(ChronoTimestamped::new(person_alice()))?;
-    tx.send(ChronoTimestamped::new(person_bob()))?;
-    tx.send(ChronoTimestamped::new(person_charlie()))?;
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert
     let item = unwrap_value(Some(unwrap_stream(&mut with_previous, 500).await));
@@ -79,9 +79,9 @@ async fn test_functional_combine_with_previous() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_functional_ordered_merge() -> anyhow::Result<()> {
     // Arrange
-    let (person_tx, person_stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let (animal_tx, animal_stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let (plant_tx, plant_stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
+    let (plant_tx, plant_stream) = test_channel::<Sequenced<TestData>>();
 
     let person_stream = FluxionStream::new(person_stream);
     let animal_stream = FluxionStream::new(animal_stream);
@@ -90,10 +90,10 @@ async fn test_functional_ordered_merge() -> anyhow::Result<()> {
     let mut merged = person_stream.ordered_merge(vec![animal_stream, plant_stream]);
 
     // Act
-    person_tx.send(ChronoTimestamped::new(person_alice()))?;
-    animal_tx.send(ChronoTimestamped::new(animal_dog()))?;
-    plant_tx.send(ChronoTimestamped::new(plant_rose()))?;
-    person_tx.send(ChronoTimestamped::new(person_bob()))?;
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_dog()))?;
+    plant_tx.send(Sequenced::new(plant_rose()))?;
+    person_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert - items emitted in order they were pushed
     match unwrap_stream(&mut merged, 100).await {
@@ -119,8 +119,8 @@ async fn test_functional_ordered_merge() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_functional_take_latest_when() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let (filter_tx, filter_stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<TestData>>();
 
     let source_stream = FluxionStream::new(source_stream);
     let filter_stream = FluxionStream::new(filter_stream);
@@ -128,9 +128,9 @@ async fn test_functional_take_latest_when() -> anyhow::Result<()> {
     let mut filtered = source_stream.take_latest_when(filter_stream, ALWAYS_TRUE);
 
     // Act
-    source_tx.send(ChronoTimestamped::new(person_bob()))?;
-    source_tx.send(ChronoTimestamped::new(person_charlie()))?;
-    filter_tx.send(ChronoTimestamped::new(person_alice()))?;
+    source_tx.send(Sequenced::new(person_bob()))?;
+    source_tx.send(Sequenced::new(person_charlie()))?;
+    filter_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert - latest buffered value emitted when filter updates
     match unwrap_stream(&mut filtered, 100).await {
@@ -144,8 +144,8 @@ async fn test_functional_take_latest_when() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_functional_take_while_with() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let (predicate_tx, predicate_stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
+    let (predicate_tx, predicate_stream) = test_channel::<Sequenced<TestData>>();
 
     let source_stream = FluxionStream::new(source_stream);
     let predicate_stream = FluxionStream::new(predicate_stream);
@@ -153,9 +153,9 @@ async fn test_functional_take_while_with() -> anyhow::Result<()> {
     let mut taken = source_stream.take_while_with(predicate_stream, |_| true);
 
     // Act
-    predicate_tx.send(ChronoTimestamped::new(person_alice()))?;
-    let bob = ChronoTimestamped::new(person_bob());
-    let charlie = ChronoTimestamped::new(person_charlie());
+    predicate_tx.send(Sequenced::new(person_alice()))?;
+    let bob = Sequenced::new(person_bob());
+    let charlie = Sequenced::new(person_charlie());
     source_tx.send(bob.clone())?;
     source_tx.send(charlie.clone())?;
 
@@ -169,16 +169,16 @@ async fn test_functional_take_while_with() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_functional_with_latest_from() -> anyhow::Result<()> {
     // Arrange
-    let (primary_tx, primary_stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let (secondary_tx, secondary_stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (primary_tx, primary_stream) = test_channel::<Sequenced<TestData>>();
+    let (secondary_tx, secondary_stream) = test_channel::<Sequenced<TestData>>();
 
     let mut combined =
         FluxionStream::new(primary_stream).with_latest_from(secondary_stream, RESULT_SELECTOR);
 
     // Act
-    secondary_tx.send(ChronoTimestamped::new(animal_dog()))?;
-    primary_tx.send(ChronoTimestamped::new(person_alice()))?;
-    primary_tx.send(ChronoTimestamped::new(person_bob()))?;
+    secondary_tx.send(Sequenced::new(animal_dog()))?;
+    primary_tx.send(Sequenced::new(person_alice()))?;
+    primary_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert - primary drives emissions, secondary provides latest value
     let result = unwrap_value(Some(unwrap_stream(&mut combined, 100).await));
@@ -195,8 +195,8 @@ async fn test_functional_with_latest_from() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_functional_chained_operations() -> anyhow::Result<()> {
     // Arrange
-    let (source_tx, source_stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let (filter_tx, filter_stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_stream) = test_channel::<Sequenced<TestData>>();
 
     let source_stream = FluxionStream::new(source_stream);
     let filter_stream = FluxionStream::new(filter_stream);
@@ -206,9 +206,9 @@ async fn test_functional_chained_operations() -> anyhow::Result<()> {
         .combine_with_previous();
 
     // Act
-    source_tx.send(ChronoTimestamped::new(person_bob()))?;
-    source_tx.send(ChronoTimestamped::new(person_charlie()))?;
-    filter_tx.send(ChronoTimestamped::new(person_alice()))?;
+    source_tx.send(Sequenced::new(person_bob()))?;
+    source_tx.send(Sequenced::new(person_charlie()))?;
+    filter_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
     let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
