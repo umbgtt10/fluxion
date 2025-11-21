@@ -4,7 +4,7 @@
 
 use crate::FluxionStream;
 use fluxion_core::lock_utilities::lock_or_error;
-use fluxion_core::{StreamItem, Timestamped};
+use fluxion_core::{FluxionError, StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::StreamExt;
 use futures::Stream;
@@ -214,56 +214,23 @@ where
 enum Item<TItem, TFilter> {
     Source(TItem),
     Filter(TFilter),
-    Error(fluxion_core::FluxionError),
+    Error(FluxionError),
 }
 
-// Manually implement Send + Sync + Unpin
-unsafe impl<TItem, TFilter> Send for Item<TItem, TFilter>
-where
-    TItem: Send,
-    TFilter: Send,
-{
-}
-
-unsafe impl<TItem, TFilter> Sync for Item<TItem, TFilter>
-where
-    TItem: Sync,
-    TFilter: Sync,
-{
-}
-
-impl<TItem, TFilter> Unpin for Item<TItem, TFilter>
-where
-    TItem: Unpin,
-    TFilter: Unpin,
-{
-}
-
-impl<TItem, TFilter> Item<TItem, TFilter>
+impl<TItem, TFilter> Timestamped for Item<TItem, TFilter>
 where
     TItem: Timestamped,
     TFilter: Timestamped<Timestamp = TItem::Timestamp>,
-{
-    fn timestamp_value(&self) -> TItem::Timestamp {
-        match self {
-            Self::Source(s) => s.timestamp(),
-            Self::Filter(f) => f.timestamp(),
-            Self::Error(_) => panic!("Error items cannot provide timestamps"),
-        }
-    }
-}
-
-// Implement Timestamped for Item so it can work with ordered_merge
-impl<TItem, TFilter> Timestamped for Item<TItem, TFilter>
-where
-    TItem: Timestamped + Clone + Ord + Send + 'static,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp> + Clone + Ord + Send + 'static,
 {
     type Inner = Self;
     type Timestamp = TItem::Timestamp;
 
     fn timestamp(&self) -> Self::Timestamp {
-        self.timestamp_value()
+        match self {
+            Self::Source(s) => s.timestamp(),
+            Self::Filter(f) => f.timestamp(),
+            Self::Error(_) => panic!("Error items cannot provide timestamps"),
+        }
     }
 
     fn with_timestamp(value: Self, _timestamp: Self::Timestamp) -> Self {
@@ -285,7 +252,7 @@ where
     TFilter: Timestamped<Timestamp = TItem::Timestamp>,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.timestamp_value() == other.timestamp_value()
+        self.timestamp() == other.timestamp()
     }
 }
 
@@ -298,8 +265,8 @@ where
 
 impl<TItem, TFilter> PartialOrd for Item<TItem, TFilter>
 where
-    TItem: Timestamped + Eq,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp> + Eq,
+    TItem: Timestamped,
+    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
 {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
@@ -308,10 +275,10 @@ where
 
 impl<TItem, TFilter> Ord for Item<TItem, TFilter>
 where
-    TItem: Timestamped + Eq,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp> + Eq,
+    TItem: Timestamped,
+    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.timestamp_value().cmp(&other.timestamp_value())
+        self.timestamp().cmp(&other.timestamp())
     }
 }
