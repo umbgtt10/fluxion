@@ -53,7 +53,8 @@ anyhow = "1.0.100"
 
 ### Basic Usage
 
-```rustuse fluxion_core::Timestamped;
+```rust
+use fluxion_core::Timestamped;
 use fluxion_rx::FluxionStream;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use tokio::sync::mpsc::unbounded_channel;
@@ -126,7 +127,8 @@ anyhow = "1.0.100"
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rustuse fluxion_core::Timestamped;
+```rust
+use fluxion_core::Timestamped;
 use fluxion_rx::FluxionStream;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use tokio::sync::mpsc::unbounded_channel;
@@ -214,7 +216,8 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
 **Sequential Processing:**
 
 **Dependencies:**
-```toml[dependencies]
+```toml
+[dependencies]
 fluxion-exec = "0.2.1"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
@@ -222,7 +225,8 @@ tokio-util = "0.7.17"
 ```
 
 **Example:**
-```rustuse fluxion_exec::subscribe_async::SubscribeAsyncExt;
+```rust
+use fluxion_exec::subscribe_async::SubscribeAsyncExt;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
@@ -315,7 +319,8 @@ async fn test_subscribe_async_example() -> anyhow::Result<()> {
 **Latest-Value Processing (with auto-cancellation):**
 
 **Dependencies:**
-```toml[dependencies]
+```toml
+[dependencies]
 fluxion-exec = "0.2.1"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
@@ -323,7 +328,8 @@ tokio-util = "0.7.17"
 ```
 
 **Example:**
-```rustuse fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
+```rust
+use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
