@@ -31,7 +31,7 @@ async fn test_filter_ordered_propagates_errors() -> anyhow::Result<()> {
 
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(ref v) if **v == 2
+        StreamItem::Value(v) if v.value == 2
     ));
 
     // Value filtered out
@@ -41,7 +41,7 @@ async fn test_filter_ordered_propagates_errors() -> anyhow::Result<()> {
     tx.send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(ref v) if **v == 4
+        StreamItem::Value(ref v) if v.value == 4
     ));
 
     drop(tx);
@@ -72,19 +72,19 @@ async fn test_filter_ordered_predicate_after_error() -> anyhow::Result<()> {
     tx.send(StreamItem::Value(Sequenced::with_timestamp(20, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(ref v) if **v == 20
+        StreamItem::Value(ref v) if v.value == 20
     ));
 
     tx.send(StreamItem::Value(Sequenced::with_timestamp(25, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(ref v) if **v == 25
+        StreamItem::Value(ref v) if v.value == 25
     ));
 
     tx.send(StreamItem::Value(Sequenced::with_timestamp(30, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(ref v) if **v == 30
+        StreamItem::Value(ref v) if v.value == 30
     ));
 
     drop(tx);
@@ -110,13 +110,13 @@ async fn test_filter_ordered_error_at_start() -> anyhow::Result<()> {
     tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(ref v) if **v == 2
+        StreamItem::Value(ref v) if v.value == 2
     ));
 
     tx.send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(ref v) if **v == 3
+        StreamItem::Value(ref v) if v.value == 3
     ));
 
     drop(tx);
@@ -162,7 +162,7 @@ async fn test_filter_ordered_chain_with_map_after_error() -> anyhow::Result<()> 
     let mut result = FluxionStream::new(stream)
         .filter_ordered(|x| *x >= 20)
         .combine_with_previous()
-        .map_ordered(|x| &*x.current / 10);
+        .map_ordered(|x| x.current.value / 10);
 
     // Act & Assert: Send values
     tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?; // Filtered

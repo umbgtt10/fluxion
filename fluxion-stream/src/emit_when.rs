@@ -78,7 +78,7 @@ where
     ///
     /// // Assert - data emits when enabled
     /// let result = gated.next().await.unwrap().unwrap();
-    /// assert_eq!(*&*result, 42);
+    /// assert_eq!(result.value, 42);
     /// # }
     /// ```
     ///

@@ -239,7 +239,7 @@ fn test_stream_item_ordered_value() {
 
     assert_eq!(item.timestamp(), 100);
     match item {
-        StreamItem::Value(v) => assert_eq!(*v, 42),
+        StreamItem::Value(v) => assert_eq!(v.value, 42),
         _ => panic!("Expected Value"),
     }
 }
@@ -266,7 +266,7 @@ fn test_stream_item_ordered_with_timestamp() {
 
     assert_eq!(item.timestamp(), 200);
     match item {
-        StreamItem::Value(v) => assert_eq!(*v, 42),
+        StreamItem::Value(v) => assert_eq!(v.value, 42),
         _ => panic!("Expected Value"),
     }
 }

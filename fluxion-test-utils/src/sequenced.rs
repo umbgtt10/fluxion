@@ -4,7 +4,6 @@
 
 use fluxion_core::{CompareByInner, Timestamped};
 use std::cmp::Ordering;
-use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicU64, Ordering::SeqCst};
 
 static GLOBAL_SEQUENCE: AtomicU64 = AtomicU64::new(0);
@@ -100,20 +99,6 @@ where
 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.timestamp.cmp(&other.timestamp)
-    }
-}
-
-impl<T> Deref for Sequenced<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-
-impl<T> DerefMut for Sequenced<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.value
     }
 }
 

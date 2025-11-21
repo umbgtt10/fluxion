@@ -291,5 +291,7 @@ where
     T: Clone,
     S: Stream<Item = StreamItem<Sequenced<T>>> + Unpin,
 {
-    (*unwrap_value(Some(unwrap_stream(stream, 500).await))).clone()
+    unwrap_value(Some(unwrap_stream(stream, 500).await))
+        .value
+        .clone()
 }

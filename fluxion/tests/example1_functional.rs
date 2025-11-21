@@ -35,7 +35,7 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
     tx_trigger.send(Sequenced::with_timestamp(Value::Bool(true), 4_000_000_000))?; // 4 sec
 
     let result1 = unwrap_stream(&mut pipeline, 500).await.unwrap();
-    assert!(matches!(&*result1, Value::Int(30)));
+    assert!(matches!(&result1.value, Value::Int(30)));
     assert_eq!(result1.timestamp(), 4_000_000_000);
 
     // After first trigger, send more int values
@@ -45,7 +45,7 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
     tx_trigger.send(Sequenced::with_timestamp(Value::Bool(true), 6_000_000_000))?; // 6 sec
 
     let result2 = unwrap_stream(&mut pipeline, 500).await.unwrap();
-    assert!(matches!(&*result2, Value::Int(40)));
+    assert!(matches!(&result2.value, Value::Int(40)));
     assert_eq!(result2.timestamp(), 6_000_000_000);
 
     // Send another int and trigger
@@ -53,7 +53,7 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
     tx_trigger.send(Sequenced::with_timestamp(Value::Bool(true), 8_000_000_000))?; // 8 sec
 
     let result3 = unwrap_stream(&mut pipeline, 500).await.unwrap();
-    assert!(matches!(&*result3, Value::Int(50)));
+    assert!(matches!(&result3.value, Value::Int(50)));
     assert_eq!(result3.timestamp(), 8_000_000_000);
 
     Ok(())

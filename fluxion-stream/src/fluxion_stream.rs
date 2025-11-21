@@ -138,7 +138,7 @@ where
     /// let mut mapped = stream
     ///     .combine_with_previous()
     ///     .map_ordered(|with_previous| {
-    ///         format!("Value: {}", &*with_previous.current)
+    ///         format!("Value: {}", with_previous.current.value)
     ///     });
     ///
     /// tx.send(Sequenced::new(42)).unwrap();
@@ -225,8 +225,8 @@ where
     /// tx.send(Sequenced::new(3)).unwrap();
     /// tx.send(Sequenced::new(4)).unwrap();
     ///
-    /// assert_eq!(&*evens.next().await.unwrap().unwrap(), &2);
-    /// assert_eq!(&*evens.next().await.unwrap().unwrap(), &4);
+    /// assert_eq!(&evens.next().await.unwrap().unwrap().value, &2);
+    /// assert_eq!(&evens.next().await.unwrap().unwrap().value, &4);
     /// # }
     /// ```
     ///
@@ -301,17 +301,17 @@ where
     /// // First item has no previous
     /// let item = paired.next().await.unwrap().unwrap();
     /// assert!(item.previous.is_none());
-    /// assert_eq!(&*item.current, &10);
+    /// assert_eq!(&item.current.value, &10);
     ///
     /// // Second item has previous value
     /// let item = paired.next().await.unwrap().unwrap();
-    /// assert_eq!(&*item.previous.unwrap(), &10);
-    /// assert_eq!(&*item.current, &20);
+    /// assert_eq!(&item.previous.unwrap().value, &10);
+    /// assert_eq!(&item.current.value, &20);
     ///
     /// // Third item pairs 20 and 30
     /// let item = paired.next().await.unwrap().unwrap();
-    /// assert_eq!(&*item.previous.unwrap(), &20);
-    /// assert_eq!(&*item.current, &30);
+    /// assert_eq!(&item.previous.unwrap().value, &20);
+    /// assert_eq!(&item.current.value, &30);
     /// # }
     /// ```
     ///
@@ -379,8 +379,8 @@ where
     /// source_tx.send(Sequenced::new(200)).unwrap();
     ///
     /// let mut taken = Box::pin(taken);
-    /// assert_eq!(&*taken.next().await.unwrap().unwrap(), &100);
-    /// assert_eq!(&*taken.next().await.unwrap().unwrap(), &200);
+    /// assert_eq!(&taken.next().await.unwrap().unwrap().value, &100);
+    /// assert_eq!(&taken.next().await.unwrap().unwrap().value, &200);
     /// # }
     /// ```
     ///
@@ -456,13 +456,13 @@ where
     /// trigger_tx.send((0, 4).into()).unwrap();
     ///
     /// let result = sampled.next().await.unwrap().unwrap();
-    /// assert_eq!(&*result, &30);
+    /// assert_eq!(&result.value, &30);
     /// assert_eq!(result.timestamp(), 4); // Uses trigger's sequence
     ///
     /// // After trigger, source values emit immediately
     /// source_tx.send((40, 5).into()).unwrap();
     /// let result = sampled.next().await.unwrap().unwrap();
-    /// assert_eq!(&*result, &40);
+    /// assert_eq!(&result.value, &40);
     /// assert_eq!(result.timestamp(), 5); // Uses source's sequence
     /// # }
     /// ```
@@ -543,7 +543,7 @@ where
     ///
     /// let mut gated = Box::pin(gated);
     /// let result = gated.next().await.unwrap().unwrap();
-    /// assert_eq!(&*result, &42);
+    /// assert_eq!(&result.value, &42);
     /// # }
     /// ```
     ///
@@ -782,9 +782,9 @@ where
     /// tx2.send(("second", 2).into()).unwrap();
     ///
     /// // Items are emitted in temporal order
-    /// assert_eq!(&*merged.next().await.unwrap().unwrap(), &"first");
-    /// assert_eq!(&*merged.next().await.unwrap().unwrap(), &"second");
-    /// assert_eq!(&*merged.next().await.unwrap().unwrap(), &"third");
+    /// assert_eq!(&merged.next().await.unwrap().unwrap().value, &"first");
+    /// assert_eq!(&merged.next().await.unwrap().unwrap().value, &"second");
+    /// assert_eq!(&merged.next().await.unwrap().unwrap().value, &"third");
     /// # }
     /// ```
     ///

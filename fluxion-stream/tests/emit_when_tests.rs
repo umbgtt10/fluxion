@@ -66,7 +66,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &person_alice(),
         "Expected Alice to be emitted when age > legs"
     );
@@ -77,7 +77,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &person_alice(),
         "Expected Alice to be emitted when age > legs (spider)"
     );
@@ -88,7 +88,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &person_alice(),
         "Expected Alice to be emitted when age > legs (ant)"
     );
@@ -124,7 +124,7 @@ async fn test_emit_when_threshold_comparison() -> anyhow::Result<()> {
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &plant_rose(),
         "Expected Rose to be emitted when height difference > 50"
     );
@@ -166,7 +166,7 @@ async fn test_emit_when_name_length_comparison() -> anyhow::Result<()> {
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &person_charlie(),
         "Expected Charlie to be emitted when name longer than Dog"
     );
@@ -222,7 +222,7 @@ async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Res
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &person_bob(),
         "Expected Bob (30, even) to be emitted"
     );
@@ -233,7 +233,7 @@ async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Res
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &person_dave(),
         "Expected Dave (28, even) to be emitted"
     );
@@ -284,7 +284,7 @@ async fn test_emit_when_stateful_comparison() -> anyhow::Result<()> {
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &person_charlie(),
         "Expected Charlie to be emitted when age > threshold"
     );
@@ -295,7 +295,7 @@ async fn test_emit_when_stateful_comparison() -> anyhow::Result<()> {
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &person_diane(),
         "Expected Diane to be emitted when age > threshold"
     );
@@ -334,7 +334,7 @@ async fn test_emit_when_filter_stream_closes() -> anyhow::Result<()> {
 
     // Assert: Should emit
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
-    assert_eq!(&*emitted_item, &person_alice());
+    assert_eq!(&emitted_item.value, &person_alice());
 
     // Act: Close filter stream
     drop(filter_tx);
@@ -345,7 +345,7 @@ async fn test_emit_when_filter_stream_closes() -> anyhow::Result<()> {
     // Assert: Should still emit using last known filter value
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &person_bob(),
         "Expected source updates to continue after filter stream closes"
     );
@@ -379,7 +379,7 @@ async fn test_emit_when_both_values_required() -> anyhow::Result<()> {
     // Assert: Now it should emit
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &person_alice(),
         "Expected Alice to be emitted after both values are present"
     );
@@ -413,7 +413,7 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() -> anyhow::
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
-    assert_eq!(&*emitted_item, &person_alice());
+    assert_eq!(&emitted_item.value, &person_alice());
 
     // Act: Update filter to Dog legs=4 => 25 >= 40 = false
     filter_tx.send(Sequenced::new(animal_dog()))?;
@@ -426,7 +426,7 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() -> anyhow::
 
     // Assert: Should emit again
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
-    assert_eq!(&*emitted_item, &person_alice());
+    assert_eq!(&emitted_item.value, &person_alice());
 
     Ok(())
 }
@@ -471,7 +471,7 @@ async fn test_emit_when_delta_based_filtering() -> anyhow::Result<()> {
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &person_diane(),
         "Expected Diane to be emitted when age difference > 10"
     );
@@ -538,7 +538,7 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
-    assert_eq!(&*emitted_item, &person_alice());
+    assert_eq!(&emitted_item.value, &person_alice());
 
     // Act: Close source stream
     drop(source_tx);
@@ -549,7 +549,7 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
     // Assert: Should emit latest source value
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted_item,
+        &emitted_item.value,
         &person_alice(),
         "Expected filter updates to re-emit latest source after source closes"
     );
@@ -559,7 +559,7 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
-    assert_eq!(&*emitted_item, &person_alice());
+    assert_eq!(&emitted_item.value, &person_alice());
 
     Ok(())
 }
@@ -616,7 +616,7 @@ async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
-    assert_eq!(&*emitted_item, &person_diane());
+    assert_eq!(&emitted_item.value, &person_diane());
 
     // Act: Bob age=30 (even), Dog legs=4 => 30 % 4 = 2 ✗
     source_tx.send(Sequenced::new(person_bob()))?;
@@ -629,7 +629,7 @@ async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
-    assert_eq!(&*emitted_item, &person_bob());
+    assert_eq!(&emitted_item.value, &person_bob());
 
     // Act: Alice age=25 (odd) => fails even check ✗
     source_tx.send(Sequenced::new(person_alice()))?;

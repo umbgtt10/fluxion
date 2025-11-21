@@ -7,7 +7,7 @@ use fluxion_test_utils::Sequenced;
 use std::cmp::Ordering;
 
 #[test]
-fn test_chrono_timestamped_ordering() {
+fn test_sequenced_ordering() {
     // Arrange
     let first = Sequenced::new("first");
     let second = Sequenced::new("second");
@@ -20,16 +20,7 @@ fn test_chrono_timestamped_ordering() {
 }
 
 #[test]
-fn test_chrono_timestamped_deref() {
-    // Arrange
-    let seq = Sequenced::new("hello");
-
-    // Assert
-    assert_eq!(seq.len(), 5);
-}
-
-#[test]
-fn test_chrono_timestamped_new_assigns_sequence() {
+fn test_sequenced_new_assigns_sequence() {
     // Arrange & Act
     let item1 = Sequenced::new(42);
     let item2 = Sequenced::new(100);
@@ -40,7 +31,7 @@ fn test_chrono_timestamped_new_assigns_sequence() {
 }
 
 #[test]
-fn test_chrono_timestamped_into_inner() {
+fn test_sequenced_into_inner() {
     // Arrange
     let original_value = String::from("test value");
     let timestamped = Sequenced::new(original_value.clone());
@@ -53,20 +44,7 @@ fn test_chrono_timestamped_into_inner() {
 }
 
 #[test]
-fn test_chrono_timestamped_get() {
-    // Arrange
-    let value = vec![1, 2, 3, 4, 5];
-    let timestamped = Sequenced::new(value.clone());
-
-    // Act
-    let reference = &*timestamped;
-
-    // Assert
-    assert_eq!(reference, &value);
-}
-
-#[test]
-fn test_chrono_timestamped_equality_same_value_same_sequence() {
+fn test_sequenced_equality_same_value_same_sequence() {
     // Arrange
     let item1 = Sequenced::new(42);
     let item2 = item1.clone();
@@ -76,7 +54,7 @@ fn test_chrono_timestamped_equality_same_value_same_sequence() {
 }
 
 #[test]
-fn test_chrono_timestamped_equality_same_value_different_sequence() {
+fn test_sequenced_equality_same_value_different_sequence() {
     // Arrange
     let item1 = Sequenced::new(42);
     let item2 = Sequenced::new(42);
@@ -86,7 +64,7 @@ fn test_chrono_timestamped_equality_same_value_different_sequence() {
 }
 
 #[test]
-fn test_chrono_timestamped_inequality() {
+fn test_sequenced_inequality() {
     // Arrange
     let item1 = Sequenced::new(100);
     let item2 = Sequenced::new(200);
@@ -96,7 +74,7 @@ fn test_chrono_timestamped_inequality() {
 }
 
 #[test]
-fn test_chrono_timestamped_partial_ord() {
+fn test_sequenced_partial_ord() {
     // Arrange
     let first = Sequenced::new("a");
     let second = Sequenced::new("z");
@@ -109,7 +87,7 @@ fn test_chrono_timestamped_partial_ord() {
 }
 
 #[test]
-fn test_chrono_timestamped_ord_consistent_with_timestamp() {
+fn test_sequenced_ord_consistent_with_timestamp() {
     // Arrange
     let early = Sequenced::new(999);
     let late = Sequenced::new(1);
@@ -120,7 +98,7 @@ fn test_chrono_timestamped_ord_consistent_with_timestamp() {
 }
 
 #[test]
-fn test_chrono_timestamped_display() {
+fn test_sequenced_display() {
     // Arrange
     let timestamped = Sequenced::new("hello world");
 
@@ -132,7 +110,7 @@ fn test_chrono_timestamped_display() {
 }
 
 #[test]
-fn test_chrono_timestamped_display_with_number() {
+fn test_sequenced_display_with_number() {
     // Arrange
     let timestamped = Sequenced::new(12345);
 
@@ -144,19 +122,7 @@ fn test_chrono_timestamped_display_with_number() {
 }
 
 #[test]
-fn test_chrono_timestamped_deref_mut() {
-    // Arrange
-    let mut timestamped = Sequenced::new(String::from("hello"));
-
-    // Act
-    timestamped.push_str(" world");
-
-    // Assert
-    assert_eq!(timestamped.value, "hello world");
-}
-
-#[test]
-fn test_chrono_timestamped_clone_independence() {
+fn test_sequenced_clone_independence() {
     // Arrange
     let original = Sequenced::new(vec![1, 2, 3]);
     let mut cloned = original.clone();
@@ -171,7 +137,7 @@ fn test_chrono_timestamped_clone_independence() {
 }
 
 #[test]
-fn test_chrono_timestamped_sequence_monotonic() {
+fn test_sequenced_sequence_monotonic() {
     // Arrange & Act - Add small delays to ensure timestamp differences
     let items: Vec<Sequenced<i32>> = (0..10)
         .map(|i| {
@@ -194,7 +160,7 @@ fn test_chrono_timestamped_sequence_monotonic() {
 }
 
 #[test]
-fn test_chrono_timestamped_debug() {
+fn test_sequenced_debug() {
     // Arrange
     let timestamped = Sequenced::new(42);
 
@@ -208,7 +174,7 @@ fn test_chrono_timestamped_debug() {
 }
 
 #[test]
-fn test_chrono_timestamped_multiple_types() {
+fn test_sequenced_multiple_types() {
     // Arrange & Act
     let string_ts = Sequenced::new(String::from("text"));
     let int_ts = Sequenced::new(123);
@@ -222,7 +188,7 @@ fn test_chrono_timestamped_multiple_types() {
 }
 
 #[test]
-fn test_chrono_timestamped_sorting_by_sequence() {
+fn test_sequenced_sorting_by_sequence() {
     // Arrange
     let item1 = Sequenced::new("third");
     let item2 = Sequenced::new("first");
@@ -243,7 +209,7 @@ fn test_chrono_timestamped_sorting_by_sequence() {
 }
 
 #[test]
-fn test_chrono_timestamped_value_field_public() {
+fn test_sequenced_value_field_public() {
     // Arrange
     let timestamped = Sequenced::new(String::from("public"));
 

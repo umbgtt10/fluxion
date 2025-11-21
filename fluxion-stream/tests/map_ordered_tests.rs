@@ -17,8 +17,8 @@ async fn test_map_ordered_basic_transformation() -> anyhow::Result<()> {
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
         format!(
             "Previous: {:?}, Current: {}",
-            stream_item.previous.map(|p| (*p).to_string()),
-            &*stream_item.current
+            stream_item.previous.map(|p| p.value.to_string()),
+            &stream_item.current.value
         )
     });
 
@@ -67,14 +67,14 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
-        let current_age = match &*stream_item.current {
+        let current_age = match &stream_item.current.value {
             TestData::Person(p) => p.age,
             _ => 0,
         };
         let previous_age = stream_item
             .previous
             .as_ref()
-            .and_then(|prev| match &**prev {
+            .and_then(|prev| match &prev.value {
                 TestData::Person(p) => Some(p.age),
                 _ => None,
             });
@@ -116,14 +116,14 @@ async fn test_map_ordered_extract_age_difference() -> anyhow::Result<()> {
     let mut stream = stream
         .combine_with_previous()
         .map_ordered(|stream_item| -> i32 {
-            let current_age = match &*stream_item.current {
+            let current_age = match &stream_item.current.value {
                 TestData::Person(p) => p.age as i32,
                 _ => 0,
             };
             let previous_age = stream_item
                 .previous
                 .as_ref()
-                .and_then(|prev| match &**prev {
+                .and_then(|prev| match &prev.value {
                     TestData::Person(p) => Some(p.age as i32),
                     _ => None,
                 });
@@ -155,7 +155,7 @@ async fn test_map_ordered_single_value() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream
         .combine_with_previous()
-        .map_ordered(|stream_item| stream_item.current.to_string());
+        .map_ordered(|stream_item| stream_item.current.value.to_string());
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
@@ -173,7 +173,7 @@ async fn test_map_ordered_empty_stream() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream
         .combine_with_previous()
-        .map_ordered(|stream_item| stream_item.current.to_string());
+        .map_ordered(|stream_item| stream_item.current.value.to_string());
 
     // Act
     drop(tx); // Close the stream
@@ -190,7 +190,7 @@ async fn test_map_ordered_preserves_ordering() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
         // Extract name from current
-        match &*stream_item.current {
+        match &stream_item.current.value {
             TestData::Person(p) => p.name.clone(),
             _ => String::from("Unknown"),
         }
@@ -229,7 +229,7 @@ async fn test_map_ordered_multiple_transformations() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
         // First transformation: extract age
-        match &*stream_item.current {
+        match &stream_item.current.value {
             TestData::Person(p) => p.age,
             _ => 0,
         }
@@ -280,7 +280,7 @@ async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
-        let current = match &*stream_item.current {
+        let current = match &stream_item.current.value {
             TestData::Person(p) => p,
             _ => panic!("Expected person"),
         };
@@ -293,7 +293,7 @@ async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
         };
 
         let changed_from_previous = !stream_item.previous.as_ref().is_some_and(|prev| {
-            if let TestData::Person(prev_person) = &**prev {
+            if let TestData::Person(prev_person) = &prev.value {
                 prev_person.name == current.name
             } else {
                 false
@@ -331,12 +331,12 @@ async fn test_map_ordered_boolean_logic() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
         // Returns true if age increased from previous
-        let current_age = match &*stream_item.current {
+        let current_age = match &stream_item.current.value {
             TestData::Person(p) => p.age,
             _ => 0,
         };
         stream_item.previous.as_ref().is_some_and(|prev| {
-            if let TestData::Person(p) = &**prev {
+            if let TestData::Person(p) = &prev.value {
                 current_age > p.age
             } else {
                 false

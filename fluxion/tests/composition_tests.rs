@@ -87,28 +87,28 @@ async fn test_fluxion_stream_composition() -> anyhow::Result<()> {
         element.previous.is_none(),
         "First emission should have no previous"
     );
-    assert_eq!(&*element.current, &person_alice());
+    assert_eq!(&element.current.value, &person_alice());
 
     // Update source, then trigger with filter
     source_tx.send(Sequenced::new(person_bob()))?;
     filter_tx.send(Sequenced::new(person_bob()))?;
     let element = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    assert_eq!(&*element.previous.unwrap(), &person_alice());
-    assert_eq!(&*element.current, &person_bob());
+    assert_eq!(&element.previous.unwrap().value, &person_alice());
+    assert_eq!(&element.current.value, &person_bob());
 
     // Update source, then trigger with filter
     source_tx.send(Sequenced::new(person_charlie()))?;
     filter_tx.send(Sequenced::new(person_charlie()))?;
     let element = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    assert_eq!(&*element.previous.unwrap(), &person_bob());
-    assert_eq!(&*element.current, &person_charlie());
+    assert_eq!(&element.previous.unwrap().value, &person_bob());
+    assert_eq!(&element.current.value, &person_charlie());
 
     // Update source, then trigger with filter
     source_tx.send(Sequenced::new(person_dave()))?;
     filter_tx.send(Sequenced::new(person_dave()))?;
     let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    assert_eq!(&*item.previous.unwrap(), &person_charlie());
-    assert_eq!(&*item.current, &person_dave());
+    assert_eq!(&item.previous.unwrap().value, &person_charlie());
+    assert_eq!(&item.current.value, &person_dave());
 
     Ok(())
 }
@@ -192,12 +192,12 @@ async fn test_fluxion_stream_combine_with_previous() -> anyhow::Result<()> {
 
     let element = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert!(element.previous.is_none());
-    assert_eq!(&*element.current, &person_alice());
+    assert_eq!(&element.current.value, &person_alice());
 
     tx.send(Sequenced::new(person_bob()))?;
     let element = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(&*element.previous.unwrap(), &person_alice());
-    assert_eq!(&*element.current, &person_bob());
+    assert_eq!(&element.previous.unwrap().value, &person_alice());
+    assert_eq!(&element.current.value, &person_bob());
 
     Ok(())
 }
@@ -217,11 +217,11 @@ async fn test_fluxion_stream_take_while_with() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(true))?;
     source_tx.send(Sequenced::new(person_alice()))?;
     let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    assert_eq!(&*val, &person_alice());
+    assert_eq!(&val.value, &person_alice());
 
     source_tx.send(Sequenced::new(person_bob()))?;
     let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    assert_eq!(&*val, &person_bob());
+    assert_eq!(&val.value, &person_bob());
 
     filter_tx.send(Sequenced::new(false))?;
     source_tx.send(Sequenced::new(person_charlie()))?;
@@ -253,12 +253,12 @@ async fn test_fluxion_stream_take_latest_when_take_while() -> anyhow::Result<()>
         .send(Sequenced::new(person_alice()))
         .unwrap();
     let element = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    assert_eq!(&*element, &person_alice());
+    assert_eq!(&element.value, &person_alice());
 
     source_tx.send(Sequenced::new(person_bob()))?;
     latest_filter_tx.send(Sequenced::new(person_bob()))?;
     let element = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    assert_eq!(&*element, &person_bob());
+    assert_eq!(&element.value, &person_bob());
 
     while_filter_tx.send(Sequenced::new(false))?;
     source_tx.send(Sequenced::new(person_charlie()))?;
@@ -335,13 +335,13 @@ async fn test_fluxion_stream_ordered_merge() -> anyhow::Result<()> {
     plant_tx.send(Sequenced::new(plant_rose()))?;
 
     let result1 = merged.next().await.unwrap();
-    assert_eq!(&*result1.unwrap(), &person_alice());
+    assert_eq!(&result1.unwrap().value, &person_alice());
 
     let result2 = merged.next().await.unwrap();
-    assert_eq!(&*result2.unwrap(), &animal_dog());
+    assert_eq!(&result2.unwrap().value, &animal_dog());
 
     let result3 = merged.next().await.unwrap();
-    assert_eq!(&*result3.unwrap(), &plant_rose());
+    assert_eq!(&result3.unwrap().value, &plant_rose());
 
     Ok(())
 }
@@ -363,17 +363,17 @@ async fn test_ordered_merge_then_combine_with_previous() -> anyhow::Result<()> {
     person_tx.send(Sequenced::new(person_alice()))?;
     let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert!(item.previous.is_none());
-    assert_eq!(&*item.current, &person_alice());
+    assert_eq!(&item.current.value, &person_alice());
 
     animal_tx.send(Sequenced::new(animal_dog()))?;
     let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    assert_eq!(&*item.previous.unwrap(), &person_alice());
-    assert_eq!(&*item.current, &animal_dog());
+    assert_eq!(&item.previous.unwrap().value, &person_alice());
+    assert_eq!(&item.current.value, &animal_dog());
 
     person_tx.send(Sequenced::new(person_bob()))?;
     let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    assert_eq!(&*item.previous.unwrap(), &animal_dog());
-    assert_eq!(&*item.current, &person_bob());
+    assert_eq!(&item.previous.unwrap().value, &animal_dog());
+    assert_eq!(&item.current.value, &person_bob());
 
     Ok(())
 }
@@ -501,19 +501,19 @@ async fn test_ordered_merge_then_take_while_with() -> anyhow::Result<()> {
     person_tx.send(Sequenced::new(person_alice()))?;
     {
         let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-        assert_eq!(&*val, &person_alice());
+        assert_eq!(&val.value, &person_alice());
     }
 
     animal_tx.send(Sequenced::new(animal_dog()))?;
     {
         let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-        assert_eq!(&*val, &animal_dog());
+        assert_eq!(&val.value, &animal_dog());
     }
 
     person_tx.send(Sequenced::new(person_bob()))?;
     {
         let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-        assert_eq!(&*val, &person_bob());
+        assert_eq!(&val.value, &person_bob());
     }
 
     filter_tx.send(Sequenced::new(false))?;
@@ -579,21 +579,21 @@ async fn test_ordered_merge_then_take_latest_when() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(person_alice()))?;
     {
         let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-        assert_eq!(&*val, &person_alice());
+        assert_eq!(&val.value, &person_alice());
     }
 
     animal_tx.send(Sequenced::new(animal_dog()))?;
     filter_tx.send(Sequenced::new(person_alice()))?;
     {
         let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-        assert_eq!(&*val, &animal_dog());
+        assert_eq!(&val.value, &animal_dog());
     }
 
     person_tx.send(Sequenced::new(person_bob()))?;
     filter_tx.send(Sequenced::new(person_alice()))?;
     {
         let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-        assert_eq!(&*val, &person_bob());
+        assert_eq!(&val.value, &person_bob());
     }
 
     drop(filter_tx);
@@ -629,14 +629,14 @@ async fn test_take_latest_when_then_ordered_merge() -> anyhow::Result<()> {
     let result1 = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     let result2 = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 
-    let values: Vec<_> = vec![&*result1, &*result2];
+    let values: Vec<_> = vec![&result1.value, &result2.value];
     assert!(values.contains(&&person_alice()));
     assert!(values.contains(&&animal_dog()));
 
     source_tx.send(Sequenced::new(person_bob()))?;
     filter_tx.send(Sequenced::new(person_bob()))?;
     let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    assert_eq!(&*result, &person_bob());
+    assert_eq!(&result.value, &person_bob());
 
     drop(filter_tx);
     source_tx.send(Sequenced::new(person_charlie()))?;
@@ -698,7 +698,7 @@ async fn test_emit_when_composite_with_ordered_merge_and_combine_with_previous(
     // Assert: Should emit (35 >= 30)
     let emitted = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted.current,
+        &emitted.current.value,
         &person_charlie(),
         "Expected Charlie (35) to be emitted when >= threshold (30)"
     );
@@ -715,7 +715,7 @@ async fn test_emit_when_composite_with_ordered_merge_and_combine_with_previous(
     // Assert: Should emit (40 >= 30)
     let emitted = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted.current,
+        &emitted.current.value,
         &person_diane(),
         "Expected Diane (40) to be emitted when >= threshold (30)"
     );
@@ -726,7 +726,7 @@ async fn test_emit_when_composite_with_ordered_merge_and_combine_with_previous(
     // Assert: Should re-emit Diane since she still meets the new threshold
     let emitted = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted.current,
+        &emitted.current.value,
         &person_diane(),
         "Expected Diane (40) to be re-emitted when threshold changes to 25"
     );
@@ -737,7 +737,7 @@ async fn test_emit_when_composite_with_ordered_merge_and_combine_with_previous(
     // Assert: Should emit (30 >= 25)
     let emitted = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
     assert_eq!(
-        &*emitted.current,
+        &emitted.current.value,
         &person_bob(),
         "Expected Bob (30) to be emitted when >= threshold (25)"
     );
@@ -756,8 +756,8 @@ async fn test_map_ordered_basic() -> anyhow::Result<()> {
             let item = stream_item;
             StreamItem::Value(format!(
                 "Previous: {:?}, Current: {}",
-                item.previous.map(|p| p.to_string()),
-                &*item.current
+                item.previous.map(|p| p.value.to_string()),
+                &item.current.value
             ))
         });
 
@@ -807,11 +807,11 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|stream_item| {
             let item = stream_item;
-            let current_age = match &*item.current {
+            let current_age = match &item.current.value {
                 TestData::Person(p) => p.age,
                 _ => 0,
             };
-            let previous_age = item.previous.and_then(|prev| match &*prev {
+            let previous_age = item.previous.and_then(|prev| match &prev.value {
                 TestData::Person(p) => Some(p.age),
                 _ => None,
             });
@@ -877,11 +877,11 @@ async fn test_map_ordered_extract_age_difference() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|stream_item| {
             let item = stream_item;
-            let current_age = match &*item.current {
+            let current_age = match &item.current.value {
                 TestData::Person(p) => p.age,
                 _ => 0,
             };
-            let previous_age = item.previous.and_then(|prev| match &*prev {
+            let previous_age = item.previous.and_then(|prev| match &prev.value {
                 TestData::Person(p) => Some(p.age),
                 _ => None,
             });
@@ -933,8 +933,8 @@ async fn test_map_ordered_with_ordered_merge() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|stream_item| {
             let item = stream_item;
-            let curr_str = &*item.current.to_string();
-            let prev_str = item.previous.map(|p| p.to_string());
+            let curr_str = &item.current.value.to_string();
+            let prev_str = item.previous.map(|p| p.value.to_string());
             StreamItem::Value(format!("Current: {}, Previous: {:?}", curr_str, prev_str))
         });
 
@@ -1005,11 +1005,11 @@ async fn test_map_ordered_filter_by_age_change() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|stream_item| {
             let item = stream_item;
-            let current_age = match &*item.current {
+            let current_age = match &item.current.value {
                 TestData::Person(p) => p.age,
                 _ => return StreamItem::Value(None),
             };
-            let previous_age = item.previous.and_then(|prev| match &*prev {
+            let previous_age = item.previous.and_then(|prev| match &prev.value {
                 TestData::Person(p) => Some(p.age),
                 _ => None,
             });
@@ -1074,7 +1074,7 @@ async fn test_emit_when_with_map_ordered() -> anyhow::Result<()> {
         .emit_when(threshold_mapped, filter_fn)
         .map_ordered(|stream_item| {
             let item = stream_item;
-            StreamItem::Value(format!("Passed filter: {}", &*item.current))
+            StreamItem::Value(format!("Passed filter: {}", &item.current.value))
         });
 
     // Act & Assert
@@ -1109,7 +1109,7 @@ async fn test_triple_ordered_merge_then_map_ordered() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|stream_item| {
             let item = stream_item;
-            let variant = match &*item.current {
+            let variant = match &item.current.value {
                 TestData::Person(_) => "Person",
                 TestData::Animal(_) => "Animal",
                 TestData::Plant(_) => "Plant",
@@ -1196,17 +1196,17 @@ async fn test_complex_composition_ordered_merge_and_combine_with_previous() -> a
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert!(result.previous.is_none());
-    assert_eq!(&*result.current, &person_alice());
+    assert_eq!(&result.current.value, &person_alice());
 
     person2_tx.send(Sequenced::new(person_bob()))?; // 30
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(&*result.previous.unwrap(), &person_alice());
-    assert_eq!(&*result.current, &person_bob());
+    assert_eq!(&result.previous.unwrap().value, &person_alice());
+    assert_eq!(&result.current.value, &person_bob());
 
     person1_tx.send(Sequenced::new(person_charlie()))?; // 35
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(&*result.previous.unwrap(), &person_bob());
-    assert_eq!(&*result.current, &person_charlie());
+    assert_eq!(&result.previous.unwrap().value, &person_bob());
+    assert_eq!(&result.current.value, &person_charlie());
 
     Ok(())
 }
@@ -1223,11 +1223,11 @@ async fn test_ordered_merge_with_previous_and_map_ordered_name_change() -> anyho
         .map_ordered(|stream_item| async move {
             let item = stream_item;
             let current_binding = item.current;
-            let current_name = match &*current_binding {
+            let current_name = match &current_binding.value {
                 TestData::Person(p) => p.name.clone(),
                 _ => "Unknown".to_string(),
             };
-            let prev_name = item.previous.as_ref().map(|p| match &**p {
+            let prev_name = item.previous.as_ref().map(|p| match &p.value {
                 TestData::Person(person) => person.name.clone(),
                 _ => "Unknown".to_string(),
             });
@@ -1337,7 +1337,7 @@ async fn test_double_ordered_merge_map_ordered() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|stream_item| async move {
             let item = stream_item;
-            let type_name = match &*item.current {
+            let type_name = match &item.current.value {
                 TestData::Person(_) => "Person",
                 TestData::Animal(_) => "Animal",
                 TestData::Plant(_) => "Plant",
@@ -1388,7 +1388,7 @@ async fn test_ordered_merge_map_ordered_data_extraction() -> anyhow::Result<()> 
         .combine_with_previous()
         .map_ordered(|stream_item| async move {
             let item = stream_item;
-            StreamItem::Value(match &*item.current {
+            StreamItem::Value(match &item.current.value {
                 TestData::Person(p) => format!("Person: {}, Age: {}", p.name, p.age),
                 TestData::Animal(a) => format!("Animal: {}, Legs: {}", a.name, a.legs),
                 TestData::Plant(p) => format!("Plant: {}, Height: {}", p.species, p.height),
@@ -1431,7 +1431,7 @@ async fn test_filter_ordered_with_map_ordered() -> anyhow::Result<()> {
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
         .map_ordered(|stream_item| async move {
             let item = stream_item;
-            StreamItem::Value(match &*item {
+            StreamItem::Value(match &item.value {
                 TestData::Person(p) => format!("Person: {}", p.name),
                 _ => unreachable!(),
             })
@@ -1484,17 +1484,17 @@ async fn test_filter_ordered_with_combine_with_previous() -> anyhow::Result<()> 
     tx.send(Sequenced::new(person_bob()))?; // 30 - kept
     let item = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert!(item.previous.is_none());
-    assert_eq!(&*item.current, &person_bob());
+    assert_eq!(&item.current.value, &person_bob());
 
     tx.send(Sequenced::new(person_charlie()))?; // 35 - kept
     let item = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(&*item.previous.unwrap(), &person_bob());
-    assert_eq!(&*item.current, &person_charlie());
+    assert_eq!(&item.previous.unwrap().value, &person_bob());
+    assert_eq!(&item.current.value, &person_charlie());
 
     tx.send(Sequenced::new(person_dave()))?; // 28 - kept
     let item = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(&*item.previous.unwrap(), &person_charlie());
-    assert_eq!(&*item.current, &person_dave());
+    assert_eq!(&item.previous.unwrap().value, &person_charlie());
+    assert_eq!(&item.current.value, &person_dave());
 
     Ok(())
 }
@@ -1513,20 +1513,20 @@ async fn test_ordered_merge_with_filter_ordered() -> anyhow::Result<()> {
     s1_tx.send(Sequenced::new(person_alice()))?;
     {
         let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-        assert_eq!(&*val, &person_alice());
+        assert_eq!(&val.value, &person_alice());
     }
 
     s2_tx.send(Sequenced::new(animal_dog()))?; // Filtered out
     s1_tx.send(Sequenced::new(plant_rose()))?;
     {
         let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-        assert_eq!(&*val, &plant_rose());
+        assert_eq!(&val.value, &plant_rose());
     }
 
     s2_tx.send(Sequenced::new(person_bob()))?;
     {
         let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-        assert_eq!(&*val, &person_bob());
+        assert_eq!(&val.value, &person_bob());
     }
 
     Ok(())
@@ -1552,7 +1552,7 @@ async fn test_filter_ordered_with_take_latest_when() -> anyhow::Result<()> {
     {
         let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
 
-        assert_eq!(&*val, &person_bob());
+        assert_eq!(&val.value, &person_bob());
     }
 
     source_tx.send(Sequenced::new(person_charlie()))?;
@@ -1561,7 +1561,7 @@ async fn test_filter_ordered_with_take_latest_when() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(person_bob()))?; // Trigger emission
     {
         let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-        assert_eq!(&*val, &person_charlie());
+        assert_eq!(&val.value, &person_charlie());
     }
 
     Ok(())
@@ -1580,11 +1580,11 @@ async fn test_filter_ordered_map_ordered_combine_with_previous() -> anyhow::Resu
         .combine_with_previous()
         .map_ordered(|stream_item| async move {
             let item = stream_item;
-            let current = match &*item.current {
+            let current = match &item.current.value {
                 TestData::Person(p) => p.name.clone(),
                 _ => unreachable!(),
             };
-            let previous = item.previous.map(|prev| match &*prev {
+            let previous = item.previous.map(|prev| match &prev.value {
                 TestData::Person(p) => p.name.clone(),
                 _ => unreachable!(),
             });
@@ -1788,8 +1788,8 @@ async fn test_take_while_with_in_middle_of_chain() -> anyhow::Result<()> {
     let result1 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     let result2 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
 
-    assert_eq!(&*result1, &person_bob());
-    assert_eq!(&*result2, &person_charlie());
+    assert_eq!(&result1.value, &person_bob());
+    assert_eq!(&result2.value, &person_charlie());
 
     Ok(())
 }

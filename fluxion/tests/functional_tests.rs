@@ -63,15 +63,15 @@ async fn test_functional_combine_with_previous() -> anyhow::Result<()> {
     // Assert
     let item = unwrap_value(Some(unwrap_stream(&mut with_previous, 500).await));
     assert!(item.previous.is_none());
-    assert_eq!(&*item.current, &person_alice());
+    assert_eq!(&item.current.value, &person_alice());
 
     let item = unwrap_value(Some(unwrap_stream(&mut with_previous, 500).await));
-    assert_eq!(&*item.previous.unwrap(), &person_alice());
-    assert_eq!(&*item.current, &person_bob());
+    assert_eq!(&item.previous.unwrap().value, &person_alice());
+    assert_eq!(&item.current.value, &person_bob());
 
     let item = unwrap_value(Some(unwrap_stream(&mut with_previous, 500).await));
-    assert_eq!(&*item.previous.unwrap(), &person_bob());
-    assert_eq!(&*item.current, &person_charlie());
+    assert_eq!(&item.previous.unwrap().value, &person_bob());
+    assert_eq!(&item.current.value, &person_charlie());
 
     Ok(())
 }
@@ -97,19 +97,19 @@ async fn test_functional_ordered_merge() -> anyhow::Result<()> {
 
     // Assert - items emitted in order they were pushed
     match unwrap_stream(&mut merged, 100).await {
-        StreamItem::Value(ref ts) => assert_eq!(&**ts, &person_alice()),
+        StreamItem::Value(ref ts) => assert_eq!(&ts.value, &person_alice()),
         _ => panic!("Expected Value"),
     }
     match unwrap_stream(&mut merged, 100).await {
-        StreamItem::Value(ref ts) => assert_eq!(&**ts, &animal_dog()),
+        StreamItem::Value(ref ts) => assert_eq!(&ts.value, &animal_dog()),
         _ => panic!("Expected Value"),
     }
     match unwrap_stream(&mut merged, 100).await {
-        StreamItem::Value(ref ts) => assert_eq!(&**ts, &plant_rose()),
+        StreamItem::Value(ref ts) => assert_eq!(&ts.value, &plant_rose()),
         _ => panic!("Expected Value"),
     }
     match unwrap_stream(&mut merged, 100).await {
-        StreamItem::Value(ref ts) => assert_eq!(&**ts, &person_bob()),
+        StreamItem::Value(ref ts) => assert_eq!(&ts.value, &person_bob()),
         _ => panic!("Expected Value"),
     }
 
@@ -134,7 +134,7 @@ async fn test_functional_take_latest_when() -> anyhow::Result<()> {
 
     // Assert - latest buffered value emitted when filter updates
     match unwrap_stream(&mut filtered, 100).await {
-        StreamItem::Value(ref ts) => assert_eq!(&**ts, &person_charlie()),
+        StreamItem::Value(ref ts) => assert_eq!(&ts.value, &person_charlie()),
         _ => panic!("Expected Value"),
     }
 
@@ -213,7 +213,7 @@ async fn test_functional_chained_operations() -> anyhow::Result<()> {
     // Assert
     let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert!(item.previous.is_none());
-    assert_eq!(&*item.current, &person_charlie());
+    assert_eq!(&item.current.value, &person_charlie());
 
     Ok(())
 }

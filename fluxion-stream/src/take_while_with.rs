@@ -103,7 +103,7 @@ where
     /// tx_data.send((1, 2).into()).unwrap();
     ///
     /// // Assert
-    /// assert_eq!(&*gated.next().await.unwrap().unwrap(), &1);
+    /// assert_eq!(&gated.next().await.unwrap().unwrap().value, &1);
     /// # }
     /// ```
     ///

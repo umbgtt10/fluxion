@@ -335,7 +335,7 @@
 //! event_tx.send((999, 2).into()).unwrap();
 //!
 //! let result = notifications.next().await.unwrap().unwrap();
-//! assert_eq!(*&*result, 999);
+//! assert_eq!(result.value, 999);
 //! # }
 //! ```
 //!
@@ -418,7 +418,7 @@
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(&*item.current, &42);
+//! assert_eq!(&item.current.value, &42);
 //! }
 //! ```
 //!
@@ -439,7 +439,7 @@
 //! // Chain: filter positives, map to string
 //! let mut composed = FluxionStream::new(stream)
 //!     .filter_ordered(|n| *n > 0)
-//!     .map_ordered(|Timestamped| format!("Value: {}", &*Timestamped));
+//!     .map_ordered(|Timestamped| format!("Value: {}", Timestamped.value));
 //!
 //! tx.send(Sequenced::new(-1)).unwrap();
 //! tx.send(Sequenced::new(5)).unwrap();
@@ -511,12 +511,12 @@
 //! tx1.send(Sequenced::new(1)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(&*item.current, &1);
+//! assert_eq!(&item.current.value, &1);
 //!
 //! tx2.send(Sequenced::new(2)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
-//! assert_eq!(&*item.previous.unwrap(), &1);
-//! assert_eq!(&*item.current, &2);
+//! assert_eq!(&item.previous.unwrap().value, &1);
+//! assert_eq!(&item.current.value, &2);
 //! }
 //! ```
 //!
@@ -605,11 +605,11 @@
 //! filter_tx.send(Sequenced::new(true)).unwrap();
 //! tx1.send(Sequenced::new(1)).unwrap();
 //!
-//! let item = (*composed.next().await.unwrap().unwrap()).clone();
+//! let item = composed.next().await.unwrap().unwrap().value.clone();
 //! assert_eq!(item, 1);
 //!
 //! tx2.send(Sequenced::new(2)).unwrap();
-//! let item = (*composed.next().await.unwrap().unwrap()).clone();
+//! let item = composed.next().await.unwrap().unwrap().value.clone();
 //! assert_eq!(item, 2);
 //! }
 //! ```
@@ -637,12 +637,12 @@
 //!
 //! let item = composed.next().await.unwrap().unwrap();
 //! assert!(item.previous.is_none());
-//! assert_eq!(&*item.current, &42);
+//! assert_eq!(&item.current.value, &42);
 //!
 //! source_tx.send(Sequenced::new(99)).unwrap();
 //! let item = composed.next().await.unwrap().unwrap();
-//! assert_eq!(&*item.previous.unwrap(), &42);
-//! assert_eq!(&*item.current, &99);
+//! assert_eq!(&item.previous.unwrap().value, &42);
+//! assert_eq!(&item.current.value, &99);
 //! }
 //! ```
 //!

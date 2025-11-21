@@ -76,7 +76,7 @@ where
     ///
     /// // Assert - trigger emits the latest data value
     /// let result = sampled.next().await.unwrap().unwrap();
-    /// assert_eq!(*&*result, 100);
+    /// assert_eq!(result.value, 100);
     /// # }
     /// ```
     ///
