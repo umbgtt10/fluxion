@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $example1Path = "fluxion/tests/example1_functional.rs"
 $example2Path = "fluxion/tests/example2_composition.rs"
+$example3Path = "fluxion/tests/example3_merge_with.rs"
 $readmePath = "README.md"
 $cargoTomlPath = "Cargo.toml"
 
@@ -14,21 +15,24 @@ Write-Host "Syncing README examples from test files..." -ForegroundColor Cyan
 # Read the test files
 $example1Lines = Get-Content $example1Path
 $example2Lines = Get-Content $example2Path
+$example3Lines = Get-Content $example3Path
 
 # Remove copyright header (first 4 lines) and join
 $example1Code = ($example1Lines | Select-Object -Skip 4) -join "`n"
 $example2Code = ($example2Lines | Select-Object -Skip 4) -join "`n"
+$example3Code = ($example3Lines | Select-Object -Skip 4) -join "`n"
 
 # Add final newline
 $example1Code = $example1Code + "`n"
 $example2Code = $example2Code + "`n"
+$example3Code = $example3Code + "`n"
 
 # Parse Cargo.toml to extract dependency versions
 Write-Host "Extracting dependency versions from Cargo.toml..." -ForegroundColor Cyan
 $cargoToml = Get-Content $cargoTomlPath -Raw
 
 # Detect which external crates are used in the examples
-$allExampleCode = $example1Code + $example2Code
+$allExampleCode = $example1Code + $example2Code + $example3Code
 $usedCrates = @{}
 
 # Check for common external dependencies (both use statements and attribute/qualified usage)
@@ -100,6 +104,10 @@ $chainingStart = $readme.IndexOf('### Chaining Multiple Operators')
 $chainingCodeStart = $readme.IndexOf('```rust', $chainingStart)
 $chainingCodeEnd = $readme.IndexOf('```', $chainingCodeStart + 7)
 
+$mergeWithStart = $readme.IndexOf('### Stateful, Builder-like Stream Merging')
+$mergeWithCodeStart = $readme.IndexOf('```rust', $mergeWithStart)
+$mergeWithCodeEnd = $readme.IndexOf('```', $mergeWithCodeStart + 7)
+
 # Build new README with updated dependencies and examples
 $newReadme = $readme.Substring(0, $dependenciesStart) # Up to dependencies code block
 $newReadme += $dependenciesSection
@@ -107,7 +115,9 @@ $newReadme += $readme.Substring($dependenciesEnd + 3, $basicUsageCodeStart - ($d
 $newReadme += $example1Code
 $newReadme += $readme.Substring($basicUsageCodeEnd, $chainingCodeStart - $basicUsageCodeEnd + 8) # From first ``` to second ```rust\n
 $newReadme += $example2Code
-$newReadme += $readme.Substring($chainingCodeEnd) # From second ``` to end
+$newReadme += $readme.Substring($chainingCodeEnd, $mergeWithCodeStart - $chainingCodeEnd + 8) # From second ``` to third ```rust\n
+$newReadme += $example3Code
+$newReadme += $readme.Substring($mergeWithCodeEnd) # From third ``` to end
 
 # Write back
 Set-Content $readmePath $newReadme -NoNewline
@@ -116,6 +126,7 @@ Write-Host "✓ README synced successfully!" -ForegroundColor Green
 Write-Host "  - Dependencies extracted from Cargo.toml" -ForegroundColor Gray
 Write-Host "  - example1_functional.rs → ### Basic Usage" -ForegroundColor Gray
 Write-Host "  - example2_composition.rs → ### Chaining Multiple Operators" -ForegroundColor Gray
+Write-Host "  - example3_merge_with.rs → ### Stateful Stream Merging" -ForegroundColor Gray
 
 # Sync fluxion-exec README subscribe_async example
 Write-Host "

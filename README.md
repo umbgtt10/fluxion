@@ -79,35 +79,33 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
 
     // Send int values first - they will be buffered
     // Use realistic nanosecond timestamps
-    tx_int.send(Sequenced::with_timestamp(Value::Int(10), 1_000_000_000))?; // 1 sec
-    tx_int.send(Sequenced::with_timestamp(Value::Int(20), 2_000_000_000))?; // 2 sec
-    tx_int.send(Sequenced::with_timestamp(Value::Int(30), 3_000_000_000))?; // 3 sec
+    tx_int.send(Sequenced::with_timestamp(Value::Int(10), 1))?; // 1 sec
+    tx_int.send(Sequenced::with_timestamp(Value::Int(20), 2))?; // 2 sec
+    tx_int.send(Sequenced::with_timestamp(Value::Int(30), 3))?; // 3 sec
 
     // Trigger with bool - should emit latest int value (30) with trigger's sequence
-    tx_trigger.send(Sequenced::with_timestamp(Value::Bool(true), 4_000_000_000))?; // 4 sec
+    tx_trigger.send(Sequenced::with_timestamp(Value::Bool(true), 4))?; // 4 sec
 
     let result1 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(&result1.value, Value::Int(30)));
-    assert_eq!(result1.timestamp(), 4_000_000_000);
+    assert_eq!(result1.timestamp(), 4);
 
     // After first trigger, send more int values
-    tx_int.send(Sequenced::with_timestamp(Value::Int(40), 5_000_000_000))?; // 5 sec
+    tx_int.send(Sequenced::with_timestamp(Value::Int(40), 5))?; // 5 sec
 
     // Need another trigger to emit the buffered value
-    tx_trigger.send(Sequenced::with_timestamp(Value::Bool(true), 6_000_000_000))?; // 6 sec
+    tx_trigger.send(Sequenced::with_timestamp(Value::Bool(true), 6))?; // 6 sec
 
     let result2 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(&result2.value, Value::Int(40)));
-    assert_eq!(result2.timestamp(), 6_000_000_000);
-
+    assert_eq!(result2.timestamp(), 6);
     // Send another int and trigger
-    tx_int.send(Sequenced::with_timestamp(Value::Int(50), 7_000_000_000))?; // 7 sec
-    tx_trigger.send(Sequenced::with_timestamp(Value::Bool(true), 8_000_000_000))?; // 8 sec
+    tx_int.send(Sequenced::with_timestamp(Value::Int(50), 7))?; // 7 sec
+    tx_trigger.send(Sequenced::with_timestamp(Value::Bool(true), 8))?; // 8 sec
 
     let result3 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(&result3.value, Value::Int(50)));
-    assert_eq!(result3.timestamp(), 8_000_000_000);
-
+    assert_eq!(result3.timestamp(), 8);
     Ok(())
 }
 ```
@@ -182,6 +180,138 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
     let combined3 = state3.values();
     assert!(matches!(combined3[0], Value::Int(75)));
     assert!(matches!(combined3[1], Value::Str(ref s) if s == "updated"));
+
+    Ok(())
+}
+```
+
+### Stateful, Builder-like Stream Merging
+
+The `merge_with` operator enables elegant stateful stream processing by merging multiple event streams into a single state object. Perfect for repository patterns and event sourcing:
+
+**Dependencies:**
+```toml
+[dependencies]
+fluxion-rx = "0.2.1"
+fluxion-test-utils = "0.2.1"
+tokio = { version = "1.48.0", features = ["full"] }
+anyhow = "1.0.100"
+```
+
+**Example: Event Sourcing with Repository Pattern**
+
+```rust
+use fluxion_stream::MergedStream;
+use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
+
+#[tokio::test]
+async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
+    // Define domain events
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+    enum Event {
+        UserCreated { id: u32, name: String },
+        OrderPlaced { user_id: u32, amount: u32 },
+        PaymentReceived { user_id: u32, amount: u32 },
+    }
+
+    // Repository state tracking users and orders
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+    struct Repository {
+        total_users: u32,
+        total_orders: u32,
+        total_revenue: u32,
+    }
+
+    // Create event streams
+    let (tx_users, user_stream) = test_channel::<Sequenced<Event>>();
+    let (tx_orders, order_stream) = test_channel::<Sequenced<Event>>();
+    let (tx_payments, payment_stream) = test_channel::<Sequenced<Event>>();
+
+    let user_created1 = Sequenced::with_timestamp(
+        Event::UserCreated {
+            id: 1,
+            name: "Alice".into(),
+        },
+        1,
+    );
+    let user_created2 = Sequenced::with_timestamp(
+        Event::UserCreated {
+            id: 2,
+            name: "Bob".into(),
+        },
+        2,
+    );
+    let order_placed1 = Sequenced::with_timestamp(
+        Event::OrderPlaced {
+            user_id: 1,
+            amount: 100,
+        },
+        3,
+    );
+    let payment_received1 = Sequenced::with_timestamp(
+        Event::PaymentReceived {
+            user_id: 1,
+            amount: 100,
+        },
+        4,
+    );
+    let order_placed2 = Sequenced::with_timestamp(
+        Event::OrderPlaced {
+            user_id: 2,
+            amount: 200,
+        },
+        5,
+    );
+
+    // Merge all event streams into a single repository state
+    let mut repository_stream = MergedStream::seed::<Sequenced<Repository>>(Repository {
+        total_users: 0,
+        total_orders: 0,
+        total_revenue: 0,
+    })
+    .merge_with(user_stream, |event: Event, repo: &mut Repository| {
+        if let Event::UserCreated { .. } = event {
+            repo.total_users += 1;
+        }
+        repo.clone()
+    })
+    .merge_with(order_stream, |event: Event, repo: &mut Repository| {
+        if let Event::OrderPlaced { .. } = event {
+            repo.total_orders += 1;
+        }
+        repo.clone()
+    })
+    .merge_with(payment_stream, |event: Event, repo: &mut Repository| {
+        if let Event::PaymentReceived { amount, .. } = event {
+            repo.total_revenue += amount;
+        }
+        repo.clone()
+    });
+
+    // Emit events in temporal order
+    tx_users.send(user_created1)?;
+    tx_users.send(user_created2)?;
+    tx_orders.send(order_placed1)?;
+    tx_payments.send(payment_received1)?;
+    tx_orders.send(order_placed2)?;
+
+    // Verify repository state updates
+    let state1 = unwrap_stream(&mut repository_stream, 500).await.unwrap();
+    assert_eq!(state1.value.total_users, 1);
+    assert_eq!(state1.value.total_orders, 0);
+    assert_eq!(state1.value.total_revenue, 0);
+
+    let state2 = unwrap_stream(&mut repository_stream, 500).await.unwrap();
+    assert_eq!(state2.value.total_users, 2);
+
+    let state3 = unwrap_stream(&mut repository_stream, 500).await.unwrap();
+    assert_eq!(state3.value.total_orders, 1);
+
+    let state4 = unwrap_stream(&mut repository_stream, 500).await.unwrap();
+    assert_eq!(state4.value.total_revenue, 100);
+
+    let state5 = unwrap_stream(&mut repository_stream, 500).await.unwrap();
+    assert_eq!(state5.value.total_orders, 2);
 
     Ok(())
 }
