@@ -244,11 +244,11 @@ where
     TItem: Timestamped,
     TFilter: Timestamped<Timestamp = TItem::Timestamp>,
 {
-    fn order(&self) -> TItem::Timestamp {
+    fn timestamp_value(&self) -> TItem::Timestamp {
         match self {
             Self::Source(s) => s.timestamp(),
             Self::Filter(f) => f.timestamp(),
-            Self::Error(_) => panic!("Error items should not be ordered"),
+            Self::Error(_) => panic!("Error items cannot provide timestamps"),
         }
     }
 }
@@ -263,7 +263,7 @@ where
     type Timestamp = TItem::Timestamp;
 
     fn timestamp(&self) -> Self::Timestamp {
-        self.order()
+        self.timestamp_value()
     }
 
     fn with_timestamp(value: Self, _timestamp: Self::Timestamp) -> Self {
@@ -285,7 +285,7 @@ where
     TFilter: Timestamped<Timestamp = TItem::Timestamp>,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.order() == other.order()
+        self.timestamp_value() == other.timestamp_value()
     }
 }
 
@@ -312,6 +312,6 @@ where
     TFilter: Timestamped<Timestamp = TItem::Timestamp> + Eq,
 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.order().cmp(&other.order())
+        self.timestamp_value().cmp(&other.timestamp_value())
     }
 }

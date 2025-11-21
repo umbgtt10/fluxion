@@ -21,7 +21,7 @@ pub trait OrderedStreamExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Clone + Debug + Timestamped + Ord + Send + Sync + Unpin + 'static,
 {
-    /// Merges multiple ordered streams, emitting all values in temporal order.
+    /// Merges multiple timestamped streams, emitting all values in temporal order.
     ///
     /// This operator takes multiple streams and merges them into a single stream where
     /// all values are emitted in order based on their `Timestamped::timestamp()` value. Every

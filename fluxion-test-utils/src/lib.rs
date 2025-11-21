@@ -20,16 +20,15 @@
 //!
 //! # Key Types
 //!
-//! ## `Timestamped<T>`
+//! ## `Sequenced<T>`
 //!
 //! A wrapper type that adds temporal ordering to test values:
 //!
 //! ```rust
 //! use fluxion_test_utils::Sequenced;
-//! use fluxion_core::Timestamped ;
-//! let item = Sequenced::new(42);  // Auto-timestamped with current time
-//! assert_eq!(item.value, 42);
-//! // Timestamps use chrono::Utc::now()
+//! use fluxion_core::Timestamped;
+//! let item = Sequenced::new(42);  // Auto-assigned counter-based timestamp
+//! assert_eq!(item.value, 42);  // Access inner value via field
 //! ```
 //!
 //! ## TestData and Variants

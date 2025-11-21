@@ -439,7 +439,7 @@
 //! // Chain: filter positives, map to string
 //! let mut composed = FluxionStream::new(stream)
 //!     .filter_ordered(|n| *n > 0)
-//!     .map_ordered(|Timestamped| format!("Value: {}", Timestamped.value));
+//!     .map_ordered(|item| format!("Value: {}", *item));
 //!
 //! tx.send(Sequenced::new(-1)).unwrap();
 //! tx.send(Sequenced::new(5)).unwrap();

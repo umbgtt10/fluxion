@@ -47,6 +47,58 @@
 ///     }
 /// }
 /// ```
+///
+/// # Different Timestamp Types
+///
+/// The `Timestamp` type is generic and can represent various time sources:
+///
+/// **Monotonic counters** (u64, u128) - For test scenarios and event sourcing:
+/// ```rust
+/// use fluxion_core::Timestamped;
+///
+/// #[derive(Clone, Debug)]
+/// struct SequenceNumbered<T> {
+///     value: T,
+///     seq: u64,
+/// }
+///
+/// impl<T: Clone> Timestamped for SequenceNumbered<T> {
+///     type Inner = T;
+///     type Timestamp = u64;
+///
+///     fn timestamp(&self) -> u64 { self.seq }
+///     fn with_timestamp(value: T, seq: u64) -> Self { Self { value, seq } }
+///     fn with_fresh_timestamp(value: T) -> Self {
+///         // Use atomic counter in production
+///         Self { value, seq: 0 }
+///     }
+///     fn into_inner(self) -> T { self.value }
+/// }
+/// ```
+///
+/// **Wall-clock time** (Instant, SystemTime) - For real-time systems:
+/// ```rust
+/// use fluxion_core::Timestamped;
+/// use std::time::Instant;
+///
+/// #[derive(Clone, Debug)]
+/// struct TimedEvent<T> {
+///     value: T,
+///     time: Instant,
+/// }
+///
+/// impl<T: Clone> Timestamped for TimedEvent<T> {
+///     type Inner = T;
+///     type Timestamp = Instant;
+///
+///     fn timestamp(&self) -> Instant { self.time }
+///     fn with_timestamp(value: T, time: Instant) -> Self { Self { value, time } }
+///     fn with_fresh_timestamp(value: T) -> Self {
+///         Self { value, time: Instant::now() }
+///     }
+///     fn into_inner(self) -> T { self.value }
+/// }
+/// ```
 pub trait Timestamped: Clone {
     /// The type of the inner value wrapped by this timestamped type
     type Inner: Clone;

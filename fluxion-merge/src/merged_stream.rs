@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 /// A stateful stream merger that combines multiple Timestamped streams while maintaining state.
 ///
 /// Internally uses [`fluxion_ordered_merge`] to merge streams in order
-/// based on their sequence numbers, ensuring temporal consistency across merged streams.
+/// based on their timestamps, ensuring temporal consistency across merged streams.
 #[pin_project]
 pub struct MergedStream<S, State, Item> {
     #[pin]
@@ -46,7 +46,7 @@ where
     /// Merges a new Timestamped stream into the existing merged stream.
     ///
     /// Uses [`fluxion_ordered_merge`] to combine the streams while preserving
-    /// temporal order based on sequence numbers.
+    /// temporal order based on timestamps.
     ///
     /// The closure receives unwrapped values and returns unwrapped values - timestamp
     /// propagation is handled automatically by the operator.

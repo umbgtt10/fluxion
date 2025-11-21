@@ -12,17 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Renamed core trait from `Ordered` to `Timestamped` for better clarity
   - Method changes:
     - `order() -> u64` → `timestamp() -> Self::Timestamp` (generic timestamp type)
-    - `get() -> &Self::Inner` → Removed (use `Deref` trait instead)
+    - `get() -> &Self::Inner` → Removed (use `&*value` dereferencing instead)
+    - `inner() -> Self::Inner` → Removed (use `clone().into_inner()` instead)
     - `with_order(value, order)` → `with_timestamp(value, timestamp)`
     - Added `with_fresh_timestamp(value)` for auto-timestamping
-    - Added `into_inner(self) -> Self::Inner` (required method, no default)
+    - Added `into_inner(self) -> Self::Inner` (required method, no default implementation)
   - All stream operators updated to use new trait
-  - More idiomatic Rust: leverages `Deref` pattern for borrowing
+  - More idiomatic Rust: eliminated convenience methods in favor of standard patterns
+  - Net -19 lines of code after refactoring (simpler, cleaner API)
 
 ### Fixed
 - **Bug**: Fixed timestamp preservation in `take_latest_when` operator
   - Now stores full timestamped value instead of just inner value
   - Correctly preserves trigger event's timestamp when emitting
+- **Bug**: Fixed `merge_with` operator to generate timestamps internally
+  - No longer depends on test utilities in production code
+  - Properly assigns timestamps to merged values
 - **Documentation**: Resolved all rustdoc warnings (4 → 0)
   - Fixed 3 broken intra-doc links to `Ordered` trait
   - Fixed unclosed HTML tag error in `timestamped.rs`
@@ -30,17 +35,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: Comprehensive documentation consistency review
   - Updated INTEGRATION.md with current `Timestamped` trait examples
   - Updated all README files across workspace
-  - Fixed all code examples to use `Sequenced<T>`
+  - Fixed all code examples to use `Sequenced<T>` test wrapper
   - Synchronized code samples with actual test implementations
+  - Fixed terminology inconsistencies (sequence numbers → timestamps, ordered streams → timestamped streams)
+  - Enhanced `CompareByInner` trait documentation with examples and clearer explanations
 
 ### Added
 - **CI/CD**: Integrated Tarpaulin for code coverage tracking in CI pipeline
+- **CI/CD**: Added benchmark compilation verification to CI pipeline (`cargo bench --no-run`)
 - **Testing**: Added comprehensive unit tests for `channel_ext` module
 - **Testing**: Added missing test coverage across multiple modules
+- **Testing**: Introduced `Sequenced<T>` test wrapper with global counter-based timestamps
+  - Replaces complex timestamp implementations with simple atomic counter
+  - Implements `Timestamped` trait for easy test data wrapping
+  - Located in `fluxion-test-utils` crate for reuse across test suites
 - **Documentation**: Expanded test documentation with links to example files
 - **Documentation**: Added self-contained examples for `subscribe_async` and `subscribe_latest_async`
   - Examples demonstrate sequential processing and burst cancellation patterns
   - Include inline data structures for easy understanding
+- **Testing**: Added `assert_stream_ended` utility function integrated across all test files
 
 ### Improved
 - **Testing**: Consolidated and cleaned up test suite organization
@@ -49,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved test naming conventions for clarity
   - Fixed 200+ test compilation errors from trait migration
   - All 1,684 tests passing, all 63 doc tests passing
+- **Testing**: Refactored `Sequenced<T>` implementation for simplicity
+  - Removed `Deref` and `DerefMut` traits (use `.value` field directly)
+  - Removed `Display` trait (not needed for test infrastructure)
+  - Cleaner trait bounds referencing concrete implementation
 - **Documentation**: Fixed all doc tests in `fluxion-exec` crate
   - Replaced `tokio_test::block_on` with `#[tokio::main]` for self-contained examples
   - All 8 doc tests now compile and run successfully
@@ -59,6 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Quality**: Improved error handling
   - Zero `unwrap()` calls in production code
   - Only 2 justified `expect()` calls with invariant checks
+- **Quality**: Fixed all Clippy warnings across workspace
 
 ## [0.2.1] - 2025-11-18
 
