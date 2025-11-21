@@ -1,7 +1,7 @@
 # MergedStream Integration with fluxion-stream - Design Options
 
 > **Status**: TODO - Implementation postponed for later
-> 
+>
 > **Decision**: Move `merge_with` from separate crate into `fluxion-stream` as a standard operator
 >
 > **Target API**:
@@ -12,7 +12,7 @@
 >     .merge_with(stream3, |item, state| state.from_testdata(item))
 >     .combine_latest(vec![stream4], |_| true)  // Chains with other operators!
 > ```
-> 
+>
 > **Key Benefits**:
 > - ✅ **NO TURBOFISH** - Type inference works perfectly
 > - ✅ **Stateful** - `seed()` creates shared state, all `merge_with()` calls use it
@@ -174,7 +174,7 @@ where
         // Convert StreamItem back to Sequenced for MergedStream
         let self_as_sequenced = self.map(|item| Sequenced::with_timestamp(item.value, item.timestamp));
         let new_as_sequenced = new_stream.map(|item| Sequenced::with_timestamp(item.value, item.timestamp));
-        
+
         MergedStream::seed(initial_state)
             .merge_with(self_as_sequenced, process_fn.clone())
             .merge_with(new_as_sequenced, process_fn)
@@ -309,7 +309,7 @@ where
     T: Timestamped,
 {
     type Item = StreamItem<T::Inner>;  // ← KEY: Fixed wrapper type
-    
+
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.project().inner.poll_next(cx) {
             Poll::Ready(Some(item)) => {
@@ -482,7 +482,7 @@ let state: StreamItem<Repository> = merged_stream.next().await.unwrap();
 
 **Full Migration (Recommended)**: ~3-5 hours
 - 1 hour: Move code and update to StreamItem output
-- 1 hour: Create extension trait following fluxion-stream patterns  
+- 1 hour: Create extension trait following fluxion-stream patterns
 - 1 hour: Move and update all tests
 - 1 hour: Update documentation and examples
 - 30 min: Clean up workspace, remove fluxion-merge crate
