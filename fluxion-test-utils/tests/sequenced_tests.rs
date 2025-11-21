@@ -66,19 +66,6 @@ fn test_chrono_timestamped_get() {
 }
 
 #[test]
-fn test_chrono_timestamped_get_mut() {
-    // Arrange
-    let mut timestamped = Sequenced::new(vec![1, 2, 3]);
-
-    // Act
-    let mutable_ref = timestamped.get_mut();
-    mutable_ref.push(4);
-
-    // Assert
-    assert_eq!(timestamped.value, vec![1, 2, 3, 4]);
-}
-
-#[test]
 fn test_chrono_timestamped_equality_same_value_same_sequence() {
     // Arrange
     let item1 = Sequenced::new(42);

@@ -50,11 +50,6 @@ impl<T> Sequenced<T> {
     pub const fn get(&self) -> &T {
         &self.value
     }
-
-    /// Gets a mutable reference to the inner value.
-    pub fn get_mut(&mut self) -> &mut T {
-        &mut self.value
-    }
 }
 
 impl<T> From<(T, u64)> for Sequenced<T> {
