@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::Timestamped;
 use fluxion_ordered_merge::OrderedMergeExt;
-use fluxion_test_utils::Sequenced;
 use futures::stream::{empty, Empty, Stream, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
@@ -51,17 +51,17 @@ where
     /// # Parameters
     /// - `new_stream`: The new Timestamped stream to merge
     /// - `process_fn`: Function to process each item with mutable access to shared state
-    pub fn merge_with<NewStream, F, NewItem, T>(
+    pub fn merge_with<NewStream, F, InItem, OutItem>(
         self,
         new_stream: NewStream,
         process_fn: F,
-    ) -> MergedStream<impl Stream<Item = Sequenced<T>>, State, Sequenced<T>>
+    ) -> MergedStream<impl Stream<Item = OutItem>, State, OutItem>
     where
-        NewStream: Stream<Item = Sequenced<NewItem>> + Send + Sync + 'static,
-        F: FnMut(Sequenced<NewItem>, &mut State) -> Sequenced<T> + Send + Sync + Clone + 'static,
-        NewItem: Send + Sync + 'static,
-        T: Send + Sync + Ord + Unpin + 'static,
-        Item: Into<Sequenced<T>>,
+        NewStream: Stream<Item = InItem> + Send + Sync + 'static,
+        F: FnMut(InItem, &mut State) -> OutItem + Send + Sync + Clone + 'static,
+        InItem: Timestamped + Send + Sync + Ord + Unpin + 'static,
+        OutItem: Timestamped + Send + Sync + Ord + Unpin + 'static,
+        Item: Into<OutItem>,
     {
         let shared_state = Arc::clone(&self.state);
         let new_stream_mapped = new_stream.then(move |timestamped_item| {
@@ -76,8 +76,8 @@ where
         let self_stream_mapped = self.inner.map(Into::into);
 
         let merged_stream = vec![
-            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>,
-            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Sequenced<T>> + Send + Sync>>,
+            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = OutItem> + Send + Sync>>,
+            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = OutItem> + Send + Sync>>,
         ]
         .ordered_merge();
 
