@@ -125,7 +125,7 @@ fn test_chrono_timestamped_display() {
     let timestamped = Sequenced::new("hello world");
 
     // Act
-    let displayed = format!("{timestamped}");
+    let displayed = timestamped.value.to_string();
 
     // Assert
     assert_eq!(displayed, "hello world");
@@ -137,7 +137,7 @@ fn test_chrono_timestamped_display_with_number() {
     let timestamped = Sequenced::new(12345);
 
     // Act
-    let displayed = format!("{timestamped}");
+    let displayed = format!("{}", timestamped.value);
 
     // Assert
     assert_eq!(displayed, "12345");

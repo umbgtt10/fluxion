@@ -4,7 +4,6 @@
 
 use fluxion_core::{CompareByInner, Timestamped};
 use std::cmp::Ordering;
-use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicU64, Ordering::SeqCst};
 
@@ -115,12 +114,6 @@ impl<T> Deref for Sequenced<T> {
 impl<T> DerefMut for Sequenced<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.value
-    }
-}
-
-impl<T: fmt::Display> fmt::Display for Sequenced<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.value)
     }
 }
 
