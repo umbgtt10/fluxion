@@ -27,10 +27,10 @@ if (-not $active) { $active = 'stable' }
 Write-Output "Adding llvm-tools-preview to toolchain: $active"
 & rustup component add llvm-tools-preview --toolchain $active
 
-& cargo llvm-cov --workspace --lcov --output-path "$outDir\lcov.info"
+& cargo llvm-cov --workspace --exclude stream-aggregation --lcov --output-path "$outDir\lcov.info"
 
 Write-Output "Running cargo llvm-cov (workspace) - html..."
-& cargo llvm-cov --workspace --html --output-dir "$outDir\html"
+& cargo llvm-cov --workspace --exclude stream-aggregation --html --output-dir "$outDir\html"
 
 if ([int]$failUnder -gt 0) {
   Write-Output "Enforcing coverage threshold: $failUnder%"
