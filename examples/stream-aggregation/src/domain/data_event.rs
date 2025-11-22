@@ -4,7 +4,7 @@
 
 //! Unified data event enum
 
-use fluxion_rx::{CompareByInner, Timestamped};
+use fluxion_rx::Timestamped;
 
 use super::{MetricData, SensorReading, SystemEvent};
 
@@ -38,11 +38,5 @@ impl Timestamped for DataEvent {
 
     fn into_inner(self) -> Self::Inner {
         self
-    }
-}
-
-impl CompareByInner for DataEvent {
-    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
-        self.cmp(other)
     }
 }

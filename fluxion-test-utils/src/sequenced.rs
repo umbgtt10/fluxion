@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::{CompareByInner, Timestamped};
+use fluxion_core::Timestamped;
 use std::cmp::Ordering;
 use std::sync::atomic::{AtomicU64, Ordering::SeqCst};
 
@@ -99,11 +99,5 @@ where
 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.timestamp.cmp(&other.timestamp)
-    }
-}
-
-impl<T: Ord> CompareByInner for Sequenced<T> {
-    fn cmp_inner(&self, other: &Self) -> Ordering {
-        self.value.cmp(&other.value)
     }
 }

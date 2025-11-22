@@ -183,15 +183,3 @@ where
         }
     }
 }
-
-impl<T: crate::CompareByInner> crate::CompareByInner for StreamItem<T> {
-    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
-        use std::cmp::Ordering;
-        match (self, other) {
-            (StreamItem::Value(a), StreamItem::Value(b)) => a.cmp_inner(b),
-            (StreamItem::Error(_), StreamItem::Error(_)) => Ordering::Equal,
-            (StreamItem::Error(_), StreamItem::Value(_)) => Ordering::Greater,
-            (StreamItem::Value(_), StreamItem::Error(_)) => Ordering::Less,
-        }
-    }
-}

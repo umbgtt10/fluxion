@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{CompareByInner, StreamItem, Timestamped};
+use fluxion_core::{StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 
 /// Extension trait providing the `combine_latest` operator for timestamped streams.
@@ -22,7 +22,7 @@ use fluxion_ordered_merge::OrderedMergeExt;
 /// values from each stream.
 pub trait CombineLatestExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
     T::Timestamp: Clone + Debug + Ord + Send + Sync,
 {
@@ -127,7 +127,7 @@ type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + 
 
 impl<T, S> CombineLatestExt<T> for S
 where
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
     T::Timestamp: Debug,
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
@@ -213,7 +213,7 @@ where
 #[derive(Clone, Debug)]
 struct IntermediateState<V>
 where
-    V: Clone + Send + Sync + Ord + CompareByInner + Timestamped,
+    V: Clone + Send + Sync + Ord + Timestamped,
 {
     state: Vec<Option<V>>,
     ordered_values: Vec<V>,
@@ -224,7 +224,7 @@ where
 
 impl<V> IntermediateState<V>
 where
-    V: Clone + Send + Sync + Ord + CompareByInner + Timestamped,
+    V: Clone + Send + Sync + Ord + Timestamped,
 {
     pub fn new(num_streams: usize) -> Self {
         Self {
@@ -262,8 +262,8 @@ where
                 .filter_map(|(i, opt)| opt.as_ref().map(|v| (i, v.clone())))
                 .collect();
 
-            // Sort by inner value to establish order by enum variant type
-            indexed_values.sort_by(|a, b| a.1.cmp_inner(&b.1));
+            // Sort by stream index to establish stable ordering
+            indexed_values.sort_by_key(|(stream_idx, _)| *stream_idx);
 
             // Build the ordered_values and the mapping
             self.ordered_values = indexed_values.iter().map(|(_, v)| v.clone()).collect();

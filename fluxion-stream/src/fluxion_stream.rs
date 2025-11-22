@@ -10,7 +10,7 @@ use crate::take_latest_when::TakeLatestWhenExt;
 use crate::take_while_with::TakeWhileExt;
 use crate::types::{CombinedState, WithPrevious};
 use crate::with_latest_from::WithLatestFromExt;
-use fluxion_core::{CompareByInner, StreamItem, Timestamped};
+use fluxion_core::{StreamItem, Timestamped};
 use futures::Stream;
 use futures::StreamExt;
 use pin_project::pin_project;
@@ -640,7 +640,6 @@ where
     where
         S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
         S2: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-        T: CompareByInner,
         R: Timestamped<Inner = R, Timestamp = T::Timestamp>
             + Clone
             + Debug
@@ -732,7 +731,6 @@ where
     where
         S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
         S2: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-        T: CompareByInner,
     {
         let inner = self.into_inner();
         FluxionStream::new(CombineLatestExt::combine_latest(inner, others, filter))

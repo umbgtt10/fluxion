@@ -90,7 +90,7 @@ mod channel_ext;
 
 // Re-export core types
 pub use fluxion_core::into_stream::IntoStream;
-pub use fluxion_core::{CompareByInner, Timestamped};
+pub use fluxion_core::Timestamped;
 
 // Re-export the main FluxionStream type
 pub use fluxion_stream::FluxionStream;
