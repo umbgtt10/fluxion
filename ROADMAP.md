@@ -94,8 +94,8 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 ## 🚀 Version 0.4.0 - More of it
 **Essential Features:**
-- [ ] Implement 5 more oeprators from the operator roadmap
-- [ ] Implement one more eror handling operator from the operator roadmap
+- [ ] Implement 5 more operators from the operator roadmap
+- [ ] Implement one more error handling operator from the operator roadmap
 
 **Documentation:**
 
