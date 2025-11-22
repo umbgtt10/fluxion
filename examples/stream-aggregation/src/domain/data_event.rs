@@ -17,6 +17,7 @@ pub enum DataEvent {
 }
 
 impl HasTimestamp for DataEvent {
+    type Inner = DataEvent;
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -29,8 +30,6 @@ impl HasTimestamp for DataEvent {
 }
 
 impl Timestamped for DataEvent {
-    type Inner = DataEvent;
-
     fn with_timestamp(value: Self::Inner, _timestamp: Self::Timestamp) -> Self {
         value // Just return the value since it already has the timestamp
     }

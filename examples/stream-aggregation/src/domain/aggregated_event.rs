@@ -15,6 +15,7 @@ pub struct AggregatedEvent {
 }
 
 impl HasTimestamp for AggregatedEvent {
+    type Inner = AggregatedEvent;
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -23,8 +24,6 @@ impl HasTimestamp for AggregatedEvent {
 }
 
 impl Timestamped for AggregatedEvent {
-    type Inner = AggregatedEvent;
-
     fn with_timestamp(value: Self::Inner, _timestamp: Self::Timestamp) -> Self {
         value
     }

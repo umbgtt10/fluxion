@@ -24,11 +24,11 @@ use std::fmt::Debug;
 /// # #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 /// # struct MyType(u64);
 /// # impl HasTimestamp for MyType {
+/// #     type Inner = MyType;
 /// #     type Timestamp = u64;
 /// #     fn timestamp(&self) -> u64 { self.0 }
 /// # }
 /// # impl Timestamped for MyType {
-/// #     type Inner = MyType;
 /// #     fn with_timestamp(value: Self::Inner, ts: u64) -> Self { MyType(ts) }
 /// #     fn with_fresh_timestamp(value: Self::Inner) -> Self { value }
 /// #     fn into_inner(self) -> Self::Inner { self }

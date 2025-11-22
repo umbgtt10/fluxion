@@ -1,4 +1,5 @@
-Perform a fully-fledged review of the whole documentation including:
+Execute sync-readme-examples.ps1 and ensure that the code snippets in the documentation are up to date.
+Then perform a fully-fledged review of the whole documentation including:
  - md files
  - comments
  - method documentation
@@ -7,4 +8,3 @@ And ensure:
  - no broken links
 Provide a detailed report of the changes.
 Do not change anything for now!
-

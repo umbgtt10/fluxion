@@ -14,6 +14,7 @@ pub struct SystemEvent {
 }
 
 impl HasTimestamp for SystemEvent {
+    type Inner = Self;
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -22,8 +23,6 @@ impl HasTimestamp for SystemEvent {
 }
 
 impl Timestamped for SystemEvent {
-    type Inner = Self;
-
     fn with_timestamp(inner: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self { timestamp, ..inner }
     }

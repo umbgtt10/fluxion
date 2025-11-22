@@ -13,14 +13,14 @@
 //!
 //! Architecture:
 //! ```text
-//! Producer Tasks (3)        Aggregator Task          Consumer Task
+//! Producer Tasks (3)        Aggregator Task           Consumer Task
 //! ┌─────────────┐          ┌──────────────┐          ┌──────────┐
-//! │  Queue 1    │────────▶│              │           │          │
-//! │ (sensors)   │          │  FluxionStream│────────▶│  Queue 4 │
-//! │  Queue 2    │────────▶│  combine &   │           │ (output) │
-//! │ (metrics)   │          │  transform   │           │          │
-//! │  Queue 3    │────────▶│              │           │          │
-//! │ (events)    │          └──────────────┘           └──────────┘
+//! │  Queue 1    │────────▶ │              │          │          │
+//! │ (sensors)   │          │ FluxionStream│────────▶ │  Queue 4 │
+//! │  Queue 2    │────────▶ │  combine &   │          │ (output) │
+//! │ (metrics)   │          │  transform   │          │          │
+//! │  Queue 3    │────────▶ │              │          │          │
+//! │ (events)    │          └──────────────┘          └──────────┘
 //! └─────────────┘
 //! ```
 //!
