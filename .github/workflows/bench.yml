@@ -1,79 +1,116 @@
 name: Benchmarks
 
 on:
+  workflow_dispatch:      # ← Manual "Run workflow" button
   push:
     branches: [main]
+  pull_request:
   schedule:
-    - cron: '0 3 * * *'   # every day at 3 AM UTC
+    - cron: '0 4 * * *'    # Daily at 4 AM UTC
 
 jobs:
   bench:
     runs-on: ubuntu-latest
     permissions:
-      contents: write     # needed to push the results back
+      contents: write       # To commit baseline data
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0     # important for git history
+          fetch-depth: 0
 
-      - name: Install latest nightly
-        uses: dtolnay/rust-toolchain@nightly
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry + target
+        uses: actions/cache@v4
         with:
-          components: llvm-tools-preview
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install bench tools
-        run: |
-          cargo install cargo-benchcmp --locked
-          cargo install bench-graph --locked   # the 2024–2025 hero
+      - name: Run all fluxion-stream benchmarks
+        run: cargo bench --package fluxion-stream
 
-      - name: Run benchmarks with critcmp format
+      # --------------------------------------------------------------
+      # 1. Commit baseline data (only on main + nightly runs)
+      # --------------------------------------------------------------
+      - name: Store new baseline JSON
+        if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
         run: |
-          cargo bench -- --output-format bencher > new.txt
+          mkdir -p benches/baseline/stream_benches
+          cp -r target/criterion/stream_benches benches/baseline/ || echo "First run – no data yet"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add benches/baseline
+          git commit -m "chore: update benchmark baseline [ci skip]" || echo "No changes"
+          git push || echo "Nothing to push"
 
-      - name: Generate comparison + graphs
+      # --------------------------------------------------------------
+      # 2. Compare with baseline + fail on regressions
+      # --------------------------------------------------------------
+      - name: Install critcmp
+        run: cargo install critcmp --locked
+
+      - name: Regression check (>10% slowdown = fail)
         run: |
-          # First run will create baseline
-          if [ ! -f benches/baseline.txt ]; then
-            mkdir -p benches
-            cp new.txt benches/baseline.txt
-            echo "Baseline created"
+          set -euo pipefail
+
+          if [ ! -d "benches/baseline/stream_benches" ]; then
+            echo "No baseline yet – skipping regression check (first run)"
             exit 0
           fi
 
-          # Compare & generate artifacts
-          cargo benchcmp benches/baseline.txt new.txt > benches/comparison.md
-          bench-graph --old benches/baseline.txt --new new.txt --output benches/graph.svg
+          echo "Running comparison..."
+          critcmp benches/baseline/stream_benches target/criterion/stream_benches --threshold 10 > benches/comparison.txt
 
-          # Update baseline on main (only on scheduled runs or explicit push)
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            cp new.txt benches/baseline.txt
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add benches/
-            git commit -m "chore: update benchmark baseline [ci skip]" || echo "Nothing to commit"
-            git push
+          cat benches/comparison.txt
+
+          if grep -q "SLOWER" benches/comparison.txt; then
+            echo "Performance regression detected!"
+            exit 1
+          else
+            echo "All good – no significant regressions"
           fi
 
-      - name: Upload results as artifact
+      # --------------------------------------------------------------
+      #  3. Upload beautiful HTML report
+      # --------------------------------------------------------------
+      - name: Upload Criterion report
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-results
-          path: |
-            benches/comparison.md
-            benches/graph.svg
-            new.txt
+          name: benchmark-report
+          path: target/criterion/
+          retention-days: 14
 
-      - name: Comment on PR (if this is a PR)
+      # --------------------------------------------------------------
+      # 4. Comment on PRs with results
+      # --------------------------------------------------------------
+      - name: Comment on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const md = fs.readFileSync('benches/comparison.md', 'utf8');
+            const comparison = fs.existsSync('benches/comparison.txt')
+              ? fs.readFileSync('benches/comparison.txt', 'utf8')
+              : 'No baseline comparison yet (first run)';
+
+            const body = `
+            ### Benchmark Results (fluxion-stream)
+
+            \`\`\`
+            ${comparison}
+            \`\`\`
+
+            Full interactive report: [Download benchmark-report artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `### Benchmark results\n\n${md}\n\n![graph](https://github.com/${context.repo.owner}/${context.repo.repo}/raw/${context.sha}/benches/graph.svg)`
-            })
+              body: body.trim()
+            });
