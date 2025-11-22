@@ -41,7 +41,7 @@ A reactive stream processing library for Rust with temporal ordering guarantee, 
 
 ### 📋 Benchmarks
 
-- **[Benchmark Results](https://umbgtt10.github.io/fluxion/benches/baseline/benchmarks/)**
+[📊 View Benchmark Results](https://umbgtt10.github.io/fluxion/benchmarks/)
 
 ## Quick Start
 

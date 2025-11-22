@@ -1,7 +1,7 @@
 # Fluxion Workspace — Full Code Review & Comparative Assessment (ChatGPT Edition)
 
-Reviewer: GitHub Copilot  
-Date: November 22, 2025  
+Reviewer: GitHub Copilot
+Date: November 22, 2025
 Scope: Entire workspace (multi-crate) + comparison with RxRust (https://github.com/rxRust/rxRust)
 
 ---
@@ -176,8 +176,8 @@ Overall assessment: Excellent engineering quality and reliability; feature bread
 - Justified `expect()` in ordered merge: 1
 # Fluxion Workspace — Full Code Review & Comparative Assessment
 
-Reviewer: GitHub Copilot  
-Date: 2025-11-17  
+Reviewer: GitHub Copilot
+Date: 2025-11-17
 Scope: Entire workspace (multi-crate) + comparison with RxRust (https://github.com/rxRust/rxRust)
 
 ---

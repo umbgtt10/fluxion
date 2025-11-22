@@ -1,7 +1,7 @@
 # RwLock vs Mutex Assessment
 
-**Reviewer:** Claude Copilot  
-**Date:** November 22, 2025  
+**Reviewer:** Claude Copilot
+**Date:** November 22, 2025
 **Scope:** Mutex and RwLock assessment
 
 ---
@@ -132,7 +132,7 @@ let filter_value = Arc::new(Mutex::new(None));  // Buffer for filter stream
 {
     let mut filter_guard = lock_or_recover(&filter_value, "filter");
     *filter_guard = Some(filter_val.clone());  // WRITE
-    
+
     if filter(filter_val) {  // Predicate check
         let source_guard = lock_or_recover(&source_value, "source read");
         if let Some(src) = source_guard.as_ref() {  // READ (cross-lock)
@@ -143,10 +143,10 @@ let filter_value = Arc::new(Mutex::new(None));  // Buffer for filter stream
 ```
 
 **Access Pattern:**
-- **Source Mutex**: 
+- **Source Mutex**:
   - 50% write-only (source stream updates)
   - 50% read-only (filter stream checks for value)
-- **Filter Mutex**: 
+- **Filter Mutex**:
   - 100% write followed by immediate read in same guard
 - **Read-Write Ratio**: ~1:1 overall
 - **Lock Hold Time**: <200ns per lock
@@ -156,7 +156,7 @@ let filter_value = Arc::new(Mutex::new(None));  // Buffer for filter stream
 **Reasoning:**
 - **Cross-lock dependency risk**: Filter path holds write lock on filter_value while reading source_value
   - If migrated to RwLock, pattern becomes: `write_lock(filter) -> read_lock(source)`
-  - Deadlock risk if reversed pattern exists: `write_lock(source) -> read_lock(filter)` 
+  - Deadlock risk if reversed pattern exists: `write_lock(source) -> read_lock(filter)`
   - Current code has this risk mitigated by ordered stream processing
 - **Source reads are infrequent**: Only occur when filter predicate passes
 - **Filter writes are paired with reads**: No read-only benefit
@@ -180,7 +180,7 @@ let filter_value: Arc<Mutex<Option<T::Inner>>> = Arc::new(Mutex::new(None));
 {
     let mut source_guard = lock_or_recover(&source_value, "emit_when source");
     *source_guard = Some(value.clone());  // WRITE
-    
+
     let filter_guard = lock_or_recover(&filter_value, "emit_when filter read");
     if let Some(filt) = filter_guard.as_ref() {  // READ (cross-lock)
         // Check predicate with CombinedState
@@ -197,7 +197,7 @@ let filter_value: Arc<Mutex<Option<T::Inner>>> = Arc::new(Mutex::new(None));
 
 **Access Pattern:**
 - **Source Mutex**: Write followed by cross-lock read of filter
-- **Filter Mutex**: 
+- **Filter Mutex**:
   - Filter updates: write-only
   - Source updates: read for predicate evaluation
 - **Read-Write Ratio**: ~1:2 (more writes than reads)
@@ -214,7 +214,7 @@ let filter_value: Arc<Mutex<Option<T::Inner>>> = Arc::new(Mutex::new(None));
 
 **Cross-Lock Deadlock Analysis:**
 Current pattern is safe because:
-1. Source path: `write(source) -> read(filter)` 
+1. Source path: `write(source) -> read(filter)`
 2. Filter path: `write(filter)` (no source access)
 3. Ordered processing prevents simultaneous conflicting acquisitions
 
@@ -233,7 +233,7 @@ let state = Arc::new(Mutex::new((None::<TFilter::Inner>, false)));
 {
     let guard = lock_or_recover(&state, "take_while source");
     let (filter_opt, terminated) = &*guard;  // READ only
-    
+
     if !terminated {
         if let Some(filter_val) = filter_opt {
             if filter(filter_val) {
@@ -257,7 +257,7 @@ let state = Arc::new(Mutex::new((None::<TFilter::Inner>, false)));
 ```
 
 **Access Pattern:**
-- **Source path**: 
+- **Source path**:
   - Optimistic read-only for hot path (filter passes)
   - Rare write on termination (once per stream lifetime)
 - **Filter path**: Write (update filter) + read (check termination)
@@ -312,10 +312,10 @@ pub fn lock_or_recover<'a, T>(mutex: &'a Arc<Mutex<T>>, _context: &str) -> Mutex
 **If RwLock Were Adopted:**
 Would need companion functions:
 ```rust
-pub fn read_lock_or_recover<'a, T>(rwlock: &'a Arc<RwLock<T>>, context: &str) 
+pub fn read_lock_or_recover<'a, T>(rwlock: &'a Arc<RwLock<T>>, context: &str)
     -> RwLockReadGuard<'a, T>;
 
-pub fn write_lock_or_recover<'a, T>(rwlock: &'a Arc<RwLock<T>>, context: &str) 
+pub fn write_lock_or_recover<'a, T>(rwlock: &'a Arc<RwLock<T>>, context: &str)
     -> RwLockWriteGuard<'a, T>;
 ```
 
@@ -464,7 +464,7 @@ let current = source_value.load();
 
 ### 2. Per-Stream State Isolation
 
-**Current**: Single shared `IntermediateState` protected by Mutex  
+**Current**: Single shared `IntermediateState` protected by Mutex
 **Alternative**: Per-stream lock-free accumulators with final merge
 
 ```rust
@@ -480,7 +480,7 @@ impl PerStreamState<T> {
     fn update(&self, index: usize, value: T) {
         self.streams[index].store(Some(value));
     }
-    
+
     fn is_complete(&self) -> bool {
         self.streams.iter().all(|s| s.load().is_some())
     }
@@ -549,11 +549,11 @@ tokio::spawn(async move {
 1. **Add lock contention metrics** if performance becomes critical:
    ```rust
    use std::time::Instant;
-   
+
    let start = Instant::now();
    let guard = lock_or_recover(&state, "operation");
    let wait_time = start.elapsed();
-   
+
    if wait_time > Duration::from_micros(10) {
        warn!("Lock contention detected: {:?}", wait_time);
    }
@@ -567,9 +567,9 @@ tokio::spawn(async move {
 ### Future Architecture (If Needed)
 If benchmarks reveal lock overhead as bottleneck (>5% of operation time):
 
-**Priority 1**: Lock-free atomics for value caching (`take_latest_when`, `emit_when`)  
-**Priority 2**: Per-stream state isolation to eliminate cross-stream contention  
-**Priority 3**: Channel-based coordination for complex state machines  
+**Priority 1**: Lock-free atomics for value caching (`take_latest_when`, `emit_when`)
+**Priority 2**: Per-stream state isolation to eliminate cross-stream contention
+**Priority 3**: Channel-based coordination for complex state machines
 
 **Never**: RwLock migration (wrong primitive for write-heavy ordered streams)
 

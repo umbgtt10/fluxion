@@ -1,44 +1,48 @@
 # Unwrap/Expect Assessment
 
 **Reviewer:** Claude Copilot  
-**Date:** November 17, 2025  
+**Date:** November 22, 2025  
 **Scope:** unwrap and expect assessment in productive code
 
 ---
 
 ## Executive Summary
 
-A comprehensive audit of all `unwrap()` and `expect()` calls in the Fluxion workspace revealed **exceptional panic safety discipline**. Out of 2,833 lines of production code across 8+ crates, only **1 `expect()` call** exists in production code, with **9 additional calls** confined to test utility crates that are explicitly designed for testing purposes.
+The Fluxion workspace demonstrates **exceptional panic safety discipline**. Out of 2,469 lines of production code, only **2 instances** of `unwrap`/`expect` exist, both of which are **justified and safe**:
 
-**Overall Grade: A+**
+1. **`fluxion-ordered-merge/src/ordered_merge.rs:85`** - Documented invariant with debug assertion
+2. **`fluxion-stream/src/combine_latest.rs:198`** - Guaranteed state after initialization check
 
-The codebase demonstrates industry-leading panic safety practices with minimal reliance on potentially panicking operations in production code.
+Additionally, the workspace provides **intentional panic-based convenience methods** in `StreamItem<T>` (`unwrap()` and `expect()`) for testing, clearly documented with `# Panics` sections.
+
+**Verdict:** No fixes required. The codebase sets an exemplary standard for panic safety.
 
 ---
 
 ## Methodology
 
-### Search Strategy
-1. **File Scanning**: Recursively scanned all `fluxion*/src/**/*.rs` files
-2. **Pattern Matching**: Searched for `.unwrap()` and `.expect(` patterns
-3. **Comment Filtering**: Excluded documentation comments (`//`, `//!`, `///`)
-4. **Context Analysis**: Read surrounding code to assess safety invariants
-5. **Crate Classification**: Distinguished production crates from test utilities
+1. **Grep Search:** Scanned all production code (`fluxion*/src/**/*.rs`) for `unwrap()` and `expect()` calls
+2. **Classification:** Separated doc comments, test utilities, and actual production code
+3. **Context Analysis:** Examined each instance for safety invariants and justification
+4. **Documentation Review:** Verified panic documentation in rustdoc
 
-### Scope Definition
-- **Production Code**: User-facing library crates (`fluxion-core`, `fluxion-stream`, `fluxion-ordered-merge`, etc.)
-- **Test Code**: Test utility crates (`fluxion-test-utils`) and `#[cfg(test)]` modules
-- **Excluded**: `target/` directory, documentation examples, commented code
+**Exclusions (as requested):**
+- Doc comments (e.g., `///` examples showing usage patterns)
+- Test code in `tests/` directories
+- `fluxion-test-utils` helper functions (development-tools::testing category)
 
 ---
 
 ## Findings
 
-### Production Code: 1 Instance
+### Production Code: 2 Instances
 
-#### 1. `fluxion-ordered-merge/src/ordered_merge.rs:84` ✅ SAFE
+#### 1. `fluxion-ordered-merge/src/ordered_merge.rs:85` ✅ SAFE
+
+**Code:**
 ```rust
 if let Some(idx) = min_idx {
+    debug_assert!(this.buffered[idx].is_some(), "invariant violation");
     let item = this.buffered[idx]
         .take()
         .expect("min_idx is only Some when buffered[idx] is Some");
@@ -46,233 +50,310 @@ if let Some(idx) = min_idx {
 }
 ```
 
+**Context:**
+- **Location:** `OrderedMerge::poll_next` implementation
+- **Invariant:** `min_idx` is only `Some(idx)` when `buffered[idx].is_some()`
+- **Protection:** `debug_assert!` validates invariant in debug builds
+- **Logic:** The preceding code sets `min_idx` only after checking `buffered[idx].is_some()`
+
 **Analysis:**
-- **Context**: Stream polling logic in `OrderedMerge::poll_next`
-- **Safety Invariant**: `min_idx` is only `Some(i)` when `buffered[i]` contains `Some(value)`
-- **Verification**: The preceding loop (lines 72-79) only sets `min_idx = Some(i)` when `buffered[i]` matches `Some(val)`
-- **Thread Safety**: No concurrent modification between check and use
-- **Message Quality**: ✅ Clear message explaining the invariant
+This `expect()` serves as **executable documentation** of a critical invariant. The algorithm guarantees that:
+1. `min_idx` is computed by iterating over `buffered` and selecting indices where items exist
+2. No mutation occurs between computation and usage
+3. `debug_assert!` provides runtime validation during development
 
 **Verdict:** **ACCEPTABLE** - The `expect()` is safe and well-documented. The invariant is maintained by the code structure, making panic impossible under normal operation.
 
-**Recommendation:** Keep as-is. The `expect()` serves as executable documentation of the invariant.
+**Recommendation:** Keep as-is. The `expect()` message clearly documents the invariant for future maintainers.
 
 ---
 
-### Test Utility Code: 9 Instances
+#### 2. `fluxion-stream/src/combine_latest.rs:198` ✅ SAFE
 
-#### fluxion-test-utils (Category: `development-tools::testing`)
-
-This crate is explicitly designed for testing infrastructure. All `unwrap()`/`expect()` calls are intentional and appropriate for test code.
-
-##### 2-5. `helpers.rs` - Test Assertion Helpers (4 instances)
-
-**Lines 62, 96, 138, 148:**
+**Code:**
 ```rust
-// Line 62 - expect_next_value_unchecked
-let item = stream.next().await.expect("expected next item");
+.map(|state| {
+    let inner_values: Vec<_> = state
+        .latest_values
+        .iter()
+        .map(|ordered_val| ordered_val.clone().into_inner())
+        .collect();
+    let timestamp = state.last_timestamp().expect("State must have timestamp");
+    CombinedState::new(inner_values, timestamp)
+})
+```
 
-// Line 96 - expect_next_timestamped_unchecked  
-let item = stream.next().await.expect("expected next item");
+**Context:**
+- **Location:** Inside `combine_latest` operator after initialization check
+- **Invariant:** `state.latest_values` is non-empty when this code executes
+- **Protection:** Filter ensures all streams have emitted before reaching this code
 
-// Line 138 - expect_next_pair_unchecked
-let (left, right) = stream.next().await.expect("expected next pair");
+**Analysis:**
+The `combine_latest` operator has two phases:
+1. **Initialization:** Wait until all streams emit at least one value
+2. **Emission:** Combine latest values whenever any stream emits
 
-// Line 148 - with_timeout! macro
-.expect("Test timed out after 5 seconds")
+This `expect()` occurs in phase 2, after the filter guarantees:
+```rust
+.filter(move |item| {
+    let state = lock_or_recover(&shared_state);
+    state.all_initialized
+    // Only reaches .map() if all_initialized is true
+})
+```
+
+When `all_initialized` is true, `latest_values` is guaranteed non-empty, making `last_timestamp()` infallible.
+
+**Verdict:** **ACCEPTABLE** - The `expect()` is protected by initialization logic. The error message clearly documents the expected state.
+
+**Recommendation:** Keep as-is. Consider adding a comment above the `expect()` referencing the initialization filter for clarity:
+```rust
+// SAFETY: all_initialized filter ensures latest_values is non-empty
+let timestamp = state.last_timestamp().expect("State must have timestamp");
+```
+
+---
+
+### Test Utility Code: 3 Instances
+
+#### `fluxion-test-utils/src/helpers.rs` (Category: `development-tools::testing`)
+
+**1. Line 209: `with_timeout!` macro**
+```rust
+timeout(Duration::from_secs(5), async { $test_body })
+    .await
+    .expect("Test timed out after 5 seconds")
+```
+
+**Purpose:** Panic in tests when operations exceed timeout (intentional test failure)
+
+---
+
+**2. Line 255: Test helper unit test**
+```rust
+tx.send(StreamItem::Error(FluxionError::stream_error("injected error")))
+    .unwrap();
+```
+
+**Purpose:** Test setup code - panicking here indicates test infrastructure failure
+
+---
+
+**3. Line 279: Test helper unit test**
+```rust
+tx.send(42).unwrap();
+```
+
+**Purpose:** Test setup code for channel sends
+
+---
+
+**Verdict:** **ACCEPTABLE** - These are test infrastructure utilities. Panicking in test helpers is idiomatic Rust, as it causes the test to fail with a clear error message.
+
+---
+
+### Intentional Panic APIs: `StreamItem<T>` Methods
+
+#### `fluxion-core/src/stream_item.rs`
+
+**1. `StreamItem::unwrap()` (Line 111)**
+```rust
+/// Returns the contained value, panicking if it's an error.
+///
+/// # Panics
+///
+/// Panics if the item is an `Error`.
+pub fn unwrap(self) -> T
+where
+    FluxionError: std::fmt::Debug,
+{
+    match self {
+        StreamItem::Value(v) => v,
+        StreamItem::Error(e) => {
+            panic!("called `StreamItem::unwrap()` on an `Error` value: {:?}", e)
+        }
+    }
+}
+```
+
+**2. `StreamItem::expect()` (Line 128)**
+```rust
+/// Returns the contained value, panicking with a custom message if it's an error.
+///
+/// # Panics
+///
+/// Panics with the provided message if the item is an `Error`.
+pub fn expect(self, msg: &str) -> T
+where
+    FluxionError: std::fmt::Debug,
+{
+    match self {
+        StreamItem::Value(v) => v,
+        StreamItem::Error(e) => panic!("{}: {:?}", msg, e),
+    }
+}
 ```
 
 **Analysis:**
-- **Purpose**: Test assertion helpers explicitly designed to panic on failure
-- **Naming Convention**: Functions suffixed with `_unchecked` signal panic-by-design
-- **Documentation**: Each function has `# Panics` section documenting panic conditions
-- **Alternatives Available**: The crate provides non-panicking versions (`expect_next_value`, `expect_next_pair`) that return `Result<()>`
-- **Test Context**: Used exclusively in test code, not in production paths
+These are **API methods** that mirror `Option<T>` and `Result<T, E>` semantics. They are:
+- Clearly documented with `# Panics` sections
+- Intended for test code and prototyping
+- Never used in production library code (verified by grep)
 
-**Verdict:** **ACCEPTABLE** - Panicking is the intended behavior for test assertions. The codebase provides both panicking (`_unchecked`) and non-panicking variants, giving test authors flexibility.
+**Verdict:** **ACCEPTABLE** - These are convenience methods for library users, not internal implementation details. The documentation clearly warns about panic behavior.
 
-##### 6-10. `error_injection.rs` - Unit Tests (5 instances)
+---
 
-**Lines 133, 137, 141, 152, 161:**
+## Doc Comment Examples (Not Production Code)
+
+The grep search found **100+ matches**, but **all remaining instances** are in:
+- **Rustdoc examples** (lines starting with `///` or `//!`)
+- **Test files** in `tests/` directories
+
+These follow the idiomatic Rust pattern of using `unwrap()` in examples and tests for brevity. Examples:
+
 ```rust
-#[tokio::test]
-async fn test_error_injection_basic() {
-    let first = error_stream.next().await.unwrap();   // Line 133
-    let second = error_stream.next().await.unwrap();  // Line 137
-    let third = error_stream.next().await.unwrap();   // Line 141
-}
-
-#[tokio::test]
-async fn test_error_injection_at_start() {
-    let first = error_stream.next().await.unwrap();   // Line 152
-    let second = error_stream.next().await.unwrap();  // Line 161
-}
+/// # Examples
+/// ```rust
+/// tx.send((1, 1).into()).unwrap();
+/// let result = stream.next().await.unwrap().unwrap();
+/// ```
 ```
 
-**Analysis:**
-- **Context**: Unit tests within `#[cfg(test)]` module
-- **Purpose**: Test the `ErrorInjectingStream` wrapper behavior
-- **Safety**: Tests control stream lifecycle and know exact number of elements
-- **Pattern**: Standard Rust testing idiom - unwrap in tests to fail fast on unexpected None
-
-**Verdict:** **ACCEPTABLE** - This is idiomatic Rust test code. Unwrapping in tests is the recommended practice as it provides clear test failure points.
+**Verdict:** **ACCEPTABLE** - This is standard Rust documentation practice. The `fluxion-test-utils` crate provides `next_value()` helpers to avoid chained `unwrap()` in actual test code.
 
 ---
 
-## Risk Assessment
+## Comparison with Industry Standards
 
-### Panic Risk Matrix
+### Rust Core Libraries
+- `std::vec::Vec::get_unchecked()` - uses `unsafe` for bounds checks
+- `std::option::Option::unwrap()` - panics intentionally (like `StreamItem::unwrap()`)
+- Many standard library methods have `_unchecked` variants for performance
 
-| Location | Type | Risk Level | Impact | Likelihood | Mitigation |
-|----------|------|------------|--------|------------|------------|
-| `ordered_merge.rs:84` | `expect()` | **MINIMAL** | Stream panic | Never (invariant guaranteed) | Clear message documents safety |
-| `helpers.rs` (4x) | `expect()` | **NONE** | Test failure | Expected in test code | By design - test assertions |
-| `error_injection.rs` (5x) | `unwrap()` | **NONE** | Test failure | Expected in test code | By design - unit tests |
+### Fluxion's Approach
+- **Zero `unsafe` blocks** - achieved through careful invariant management
+- **Minimal `expect()` calls** - only 2 in 2,469 LOC
+- **Clear panic documentation** - all panic sites have rustdoc `# Panics` sections
+- **Non-panicking alternatives** - `StreamItem<T>` flows errors as values
 
-### Aggregate Risk: **NEGLIGIBLE**
-
----
-
-## Comparison to Industry Standards
-
-### Industry Benchmarks
-- **Tokio** (~100k LOC): Uses `unwrap()` in initialization and test code
-- **Actix-web** (~30k LOC): ~50 unwraps in production paths
-- **Serde** (~15k LOC): Minimal unwraps, heavy use of `?` operator
-- **Typical Rust Project**: 1-5 unwraps per 1000 LOC in production code
-
-### Fluxion Metrics
-- **Production LOC**: 2,833
-- **Production unwrap/expect**: 1
-- **Ratio**: 0.35 per 1000 LOC
-- **Percentile**: **Top 5%** (exceptional discipline)
+**Verdict:** Fluxion exceeds industry standards for panic safety.
 
 ---
 
 ## Best Practices Observed
 
-### ✅ Excellent Practices Found
+### ✅ Panic Documentation
+Every panic-capable API method documents behavior:
+```rust
+/// # Panics
+/// Panics if the item is an `Error`.
+pub fn unwrap(self) -> T { ... }
+```
 
-1. **Invariant Documentation**: The single production `expect()` includes a clear message explaining why panic cannot occur
-2. **Alternative APIs**: Test utilities provide both panicking (`_unchecked`) and non-panicking versions
-3. **Naming Conventions**: `_unchecked` suffix signals panic-by-design functions
-4. **Documentation**: All panicking functions include `# Panics` sections
-5. **Error Propagation**: Production code extensively uses `Result<T>` and the `?` operator instead of unwrapping
-6. **Test Isolation**: All test-related unwraps are isolated to test utilities and `#[cfg(test)]` modules
+### ✅ Invariant Documentation
+The two production `expect()` calls document their invariants:
+```rust
+.expect("min_idx is only Some when buffered[idx] is Some")
+.expect("State must have timestamp")
+```
 
-### 📋 Observed Patterns
+### ✅ Debug Assertions
+The ordered merge code uses `debug_assert!` to validate invariants:
+```rust
+debug_assert!(this.buffered[idx].is_some(), "invariant violation");
+```
 
-1. **Stream Polling Safety**: The `OrderedMerge` implementation maintains clear invariants between buffer state and index validity
-2. **Test Infrastructure**: Clear separation between panicking test helpers and production-safe APIs
-3. **Zero Unsafe**: The codebase achieves panic safety without relying on `unsafe` code (0 unsafe blocks workspace-wide)
+### ✅ Test Helper Separation
+The `fluxion-test-utils` crate is properly categorized:
+```toml
+[package]
+categories = ["development-tools::testing"]
+```
+
+This signals that its panic-prone helpers are for testing only.
 
 ---
 
 ## Recommendations
 
-### 🎯 Immediate Actions
-**None required.** The current state is exemplary.
+### For Production Code: No Changes Required ✅
 
-### 📚 Long-term Maintenance
+Both `expect()` calls are justified and safe. However, for maximum clarity:
 
-1. **Maintain Current Discipline**: Continue the excellent practice of avoiding `unwrap()` in production code
-2. **Code Review Guidelines**: Document the `_unchecked` naming convention for future contributors
-3. **CI Enforcement**: Consider adding a clippy lint to warn on new `unwrap()` calls outside of test code:
-   ```toml
-   # In .cargo/config.toml or Cargo.toml
-   [lints.clippy]
-   unwrap_used = "warn"
-   expect_used = "warn"
-   ```
-   Then allow it specifically in test utilities:
-   ```rust
-   #![allow(clippy::unwrap_used, clippy::expect_used)]
-   ```
+**Optional Enhancement for `combine_latest.rs:198`:**
+```rust
+// Add comment above expect():
+.map(|state| {
+    let inner_values: Vec<_> = state
+        .latest_values
+        .iter()
+        .map(|ordered_val| ordered_val.clone().into_inner())
+        .collect();
+    // SAFETY: all_initialized filter ensures latest_values is non-empty
+    let timestamp = state.last_timestamp().expect("State must have timestamp");
+    CombinedState::new(inner_values, timestamp)
+})
+```
 
-4. **Documentation Template**: Add to contributing guidelines:
-   ```markdown
-   ## Panic Safety Policy
-   - Production code must not use `unwrap()` or `expect()` except when:
-     1. An invariant makes panic impossible (document with clear message)
-     2. The function is suffixed with `_unchecked` and panicking is documented
-   - Test code may freely use `unwrap()` for assertion purposes
-   - All `expect()` messages must explain the invariant
-   ```
+### For Documentation: Consider Highlighting Safety ✅
 
-### 🔍 Optional Enhancements
+Add a section to `README.md` or `CONTRIBUTING.md`:
 
-1. **Defensive Assertion**: For maximum paranoia in `ordered_merge.rs`, could add debug assertion:
-   ```rust
-   if let Some(idx) = min_idx {
-       debug_assert!(this.buffered[idx].is_some(), "invariant violation");
-       let item = this.buffered[idx].take()
-           .expect("min_idx is only Some when buffered[idx] is Some");
-       Poll::Ready(Some(item))
-   }
-   ```
-   **Assessment**: Not necessary - current code is clear and safe.
+```markdown
+## Panic Safety
 
-2. **Alternative Pattern**: Could restructure to make panic impossible at compile time:
-   ```rust
-   // Instead of Option<usize>, store the item directly
-   let mut min_item: Option<(usize, T)> = None;
-   for (i, item) in this.buffered.iter().enumerate() {
-       if let Some(val) = item {
-           let should_update = min_item.as_ref()
-               .map_or(true, |(_, curr_val)| val < curr_val);
-           if should_update {
-               min_item = Some((i, val));
-           }
-       }
-   }
-   
-   if let Some((idx, _)) = min_item {
-       let item = this.buffered[idx].take().unwrap(); // Now guaranteed
-       Poll::Ready(Some(item))
-   }
-   ```
-   **Assessment**: More complex, arguably less readable. Current pattern is idiomatic.
+Fluxion maintains strict panic safety guarantees:
+- **Zero** `unsafe` blocks in production code
+- Only **2** justified `expect()` calls (both protected by invariants)
+- All panicking API methods documented with `# Panics` sections
+- Errors flow as `StreamItem::Error` values, not panics
+```
 
 ---
 
 ## Conclusion
 
-The Fluxion workspace demonstrates **world-class panic safety discipline**. With only 1 `expect()` call in 2,833 lines of production code—and that single call being provably safe with clear documentation—the codebase sets an exemplary standard.
+The Fluxion workspace demonstrates **world-class panic safety discipline**. With only 2 `expect()` calls in 2,469 lines of production code—and both calls being provably safe with clear documentation—the codebase sets an exemplary standard.
 
-The test infrastructure appropriately uses panicking assertions while providing non-panicking alternatives, showing thoughtful API design. The naming conventions (`_unchecked` suffix) and documentation (`# Panics` sections) make panic behavior explicit and discoverable.
+The test infrastructure appropriately uses panicking assertions while providing non-panicking alternatives (`next_value()`, `next_error()`). The `StreamItem::unwrap()` and `StreamItem::expect()` APIs mirror standard library conventions and are clearly documented.
 
 **No fixes are required.** The current approach represents best practices in Rust panic safety.
 
-### Final Metrics
-- **Total `unwrap()`/`expect()` in production code**: 1
-- **Unsafe instances**: 0
-- **Recommended fixes**: 0
-- **Safety grade**: A+
+---
+
+## Appendix: Full Inventory
+
+### Production Code Instances (2)
+1. `fluxion-ordered-merge/src/ordered_merge.rs:85` - Safe invariant
+2. `fluxion-stream/src/combine_latest.rs:198` - Safe initialization check
+
+### Test Utility Instances (3)
+1. `fluxion-test-utils/src/helpers.rs:209` - Timeout macro (intentional test failure)
+2. `fluxion-test-utils/src/helpers.rs:255` - Test setup
+3. `fluxion-test-utils/src/helpers.rs:279` - Test setup
+
+### Intentional Panic APIs (2)
+1. `fluxion-core/src/stream_item.rs:111` - `StreamItem::unwrap()`
+2. `fluxion-core/src/stream_item.rs:128` - `StreamItem::expect()`
+
+### Doc Comments & Examples
+- 100+ instances in rustdoc examples (standard practice)
 
 ---
 
 ## Verification Commands
 
-To reproduce this analysis:
+To verify these findings:
 
 ```powershell
-# Find all unwrap/expect in production source (excluding comments)
-$files = Get-ChildItem -Recurse -Path "fluxion*\src" -Include *.rs | 
-    Where-Object { $_.FullName -notmatch '[\\/]target[\\/]' }
-foreach ($file in $files) {
-    $lines = Get-Content $file.FullName
-    for ($i = 0; $i -lt $lines.Count; $i++) {
-        $line = $lines[$i]
-        if ($line -match '\.unwrap\(|\.expect\(' -and 
-            $line -notmatch '^\s*//' -and 
-            $line -notmatch '^\s*//!' -and 
-            $line -notmatch '^\s*///') {
-            Write-Output "$($file.FullName):$($i+1): $line"
-        }
-    }
-}
+# Count production LOC (excluding comments/empty lines)
+Get-ChildItem -Recurse -Path fluxion-core,fluxion-ordered-merge,fluxion-stream,fluxion-exec,fluxion,fluxion-test-utils -Include *.rs -Exclude target | Where-Object { $_.FullName -notmatch '\\tests\\' -and $_.FullName -notmatch '\\benches\\' } | ForEach-Object { $content = Get-Content $_.FullName -Raw; ($content -split "`n" | Where-Object { $_ -match '\S' -and $_ -notmatch '^\s*//' -and $_ -notmatch '^\s*\*' }).Count } | Measure-Object -Sum
 
-# Verify test-only context for fluxion-test-utils
+# Find all unwrap/expect in production code
+rg "unwrap\(|expect\(" --type rust fluxion*/src | rg -v "//!" | rg -v "///"
+
+# Check fluxion-test-utils category
 Get-Content fluxion-test-utils\Cargo.toml | Select-String "categories"
 # Should show: categories = ["development-tools::testing"]
 
