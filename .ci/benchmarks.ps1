@@ -1,21 +1,39 @@
 #!/usr/bin/env pwsh
 # benchmarks.ps1 - Run benchmarks and generate BENCHMARKS.md documentation
 
-$ErrorActionPreference = "Stop"
-
 Write-Host "Running Fluxion benchmarks..." -ForegroundColor Cyan
 
 # Run benchmarks and capture output
 Write-Host "Executing benchmark suite..." -ForegroundColor Yellow
-$benchOutput = cargo bench --bench benchmarks 2>&1 | Out-String
+
+# Temporarily set error action preference to continue to handle stderr from cargo
+$oldErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+
+$benchOutputFile = "target/benchmark-output.txt"
+
+try {
+    # Run benchmarks and save output to file
+    cargo bench --bench benchmarks 2>&1 | Tee-Object -FilePath $benchOutputFile | Out-Null
+    $exitCode = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $oldErrorActionPreference
+}
 
 # Check if benchmarks ran successfully
-if ($LASTEXITCODE -ne 0) {
+if ($exitCode -ne 0) {
     Write-Host "Error: Benchmarks failed to run" -ForegroundColor Red
+    if (Test-Path $benchOutputFile) {
+        Get-Content $benchOutputFile | Write-Host -ForegroundColor Red
+    }
     exit 1
 }
 
 Write-Host "Benchmarks completed successfully!" -ForegroundColor Green
+Write-Host "Benchmark output saved to: $benchOutputFile" -ForegroundColor Cyan
+
+# Read benchmark output from file
+$benchOutput = Get-Content $benchOutputFile -Raw
 
 # Extract timing data
 $timingLines = $benchOutput -split "`n" | Where-Object { $_ -match "time:\s+\[" }
@@ -65,7 +83,7 @@ $content = @"
 These benchmarks measure the throughput and latency of Fluxion's stream operators across different workload sizes and payload configurations. All benchmarks are run using [Criterion.rs](https://github.com/bheisler/criterion.rs) with:
 
 - **100 samples** per benchmark for statistical significance
-- **Payload sizes**: 0 bytes (minimal overhead) and 128 bytes (realistic data)
+- **Payload sizes**: 16, 32, 64, and 128 bytes
 - **Stream sizes**: 100, 1,000, and 10,000 elements
 - **Platform**: Windows x64, Release build with optimizations
 
@@ -113,19 +131,26 @@ function Add-BenchmarkRow {
     if ($results.ContainsKey($benchName)) {
         $time = Format-Time $results[$benchName].TimeInUs
         $throughput = Format-Throughput $elements $results[$benchName].TimeInUs
-        return "| $elements | $payload | $time | $throughput |"
+        return "| $elements | $payload | $time | $throughput |`n"
     }
-    return $null
+    # Return empty string instead of null to prevent blank rows
+    return ""
 }
 
 # Map Ordered
 $content += "`n"
-$content += (Add-BenchmarkRow "map_ordered/m100_p0" 100 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "map_ordered/m100_p128" 100 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "map_ordered/m1000_p0" 1000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "map_ordered/m1000_p128" 1000 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "map_ordered/m10000_p0" 10000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "map_ordered/m10000_p128" 10000 "128 bytes") + "`n"
+$content += (Add-BenchmarkRow "map_ordered/m100_p16" 100 "16 bytes")
+$content += (Add-BenchmarkRow "map_ordered/m100_p32" 100 "32 bytes")
+$content += (Add-BenchmarkRow "map_ordered/m100_p64" 100 "64 bytes")
+$content += (Add-BenchmarkRow "map_ordered/m100_p128" 100 "128 bytes")
+$content += (Add-BenchmarkRow "map_ordered/m1000_p16" 1000 "16 bytes")
+$content += (Add-BenchmarkRow "map_ordered/m1000_p32" 1000 "32 bytes")
+$content += (Add-BenchmarkRow "map_ordered/m1000_p64" 1000 "64 bytes")
+$content += (Add-BenchmarkRow "map_ordered/m1000_p128" 1000 "128 bytes")
+$content += (Add-BenchmarkRow "map_ordered/m10000_p16" 10000 "16 bytes")
+$content += (Add-BenchmarkRow "map_ordered/m10000_p32" 10000 "32 bytes")
+$content += (Add-BenchmarkRow "map_ordered/m10000_p64" 10000 "64 bytes")
+$content += (Add-BenchmarkRow "map_ordered/m10000_p128" 10000 "128 bytes")
 
 $content += @"
 
@@ -144,12 +169,18 @@ Filters values based on a predicate (50% pass rate in benchmark).
 
 # Filter Ordered
 $content += "`n"
-$content += (Add-BenchmarkRow "filter_ordered/m100_p0" 100 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "filter_ordered/m100_p128" 100 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "filter_ordered/m1000_p0" 1000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "filter_ordered/m1000_p128" 1000 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "filter_ordered/m10000_p0" 10000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "filter_ordered/m10000_p128" 10000 "128 bytes") + "`n"
+$content += (Add-BenchmarkRow "filter_ordered/m100_p16" 100 "16 bytes")
+$content += (Add-BenchmarkRow "filter_ordered/m100_p32" 100 "32 bytes")
+$content += (Add-BenchmarkRow "filter_ordered/m100_p64" 100 "64 bytes")
+$content += (Add-BenchmarkRow "filter_ordered/m100_p128" 100 "128 bytes")
+$content += (Add-BenchmarkRow "filter_ordered/m1000_p16" 1000 "16 bytes")
+$content += (Add-BenchmarkRow "filter_ordered/m1000_p32" 1000 "32 bytes")
+$content += (Add-BenchmarkRow "filter_ordered/m1000_p64" 1000 "64 bytes")
+$content += (Add-BenchmarkRow "filter_ordered/m1000_p128" 1000 "128 bytes")
+$content += (Add-BenchmarkRow "filter_ordered/m10000_p16" 10000 "16 bytes")
+$content += (Add-BenchmarkRow "filter_ordered/m10000_p32" 10000 "32 bytes")
+$content += (Add-BenchmarkRow "filter_ordered/m10000_p64" 10000 "64 bytes")
+$content += (Add-BenchmarkRow "filter_ordered/m10000_p128" 10000 "128 bytes")
 
 $content += @"
 
@@ -174,10 +205,14 @@ Emits when any stream updates, combining latest values from 3 streams.
 
 # Combine Latest
 $content += "`n"
-$content += (Add-BenchmarkRow "combine_latest/m100_p0" 100 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "combine_latest/m100_p128" 100 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "combine_latest/m1000_p0" 1000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "combine_latest/m1000_p128" 1000 "128 bytes") + "`n"
+$content += (Add-BenchmarkRow "combine_latest/m100_p16" 100 "16 bytes")
+$content += (Add-BenchmarkRow "combine_latest/m100_p32" 100 "32 bytes")
+$content += (Add-BenchmarkRow "combine_latest/m100_p64" 100 "64 bytes")
+$content += (Add-BenchmarkRow "combine_latest/m100_p128" 100 "128 bytes")
+$content += (Add-BenchmarkRow "combine_latest/m1000_p16" 1000 "16 bytes")
+$content += (Add-BenchmarkRow "combine_latest/m1000_p32" 1000 "32 bytes")
+$content += (Add-BenchmarkRow "combine_latest/m1000_p64" 1000 "64 bytes")
+$content += (Add-BenchmarkRow "combine_latest/m1000_p128" 1000 "128 bytes")
 
 $content += @"
 
@@ -196,12 +231,18 @@ Pairs each value with its predecessor.
 
 # Combine With Previous
 $content += "`n"
-$content += (Add-BenchmarkRow "combine_with_previous/m100_p0" 100 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "combine_with_previous/m100_p128" 100 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "combine_with_previous/m1000_p0" 1000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "combine_with_previous/m1000_p128" 1000 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "combine_with_previous/m10000_p0" 10000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "combine_with_previous/m10000_p128" 10000 "128 bytes") + "`n"
+$content += (Add-BenchmarkRow "combine_with_previous/m100_p16" 100 "16 bytes")
+$content += (Add-BenchmarkRow "combine_with_previous/m100_p32" 100 "32 bytes")
+$content += (Add-BenchmarkRow "combine_with_previous/m100_p64" 100 "64 bytes")
+$content += (Add-BenchmarkRow "combine_with_previous/m100_p128" 100 "128 bytes")
+$content += (Add-BenchmarkRow "combine_with_previous/m1000_p16" 1000 "16 bytes")
+$content += (Add-BenchmarkRow "combine_with_previous/m1000_p32" 1000 "32 bytes")
+$content += (Add-BenchmarkRow "combine_with_previous/m1000_p64" 1000 "64 bytes")
+$content += (Add-BenchmarkRow "combine_with_previous/m1000_p128" 1000 "128 bytes")
+$content += (Add-BenchmarkRow "combine_with_previous/m10000_p16" 10000 "16 bytes")
+$content += (Add-BenchmarkRow "combine_with_previous/m10000_p32" 10000 "32 bytes")
+$content += (Add-BenchmarkRow "combine_with_previous/m10000_p64" 10000 "64 bytes")
+$content += (Add-BenchmarkRow "combine_with_previous/m10000_p128" 10000 "128 bytes")
 
 $content += @"
 
@@ -220,10 +261,14 @@ Combines primary stream with latest value from secondary stream.
 
 # With Latest From
 $content += "`n"
-$content += (Add-BenchmarkRow "with_latest_from/m100_p0" 100 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "with_latest_from/m100_p128" 100 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "with_latest_from/m1000_p0" 1000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "with_latest_from/m1000_p128" 1000 "128 bytes") + "`n"
+$content += (Add-BenchmarkRow "with_latest_from/m100_p16" 100 "16 bytes")
+$content += (Add-BenchmarkRow "with_latest_from/m100_p32" 100 "32 bytes")
+$content += (Add-BenchmarkRow "with_latest_from/m100_p64" 100 "64 bytes")
+$content += (Add-BenchmarkRow "with_latest_from/m100_p128" 100 "128 bytes")
+$content += (Add-BenchmarkRow "with_latest_from/m1000_p16" 1000 "16 bytes")
+$content += (Add-BenchmarkRow "with_latest_from/m1000_p32" 1000 "32 bytes")
+$content += (Add-BenchmarkRow "with_latest_from/m1000_p64" 1000 "64 bytes")
+$content += (Add-BenchmarkRow "with_latest_from/m1000_p128" 1000 "128 bytes")
 
 $content += @"
 
@@ -242,12 +287,18 @@ Merges 3 streams with stateful transformation (repository pattern).
 
 # Merge With
 $content += "`n"
-$content += (Add-BenchmarkRow "merge_with/m100_p0" 300 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "merge_with/m100_p128" 300 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "merge_with/m1000_p0" 3000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "merge_with/m1000_p128" 3000 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "merge_with/m10000_p0" 30000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "merge_with/m10000_p128" 30000 "128 bytes") + "`n"
+$content += (Add-BenchmarkRow "merge_with/m100_p16" 300 "16 bytes")
+$content += (Add-BenchmarkRow "merge_with/m100_p32" 300 "32 bytes")
+$content += (Add-BenchmarkRow "merge_with/m100_p64" 300 "64 bytes")
+$content += (Add-BenchmarkRow "merge_with/m100_p128" 300 "128 bytes")
+$content += (Add-BenchmarkRow "merge_with/m1000_p16" 3000 "16 bytes")
+$content += (Add-BenchmarkRow "merge_with/m1000_p32" 3000 "32 bytes")
+$content += (Add-BenchmarkRow "merge_with/m1000_p64" 3000 "64 bytes")
+$content += (Add-BenchmarkRow "merge_with/m1000_p128" 3000 "128 bytes")
+$content += (Add-BenchmarkRow "merge_with/m10000_p16" 30000 "16 bytes")
+$content += (Add-BenchmarkRow "merge_with/m10000_p32" 30000 "32 bytes")
+$content += (Add-BenchmarkRow "merge_with/m10000_p64" 30000 "64 bytes")
+$content += (Add-BenchmarkRow "merge_with/m10000_p128" 30000 "128 bytes")
 
 $content += @"
 
@@ -268,8 +319,10 @@ Merges 2-5 streams maintaining temporal order across all.
 
 # Ordered Merge - 2 streams
 $content += "`n"
-$content += (Add-BenchmarkRow "ordered_merge/m2_100_p0" 200 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "ordered_merge/m2_100_p128" 200 "128 bytes") + "`n"
+$content += (Add-BenchmarkRow "ordered_merge/m100_p16_s2" 200 "16 bytes")
+$content += (Add-BenchmarkRow "ordered_merge/m100_p32_s2" 200 "32 bytes")
+$content += (Add-BenchmarkRow "ordered_merge/m100_p64_s2" 200 "64 bytes")
+$content += (Add-BenchmarkRow "ordered_merge/m100_p128_s2" 200 "128 bytes")
 
 $content += @"
 
@@ -281,8 +334,10 @@ $content += @"
 
 # Ordered Merge - 3 streams
 $content += "`n"
-$content += (Add-BenchmarkRow "ordered_merge/m3_100_p0" 300 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "ordered_merge/m3_100_p128" 300 "128 bytes") + "`n"
+$content += (Add-BenchmarkRow "ordered_merge/m100_p16_s3" 300 "16 bytes")
+$content += (Add-BenchmarkRow "ordered_merge/m100_p32_s3" 300 "32 bytes")
+$content += (Add-BenchmarkRow "ordered_merge/m100_p64_s3" 300 "64 bytes")
+$content += (Add-BenchmarkRow "ordered_merge/m100_p128_s3" 300 "128 bytes")
 
 $content += @"
 
@@ -294,8 +349,10 @@ $content += @"
 
 # Ordered Merge - 5 streams
 $content += "`n"
-$content += (Add-BenchmarkRow "ordered_merge/m5_100_p0" 500 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "ordered_merge/m5_100_p128" 500 "128 bytes") + "`n"
+$content += (Add-BenchmarkRow "ordered_merge/m100_p16_s5" 500 "16 bytes")
+$content += (Add-BenchmarkRow "ordered_merge/m100_p32_s5" 500 "32 bytes")
+$content += (Add-BenchmarkRow "ordered_merge/m100_p64_s5" 500 "64 bytes")
+$content += (Add-BenchmarkRow "ordered_merge/m100_p128_s5" 500 "128 bytes")
 
 $content += @"
 
@@ -320,10 +377,18 @@ Emits source values only when predicate evaluates to true based on both streams.
 
 # Emit When
 $content += "`n"
-$content += (Add-BenchmarkRow "emit_when/m100_p0" 100 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "emit_when/m100_p128" 100 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "emit_when/m1000_p0" 1000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "emit_when/m1000_p128" 1000 "128 bytes") + "`n"
+$content += (Add-BenchmarkRow "emit_when/m100_p16" 100 "16 bytes")
+$content += (Add-BenchmarkRow "emit_when/m100_p32" 100 "32 bytes")
+$content += (Add-BenchmarkRow "emit_when/m100_p64" 100 "64 bytes")
+$content += (Add-BenchmarkRow "emit_when/m100_p128" 100 "128 bytes")
+$content += (Add-BenchmarkRow "emit_when/m1000_p16" 1000 "16 bytes")
+$content += (Add-BenchmarkRow "emit_when/m1000_p32" 1000 "32 bytes")
+$content += (Add-BenchmarkRow "emit_when/m1000_p64" 1000 "64 bytes")
+$content += (Add-BenchmarkRow "emit_when/m1000_p128" 1000 "128 bytes")
+$content += (Add-BenchmarkRow "emit_when/m10000_p16" 10000 "16 bytes")
+$content += (Add-BenchmarkRow "emit_when/m10000_p32" 10000 "32 bytes")
+$content += (Add-BenchmarkRow "emit_when/m10000_p64" 10000 "64 bytes")
+$content += (Add-BenchmarkRow "emit_when/m10000_p128" 10000 "128 bytes")
 
 $content += @"
 
@@ -342,12 +407,18 @@ Emits latest source value when trigger stream fires.
 
 # Take Latest When
 $content += "`n"
-$content += (Add-BenchmarkRow "take_latest_when/m100_p0" 100 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "take_latest_when/m100_p128" 100 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "take_latest_when/m1000_p0" 1000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "take_latest_when/m1000_p128" 1000 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "take_latest_when/m10000_p0" 10000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "take_latest_when/m10000_p128" 10000 "128 bytes") + "`n"
+$content += (Add-BenchmarkRow "take_latest_when/m100_p16" 100 "16 bytes")
+$content += (Add-BenchmarkRow "take_latest_when/m100_p32" 100 "32 bytes")
+$content += (Add-BenchmarkRow "take_latest_when/m100_p64" 100 "64 bytes")
+$content += (Add-BenchmarkRow "take_latest_when/m100_p128" 100 "128 bytes")
+$content += (Add-BenchmarkRow "take_latest_when/m1000_p16" 1000 "16 bytes")
+$content += (Add-BenchmarkRow "take_latest_when/m1000_p32" 1000 "32 bytes")
+$content += (Add-BenchmarkRow "take_latest_when/m1000_p64" 1000 "64 bytes")
+$content += (Add-BenchmarkRow "take_latest_when/m1000_p128" 1000 "128 bytes")
+$content += (Add-BenchmarkRow "take_latest_when/m10000_p16" 10000 "16 bytes")
+$content += (Add-BenchmarkRow "take_latest_when/m10000_p32" 10000 "32 bytes")
+$content += (Add-BenchmarkRow "take_latest_when/m10000_p64" 10000 "64 bytes")
+$content += (Add-BenchmarkRow "take_latest_when/m10000_p128" 10000 "128 bytes")
 
 $content += @"
 
@@ -366,12 +437,18 @@ Continues emitting while a condition based on filter stream remains true.
 
 # Take While With
 $content += "`n"
-$content += (Add-BenchmarkRow "take_while_with/m100_p0" 100 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "take_while_with/m100_p128" 100 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "take_while_with/m1000_p0" 1000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "take_while_with/m1000_p128" 1000 "128 bytes") + "`n"
-$content += (Add-BenchmarkRow "take_while_with/m10000_p0" 10000 "0 bytes") + "`n"
-$content += (Add-BenchmarkRow "take_while_with/m10000_p128" 10000 "128 bytes") + "`n"
+$content += (Add-BenchmarkRow "take_while_with/m100_p16" 100 "16 bytes")
+$content += (Add-BenchmarkRow "take_while_with/m100_p32" 100 "32 bytes")
+$content += (Add-BenchmarkRow "take_while_with/m100_p64" 100 "64 bytes")
+$content += (Add-BenchmarkRow "take_while_with/m100_p128" 100 "128 bytes")
+$content += (Add-BenchmarkRow "take_while_with/m1000_p16" 1000 "16 bytes")
+$content += (Add-BenchmarkRow "take_while_with/m1000_p32" 1000 "32 bytes")
+$content += (Add-BenchmarkRow "take_while_with/m1000_p64" 1000 "64 bytes")
+$content += (Add-BenchmarkRow "take_while_with/m1000_p128" 1000 "128 bytes")
+$content += (Add-BenchmarkRow "take_while_with/m10000_p16" 10000 "16 bytes")
+$content += (Add-BenchmarkRow "take_while_with/m10000_p32" 10000 "32 bytes")
+$content += (Add-BenchmarkRow "take_while_with/m10000_p64" 10000 "64 bytes")
+$content += (Add-BenchmarkRow "take_while_with/m10000_p128" 10000 "128 bytes")
 
 $content += @"
 
@@ -385,21 +462,79 @@ $content += @"
 ## Performance Summary
 
 ### Throughput by Operator Category
+"@
+
+# Calculate throughput ranges for each category
+$singleStreamOps = @("map_ordered", "filter_ordered")
+$multiStreamOps = @("combine_latest", "combine_with_previous", "with_latest_from", "merge_with")
+$conditionalOps = @("emit_when", "take_latest_when", "take_while_with")
+$orderedMergeOps = @("ordered_merge")
+
+function Get-ThroughputRange {
+    param($operatorNames)
+
+    $throughputs = @()
+    foreach ($opName in $operatorNames) {
+        foreach ($key in $results.Keys) {
+            if ($key -match "^$opName/") {
+                # Extract element count from key (e.g., "m1000" -> 1000)
+                if ($key -match "m(\d+)") {
+                    $elements = [int]$matches[1]
+                    # For merge_with, multiply by 3 streams; for ordered_merge, extract stream count
+                    if ($opName -eq "merge_with") {
+                        $elements *= 3
+                    } elseif ($key -match "_s(\d+)") {
+                        $streamCount = [int]$matches[1]
+                        $elements *= $streamCount
+                    }
+
+                    $timeUs = $results[$key].TimeInUs
+                    $throughput = ($elements / $timeUs) * 1000000
+                    $throughputs += $throughput
+                }
+            }
+        }
+    }
+
+    if ($throughputs.Count -eq 0) { return "N/A" }
+
+    $min = [math]::Min([math]::Round(($throughputs | Measure-Object -Minimum).Minimum), 999999999)
+    $max = [math]::Max([math]::Round(($throughputs | Measure-Object -Maximum).Maximum), 0)
+
+    # Format range
+    if ($max -lt 1000) {
+        return "$min-$max elem/s"
+    } elseif ($max -lt 1000000) {
+        $minK = [math]::Round($min / 1000, 0)
+        $maxK = [math]::Round($max / 1000, 0)
+        return "$minK-$maxK K elem/s"
+    } else {
+        $minM = [math]::Round($min / 1000000, 1)
+        $maxM = [math]::Round($max / 1000000, 1)
+        return "$minM-$maxM M elem/s"
+    }
+}
+
+$singleStreamRange = Get-ThroughputRange $singleStreamOps
+$multiStreamRange = Get-ThroughputRange $multiStreamOps
+$conditionalRange = Get-ThroughputRange $conditionalOps
+$orderedMergeRange = Get-ThroughputRange $orderedMergeOps
+
+$content += @"
 
 | Category | Typical Throughput | Use Case |
 |----------|-------------------|----------|
-| **Single-stream transforms** | 1-10M elem/s | Basic data transformation |
-| **Multi-stream combination** | 500K-8M elem/s | Event correlation, state sync |
-| **Conditional emission** | 1-6M elem/s | Filtering, sampling, triggers |
-| **Repository pattern** | 2-8M elem/s | Stateful aggregation |
-| **Ordered merge** | 100K-400K elem/s | Temporal consistency |
+| **Single-stream transforms** | $singleStreamRange | Basic data transformation |
+| **Multi-stream combination** | $multiStreamRange | Event correlation, state sync |
+| **Conditional emission** | $conditionalRange | Filtering, sampling, triggers |
+| **Ordered merge** | $orderedMergeRange | Temporal consistency |
 
 ### Scaling Characteristics
 
-- **Excellent linear scaling**: Most operators maintain consistent throughput per element as volume increases
-- **Payload impact**: Larger payloads (128 bytes) show 20-40% throughput reduction at high volumes
-- **Multi-stream overhead**: 2-3x overhead compared to single-stream operators, but still highly performant
-- **State management**: Repository pattern (``merge_with``) maintains excellent performance even with complex state
+- **Linear scaling**: Most operators maintain consistent throughput per element as volume increases
+- **Payload impact**: Larger payloads show measurable throughput reduction at high volumes
+- **Multi-stream overhead**: Additional complexity from coordinating multiple streams
+- **State management**: Repository pattern (``merge_with``) maintains strong performance with complex state
 
 ### Hardware & Environment
 
@@ -452,3 +587,4 @@ $content | Out-File -FilePath $outputPath -Encoding UTF8 -NoNewline
 
 Write-Host "Successfully generated $outputPath" -ForegroundColor Green
 Write-Host "Documentation contains $($results.Count) benchmark results" -ForegroundColor Cyan
+

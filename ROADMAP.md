@@ -71,6 +71,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ Code coverage integrated in the CI with badge on the README
 - ✅ Integrate `merge_with` in fluxion-stream. Remove the separate crate.
 - ✅ Benches exaustive
+- [ ] Add benchmark to the CI and publish the results
 
 **Documentation:**
 - ✅ `subcscribe` and `subscribe_latest` documented
