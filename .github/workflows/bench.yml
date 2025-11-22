@@ -131,7 +131,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./target/criterion
+          publish_dir: ./target/criterion/report
           destination_dir: benchmarks
           keep_files: false
 
