@@ -40,8 +40,11 @@ jobs:
       - name: Create/update baseline JSON
         run: |
           mkdir -p benches/baseline/stream_benches
-          cp -r target/criterion/stream_benches/* benches/baseline/stream_benches/ || echo "No data yet (unlikely)"
-          echo "✅ Baseline updated from this run"
+          cp -r target/criterion/stream_benches/* benches/baseline/stream_benches/ || echo "No data yet"
+          echo "Baseline updated from this run"
+
+          # Critical: force-add the new directory and everything inside
+          git add -A benches/baseline
 
       # --------------------------------------------------------------
       # 2. Commit baseline (only on main + nightly)
