@@ -103,8 +103,8 @@ jobs:
           path: target/criterion/
           retention-days: 14
 
-# --------------------------------------------------------------
-      # 5. PR comment (rewritten: full JS body construction)
+      # --------------------------------------------------------------
+      # 5. PR comment (fixed: concatenated strings, no nested backticks)
       # --------------------------------------------------------------
       - name: Comment on PR
         if: github.event_name == 'pull_request'
@@ -117,14 +117,10 @@ jobs:
               comparison = fs.readFileSync('benches/comparison.txt', 'utf8').trim();
             }
 
-            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}/artifacts`;
-            const body = `### Benchmark Results (fluxion-stream)
-
-\`\`\`
-${comparison}
-\`\`\`
-
-Full interactive report (HTML tables + graphs): [Download benchmark-report artifact](${runUrl})`;
+            const runUrl = process.env.GITHUB_SERVER_URL + '/' + process.env.GITHUB_REPOSITORY + '/actions/runs/' + process.env.GITHUB_RUN_ID + '/artifacts';
+            const body = '### Benchmark Results (fluxion-stream)\n\n' +
+                         '```\n' + comparison + '\n```\n\n' +
+                         'Full interactive report (HTML tables + graphs): [Download benchmark-report artifact](' + runUrl + ')';
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
