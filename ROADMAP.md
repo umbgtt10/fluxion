@@ -101,7 +101,15 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 **Quality Gates:**
 
-## 🚀 Version 0.5.0 - Wasm & Runtime abstraction
+## 🚀 Version 0.5.0 - Cloning
+**Essential Features:**
+- [ ] Investigate the best way to clone or share streams between multiple consumers
+
+**Documentation:**
+
+**Quality Gates:**
+
+## 🚀 Version 0.6.0 - Wasm & Runtime abstraction
 **Essential Features:**
 - [ ] Implement runtime abstraction
 
