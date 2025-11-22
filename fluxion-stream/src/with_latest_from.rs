@@ -11,7 +11,7 @@ use crate::ordered_merge::OrderedMergeExt;
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{StreamItem, Timestamped};
+use fluxion_core::{OrderedFluxionItem, StreamItem, Timestamped};
 
 /// Extension trait providing the `with_latest_from` operator for timestamped streams.
 ///
@@ -19,7 +19,7 @@ use fluxion_core::{StreamItem, Timestamped};
 /// when the primary stream emits, using the latest value from the secondary stream.
 pub trait WithLatestFromExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T: OrderedFluxionItem,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
 {
     /// Combines elements from the primary stream (self) with the latest element from the secondary stream (other).
@@ -122,7 +122,7 @@ where
 
 impl<T, S> WithLatestFromExt<T> for S
 where
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T: OrderedFluxionItem,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
     S: Stream<Item = StreamItem<T>> + Sized + Unpin + Send + Sync + 'static,
 {

@@ -10,7 +10,7 @@ use crate::take_latest_when::TakeLatestWhenExt;
 use crate::take_while_with::TakeWhileExt;
 use crate::types::{CombinedState, WithPrevious};
 use crate::with_latest_from::WithLatestFromExt;
-use fluxion_core::{StreamItem, Timestamped};
+use fluxion_core::{OrderedFluxionItem, StreamItem, Timestamped};
 use futures::Stream;
 use futures::StreamExt;
 use pin_project::pin_project;
@@ -101,7 +101,7 @@ where
 impl<S, T> FluxionStream<S>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T: OrderedFluxionItem,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     /// Maps each item to a new value while preserving temporal ordering.

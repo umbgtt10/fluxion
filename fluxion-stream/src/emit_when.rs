@@ -6,7 +6,7 @@ use crate::types::CombinedState;
 use crate::FluxionStream;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{StreamItem, Timestamped};
+use fluxion_core::{OrderedFluxionItem, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
@@ -19,7 +19,7 @@ use std::sync::{Arc, Mutex};
 /// emitting source values only when the combined state passes a predicate.
 pub trait EmitWhenExt<T>: Stream<Item = fluxion_core::StreamItem<T>> + Sized
 where
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T: OrderedFluxionItem,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     /// Emits source stream values only when the filter condition is satisfied.
@@ -124,8 +124,8 @@ type IndexedStream<T> =
     Pin<Box<dyn Stream<Item = (fluxion_core::StreamItem<T>, usize)> + Send + Sync>>;
 impl<T, S> EmitWhenExt<T> for S
 where
-    S: Stream<Item = fluxion_core::StreamItem<T>> + Send + Sync + 'static,
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    S: Stream<Item = StreamItem<T>> + Send + Sync + Sized + 'static,
+    T: OrderedFluxionItem,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     fn emit_when<IS>(

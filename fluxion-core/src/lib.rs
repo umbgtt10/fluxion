@@ -4,25 +4,15 @@
 
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 pub mod error;
+pub mod fluxion_item;
 pub mod into_stream;
 pub mod lock_utilities;
+pub mod ordered_fluxion_item;
 pub mod stream_item;
 pub mod timestamped;
 
 pub use self::error::{FluxionError, IntoFluxionError, Result, ResultExt};
+pub use self::fluxion_item::FluxionItem;
+pub use self::ordered_fluxion_item::OrderedFluxionItem;
 pub use self::stream_item::StreamItem;
 pub use self::timestamped::Timestamped;
-
-/// Type alias for `StreamItem<T>` emphasizing temporal ordering semantics.
-///
-/// This is the primary item type used in Fluxion streams, wrapping values
-/// with either `Value(T)` or `Error(FluxionError)` variants.
-///
-/// # Examples
-///
-/// ```
-/// use fluxion_core::{StreamItem, Timestamped};
-///
-/// let item: StreamItem<u32> = StreamItem::Value(42);
-/// ```
-pub type TimestampedStreamItem<T> = StreamItem<T>;
