@@ -62,7 +62,7 @@ jobs:
             echo "cargo-deny not found; installing..."
             cargo install --locked cargo-deny
           fi
-          cargo deny check
+          cargo deny check licenses bans sources
 
       - name: Cache cargo registry and target
         uses: actions/cache@v4
