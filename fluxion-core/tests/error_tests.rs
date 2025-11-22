@@ -7,9 +7,6 @@ use std::io;
 
 #[test]
 fn test_error_display() {
-    let err = FluxionError::lock_error("test mutex");
-    assert_eq!(err.to_string(), "Failed to acquire lock: test mutex");
-
     let err = FluxionError::stream_error("processing failed");
     assert_eq!(
         err.to_string(),
@@ -19,16 +16,12 @@ fn test_error_display() {
 
 #[test]
 fn test_error_constructors() {
-    let err = FluxionError::lock_error("my lock");
-    assert!(matches!(err, FluxionError::LockError { .. }));
-
     let err = FluxionError::stream_error("processing failed");
     assert!(matches!(err, FluxionError::StreamProcessingError { .. }));
 }
 
 #[test]
 fn test_is_recoverable() {
-    assert!(FluxionError::lock_error("test").is_recoverable());
     assert!(!FluxionError::stream_error("test").is_recoverable());
     assert!(!FluxionError::user_error(io::Error::other("test")).is_recoverable());
 }
@@ -37,7 +30,6 @@ fn test_is_recoverable() {
 fn test_is_permanent() {
     assert!(FluxionError::stream_error("test").is_permanent());
     assert!(FluxionError::user_error(io::Error::other("test")).is_permanent());
-    assert!(!FluxionError::lock_error("test").is_permanent());
 }
 
 #[test]
@@ -52,17 +44,6 @@ fn test_result_context() {
 }
 
 #[test]
-fn test_result_context_preserves_non_user_errors() {
-    // Other error types are preserved, not wrapped
-    let result: Result<()> = Err(FluxionError::LockError {
-        context: "test lock error".to_string(),
-    });
-
-    let err = result.context("operation failed").unwrap_err();
-    assert!(matches!(err, FluxionError::LockError { .. }));
-}
-
-#[test]
 fn test_result_context_ok() {
     let result: Result<i32> = Ok(42);
     let value = result.context("operation failed").unwrap();
@@ -72,9 +53,9 @@ fn test_result_context_ok() {
 #[test]
 fn test_multiple_errors_creation() {
     let errors = vec![
-        FluxionError::lock_error("lock1"),
         FluxionError::stream_error("stream1"),
-        FluxionError::lock_error("lock2"),
+        FluxionError::stream_error("stream2"),
+        FluxionError::stream_error("stream3"),
     ];
 
     let multi_err = FluxionError::MultipleErrors {
@@ -149,22 +130,6 @@ fn test_from_user_errors_single() {
 }
 
 #[test]
-fn test_multiple_errors_recoverable() {
-    let errors = vec![
-        FluxionError::lock_error("lock1"),
-        FluxionError::lock_error("lock2"),
-    ];
-
-    let multi_err = FluxionError::MultipleErrors {
-        count: errors.len(),
-        errors,
-    };
-
-    // MultipleErrors is not considered recoverable
-    assert!(!multi_err.is_recoverable());
-}
-
-#[test]
 fn test_multiple_errors_permanent() {
     let errors = vec![
         FluxionError::stream_error("stream1"),
@@ -214,33 +179,12 @@ fn test_with_context_lazy() {
 }
 
 #[test]
-fn test_with_context_preserves_non_user_errors() {
-    let result: Result<()> = Err(FluxionError::LockError {
-        context: "lock failed".to_string(),
-    });
-
-    let err = result
-        .with_context(|| "expensive context".to_string())
-        .unwrap_err();
-    assert!(matches!(err, FluxionError::LockError { .. }));
-}
-
-#[test]
 fn test_with_context_ok() {
     let result: Result<i32> = Ok(42);
     let value = result
         .with_context(|| "should not be called".to_string())
         .unwrap();
     assert_eq!(value, 42);
-}
-
-#[test]
-fn test_clone_lock_error() {
-    let err = FluxionError::lock_error("test lock");
-    let cloned = err.clone();
-
-    assert!(matches!(cloned, FluxionError::LockError { .. }));
-    assert_eq!(err.to_string(), cloned.to_string());
 }
 
 #[test]
@@ -266,8 +210,8 @@ fn test_clone_user_error() {
 #[test]
 fn test_clone_multiple_errors() {
     let errors = vec![
-        FluxionError::lock_error("lock1"),
         FluxionError::stream_error("stream1"),
+        FluxionError::stream_error("stream2"),
     ];
 
     let err = FluxionError::MultipleErrors {
@@ -296,9 +240,6 @@ fn test_user_error_constructor() {
 
 #[test]
 fn test_error_variants_display() {
-    let lock_err = FluxionError::lock_error("mutex_a");
-    assert_eq!(lock_err.to_string(), "Failed to acquire lock: mutex_a");
-
     let stream_err = FluxionError::stream_error("processing failed");
     assert_eq!(
         stream_err.to_string(),

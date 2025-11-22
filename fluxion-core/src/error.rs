@@ -26,16 +26,6 @@
 /// during stream processing, subscription, and channel operations.
 #[derive(Debug, thiserror::Error)]
 pub enum FluxionError {
-    /// Error acquiring a lock on shared state
-    ///
-    /// This typically indicates contention or a poisoned mutex.
-    /// The context provides details about which lock failed.
-    #[error("Failed to acquire lock: {context}")]
-    LockError {
-        /// Description of the lock that failed
-        context: String,
-    },
-
     /// Stream processing encountered an error
     ///
     /// This is a general error for stream operations that don't fit
@@ -67,13 +57,6 @@ pub enum FluxionError {
 }
 
 impl FluxionError {
-    /// Create a lock error with the given context
-    pub fn lock_error(context: impl Into<String>) -> Self {
-        Self::LockError {
-            context: context.into(),
-        }
-    }
-
     /// Create a stream processing error with the given context
     pub fn stream_error(context: impl Into<String>) -> Self {
         Self::StreamProcessingError {
@@ -131,7 +114,7 @@ impl FluxionError {
     /// Some errors indicate transient failures that could succeed on retry.
     #[must_use]
     pub const fn is_recoverable(&self) -> bool {
-        matches!(self, Self::LockError { .. })
+        false
     }
 
     /// Check if this error indicates a permanent failure
@@ -240,9 +223,6 @@ where
 impl Clone for FluxionError {
     fn clone(&self) -> Self {
         match self {
-            Self::LockError { context } => Self::LockError {
-                context: context.clone(),
-            },
             Self::StreamProcessingError { context } => Self::StreamProcessingError {
                 context: context.clone(),
             },
