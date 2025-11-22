@@ -64,7 +64,7 @@ pub trait HasTimestamp {
 /// # Examples
 ///
 /// ```
-/// use fluxion_core::Timestamped;
+/// use fluxion_core::{Timestamped, HasTimestamp};
 ///
 /// #[derive(Clone, Debug)]
 /// struct TimestampedEvent<T> {
@@ -72,13 +72,16 @@ pub trait HasTimestamp {
 ///     timestamp: u64,
 /// }
 ///
-/// impl<T: Clone> Timestamped for TimestampedEvent<T> {
-///     type Inner = T;
+/// impl<T: Clone> HasTimestamp for TimestampedEvent<T> {
 ///     type Timestamp = u64;
 ///
 ///     fn timestamp(&self) -> Self::Timestamp {
 ///         self.timestamp
 ///     }
+/// }
+///
+/// impl<T: Clone> Timestamped for TimestampedEvent<T> {
+///     type Inner = T;
 ///
 ///     fn with_timestamp(value: T, timestamp: Self::Timestamp) -> Self {
 ///         TimestampedEvent { value, timestamp }
@@ -100,8 +103,8 @@ pub trait HasTimestamp {
 /// The `Timestamp` type is generic and can represent various time sources:
 ///
 /// **Monotonic counters** (u64, u128) - For test scenarios and event sourcing:
-/// ```rust
-/// use fluxion_core::Timestamped;
+/// ```
+/// use fluxion_core::{Timestamped, HasTimestamp};
 ///
 /// #[derive(Clone, Debug)]
 /// struct SequenceNumbered<T> {
@@ -109,11 +112,14 @@ pub trait HasTimestamp {
 ///     seq: u64,
 /// }
 ///
+/// impl<T: Clone> HasTimestamp for SequenceNumbered<T> {
+///     type Timestamp = u64;
+///     fn timestamp(&self) -> u64 { self.seq }
+/// }
+///
 /// impl<T: Clone> Timestamped for SequenceNumbered<T> {
 ///     type Inner = T;
-///     type Timestamp = u64;
 ///
-///     fn timestamp(&self) -> u64 { self.seq }
 ///     fn with_timestamp(value: T, seq: u64) -> Self { Self { value, seq } }
 ///     fn with_fresh_timestamp(value: T) -> Self {
 ///         // Use atomic counter in production
@@ -124,8 +130,8 @@ pub trait HasTimestamp {
 /// ```
 ///
 /// **Wall-clock time** (Instant, SystemTime) - For real-time systems:
-/// ```rust
-/// use fluxion_core::Timestamped;
+/// ```
+/// use fluxion_core::{Timestamped, HasTimestamp};
 /// use std::time::Instant;
 ///
 /// #[derive(Clone, Debug)]
@@ -134,11 +140,14 @@ pub trait HasTimestamp {
 ///     time: Instant,
 /// }
 ///
+/// impl<T: Clone> HasTimestamp for TimedEvent<T> {
+///     type Timestamp = Instant;
+///     fn timestamp(&self) -> Instant { self.time }
+/// }
+///
 /// impl<T: Clone> Timestamped for TimedEvent<T> {
 ///     type Inner = T;
-///     type Timestamp = Instant;
 ///
-///     fn timestamp(&self) -> Instant { self.time }
 ///     fn with_timestamp(value: T, time: Instant) -> Self { Self { value, time } }
 ///     fn with_fresh_timestamp(value: T) -> Self {
 ///         Self { value, time: Instant::now() }

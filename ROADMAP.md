@@ -72,6 +72,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ Integrate `merge_with` in fluxion-stream. Remove the separate crate.
 - ✅ Benches exaustive
 - [ ] Add benchmark to the CI and publish the results
+- ✅ Fully implement the changes proposed in TRAIT_ANALYSIS_REPORT.md
 
 **Documentation:**
 - ✅ `subcscribe` and `subscribe_latest` documented
@@ -84,7 +85,6 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - [ ] 1 fully functional example application showing
     - [ ] the wrapped integration path
     - [ ] the usage of `merge_with` integrated with the other operators
-- [ ] Fully implement the changes proposed in TRAIT_ANALYSIS_REPORT.md
 
 **Documentation:**
 - [ ] Example application documented

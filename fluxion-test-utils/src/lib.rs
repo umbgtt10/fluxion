@@ -63,7 +63,7 @@
 //!
 //! ```rust
 //! use fluxion_test_utils::Sequenced;
-//! use fluxion_core::Timestamped;
+//! use fluxion_core::{Timestamped, HasTimestamp};
 //!
 //! // Create timestamped values with explicit ordering
 //! let first = Sequenced::with_timestamp(100, 1);

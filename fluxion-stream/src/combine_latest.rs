@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{OrderedFluxionItem, StreamItem, Timestamped};
+use fluxion_core::{ComparableTimestamped, StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 
 /// Extension trait providing the `combine_latest` operator for timestamped streams.
@@ -22,8 +22,8 @@ use fluxion_ordered_merge::OrderedMergeExt;
 /// values from each stream.
 pub trait CombineLatestExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: OrderedFluxionItem,
-    T::Inner: Clone + Debug + Ord,
+    T: ComparableTimestamped,
+    T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
     T::Timestamp: Clone + Debug + Ord + Send + Sync,
 {
     /// Combines this stream with multiple other streams, emitting when any stream emits.
@@ -127,7 +127,7 @@ type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + 
 
 impl<T, S> CombineLatestExt<T> for S
 where
-    T: OrderedFluxionItem,
+    T: ComparableTimestamped,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
     T::Timestamp: Debug,
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,

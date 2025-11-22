@@ -10,7 +10,8 @@ use crate::take_latest_when::TakeLatestWhenExt;
 use crate::take_while_with::TakeWhileExt;
 use crate::types::{CombinedState, WithPrevious};
 use crate::with_latest_from::WithLatestFromExt;
-use fluxion_core::{OrderedFluxionItem, StreamItem, Timestamped};
+use fluxion_core::ComparableUnpin;
+use fluxion_core::{StreamItem, Timestamped};
 use futures::Stream;
 use futures::StreamExt;
 use pin_project::pin_project;
@@ -101,7 +102,7 @@ where
 impl<S, T> FluxionStream<S>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: OrderedFluxionItem,
+    T: ComparableUnpin,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin,
 {
     /// Maps each item to a new value while preserving temporal ordering.
@@ -153,13 +154,17 @@ where
     ///
     /// If your mapping function can fail, consider using a pattern like:
     ///
-    /// ```rust,ignore
-    /// stream.map_ordered(|item| {
-    ///     match process(item) {
-    ///         Ok(result) => StreamItem::Value(result),
-    ///         Err(e) => StreamItem::Error(FluxionError::UserError(e.to_string())),
-    ///     }
-    /// })
+    /// ```rust
+    /// # use fluxion_core::{StreamItem, FluxionError};
+    /// # use futures::Stream;
+    /// # fn example<T, S: Stream>(stream: S, process: impl Fn(T) -> Result<T, String>) {
+    /// // stream.map_ordered(|item| {
+    /// //     match process(item) {
+    /// //         Ok(result) => StreamItem::Value(result),
+    /// //         Err(e) => StreamItem::Error(FluxionError::UserError(e)),
+    /// //     }
+    /// // })
+    /// # }
     /// ```
     ///
     /// See the [Error Handling Guide](../docs/ERROR-HANDLING.md) for comprehensive error handling patterns.
@@ -434,7 +439,7 @@ where
     /// ```rust
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_test_utils::Sequenced;
-    /// use fluxion_core::Timestamped as TimestampedTrait;
+    /// use fluxion_core::{HasTimestamp, Timestamped as TimestampedTrait};
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
