@@ -4,7 +4,7 @@
 
 use crate::FluxionStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{FluxionError, HasTimestamp, OrderedFluxionItem, StreamItem, Timestamped};
+use fluxion_core::{FluxionError, HasTimestamp, OrderedFluxionItem, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::StreamExt;
 use futures::Stream;
@@ -201,8 +201,8 @@ pub enum Item<TItem, TFilter> {
 
 impl<TItem, TFilter> HasTimestamp for Item<TItem, TFilter>
 where
-    TItem: Timestamped,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
     type Timestamp = TItem::Timestamp;
 
@@ -215,30 +215,10 @@ where
     }
 }
 
-impl<TItem, TFilter> Timestamped for Item<TItem, TFilter>
-where
-    TItem: Timestamped,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
-{
-    type Inner = Self;
-
-    fn with_timestamp(value: Self, _timestamp: Self::Timestamp) -> Self {
-        value
-    }
-
-    fn with_fresh_timestamp(value: Self) -> Self {
-        value
-    }
-
-    fn into_inner(self) -> Self {
-        self
-    }
-}
-
 impl<TItem, TFilter> PartialEq for Item<TItem, TFilter>
 where
-    TItem: Timestamped,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
     fn eq(&self, other: &Self) -> bool {
         self.timestamp() == other.timestamp()
@@ -247,15 +227,15 @@ where
 
 impl<TItem, TFilter> Eq for Item<TItem, TFilter>
 where
-    TItem: Timestamped,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
 }
 
 impl<TItem, TFilter> PartialOrd for Item<TItem, TFilter>
 where
-    TItem: Timestamped,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
@@ -264,8 +244,8 @@ where
 
 impl<TItem, TFilter> Ord for Item<TItem, TFilter>
 where
-    TItem: Timestamped,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.timestamp().cmp(&other.timestamp())

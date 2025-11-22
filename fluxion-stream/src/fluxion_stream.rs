@@ -640,13 +640,7 @@ where
     where
         S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
         S2: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-        R: Timestamped<Timestamp = T::Timestamp>
-            + Clone
-            + Debug
-            + Ord
-            + Send
-            + Sync
-            + 'static,
+        R: Timestamped<Timestamp = T::Timestamp> + Clone + Debug + Ord + Send + Sync + 'static,
     {
         let inner = self.into_inner();
         FluxionStream::new(WithLatestFromExt::with_latest_from(

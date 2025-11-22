@@ -38,10 +38,7 @@ where
     }
 
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
-        Self {
-            value,
-            timestamp,
-        }
+        Self { value, timestamp }
     }
 
     fn with_fresh_timestamp(value: Self::Inner) -> Self {
