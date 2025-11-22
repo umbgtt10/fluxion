@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::Timestamped;
+use fluxion_core::{HasTimestamp, Timestamped};
 use std::cmp::Ordering;
 use std::sync::atomic::{AtomicU64, Ordering::SeqCst};
 
@@ -60,19 +60,25 @@ where
     }
 }
 
+impl<T> HasTimestamp for Sequenced<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    type Timestamp = u64;
+
+    fn timestamp(&self) -> Self::Timestamp {
+        self.timestamp
+    }
+}
+
 impl<T> Timestamped for Sequenced<T>
 where
     T: Clone + Send + Sync + 'static,
 {
     type Inner = T;
-    type Timestamp = u64;
 
     fn into_inner(self) -> Self::Inner {
         Self::into_inner(self)
-    }
-
-    fn timestamp(&self) -> Self::Timestamp {
-        self.timestamp
     }
 
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {

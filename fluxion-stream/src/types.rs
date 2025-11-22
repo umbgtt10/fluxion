@@ -6,7 +6,7 @@
 //!
 //! This module centralizes shared types to reduce duplication and improve maintainability.
 
-use fluxion_core::Timestamped;
+use fluxion_core::{HasTimestamp, Timestamped};
 use std::fmt::Debug;
 
 /// Represents a value paired with its previous value in the stream.
@@ -38,13 +38,16 @@ impl<T> WithPrevious<T> {
     }
 }
 
-impl<T: Timestamped> Timestamped for WithPrevious<T> {
-    type Inner = T::Inner;
+impl<T: Timestamped> HasTimestamp for WithPrevious<T> {
     type Timestamp = T::Timestamp;
 
     fn timestamp(&self) -> Self::Timestamp {
         self.current.timestamp()
     }
+}
+
+impl<T: Timestamped> Timestamped for WithPrevious<T> {
+    type Inner = T::Inner;
 
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self {
@@ -116,17 +119,24 @@ where
     }
 }
 
+impl<V, TS> HasTimestamp for CombinedState<V, TS>
+where
+    V: Clone + Debug + Ord,
+    TS: Clone + Debug + Ord + Copy + Send + Sync,
+{
+    type Timestamp = TS;
+
+    fn timestamp(&self) -> Self::Timestamp {
+        self.timestamp
+    }
+}
+
 impl<V, TS> Timestamped for CombinedState<V, TS>
 where
     V: Clone + Debug + Ord,
     TS: Clone + Debug + Ord + Copy + Send + Sync,
 {
     type Inner = Self;
-    type Timestamp = TS;
-
-    fn timestamp(&self) -> Self::Timestamp {
-        self.timestamp
-    }
 
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self {

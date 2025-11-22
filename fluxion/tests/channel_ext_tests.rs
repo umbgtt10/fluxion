@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
+use fluxion_core::HasTimestamp;
 use fluxion_core::StreamItem;
 use fluxion_core::Timestamped;
 use fluxion_rx::prelude::*;
@@ -18,12 +19,15 @@ mod no_coverage_helpers {
         pub temperature: i32,
     }
 
-    impl Timestamped for SensorReading {
-        type Inner = Self;
+    impl HasTimestamp for SensorReading {
         type Timestamp = u64;
         fn timestamp(&self) -> Self::Timestamp {
             self.timestamp
         }
+    }
+
+    impl Timestamped for SensorReading {
+        type Inner = Self;
         fn into_inner(self) -> Self::Inner {
             self
         }
@@ -41,12 +45,15 @@ mod no_coverage_helpers {
         pub code: i32,
     }
 
-    impl Timestamped for StatusUpdate {
-        type Inner = Self;
+    impl HasTimestamp for StatusUpdate {
         type Timestamp = u64;
         fn timestamp(&self) -> Self::Timestamp {
             self.timestamp
         }
+    }
+
+    impl Timestamped for StatusUpdate {
+        type Inner = Self;
         fn into_inner(self) -> Self::Inner {
             self
         }
@@ -64,8 +71,7 @@ mod no_coverage_helpers {
         Status(StatusUpdate),
     }
 
-    impl Timestamped for CombinedEvent {
-        type Inner = Self;
+    impl HasTimestamp for CombinedEvent {
         type Timestamp = u64;
         fn timestamp(&self) -> Self::Timestamp {
             match self {
@@ -73,6 +79,10 @@ mod no_coverage_helpers {
                 CombinedEvent::Status(st) => st.timestamp,
             }
         }
+    }
+
+    impl Timestamped for CombinedEvent {
+        type Inner = Self;
         fn into_inner(self) -> Self::Inner {
             self
         }

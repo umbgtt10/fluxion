@@ -640,7 +640,7 @@ where
     where
         S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
         S2: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-        R: Timestamped<Inner = R, Timestamp = T::Timestamp>
+        R: Timestamped<Timestamp = T::Timestamp>
             + Clone
             + Debug
             + Ord

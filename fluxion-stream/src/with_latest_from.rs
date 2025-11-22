@@ -117,7 +117,7 @@ where
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
-        R: Timestamped<Inner = R, Timestamp = T::Timestamp> + Clone + Debug + Send + Sync + 'static;
+        R: Timestamped<Timestamp = T::Timestamp> + Clone + Debug + Send + Sync + 'static;
 }
 
 impl<T, S> WithLatestFromExt<T> for S
@@ -134,7 +134,7 @@ where
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
-        R: Timestamped<Inner = R, Timestamp = T::Timestamp> + Clone + Debug + Send + Sync + 'static,
+        R: Timestamped<Timestamp = T::Timestamp> + Clone + Debug + Send + Sync + 'static,
     {
         type PinnedStream<T> =
             std::pin::Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;

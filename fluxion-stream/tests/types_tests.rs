@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::Timestamped;
+use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::types::{CombinedState, WithPrevious};
 
 // Simple test wrapper for Timestamped trait tests
@@ -18,13 +18,16 @@ impl<T> TestItem<T> {
     }
 }
 
-impl<T: Clone + Send + Sync + 'static> Timestamped for TestItem<T> {
-    type Inner = T;
+impl<T: Clone + Send + Sync + 'static> HasTimestamp for TestItem<T> {
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
     }
+}
+
+impl<T: Clone + Send + Sync + 'static> Timestamped for TestItem<T> {
+    type Inner = T;
 
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self { value, timestamp }

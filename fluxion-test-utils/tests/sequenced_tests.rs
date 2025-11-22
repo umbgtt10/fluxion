@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::Timestamped;
+use fluxion_core::HasTimestamp;
 use fluxion_test_utils::Sequenced;
 use std::cmp::Ordering;
 
@@ -197,14 +197,14 @@ fn test_sequenced_sorting_by_sequence() {
     let mut items = [item1.clone(), item2.clone(), item3.clone()];
 
     // Capture the original sequence order
-    let original_order: Vec<_> = items.iter().map(Timestamped::timestamp).collect();
+    let original_order: Vec<_> = items.iter().map(|x| x.timestamp()).collect();
 
     // Act
     items.reverse();
     items.sort();
 
     // Assert
-    let sorted_order: Vec<_> = items.iter().map(Timestamped::timestamp).collect();
+    let sorted_order: Vec<_> = items.iter().map(|x| x.timestamp()).collect();
     assert_eq!(sorted_order, original_order);
 }
 

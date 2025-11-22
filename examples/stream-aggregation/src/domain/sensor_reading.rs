@@ -4,7 +4,7 @@
 
 //! Sensor reading domain type
 
-use fluxion_rx::prelude::Timestamped;
+use fluxion_rx::prelude::{HasTimestamp, Timestamped};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SensorReading {
@@ -13,13 +13,16 @@ pub struct SensorReading {
     pub temperature: i32, // Store as integer (e.g., temperature * 10)
 }
 
-impl Timestamped for SensorReading {
-    type Inner = Self;
+impl HasTimestamp for SensorReading {
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
     }
+}
+
+impl Timestamped for SensorReading {
+    type Inner = Self;
 
     fn with_timestamp(inner: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self { timestamp, ..inner }

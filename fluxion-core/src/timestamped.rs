@@ -2,7 +2,54 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+/// A trait for types that have a timestamp value.
+///
+/// This is the minimal trait for types that can participate in time-ordered
+/// stream operations. Types only need to provide a timestamp - they don't
+/// need to support construction or deconstruction.
+///
+/// Use this trait when you only need to read timestamps (e.g., for ordering).
+/// Use [`Timestamped`] when you need to construct new instances from values.
+///
+/// # Type Parameters
+/// * `Timestamp` - The type representing the timestamp (must be `Ord + Copy`)
+///
+/// # Examples
+///
+/// ```
+/// use fluxion_core::HasTimestamp;
+///
+/// #[derive(Clone, Debug)]
+/// struct Event {
+///     data: String,
+///     time: u64,
+/// }
+///
+/// impl HasTimestamp for Event {
+///     type Timestamp = u64;
+///
+///     fn timestamp(&self) -> u64 {
+///         self.time
+///     }
+/// }
+/// ```
+pub trait HasTimestamp {
+    /// The type representing the timestamp
+    type Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug;
+
+    /// Returns the timestamp value for this item.
+    /// Stream operators use this to determine the order of items.
+    fn timestamp(&self) -> Self::Timestamp;
+}
+
 /// A trait for types that have an intrinsic timestamp for stream ordering.
+///
+/// This trait extends [`HasTimestamp`] with the ability to construct and
+/// deconstruct timestamped wrapper types. Use this for wrapper types like
+/// `Sequenced<T>` that wrap an inner value with a timestamp.
+///
+/// For types that only need to provide a timestamp value without wrapping,
+/// implement [`HasTimestamp`] instead.
 ///
 /// This trait allows stream operators like `combine_latest` and `ordered_merge`
 /// to work with any type that can provide a timestamp value and wraps an inner value.
@@ -99,16 +146,9 @@
 ///     fn into_inner(self) -> T { self.value }
 /// }
 /// ```
-pub trait Timestamped: Clone {
+pub trait Timestamped: HasTimestamp + Clone {
     /// The type of the inner value wrapped by this timestamped type
     type Inner: Clone;
-
-    /// The type representing the timestamp
-    type Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug;
-
-    /// Returns the timestamp value for this item.
-    /// Stream operators use this to determine the order of items.
-    fn timestamp(&self) -> Self::Timestamp;
 
     /// Creates a new instance wrapping the given value with the specified timestamp.
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self;

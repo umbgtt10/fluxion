@@ -4,7 +4,7 @@
 
 //! Aggregated event domain type
 
-use fluxion_rx::Timestamped;
+use fluxion_rx::{HasTimestamp, Timestamped};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AggregatedEvent {
@@ -14,13 +14,16 @@ pub struct AggregatedEvent {
     pub has_alert: bool,
 }
 
-impl Timestamped for AggregatedEvent {
-    type Inner = AggregatedEvent;
+impl HasTimestamp for AggregatedEvent {
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
     }
+}
+
+impl Timestamped for AggregatedEvent {
+    type Inner = AggregatedEvent;
 
     fn with_timestamp(value: Self::Inner, _timestamp: Self::Timestamp) -> Self {
         value

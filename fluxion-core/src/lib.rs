@@ -15,4 +15,4 @@ pub use self::error::{FluxionError, IntoFluxionError, Result, ResultExt};
 pub use self::fluxion_item::FluxionItem;
 pub use self::ordered_fluxion_item::OrderedFluxionItem;
 pub use self::stream_item::StreamItem;
-pub use self::timestamped::Timestamped;
+pub use self::timestamped::{HasTimestamp, Timestamped};

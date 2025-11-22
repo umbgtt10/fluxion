@@ -4,7 +4,7 @@
 
 use crate::FluxionStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{FluxionError, OrderedFluxionItem, StreamItem, Timestamped};
+use fluxion_core::{FluxionError, HasTimestamp, OrderedFluxionItem, StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::StreamExt;
 use futures::Stream;
@@ -199,12 +199,11 @@ pub enum Item<TItem, TFilter> {
     Error(FluxionError),
 }
 
-impl<TItem, TFilter> Timestamped for Item<TItem, TFilter>
+impl<TItem, TFilter> HasTimestamp for Item<TItem, TFilter>
 where
     TItem: Timestamped,
     TFilter: Timestamped<Timestamp = TItem::Timestamp>,
 {
-    type Inner = Self;
     type Timestamp = TItem::Timestamp;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -214,6 +213,14 @@ where
             Self::Error(_) => panic!("Error items cannot provide timestamps"),
         }
     }
+}
+
+impl<TItem, TFilter> Timestamped for Item<TItem, TFilter>
+where
+    TItem: Timestamped,
+    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
+{
+    type Inner = Self;
 
     fn with_timestamp(value: Self, _timestamp: Self::Timestamp) -> Self {
         value

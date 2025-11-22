@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::Timestamped;
+use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::{empty, Empty, Stream, StreamExt};
 use futures::task::{Context, Poll};
@@ -77,7 +77,7 @@ where
         NewStream: Stream + Send + Sync + 'static,
         NewStream::Item: Timestamped + Send + Sync + Ord + Unpin + 'static,
         <NewStream::Item as Timestamped>::Inner: Clone + Send + Sync + 'static,
-        <NewStream::Item as Timestamped>::Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug,
+        <NewStream::Item as HasTimestamp>::Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug,
         F: FnMut(
                 <NewStream::Item as Timestamped>::Inner,
                 &mut State,
@@ -89,7 +89,7 @@ where
         Item: Timestamped + Send + Sync + Ord + Unpin + 'static,
         Item::Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug,
         Item::Inner: Clone + Send + Sync + 'static,
-        <NewStream::Item as Timestamped>::Timestamp: Into<Item::Timestamp> + Copy,
+        <NewStream::Item as HasTimestamp>::Timestamp: Into<Item::Timestamp> + Copy,
     {
         let shared_state = Arc::clone(&self.state);
         let new_stream_mapped = new_stream.then(move |timestamped_item| {
