@@ -40,23 +40,32 @@ jobs:
       - name: Create/update baseline JSON
         run: |
           mkdir -p benches/baseline/stream_benches
-          cp -r target/criterion/stream_benches/* benches/baseline/stream_benches/ || echo "No data yet"
-          echo "Baseline updated from this run"
 
-          # Critical: force-add the new directory and everything inside
-          git add -A benches/baseline
+          # Only copy if the benchmark output exists
+          if [ -d "target/criterion/stream_benches" ] && [ "$(ls -A target/criterion/stream_benches 2>/dev/null)" ]; then
+            cp -r target/criterion/stream_benches/* benches/baseline/stream_benches/
+            echo "Baseline updated from this run"
+
+            # Critical: force-add the new directory and everything inside
+            git add -A benches/baseline
+          else
+            echo "No benchmark data generated - skipping baseline update"
+          fi
 
       # --------------------------------------------------------------
-      # 2. Commit baseline (only on main + nightly)
+      # 2. Commit baseline (only on main + nightly) - Using git-auto-commit-action
       # --------------------------------------------------------------
       - name: Commit baseline to repo (on main/schedule)
         if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add benches/baseline
-          git commit -m "chore: update benchmark baseline [ci skip]" || echo "No changes to commit"
-          git push || echo "Nothing to push"
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update benchmark baseline [ci skip]"
+          file_pattern: 'benches/baseline/**'
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
+          skip_dirty_check: false
+          skip_fetch: false
+          skip_checkout: false
 
       # --------------------------------------------------------------
       # 3. Compare + fail on regressions
@@ -69,8 +78,9 @@ jobs:
           set -euo pipefail
 
           # Skip if this is first run (no prior baseline variation)
-          if [ ! -f "benches/baseline/stream_benches/report.json" ] || [ ! -f "target/criterion/stream_benches/report.json" ]; then
+          if [ ! -f "benches/baseline/stream_benches/base/estimates.json" ] || [ ! -f "target/criterion/stream_benches/base/estimates.json" ]; then
             echo "Skipping regression check – baseline not ready"
+            echo "First run - baseline will be established" > benches/comparison.txt
             exit 0
           fi
 
