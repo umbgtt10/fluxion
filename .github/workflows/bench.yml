@@ -32,7 +32,24 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run all fluxion-stream benchmarks
-        run: cargo bench --package fluxion-stream
+        run: cargo bench --package fluxion-stream --verbose
+
+      # --------------------------------------------------------------
+      # DEBUG: Show what was actually generated
+      # --------------------------------------------------------------
+      - name: Debug - Show criterion output
+        run: |
+          echo "=== Checking target/criterion structure ==="
+          ls -la target/ || echo "No target directory"
+          echo ""
+          echo "=== Checking target/criterion ==="
+          ls -la target/criterion/ || echo "No criterion directory"
+          echo ""
+          echo "=== Finding all directories in target/criterion ==="
+          find target/criterion -type d 2>/dev/null || echo "No criterion output found"
+          echo ""
+          echo "=== Finding all JSON files ==="
+          find target/criterion -name "*.json" 2>/dev/null || echo "No JSON files"
 
       # --------------------------------------------------------------
       # 1. ALWAYS create/update baseline from this run (before comparison)
@@ -48,6 +65,10 @@ jobs:
             git add -A benches/baseline
           else
             echo "No benchmark data generated - skipping baseline update"
+            echo "Attempting to find and copy any criterion output..."
+            if [ -d "target/criterion" ]; then
+              cp -r target/criterion/* benches/baseline/benchmarks/ 2>/dev/null || echo "Copy failed"
+            fi
           fi
 
       # --------------------------------------------------------------

@@ -45,7 +45,7 @@ pub trait SplitExt<T>: Stream<Item = StreamItem<T>> + Sized + Send + 'static
 where
     T: Clone + Send + 'static,
 {
-    fn split(self) -> (FluxionStream<impl Stream<Item = StreamItem<T>>>, 
+    fn split(self) -> (FluxionStream<impl Stream<Item = StreamItem<T>>>,
                        FluxionStream<impl Stream<Item = StreamItem<T>>>) {
         let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel();
         let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel();
@@ -54,7 +54,7 @@ where
             futures::pin_mut!(self);
             while let Some(item) = self.next().await {
                 let item_clone = item.clone();
-                
+
                 // If either send fails, the receiver was dropped
                 if tx1.send(item).is_err() || tx2.send(item_clone).is_err() {
                     break;
@@ -80,7 +80,7 @@ where
             futures::pin_mut!(self);
             while let Some(item) = self.next().await {
                 let item_clone = item.clone();
-                
+
                 if tx1.send(item).is_err() || tx2.send(item_clone).is_err() {
                     break;
                 }
@@ -262,7 +262,7 @@ stream_b.subscribe(|item| match item {
 The forwarding task can only "fail" by panicking:
 
 1. **Normal completion**: Source stream ends → task exits cleanly
-2. **Consumer dropout**: Receiver dropped → send fails → task exits cleanly  
+2. **Consumer dropout**: Receiver dropped → send fails → task exits cleanly
 3. **Panic**: Bug in forwarding logic → task crashes
 
 For panics, use `.split_with_handle()` to monitor:
