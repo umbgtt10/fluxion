@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write       # To commit baseline data
+      pages: write         # To deploy to GitHub Pages
+      id-token: write      # To verify deployment
 
     steps:
       - uses: actions/checkout@v4
@@ -120,7 +122,19 @@ jobs:
           fi
 
       # --------------------------------------------------------------
-      # 4. Upload report
+      # 4. Deploy to GitHub Pages (on main only)
+      # --------------------------------------------------------------
+      - name: Deploy benchmarks to GitHub Pages
+        if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./benches/baseline
+          destination_dir: benches/baseline
+          keep_files: false
+
+      # --------------------------------------------------------------
+      # 5. Upload report artifact (for PRs and debugging)
       # --------------------------------------------------------------
       - name: Upload Criterion report
         uses: actions/upload-artifact@v4
@@ -131,7 +145,7 @@ jobs:
           retention-days: 14
 
       # --------------------------------------------------------------
-      # 5. PR comment
+      # 6. PR comment
       # --------------------------------------------------------------
       - name: Comment on PR
         if: github.event_name == 'pull_request' && always()
