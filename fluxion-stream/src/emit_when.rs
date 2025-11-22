@@ -17,10 +17,10 @@ use std::sync::{Arc, Mutex};
 ///
 /// This operator gates a source stream based on conditions from a filter stream,
 /// emitting source values only when the combined state passes a predicate.
-pub trait EmitWhenExt<T>: Stream<Item = fluxion_core::StreamItem<T>> + Sized
+pub trait EmitWhenExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: OrderedFluxionItem,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Inner: Clone + Debug + Ord + Send + Sync,
 {
     /// Emits source stream values only when the filter condition is satisfied.
     ///
@@ -124,9 +124,9 @@ type IndexedStream<T> =
     Pin<Box<dyn Stream<Item = (fluxion_core::StreamItem<T>, usize)> + Send + Sync>>;
 impl<T, S> EmitWhenExt<T> for S
 where
-    S: Stream<Item = StreamItem<T>> + Send + Sync + Sized + 'static,
+    S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
     T: OrderedFluxionItem,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Inner: Clone + Debug + Ord + Send + Sync,
 {
     fn emit_when<IS>(
         self,

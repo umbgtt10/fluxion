@@ -23,7 +23,7 @@ use fluxion_ordered_merge::OrderedMergeExt;
 pub trait CombineLatestExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: OrderedFluxionItem,
-    T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
+    T::Inner: Clone + Debug + Ord,
     T::Timestamp: Clone + Debug + Ord + Send + Sync,
 {
     /// Combines this stream with multiple other streams, emitting when any stream emits.

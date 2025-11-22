@@ -20,7 +20,7 @@ use fluxion_core::{OrderedFluxionItem, StreamItem, Timestamped};
 pub trait WithLatestFromExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: OrderedFluxionItem,
-    T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
+    T::Inner: Clone + Debug + Ord,
 {
     /// Combines elements from the primary stream (self) with the latest element from the secondary stream (other).
     ///

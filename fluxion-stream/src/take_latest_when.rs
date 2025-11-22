@@ -19,7 +19,7 @@ use std::sync::{Arc, Mutex};
 pub trait TakeLatestWhenExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: OrderedFluxionItem,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Inner: Clone + Debug + Ord + Send + Sync,
 {
     /// Emits the latest value from the source stream when the filter stream emits a passing value.
     ///
@@ -126,9 +126,9 @@ where
 type IndexedStream<T> = Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;
 impl<T, S> TakeLatestWhenExt<T> for S
 where
-    S: Stream<Item = StreamItem<T>> + Send + Sync + Sized + 'static,
+    S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
     T: OrderedFluxionItem,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Inner: Clone + Debug + Ord + Send + Sync,
 {
     fn take_latest_when<IS>(
         self,

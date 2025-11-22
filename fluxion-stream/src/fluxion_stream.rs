@@ -102,7 +102,7 @@ impl<S, T> FluxionStream<S>
 where
     S: Stream<Item = StreamItem<T>>,
     T: OrderedFluxionItem,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin,
 {
     /// Maps each item to a new value while preserving temporal ordering.
     ///
@@ -484,7 +484,7 @@ where
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
     ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
-        S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
+        S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
         SF: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
@@ -564,7 +564,7 @@ where
         filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
     ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
-        S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
+        S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
         SF: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
