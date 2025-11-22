@@ -11,7 +11,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 authors = ["umberto.gotti@umbertogotti.dev"]
 license = "Apache-2.0"
@@ -43,9 +43,9 @@ rstest = "0.26.1"
 windows-sys = "0.61.2"
 
 # Internal workspace dependencies
-fluxion-rx = { version = "0.2.1", path = "fluxion" }
-fluxion-core = { version = "0.2.1", path = "fluxion-core" }
-fluxion-ordered-merge = { version = "0.2.1", path = "fluxion-ordered-merge" }
-fluxion-stream = { version = "0.2.1", path = "fluxion-stream" }
-fluxion-exec = { version = "0.2.1", path = "fluxion-exec" }
-fluxion-test-utils = { version = "0.2.1", path = "fluxion-test-utils" }
+fluxion-rx = { version = "0.2.2", path = "fluxion" }
+fluxion-core = { version = "0.2.2", path = "fluxion-core" }
+fluxion-ordered-merge = { version = "0.2.2", path = "fluxion-ordered-merge" }
+fluxion-stream = { version = "0.2.2", path = "fluxion-stream" }
+fluxion-exec = { version = "0.2.2", path = "fluxion-exec" }
+fluxion-test-utils = { version = "0.2.2", path = "fluxion-test-utils" }

@@ -32,7 +32,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ Zero compiler warnings
 - ✅ Doc tests passing
 
-## 🚀 Version 0.2.1 - Error Propagation
+## 🚀 Version 0.2.2 - Trait Refactoring & Benchmarks
 
 **Status:** Published to crates.io
 
@@ -71,7 +71,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ Code coverage integrated in the CI with badge on the README
 - ✅ Integrate `merge_with` in fluxion-stream. Remove the separate crate.
 - ✅ Benches exaustive
-- [ ] Add benchmark to the CI and publish the results
+- ✅ Add benchmark to the CI and publish the results
 - ✅ Fully implement the changes proposed in TRAIT_ANALYSIS_REPORT.md
 
 **Documentation:**

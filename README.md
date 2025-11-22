@@ -49,8 +49,8 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.2.1"
-fluxion-test-utils = "0.2.1"
+fluxion-rx = "0.2.2"
+fluxion-test-utils = "0.2.2"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -121,8 +121,8 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.2.1"
-fluxion-test-utils = "0.2.1"
+fluxion-rx = "0.2.2"
+fluxion-test-utils = "0.2.2"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -196,8 +196,8 @@ The `merge_with` operator enables elegant stateful stream processing by merging 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.2.1"
-fluxion-test-utils = "0.2.1"
+fluxion-rx = "0.2.2"
+fluxion-test-utils = "0.2.2"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -352,7 +352,7 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.2.1"
+fluxion-exec = "0.2.2"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = "0.7.17"
@@ -455,7 +455,7 @@ async fn test_subscribe_async_example() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.2.1"
+fluxion-exec = "0.2.2"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = "0.7.17"
@@ -616,7 +616,7 @@ See individual crate READMEs for detailed documentation.
 
 ## Project Status
 
-**Current Version:** 0.2.1
+**Current Version:** 0.2.2
 
 - ✅ Published to crates.io
 - ✅ Core functionality complete

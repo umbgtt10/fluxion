@@ -157,7 +157,7 @@ This isn't just a library - it's a **reference implementation** of Rust best pra
 - All tests passing
 
 **Published to crates.io ✅**
-- Version 0.2.1 available
+- Version 0.2.2 available
 - Zero known bugs
 - Zero warnings
 - Zero failing tests

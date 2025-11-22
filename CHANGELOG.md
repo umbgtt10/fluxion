@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-01-XX
+
 ### Added
 - **Trait Hierarchy**: Introduced 5 specialized traits in `fluxion-core` for operator bounds
   - `ComparableInner` - Base trait with `'static` bounds for extracting comparable inner values
@@ -304,7 +306,8 @@ See [Error Handling Guide](docs/ERROR-HANDLING.md) for comprehensive patterns.
 
 ---
 
-[Unreleased]: https://github.com/umbgtt10/fluxion/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/umbgtt10/fluxion/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/umbgtt10/fluxion/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/umbgtt10/fluxion/releases/tag/v0.2.1
 [0.2.0]: https://github.com/umbgtt10/fluxion/releases/tag/v0.2.0
 [0.1.1]: https://github.com/umbgtt10/fluxion/releases/tag/v0.1.1

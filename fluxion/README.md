@@ -21,7 +21,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.2.1"
+fluxion-rx = "0.2.2"
 tokio = { version = "1.48.0", features = ["full"] }
 ```
 

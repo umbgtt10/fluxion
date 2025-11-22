@@ -70,8 +70,8 @@ foreach ($crate in $externalCrates) {
 # Always include fluxion crates
 $dependenciesLines = @(
     "[dependencies]",
-    "fluxion-rx = `"0.2.1`"",
-    "fluxion-test-utils = `"0.2.1`""
+    "fluxion-rx = `"0.2.2`"",
+    "fluxion-test-utils = `"0.2.2`""
 )
 
 # Add tokio with features if used
@@ -144,7 +144,7 @@ if (Test-Path $subscribeAsyncExamplePath) {
     $exampleUseStatements = $subscribeAsyncLines | Where-Object { $_ -match '^use ' }
 
     # Always include fluxion-exec
-    $usedExecCrates['fluxion-exec'] = '0.2.1'
+    $usedExecCrates['fluxion-exec'] = '0.2.2'
 
     # Check for other crates in use statements
     $execExternalCrates = @('tokio', 'tokio-stream', 'tokio-util', 'anyhow', 'thiserror')
@@ -163,7 +163,7 @@ if (Test-Path $subscribeAsyncExamplePath) {
     }
 
     # Build dependencies section for subscribe_async
-    $execDepsLines = @("[dependencies]", "fluxion-exec = `"0.2.1`"")
+    $execDepsLines = @("[dependencies]", "fluxion-exec = `"0.2.2`"")
 
     # Add tokio with features if used
     if ($usedExecCrates.ContainsKey('tokio')) {
@@ -225,7 +225,7 @@ if (Test-Path $subscribeLatestAsyncExamplePath) {
     $latestExampleUseStatements = $subscribeLatestAsyncLines | Where-Object { $_ -match '^use ' }
 
     # Always include fluxion-exec
-    $usedLatestCrates['fluxion-exec'] = '0.2.1'
+    $usedLatestCrates['fluxion-exec'] = '0.2.2'
 
     # Check for other crates in use statements
     $latestExternalCrates = @('tokio', 'tokio-stream', 'tokio-util', 'anyhow', 'thiserror')
@@ -244,7 +244,7 @@ if (Test-Path $subscribeLatestAsyncExamplePath) {
     }
 
     # Build dependencies section for subscribe_latest_async
-    $latestDepsLines = @("[dependencies]", "fluxion-exec = `"0.2.1`"")
+    $latestDepsLines = @("[dependencies]", "fluxion-exec = `"0.2.2`"")
 
     # Add tokio with features if used
     if ($usedLatestCrates.ContainsKey('tokio')) {
