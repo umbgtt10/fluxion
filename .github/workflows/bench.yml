@@ -1,7 +1,7 @@
 name: Benchmarks
 
 on:
-  workflow_dispatch:      # ← Manual "Run workflow" button
+  workflow_dispatch:      # Manual "Run workflow" button
   push:
     branches: [main]
   pull_request:
@@ -35,21 +35,28 @@ jobs:
         run: cargo bench --package fluxion-stream
 
       # --------------------------------------------------------------
-      # 1. Commit baseline data (only on main + nightly runs)
+      # 1. ALWAYS create/update baseline from this run (before comparison)
       # --------------------------------------------------------------
-      - name: Store new baseline JSON
-        if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+      - name: Create/update baseline JSON
         run: |
           mkdir -p benches/baseline/stream_benches
-          cp -r target/criterion/stream_benches benches/baseline/ || echo "First run – no data yet"
+          cp -r target/criterion/stream_benches/* benches/baseline/stream_benches/ || echo "No data yet (unlikely)"
+          echo "✅ Baseline updated from this run"
+
+      # --------------------------------------------------------------
+      # 2. Commit baseline (only on main + nightly)
+      # --------------------------------------------------------------
+      - name: Commit baseline to repo (on main/schedule)
+        if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add benches/baseline
-          git commit -m "chore: update benchmark baseline [ci skip]" || echo "No changes"
+          git commit -m "chore: update benchmark baseline [ci skip]" || echo "No changes to commit"
           git push || echo "Nothing to push"
 
       # --------------------------------------------------------------
-      # 2. Compare with baseline + fail on regressions
+      # 3. Compare + fail on regressions
       # --------------------------------------------------------------
       - name: Install critcmp
         run: cargo install critcmp --locked
@@ -58,25 +65,36 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ ! -d "benches/baseline/stream_benches" ]; then
-            echo "No baseline yet – skipping regression check (first run)"
+          # Skip if this is first run (no prior baseline variation)
+          if [ ! -f "benches/baseline/stream_benches/report.json" ] || [ ! -f "target/criterion/stream_benches/report.json" ]; then
+            echo "Skipping regression check – baseline not ready"
             exit 0
           fi
 
           echo "Running comparison..."
-          critcmp benches/baseline/stream_benches target/criterion/stream_benches --threshold 10 > benches/comparison.txt
+          critcmp "benches/baseline" "target/criterion/stream_benches" --threshold 10 > benches/comparison.txt 2>&1 || {
+            # Handle "no comparisons" gracefully
+            if grep -q "no benchmark comparisons to show" benches/comparison.txt; then
+              echo "No changes detected (identical to baseline) – all good!"
+              echo "No regressions" > benches/comparison.txt
+              exit 0
+            else
+              cat benches/comparison.txt
+              exit 1
+            fi
+          }
 
           cat benches/comparison.txt
 
           if grep -q "SLOWER" benches/comparison.txt; then
-            echo "Performance regression detected!"
+            echo "🚨 Performance regression detected!"
             exit 1
           else
-            echo "All good – no significant regressions"
+            echo "✅ All benchmarks stable or improved"
           fi
 
       # --------------------------------------------------------------
-      #  3. Upload beautiful HTML report
+      # 4. Upload report
       # --------------------------------------------------------------
       - name: Upload Criterion report
         uses: actions/upload-artifact@v4
@@ -85,8 +103,8 @@ jobs:
           path: target/criterion/
           retention-days: 14
 
-      # --------------------------------------------------------------
-      # 4. Comment on PRs with results
+# --------------------------------------------------------------
+      # 5. PR comment (rewritten: full JS body construction)
       # --------------------------------------------------------------
       - name: Comment on PR
         if: github.event_name == 'pull_request'
@@ -94,19 +112,19 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const comparison = fs.existsSync('benches/comparison.txt')
-              ? fs.readFileSync('benches/comparison.txt', 'utf8')
-              : 'No baseline comparison yet (first run)';
+            let comparison = 'Comparison skipped (first run or no changes detected).';
+            if (fs.existsSync('benches/comparison.txt')) {
+              comparison = fs.readFileSync('benches/comparison.txt', 'utf8').trim();
+            }
 
-            const body = `
-            ### Benchmark Results (fluxion-stream)
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}/artifacts`;
+            const body = `### Benchmark Results (fluxion-stream)
 
-            \`\`\`
-            ${comparison}
-            \`\`\`
+\`\`\`
+${comparison}
+\`\`\`
 
-            Full interactive report: [Download benchmark-report artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-            `;
+Full interactive report (HTML tables + graphs): [Download benchmark-report artifact](${runUrl})`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
