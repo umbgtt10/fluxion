@@ -1,0 +1,79 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * *'   # every day at 3 AM UTC
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write     # needed to push the results back
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # important for git history
+
+      - name: Install latest nightly
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: llvm-tools-preview
+
+      - name: Install bench tools
+        run: |
+          cargo install cargo-benchcmp --locked
+          cargo install bench-graph --locked   # the 2024–2025 hero
+
+      - name: Run benchmarks with critcmp format
+        run: |
+          cargo bench -- --output-format bencher > new.txt
+
+      - name: Generate comparison + graphs
+        run: |
+          # First run will create baseline
+          if [ ! -f benches/baseline.txt ]; then
+            mkdir -p benches
+            cp new.txt benches/baseline.txt
+            echo "Baseline created"
+            exit 0
+          fi
+
+          # Compare & generate artifacts
+          cargo benchcmp benches/baseline.txt new.txt > benches/comparison.md
+          bench-graph --old benches/baseline.txt --new new.txt --output benches/graph.svg
+
+          # Update baseline on main (only on scheduled runs or explicit push)
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            cp new.txt benches/baseline.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add benches/
+            git commit -m "chore: update benchmark baseline [ci skip]" || echo "Nothing to commit"
+            git push
+          fi
+
+      - name: Upload results as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benches/comparison.md
+            benches/graph.svg
+            new.txt
+
+      - name: Comment on PR (if this is a PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const md = fs.readFileSync('benches/comparison.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### Benchmark results\n\n${md}\n\n![graph](https://github.com/${context.repo.owner}/${context.repo.repo}/raw/${context.sha}/benches/graph.svg)`
+            })
