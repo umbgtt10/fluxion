@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::{StreamItem, Timestamped};
+use fluxion_core::{HasTimestamp, StreamItem, Timestamped};
 use fluxion_stream::MergedStream;
 use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{

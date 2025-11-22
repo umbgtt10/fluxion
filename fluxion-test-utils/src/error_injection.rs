@@ -95,7 +95,7 @@ where
             if self.count == error_pos {
                 self.inject_error_at = None; // Only inject once
                 self.count += 1;
-                return Poll::Ready(Some(StreamItem::Error(FluxionError::lock_error(
+                return Poll::Ready(Some(StreamItem::Error(FluxionError::stream_error(
                     "Injected test error",
                 ))));
             }
@@ -153,7 +153,7 @@ mod tests {
         let first = error_stream.next().await.unwrap();
         match first {
             StreamItem::Error(e) => {
-                assert!(matches!(e, FluxionError::LockError { .. }));
+                assert!(matches!(e, FluxionError::StreamProcessingError { .. }));
             }
             StreamItem::Value(_) => panic!("Expected error at position 0"),
         }

@@ -2,8 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::StreamItem;
-use fluxion_core::Timestamped;
+use fluxion_core::{HasTimestamp, StreamItem, Timestamped};
 use fluxion_rx::{CombinedState, FluxionStream};
 use fluxion_stream::MergedStream;
 use fluxion_stream::WithPrevious;
@@ -122,15 +121,13 @@ async fn test_fluxion_stream_with_latest_from() -> anyhow::Result<()> {
 
     // Assert
     let result = unwrap_value(Some(unwrap_stream(&mut combined, 500).await));
-    let inner = result.clone().into_inner();
-    let summary = inner.value();
+    let summary = result.clone().into_inner();
     assert!(summary.contains("Bob"));
     assert!(summary.contains("Alice"));
 
     primary_tx.send(Sequenced::new(person_charlie()))?;
     let result = unwrap_value(Some(unwrap_stream(&mut combined, 500).await));
-    let inner = result.clone().into_inner();
-    let summary = inner.value();
+    let summary = result.clone().into_inner();
     assert!(summary.contains("Charlie"));
     assert!(summary.contains("Alice"));
 
@@ -1118,18 +1115,18 @@ async fn test_with_latest_from_then_map_ordered() -> anyhow::Result<()> {
     primary_tx.send(Sequenced::new(person_bob()))?; // 30
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.clone().into_inner().value(), "Age difference: 5"); // 30 - 25
+    assert_eq!(result.clone().into_inner(), "Age difference: 5"); // 30 - 25
 
     primary_tx.send(Sequenced::new(person_charlie()))?; // 35
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.clone().into_inner().value(), "Age difference: 10"); // 35 - 25
+    assert_eq!(result.clone().into_inner(), "Age difference: 10"); // 35 - 25
 
     // Update secondary
     secondary_tx.send(Sequenced::new(person_diane()))?; // 40
     primary_tx.send(Sequenced::new(person_dave()))?; // 28
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.clone().into_inner().value(), "Age difference: -12"); // 28 - 40
+    assert_eq!(result.clone().into_inner(), "Age difference: -12"); // 28 - 40
 
     Ok(())
 }
@@ -1650,7 +1647,7 @@ async fn test_filter_ordered_with_latest_from() -> anyhow::Result<()> {
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     let combined_name = result.clone().into_inner();
-    assert_eq!(combined_name.value(), "Alice with animal Dog (4 legs)");
+    assert_eq!(combined_name, "Alice with animal Dog (4 legs)");
 
     // Update secondary to a person
     secondary_tx.send(Sequenced::new(person_bob()))?;
@@ -1658,7 +1655,7 @@ async fn test_filter_ordered_with_latest_from() -> anyhow::Result<()> {
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     let combined_name = result.clone().into_inner();
-    assert_eq!(combined_name.value(), "Charlie with person Bob (age 30)");
+    assert_eq!(combined_name, "Charlie with person Bob (age 30)");
 
     // Send animal (filtered) and plant (filtered)
     primary_tx.send(Sequenced::new(animal_dog()))?; // Filtered
@@ -1692,8 +1689,7 @@ async fn test_with_latest_from_in_middle_of_chain() -> anyhow::Result<()> {
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
         .with_latest_from(FluxionStream::new(secondary_rx), age_combiner)
         .map_ordered(|stream_item| async move {
-            let inner = stream_item.clone().into_inner();
-            let age_sum = inner.value();
+            let age_sum = stream_item.clone().into_inner();
             StreamItem::Value(format!("Combined age: {}", age_sum))
         });
 

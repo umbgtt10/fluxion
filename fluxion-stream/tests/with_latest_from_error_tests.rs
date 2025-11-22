@@ -4,7 +4,7 @@
 
 //! Error propagation tests for `with_latest_from` operator.
 
-use fluxion_core::Timestamped;
+use fluxion_core::HasTimestamp;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::{CombinedState, WithLatestFromExt};
 use fluxion_test_utils::test_wrapper::TestWrapper;

@@ -90,7 +90,7 @@ mod channel_ext;
 
 // Re-export core types
 pub use fluxion_core::into_stream::IntoStream;
-pub use fluxion_core::{CompareByInner, Timestamped};
+pub use fluxion_core::{HasTimestamp, Timestamped};
 
 // Re-export the main FluxionStream type
 pub use fluxion_stream::FluxionStream;
@@ -124,6 +124,6 @@ pub mod prelude {
     pub use crate::FluxionStream;
     pub use crate::UnboundedReceiverExt;
     pub use fluxion_core::into_stream::IntoStream;
-    pub use fluxion_core::Timestamped;
+    pub use fluxion_core::{HasTimestamp, Timestamped};
     pub use fluxion_stream::{CombinedState, WithPrevious};
 }

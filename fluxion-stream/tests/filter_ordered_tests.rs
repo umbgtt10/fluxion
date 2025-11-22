@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::Timestamped;
+use fluxion_core::HasTimestamp;
 use fluxion_stream::FluxionStream;
 use fluxion_test_utils::test_data::{
     animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_dave, person_diane,

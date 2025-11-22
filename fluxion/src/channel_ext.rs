@@ -30,7 +30,7 @@ pub trait UnboundedReceiverExt<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use fluxion_rx::prelude::*;
     /// use tokio::sync::mpsc;
     ///
@@ -40,10 +40,13 @@ pub trait UnboundedReceiverExt<T> {
     ///     temperature: i32,
     /// }
     ///
-    /// impl Timestamped for SensorReading {
-    ///     type Inner = Self;
+    /// impl HasTimestamp for SensorReading {
     ///     type Timestamp = u64;
     ///     fn timestamp(&self) -> u64 { self.timestamp }
+    /// }
+    ///
+    /// impl Timestamped for SensorReading {
+    ///     type Inner = Self;
     ///     fn into_inner(self) -> Self { self }
     ///     fn with_timestamp(value: Self, _timestamp: u64) -> Self { value }
     ///     fn with_fresh_timestamp(value: Self) -> Self { value }
@@ -54,14 +57,17 @@ pub trait UnboundedReceiverExt<T> {
     ///     Sensor(SensorReading)
     /// }
     ///
-    /// impl Timestamped for DataEvent {
-    ///     type Inner = Self;
+    /// impl HasTimestamp for DataEvent {
     ///     type Timestamp = u64;
     ///     fn timestamp(&self) -> u64 {
     ///         match self {
     ///             DataEvent::Sensor(s) => s.timestamp
     ///         }
     ///     }
+    /// }
+    ///
+    /// impl Timestamped for DataEvent {
+    ///     type Inner = Self;
     ///     fn into_inner(self) -> Self { self }
     ///     fn with_timestamp(value: Self, _timestamp: u64) -> Self { value }
     ///     fn with_fresh_timestamp(value: Self) -> Self { value }

@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Trait Hierarchy**: Introduced 5 specialized traits in `fluxion-core` for operator bounds
+  - `ComparableInner` - Base trait with `'static` bounds for extracting comparable inner values
+  - `ComparableSync` - Thread-safe inner values without `'static` requirement (for gating operators)
+  - `ComparableTimestamped` - Extends `ComparableInner` with timestamp operations
+  - `ComparableUnpin` - Ordered items with `Unpin` inner values
+  - `ComparableUnpinTimestamped` - Extends `ComparableTimestamped` with `Unpin`
+  - Provides semantic clarity and type-level documentation for operator requirements
+  - Applied to all 7 stream operators: `combine_latest`, `with_latest_from`, `take_while_with`, `emit_when`, `take_latest_when`, `map_ordered`, `filter_ordered`
+- **CI/CD**: Added doctest verification to CI pipeline
+  - GitHub Actions workflow now runs `cargo test --doc`
+  - Local CI script (`.ci/ci.ps1`) now includes doctest step
+  - Ensures all documentation examples compile and pass
+
+### Changed
+- **Refactoring**: Reorganized trait structure in `fluxion-core`
+  - Moved all traits from `src/traits/` directory to `src/` root (one file per trait)
+  - Cleaner module structure with direct trait declarations
+  - Simplified imports across the workspace
+- **Cleanup**: Removed redundant `OrderedFluxionItem` bounds from operators
+  - Cleaned up 3 instances where trait bounds were duplicated
+  - Simpler, more concise trait bounds throughout
+
+### Fixed
+- **Documentation**: Fixed all 8 doctest compilation errors
+  - Updated 7 examples using old `Timestamped` trait API to use `HasTimestamp`
+  - Added missing trait imports (`Debug`, `HasTimestamp`) in various doctests
+  - All 66 doctests now compile and pass (0 ignored)
+  - Updated examples in: `comparable_inner.rs`, `comparable_unpin.rs`, `timestamped.rs`, `fluxion_item.rs`, `ordered_fluxion_item.rs`, `channel_ext.rs`, `fluxion_stream.rs`
+
+### Added
 - **Benchmarks**: Comprehensive performance benchmarking suite for all stream operators
   - Added 10 operator benchmarks: `map_ordered`, `filter_ordered`, `combine_latest`, `combine_with_previous`, `with_latest_from`, `merge_with`, `ordered_merge`, `emit_when`, `take_latest_when`, `take_while_with`
   - Benchmarks test multiple payload sizes (0, 128 bytes) and stream sizes (100, 1K, 10K elements)

@@ -4,10 +4,9 @@
 
 use crate::FluxionStream;
 use futures::Stream;
-use std::fmt::Debug;
 use std::pin::Pin;
 
-use fluxion_core::{into_stream::IntoStream, StreamItem, Timestamped};
+use fluxion_core::{into_stream::IntoStream, OrderedFluxionItem, StreamItem};
 
 // Re-export low-level types from fluxion-ordered-merge
 pub use fluxion_ordered_merge::{OrderedMerge, OrderedMergeExt};
@@ -19,7 +18,7 @@ pub use fluxion_ordered_merge::{OrderedMerge, OrderedMergeExt};
 /// from every stream (not just when all have emitted).
 pub trait OrderedStreamExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: Clone + Debug + Timestamped + Ord + Send + Sync + Unpin + 'static,
+    T: OrderedFluxionItem,
 {
     /// Merges multiple timestamped streams, emitting all values in temporal order.
     ///
@@ -112,7 +111,7 @@ where
 
 impl<T, S> OrderedStreamExt<T> for S
 where
-    T: Clone + Debug + Timestamped + Ord + Send + Sync + Unpin + 'static,
+    T: OrderedFluxionItem,
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
 {
     fn ordered_merge<IS>(

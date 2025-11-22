@@ -1,4 +1,4 @@
-use fluxion_core::Timestamped;
+use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_test_utils::test_wrapper::TestWrapper;
 
 #[test]
@@ -25,8 +25,7 @@ fn test_value_returns_reference() {
 fn test_timestamped_into_inner() {
     let wrapper = TestWrapper::new(42, 100);
     let inner = wrapper.clone().into_inner();
-    assert_eq!(inner.value(), &42);
-    assert_eq!(inner.timestamp(), 100);
+    assert_eq!(inner, 42);
 }
 
 #[test]
@@ -37,16 +36,16 @@ fn test_timestamped_timestamp() {
 
 #[test]
 fn test_timestamped_with_timestamp() {
-    let original = TestWrapper::new(42, 100);
-    let new_wrapper = TestWrapper::with_timestamp(original, 500);
+    let _original = TestWrapper::new(42, 100);
+    let new_wrapper = TestWrapper::with_timestamp(42, 500);
     assert_eq!(new_wrapper.value(), &42);
     assert_eq!(new_wrapper.timestamp(), 500);
 }
 
 #[test]
 fn test_timestamped_with_fresh_timestamp() {
-    let original = TestWrapper::new(42, 100);
-    let fresh_wrapper = TestWrapper::with_fresh_timestamp(original);
+    let _original = TestWrapper::new(42, 100);
+    let fresh_wrapper = TestWrapper::with_fresh_timestamp(42);
     assert_eq!(fresh_wrapper.value(), &42);
     assert_eq!(fresh_wrapper.timestamp(), 999999);
 }
@@ -156,19 +155,19 @@ fn test_with_complex_type() {
 
 #[test]
 fn test_with_timestamp_preserves_value() {
-    let original = TestWrapper::new("test".to_string(), 100);
-    let updated = TestWrapper::with_timestamp(original.clone(), 200);
+    let _original = TestWrapper::new("test".to_string(), 100);
+    let updated = TestWrapper::with_timestamp("test".to_string(), 200);
 
-    assert_eq!(updated.value(), original.value());
+    assert_eq!(updated.value(), "test");
     assert_eq!(updated.timestamp(), 200);
 }
 
 #[test]
 fn test_with_fresh_timestamp_preserves_value() {
-    let original = TestWrapper::new(vec![1, 2, 3], 100);
-    let fresh = TestWrapper::with_fresh_timestamp(original.clone());
+    let _original = TestWrapper::new(vec![1, 2, 3], 100);
+    let fresh = TestWrapper::with_fresh_timestamp(vec![1, 2, 3]);
 
-    assert_eq!(fresh.value(), original.value());
+    assert_eq!(fresh.value(), &vec![1, 2, 3]);
     assert_eq!(fresh.timestamp(), 999999);
 }
 
@@ -178,7 +177,7 @@ fn test_clone_independence() {
     let cloned = original.clone();
 
     // Create a modified version
-    let modified = TestWrapper::with_timestamp(TestWrapper::new(vec![4, 5, 6], 100), 200);
+    let modified = TestWrapper::with_timestamp(vec![4, 5, 6], 200);
 
     // Original and first clone should be unchanged
     assert_eq!(original.value(), &vec![1, 2, 3]);
@@ -293,7 +292,7 @@ fn test_into_inner_consumes_wrapper() {
     let wrapper = TestWrapper::new(42, 100);
     let inner = wrapper.into_inner();
     // wrapper is consumed, can't use it anymore
-    assert_eq!(inner.value(), &42);
+    assert_eq!(inner, 42);
 }
 
 #[test]

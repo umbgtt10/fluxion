@@ -10,7 +10,8 @@ use crate::take_latest_when::TakeLatestWhenExt;
 use crate::take_while_with::TakeWhileExt;
 use crate::types::{CombinedState, WithPrevious};
 use crate::with_latest_from::WithLatestFromExt;
-use fluxion_core::{CompareByInner, StreamItem, Timestamped};
+use fluxion_core::ComparableUnpin;
+use fluxion_core::{StreamItem, Timestamped};
 use futures::Stream;
 use futures::StreamExt;
 use pin_project::pin_project;
@@ -101,8 +102,8 @@ where
 impl<S, T> FluxionStream<S>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T: ComparableUnpin,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin,
 {
     /// Maps each item to a new value while preserving temporal ordering.
     ///
@@ -153,13 +154,17 @@ where
     ///
     /// If your mapping function can fail, consider using a pattern like:
     ///
-    /// ```rust,ignore
-    /// stream.map_ordered(|item| {
-    ///     match process(item) {
-    ///         Ok(result) => StreamItem::Value(result),
-    ///         Err(e) => StreamItem::Error(FluxionError::UserError(e.to_string())),
-    ///     }
-    /// })
+    /// ```rust
+    /// # use fluxion_core::{StreamItem, FluxionError};
+    /// # use futures::Stream;
+    /// # fn example<T, S: Stream>(stream: S, process: impl Fn(T) -> Result<T, String>) {
+    /// // stream.map_ordered(|item| {
+    /// //     match process(item) {
+    /// //         Ok(result) => StreamItem::Value(result),
+    /// //         Err(e) => StreamItem::Error(FluxionError::UserError(e)),
+    /// //     }
+    /// // })
+    /// # }
     /// ```
     ///
     /// See the [Error Handling Guide](../docs/ERROR-HANDLING.md) for comprehensive error handling patterns.
@@ -434,7 +439,7 @@ where
     /// ```rust
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_test_utils::Sequenced;
-    /// use fluxion_core::Timestamped as TimestampedTrait;
+    /// use fluxion_core::{HasTimestamp, Timestamped as TimestampedTrait};
     /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
@@ -484,7 +489,7 @@ where
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
     ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
-        S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
+        S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
         SF: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
@@ -564,7 +569,7 @@ where
         filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
     ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
-        S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
+        S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
         SF: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
     {
         let inner = self.into_inner();
@@ -640,14 +645,7 @@ where
     where
         S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
         S2: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-        T: CompareByInner,
-        R: Timestamped<Inner = R, Timestamp = T::Timestamp>
-            + Clone
-            + Debug
-            + Ord
-            + Send
-            + Sync
-            + 'static,
+        R: Timestamped<Timestamp = T::Timestamp> + Clone + Debug + Ord + Send + Sync + 'static,
     {
         let inner = self.into_inner();
         FluxionStream::new(WithLatestFromExt::with_latest_from(
@@ -732,7 +730,6 @@ where
     where
         S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
         S2: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-        T: CompareByInner,
     {
         let inner = self.into_inner();
         FluxionStream::new(CombineLatestExt::combine_latest(inner, others, filter))

@@ -5,7 +5,7 @@
 use crate::FluxionStream;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{StreamItem, Timestamped};
+use fluxion_core::{ComparableSync, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
@@ -18,8 +18,8 @@ use std::sync::{Arc, Mutex};
 /// stream emits a value that passes a predicate.
 pub trait TakeLatestWhenExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T: ComparableSync,
+    T::Inner: Clone + Debug + Ord + Send + Sync,
 {
     /// Emits the latest value from the source stream when the filter stream emits a passing value.
     ///
@@ -126,9 +126,9 @@ where
 type IndexedStream<T> = Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;
 impl<T, S> TakeLatestWhenExt<T> for S
 where
-    S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
+    T: ComparableSync,
+    T::Inner: Clone + Debug + Ord + Send + Sync,
 {
     fn take_latest_when<IS>(
         self,

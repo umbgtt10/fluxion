@@ -6,7 +6,7 @@
 //!
 //! This module centralizes shared types to reduce duplication and improve maintainability.
 
-use fluxion_core::Timestamped;
+use fluxion_core::{HasTimestamp, Timestamped};
 use std::fmt::Debug;
 
 /// Represents a value paired with its previous value in the stream.
@@ -38,13 +38,16 @@ impl<T> WithPrevious<T> {
     }
 }
 
-impl<T: Timestamped> Timestamped for WithPrevious<T> {
-    type Inner = T::Inner;
+impl<T: Timestamped> HasTimestamp for WithPrevious<T> {
     type Timestamp = T::Timestamp;
 
     fn timestamp(&self) -> Self::Timestamp {
         self.current.timestamp()
     }
+}
+
+impl<T: Timestamped> Timestamped for WithPrevious<T> {
+    type Inner = T::Inner;
 
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self {
@@ -116,17 +119,24 @@ where
     }
 }
 
+impl<V, TS> HasTimestamp for CombinedState<V, TS>
+where
+    V: Clone + Debug + Ord,
+    TS: Clone + Debug + Ord + Copy + Send + Sync,
+{
+    type Timestamp = TS;
+
+    fn timestamp(&self) -> Self::Timestamp {
+        self.timestamp
+    }
+}
+
 impl<V, TS> Timestamped for CombinedState<V, TS>
 where
     V: Clone + Debug + Ord,
     TS: Clone + Debug + Ord + Copy + Send + Sync,
 {
     type Inner = Self;
-    type Timestamp = TS;
-
-    fn timestamp(&self) -> Self::Timestamp {
-        self.timestamp
-    }
 
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self {
@@ -145,92 +155,3 @@ where
         self
     }
 }
-
-/// Type alias for the common trait bounds used for timestamped stream items.
-///
-/// This trait requires that types are:
-/// - `Timestamped`: Have temporal ordering
-/// - `Clone`: Can be duplicated
-/// - `Debug`: Can be formatted for debugging
-/// - `Ord`: Have total ordering
-/// - `Send + Sync`: Can be safely transferred between threads
-/// - `Unpin`: Can be moved after being pinned
-/// - `'static`: Contains no non-static references
-///
-/// # Usage
-///
-/// Instead of writing:
-/// ```
-/// # use fluxion_stream::types::TimestampedStreamItem;
-/// # use fluxion_core::Timestamped;
-/// # use std::fmt::Debug;
-/// fn process_stream<T>()
-/// where
-///     T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static
-/// # {}
-/// ```
-///
-/// You can write:
-/// ```
-/// # use fluxion_stream::types::TimestampedStreamItem;
-/// fn process_stream<T>()
-/// where
-///     T: TimestampedStreamItem
-/// # {}
-/// ```
-pub trait TimestampedStreamItem:
-    Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static
-{
-}
-
-// Blanket implementation for all types that satisfy the bounds
-impl<T> TimestampedStreamItem for T where
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static
-{
-}
-
-// Compatibility alias
-pub use TimestampedStreamItem as OrderedStreamItem;
-
-/// Type alias for the common trait bounds used for the inner values of ordered stream items.
-///
-/// This trait requires that inner types are:
-/// - `Clone`: Can be duplicated
-/// - `Debug`: Can be formatted for debugging
-/// - `Ord`: Have total ordering
-/// - `Send + Sync`: Can be safely transferred between threads
-/// - `'static`: Contains no non-static references
-///
-/// # Usage
-///
-/// Instead of writing:
-/// ```
-/// # use std::fmt::Debug;
-/// fn process_inner<T>()
-/// where
-///     T: Clone + Debug + Ord + Send + Sync + 'static
-/// # {}
-/// ```
-///
-/// You can write:
-/// ```
-/// # use fluxion_stream::OrderedInner;
-/// fn process_inner<T>()
-/// where
-///     T: OrderedInner
-/// # {}
-/// ```
-pub trait OrderedInner: Clone + Debug + Ord + Send + Sync + 'static {}
-
-// Blanket implementation for all types that satisfy the bounds
-impl<T> OrderedInner for T where T: Clone + Debug + Ord + Send + Sync + 'static {}
-
-/// Type alias for the common trait bounds used for ordered items that need to be
-/// unwrapped (without Unpin requirement).
-///
-/// Used in scenarios where the inner value needs to implement Ordered but doesn't
-/// need to be Unpin.
-pub trait OrderedInnerUnwrapped: Clone + Debug + Ord + Send + Sync + Unpin + 'static {}
-
-// Blanket implementation
-impl<T> OrderedInnerUnwrapped for T where T: Clone + Debug + Ord + Send + Sync + Unpin + 'static {}

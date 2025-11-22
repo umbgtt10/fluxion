@@ -154,11 +154,10 @@ impl<T> From<StreamItem<T>> for Result<T, FluxionError> {
     }
 }
 
-impl<T> crate::Timestamped for StreamItem<T>
+impl<T> crate::HasTimestamp for StreamItem<T>
 where
     T: crate::Timestamped,
 {
-    type Inner = T::Inner;
     type Timestamp = T::Timestamp;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -167,6 +166,13 @@ where
             StreamItem::Error(_) => panic!("called `timestamp()` on StreamItem::Error"),
         }
     }
+}
+
+impl<T> crate::Timestamped for StreamItem<T>
+where
+    T: crate::Timestamped,
+{
+    type Inner = T::Inner;
 
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         StreamItem::Value(T::with_timestamp(value, timestamp))
@@ -180,18 +186,6 @@ where
         match self {
             StreamItem::Value(v) => v.into_inner(),
             StreamItem::Error(_) => panic!("called `into_inner()` on StreamItem::Error"),
-        }
-    }
-}
-
-impl<T: crate::CompareByInner> crate::CompareByInner for StreamItem<T> {
-    fn cmp_inner(&self, other: &Self) -> std::cmp::Ordering {
-        use std::cmp::Ordering;
-        match (self, other) {
-            (StreamItem::Value(a), StreamItem::Value(b)) => a.cmp_inner(b),
-            (StreamItem::Error(_), StreamItem::Error(_)) => Ordering::Equal,
-            (StreamItem::Error(_), StreamItem::Value(_)) => Ordering::Greater,
-            (StreamItem::Value(_), StreamItem::Error(_)) => Ordering::Less,
         }
     }
 }

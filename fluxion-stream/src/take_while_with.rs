@@ -4,7 +4,7 @@
 
 use crate::FluxionStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{FluxionError, StreamItem, Timestamped};
+use fluxion_core::{ComparableUnpinTimestamped, FluxionError, HasTimestamp, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::StreamExt;
 use futures::Stream;
@@ -22,16 +22,9 @@ type PinnedItemStream<TItem, TFilter> =
 /// becomes false.
 pub trait TakeWhileExt<TItem, TFilter, S>: Stream<Item = StreamItem<TItem>> + Sized
 where
-    TItem: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    TItem: ComparableUnpinTimestamped,
     TItem::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>
-        + Clone
-        + Debug
-        + Ord
-        + Send
-        + Sync
-        + Unpin
-        + 'static,
+    TFilter: ComparableUnpinTimestamped<Timestamp = TItem::Timestamp>,
     TFilter::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = StreamItem<TFilter>> + Send + Sync + 'static,
 {
@@ -127,16 +120,9 @@ where
 impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
 where
     P: Stream<Item = StreamItem<TItem>> + Send + Sync + Unpin + 'static,
-    TItem: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    TItem: ComparableUnpinTimestamped,
     TItem::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>
-        + Clone
-        + Debug
-        + Ord
-        + Send
-        + Sync
-        + Unpin
-        + 'static,
+    TFilter: ComparableUnpinTimestamped<Timestamp = TItem::Timestamp>,
     TFilter::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = StreamItem<TFilter>> + Send + Sync + 'static,
 {
@@ -213,12 +199,11 @@ pub enum Item<TItem, TFilter> {
     Error(FluxionError),
 }
 
-impl<TItem, TFilter> Timestamped for Item<TItem, TFilter>
+impl<TItem, TFilter> HasTimestamp for Item<TItem, TFilter>
 where
-    TItem: Timestamped,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
-    type Inner = Self;
     type Timestamp = TItem::Timestamp;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -228,24 +213,12 @@ where
             Self::Error(_) => panic!("Error items cannot provide timestamps"),
         }
     }
-
-    fn with_timestamp(value: Self, _timestamp: Self::Timestamp) -> Self {
-        value
-    }
-
-    fn with_fresh_timestamp(value: Self) -> Self {
-        value
-    }
-
-    fn into_inner(self) -> Self {
-        self
-    }
 }
 
 impl<TItem, TFilter> PartialEq for Item<TItem, TFilter>
 where
-    TItem: Timestamped,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
     fn eq(&self, other: &Self) -> bool {
         self.timestamp() == other.timestamp()
@@ -254,15 +227,15 @@ where
 
 impl<TItem, TFilter> Eq for Item<TItem, TFilter>
 where
-    TItem: Timestamped,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
 }
 
 impl<TItem, TFilter> PartialOrd for Item<TItem, TFilter>
 where
-    TItem: Timestamped,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
@@ -271,8 +244,8 @@ where
 
 impl<TItem, TFilter> Ord for Item<TItem, TFilter>
 where
-    TItem: Timestamped,
-    TFilter: Timestamped<Timestamp = TItem::Timestamp>,
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.timestamp().cmp(&other.timestamp())

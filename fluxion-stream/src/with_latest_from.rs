@@ -11,7 +11,7 @@ use crate::ordered_merge::OrderedMergeExt;
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{CompareByInner, StreamItem, Timestamped};
+use fluxion_core::{ComparableInner, StreamItem, Timestamped};
 
 /// Extension trait providing the `with_latest_from` operator for timestamped streams.
 ///
@@ -19,7 +19,7 @@ use fluxion_core::{CompareByInner, StreamItem, Timestamped};
 /// when the primary stream emits, using the latest value from the secondary stream.
 pub trait WithLatestFromExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    T: ComparableInner,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
 {
     /// Combines elements from the primary stream (self) with the latest element from the secondary stream (other).
@@ -117,14 +117,14 @@ where
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
-        R: Timestamped<Inner = R, Timestamp = T::Timestamp> + Clone + Debug + Send + Sync + 'static;
+        R: Timestamped<Timestamp = T::Timestamp> + Clone + Debug + Send + Sync + 'static;
 }
 
-impl<T, P> WithLatestFromExt<T> for P
+impl<T, S> WithLatestFromExt<T> for S
 where
-    T: Timestamped + Clone + Debug + Ord + Send + Sync + Unpin + CompareByInner + 'static,
+    T: ComparableInner,
     T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
-    P: Stream<Item = StreamItem<T>> + Sized + Unpin + Send + Sync + 'static,
+    S: Stream<Item = StreamItem<T>> + Sized + Unpin + Send + Sync + 'static,
 {
     fn with_latest_from<IS, R>(
         self,
@@ -134,7 +134,7 @@ where
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
-        R: Timestamped<Inner = R, Timestamp = T::Timestamp> + Clone + Debug + Send + Sync + 'static,
+        R: Timestamped<Timestamp = T::Timestamp> + Clone + Debug + Send + Sync + 'static,
     {
         type PinnedStream<T> =
             std::pin::Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;

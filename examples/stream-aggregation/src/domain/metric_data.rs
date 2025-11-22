@@ -4,7 +4,7 @@
 
 //! Metric data domain type
 
-use fluxion_rx::prelude::Timestamped;
+use fluxion_rx::prelude::{HasTimestamp, Timestamped};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MetricData {
@@ -13,13 +13,16 @@ pub struct MetricData {
     pub value: u64,
 }
 
-impl Timestamped for MetricData {
-    type Inner = Self;
+impl HasTimestamp for MetricData {
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
     }
+}
+
+impl Timestamped for MetricData {
+    type Inner = Self;
 
     fn with_timestamp(inner: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self { timestamp, ..inner }

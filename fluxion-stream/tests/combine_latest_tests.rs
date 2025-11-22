@@ -320,17 +320,35 @@ async fn test_combine_latest_different_stream_order_emits_consistent_results() -
     Ok(())
 }
 
-/// Test template for `combine_latest` that verifies consistent enum-based ordering regardless of stream Variant.
+/// Test template for `combine_latest` that verifies consistent stream-index-based ordering.
 /// Sets up channels for Person/Animal/Plant in different orders, combines them, sends values, and asserts
-/// that results are always in enum variant Variant (Person, Animal, Plant) determined by the Ord trait,
-/// not by stream registration Variant. Called with different permutations to validate that ordering is based
-/// on enum definition rather than the Variant streams were passed to combine_latest.
+/// that results are always in the order streams were registered (stream index 0, 1, 2),
+/// not by enum variant order. This ensures predictable, deterministic output based on how
+/// streams are passed to combine_latest.
 async fn combine_latest_stream_order_test(
     stream1: DataVariant,
     stream2: DataVariant,
     stream3: DataVariant,
 ) -> anyhow::Result<()> {
     // Arrange
+    let expected_order = vec![
+        match stream1 {
+            DataVariant::Person => person_alice(),
+            DataVariant::Animal => animal_dog(),
+            DataVariant::Plant => plant_rose(),
+        },
+        match stream2 {
+            DataVariant::Person => person_alice(),
+            DataVariant::Animal => animal_dog(),
+            DataVariant::Plant => plant_rose(),
+        },
+        match stream3 {
+            DataVariant::Person => person_alice(),
+            DataVariant::Animal => animal_dog(),
+            DataVariant::Plant => plant_rose(),
+        },
+    ];
+
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
     let (plant_tx, plant_stream) = test_channel::<Sequenced<TestData>>();
@@ -370,12 +388,9 @@ async fn combine_latest_stream_order_test(
     animal_tx.send(Sequenced::new(animal_dog()))?;
     plant_tx.send(Sequenced::new(plant_rose()))?;
 
-    // Assert
+    // Assert - values should be in the order streams were registered
     let state = unwrap_stream(&mut combined_stream, 500).await.unwrap();
-    assert_eq!(
-        state.clone().into_inner().values().clone(),
-        vec![person_alice(), animal_dog(), plant_rose()]
-    );
+    assert_eq!(state.clone().into_inner().values().clone(), expected_order);
 
     Ok(())
 }
