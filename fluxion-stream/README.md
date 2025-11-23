@@ -21,6 +21,7 @@ Stream combinators for async Rust with strong temporal-ordering guarantees. This
   - [Filtering Operators](#filtering-operators)
   - [Transformation Operators](#transformation-operators)
   - [Utility Operators](#utility-operators)
+  - [Error Handling Operators](#error-handling-operators)
 - [Operator Selection Guide](#operator-selection-guide)
 - [Quick Start](#quick-start)
 - [Examples](#examples)
@@ -48,25 +49,43 @@ Stream combinators for async Rust with strong temporal-ordering guarantees. This
 
 ## Core Concepts
 
-### Timestamped Trait
+### Timestamp Traits
 
-The `Timestamped` trait is the foundation of fluxion-stream. It provides temporal ordering for stream items:
+Fluxion uses two traits for temporal ordering:
+
+#### HasTimestamp - Minimal Read-Only Interface
+
+Provides read-only access to timestamp values:
 
 ```rust
-pub trait Timestamped: Clone {
+pub trait HasTimestamp {
     type Inner: Clone;
     type Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug;
 
     fn timestamp(&self) -> Self::Timestamp;  // Get the timestamp for ordering
+}
+```
+
+#### Timestamped - Construction Methods
+
+Extends `HasTimestamp` with construction and deconstruction capabilities:
+
+```rust
+pub trait Timestamped: HasTimestamp {
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self;
     fn with_fresh_timestamp(value: Self::Inner) -> Self;
     fn into_inner(self) -> Self::Inner;
 }
 ```
 
+**When to use each:**
+- Implement `HasTimestamp` for types that only need to expose a timestamp (read-only)
+- Implement `Timestamped` for wrapper types that construct timestamped values
+- Most operators require only `HasTimestamp` for ordering
+
 **Implementations:**
 - `Sequenced<T>` - Test utility from `fluxion-test-utils` using monotonically growing sequence numbers
-- Custom domain types - Implement for your types (e.g., events with built-in timestamps)
+- Custom domain types - Implement `HasTimestamp` for your types (e.g., events with built-in timestamps)
 
 ### Temporal Ordering
 
@@ -342,6 +361,40 @@ let filtered = stream.filter_ordered(|x| *x > 10);
 
 [Full documentation](src/filter_ordered.rs) | [Tests](tests/filter_ordered_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#filter_ordered---conditional-filtering)
 
+### Error Handling Operators
+
+#### `on_error`
+Selectively consume or propagate errors using the Chain of Responsibility pattern.
+
+**Use case:** Logging errors, metrics collection, conditional error recovery
+
+```rust
+use fluxion_stream::FluxionStream;
+
+let handled = stream
+    .on_error(|err| {
+        if err.to_string().contains("validation") {
+            log::warn!("Validation error: {}", err);
+            true // Consume validation errors
+        } else {
+            false // Propagate other errors
+        }
+    })
+    .on_error(|_| {
+        metrics::increment("errors");
+        true // Catch-all
+    });
+```
+
+**Behavior:**
+- Handler returns `true` to consume error (removes `StreamItem::Error`)
+- Handler returns `false` to propagate error downstream
+- Multiple `on_error` calls can be chained
+- Value items pass through unchanged
+- Enables side effects (logging, metrics) while filtering errors
+
+[Full documentation](src/fluxion_stream.rs#L780-L866) | [Tests](tests/on_error_tests.rs) | [Specification](../docs/ON_ERROR_OPERATOR.md)
+
 ## Operator Selection Guide
 
 ### When You Need Combined State
@@ -366,6 +419,12 @@ let filtered = stream.filter_ordered(|x| *x > 10);
 | `emit_when` | Yes (buffers when gated) | Source completes | Conditional processing |
 | `take_latest_when` | No (only latest) | Source completes | Sampling, snapshots |
 | `take_while_with` | No | First false | Bounded processing |
+
+### When You Need Error Handling
+
+| Operator | Consumes Errors | Enables Side Effects | Propagation Control | Best For |
+|----------|-----------------|----------------------|---------------------|----------|
+| `on_error` | Selective | Yes (logging, metrics) | Handler-controlled | Layered error handling, monitoring |
 
 ## Quick Start
 

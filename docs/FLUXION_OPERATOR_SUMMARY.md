@@ -16,6 +16,7 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`take_while_with`](#take_while_with) | Filtering | Take while predicate holds | Source + Filter |
 | [`take_latest_when`](#take_latest_when) | Sampling | Sample on trigger | Trigger |
 | [`emit_when`](#emit_when) | Gating | Gate with combined state | Source (filtered) |
+| [`on_error`](#on_error) | Error Handling | Selectively consume or propagate errors | Source |
 
 ## Operators by Category
 
@@ -367,9 +368,34 @@ let sampled = stream.take_latest_when(timer, |_| true);
 
 ---
 
+### 🛡️ Error Handling
+
+#### `on_error`
+**Selectively consume or propagate errors using Chain of Responsibility pattern**
+
+```rust
+let stream = stream
+    .on_error(|err| err.to_string().contains("validation"))
+    .on_error(|err| err.to_string().contains("network"))
+    .on_error(|_| true); // Catch-all
+```
+
+- Handlers return `true` to consume errors, `false` to propagate
+- Multiple handlers can be chained for layered error handling
+- Enables logging, metrics, and conditional error recovery
+- Preserves value emissions while filtering errors
+- See [ON_ERROR_OPERATOR.md](ON_ERROR_OPERATOR.md) for detailed specification
+- See [Error Handling Guide](ERROR-HANDLING.md) for patterns
+
+[Full documentation](../fluxion-stream/src/fluxion_stream.rs#L780-L866) | [Tests](../fluxion-stream/tests/on_error_tests.rs)
+
+---
+
 ## See Also
 
 - **[Integration Guide](../INTEGRATION.md)** - How to integrate events into Fluxion streams
 - **[stream-aggregation example](../examples/stream-aggregation/)** - Production-ready patterns
 - **[API Documentation](https://docs.rs/fluxion-rx)** - Complete API reference
+- **[Error Handling Guide](ERROR-HANDLING.md)** - Comprehensive error handling patterns
+- **[on_error Specification](ON_ERROR_OPERATOR.md)** - Detailed operator specification
 - **[Operators Roadmap](FLUXION_OPERATORS_ROADMAP.md)** - Planned future operators

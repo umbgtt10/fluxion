@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Error Handling Operator**: Implemented `on_error` operator for composable error handling
+  - Chain of Responsibility pattern for selective error handling
+  - Handlers can consume errors (return `true`) or propagate them (return `false`)
+  - Multiple `on_error` calls can be chained for layered error handling
+  - Full documentation in `docs/ON_ERROR_OPERATOR.md`
+  - Comprehensive test suite with 13 tests covering all scenarios
+  - Examples in rustdoc showing basic consumption and chain of responsibility
+
 ## [0.2.2] - 2025-11-23
 
 ### Added

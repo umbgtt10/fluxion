@@ -14,21 +14,38 @@ This crate provides the foundational abstractions used throughout the Fluxion ec
 
 ## Key Types
 
-### Timestamped Trait
+### Timestamp Traits
 
-The `Timestamped` trait enables temporal ordering guarantees across stream operations:
+Fluxion-core provides two traits for temporal ordering:
+
+#### HasTimestamp - Read-Only Access
+
+Minimal trait for types that expose a timestamp value:
 
 ```rust
-pub trait Timestamped: Clone {
+pub trait HasTimestamp {
     type Inner: Clone;
     type Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug;
 
     fn timestamp(&self) -> Self::Timestamp;  // Get timestamp for ordering
+}
+```
+
+Use this when your type only needs to provide a timestamp for ordering (most common case).
+
+#### Timestamped - Full Wrapper Interface
+
+Extends `HasTimestamp` with construction methods for wrapper types:
+
+```rust
+pub trait Timestamped: HasTimestamp {
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self;
     fn with_fresh_timestamp(value: Self::Inner) -> Self;
     fn into_inner(self) -> Self::Inner;
 }
 ```
+
+Use this for wrapper types like `Sequenced<T>` that wrap an inner value with a timestamp.
 
 ### Sequenced<T>
 
