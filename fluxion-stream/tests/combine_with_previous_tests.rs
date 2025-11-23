@@ -7,7 +7,6 @@ use fluxion_test_utils::helpers::unwrap_stream;
 use fluxion_test_utils::test_data::{person, person_alice, person_bob, person_charlie};
 use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{assert_stream_ended, test_channel};
-use futures::StreamExt;
 
 #[tokio::test]
 async fn test_combine_with_previous_no_previous_value_emits() -> anyhow::Result<()> {
@@ -147,8 +146,7 @@ async fn test_combine_with_previous_stream_ends() -> anyhow::Result<()> {
     drop(tx);
 
     // Assert
-    let third_result = stream.next().await;
-    assert!(third_result.is_none());
+    assert_stream_ended(&mut stream, 500).await;
 
     Ok(())
 }

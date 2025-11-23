@@ -53,11 +53,13 @@ async fn test_on_error_consumes_all_errors() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_propagates_all_errors() -> anyhow::Result<()> {
+    //  Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut stream = FluxionStream::new(stream).on_error(|_err| {
         false // Propagate all errors
     });
 
+    // Act & Assert
     tx.send(StreamItem::Value(Sequenced::new(1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 100).await)).value,
@@ -90,12 +92,14 @@ async fn test_on_error_propagates_all_errors() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_selective_by_message_content() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut stream = FluxionStream::new(stream).on_error(|err| {
         // Only consume errors containing "user"
         err.to_string().contains("user")
     });
 
+    // Act & Assert
     tx.send(StreamItem::Value(Sequenced::new(1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 100).await)).value,
@@ -128,6 +132,7 @@ async fn test_on_error_selective_by_message_content() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut stream = FluxionStream::new(stream)
         .on_error(|err| err.to_string().contains("validation"))
@@ -137,6 +142,7 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
             err.to_string().contains("timeout")
         });
 
+    // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error(
         "validation failed",
     )))?;
@@ -167,6 +173,7 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_with_side_effects() -> anyhow::Result<()> {
+    // Arrange
     let error_log = Arc::new(Mutex::new(Vec::new()));
     let error_log_clone = Arc::clone(&error_log);
 
@@ -176,6 +183,7 @@ async fn test_on_error_with_side_effects() -> anyhow::Result<()> {
         true // Consume after logging
     });
 
+    // Act & Assert
     tx.send(StreamItem::Value(Sequenced::new(1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 100).await)).value,
@@ -207,6 +215,7 @@ async fn test_on_error_with_side_effects() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_partial_chain() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut stream = FluxionStream::new(stream)
         .on_error(|err| err.to_string().contains("validation"))
@@ -215,6 +224,7 @@ async fn test_on_error_partial_chain() -> anyhow::Result<()> {
             err.to_string().contains("mutex")
         });
 
+    // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error(
         "validation failed",
     )))?;
@@ -248,9 +258,11 @@ async fn test_on_error_partial_chain() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_continues_after_consumed_error() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut stream = FluxionStream::new(stream).on_error(|_| true);
 
+    // Act & Assert
     tx.send(StreamItem::Value(Sequenced::new(1)))?;
     // Stream continues normally after each consumed error
     assert_eq!(
@@ -293,9 +305,11 @@ async fn test_on_error_continues_after_consumed_error() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_multiple_consecutive_errors() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut stream = FluxionStream::new(stream).on_error(|err| err.to_string().contains("user"));
 
+    // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error("user error1")))?;
     assert_no_element_emitted(&mut stream, 100).await;
 
@@ -328,9 +342,11 @@ async fn test_on_error_multiple_consecutive_errors() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_empty_stream() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut stream = FluxionStream::new(stream).on_error(|_| true);
 
+    // Act & Assert
     drop(tx);
 
     assert_stream_ended(&mut stream, 500).await;
@@ -340,9 +356,11 @@ async fn test_on_error_empty_stream() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_only_errors_stream() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut stream = FluxionStream::new(stream).on_error(|_| true);
 
+    // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;
     assert_no_element_emitted(&mut stream, 100).await;
 
@@ -361,12 +379,14 @@ async fn test_on_error_only_errors_stream() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_conditional_based_on_error_content() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut stream = FluxionStream::new(stream).on_error(|err| {
         // Consume errors containing "transient"
         err.to_string().contains("transient")
     });
 
+    // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error(
         "transient network error",
     )))?;
@@ -395,12 +415,14 @@ async fn test_on_error_conditional_based_on_error_content() -> anyhow::Result<()
 
 #[tokio::test]
 async fn test_on_error_three_level_chain() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut stream = FluxionStream::new(stream)
         .on_error(|err| err.to_string().contains("level1"))
         .on_error(|err| err.to_string().contains("level2"))
         .on_error(|_| true); // Catch-all
 
+    // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error(
         "level1 error",
     )))?;
@@ -429,26 +451,34 @@ async fn test_on_error_three_level_chain() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_preserves_value_order() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut stream = FluxionStream::new(stream).on_error(|_| true);
 
+    // Act & Assert
     tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
-    let v1 = unwrap_value(Some(unwrap_stream(&mut stream, 100).await));
-    assert_eq!(v1.value, 1);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 100).await)).value,
+        1
+    );
 
     tx.send(StreamItem::Error(FluxionError::stream_error("error")))?;
     assert_no_element_emitted(&mut stream, 100).await;
 
     tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
-    let v2 = unwrap_value(Some(unwrap_stream(&mut stream, 100).await));
-    assert_eq!(v2.value, 2);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 100).await)).value,
+        2
+    );
 
     tx.send(StreamItem::Error(FluxionError::stream_error("error")))?;
     assert_no_element_emitted(&mut stream, 100).await;
 
     tx.send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
-    let v3 = unwrap_value(Some(unwrap_stream(&mut stream, 100).await));
-    assert_eq!(v3.value, 3);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 100).await)).value,
+        3
+    );
 
     drop(tx);
     assert_stream_ended(&mut stream, 500).await;

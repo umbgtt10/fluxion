@@ -6,8 +6,7 @@ use fluxion_core::{StreamItem, Timestamped};
 use fluxion_stream::combine_latest::CombineLatestExt;
 use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
-    helpers::assert_no_element_emitted,
-    helpers::unwrap_stream,
+    helpers::{assert_no_element_emitted, assert_stream_ended, unwrap_stream, unwrap_value},
     test_channel,
     test_data::{
         animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_diane,
@@ -15,7 +14,7 @@ use fluxion_test_utils::{
     },
     Sequenced,
 };
-use futures::{Stream, StreamExt};
+use futures::Stream;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
@@ -38,8 +37,8 @@ where
     S: Stream<Item = StreamItem<T>> + Unpin,
     T: Timestamped<Inner = CombinedState<TestData>>,
 {
-    let item = stream.next().await.expect("expected next combined state");
-    let state = item.unwrap();
+    let item = unwrap_stream(stream, 100).await;
+    let state = unwrap_value(Some(item));
     let actual: Vec<TestData> = state.clone().into_inner().values().clone();
     assert_eq!(actual, expected);
 }
@@ -62,11 +61,7 @@ async fn test_combine_latest_empty_streams() -> anyhow::Result<()> {
     drop(plant_tx);
 
     // Assert
-    let next_item = combined_stream.next().await;
-    assert!(
-        next_item.is_none(),
-        "Expected no items from an empty combined stream"
-    );
+    assert_stream_ended(&mut combined_stream, 500).await;
 
     Ok(())
 }
@@ -118,8 +113,7 @@ async fn test_combine_latest_stream_closes_before_publish_no_output() -> anyhow:
     drop(person_tx);
     drop(animal_tx);
 
-    let next = combined_stream.next().await;
-    assert!(next.is_none(), "Expected stream to end without emissions");
+    assert_stream_ended(&mut combined_stream, 500).await;
 
     Ok(())
 }

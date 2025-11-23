@@ -4,17 +4,15 @@
 
 use fluxion_stream::emit_when::EmitWhenExt;
 use fluxion_stream::CombinedState;
-use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{
-    helpers::{assert_no_element_emitted, unwrap_stream},
+    helpers::{assert_no_element_emitted, assert_stream_ended, unwrap_stream},
     test_channel,
     test_data::{
         animal_ant, animal_bird, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
         person_charlie, person_dave, person_diane, plant_rose, plant_sunflower, TestData,
     },
-    unwrap_value,
+    unwrap_value, Sequenced,
 };
-use futures::StreamExt;
 
 #[tokio::test]
 async fn test_emit_when_empty_streams() -> anyhow::Result<()> {
@@ -29,11 +27,7 @@ async fn test_emit_when_empty_streams() -> anyhow::Result<()> {
     let mut output_stream = source_stream.emit_when(filter_stream, filter_fn);
 
     // Act & Assert
-    let next_item = output_stream.next().await;
-    assert!(
-        next_item.is_none(),
-        "Expected no items from an empty stream with `emit_when`"
-    );
+    assert_stream_ended(&mut output_stream, 500).await;
 
     Ok(())
 }
@@ -581,7 +575,7 @@ async fn test_emit_when_filter_panics() {
     filter_tx.send(Sequenced::new(animal_dog())).unwrap();
 
     // Assert: Should panic when filter is evaluated
-    let _ = output_stream.next().await;
+    let _ = unwrap_stream(&mut output_stream, 100).await;
 }
 
 #[tokio::test]

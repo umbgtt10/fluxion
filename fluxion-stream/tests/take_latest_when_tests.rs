@@ -3,17 +3,15 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream::take_latest_when::TakeLatestWhenExt;
-use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{
-    helpers::assert_no_element_emitted,
-    helpers::unwrap_stream,
+    helpers::{assert_no_element_emitted, assert_stream_ended, unwrap_stream},
     test_channel,
     test_data::{
         animal, animal_ant, animal_cat, animal_dog, person, person_alice, person_bob,
         person_charlie, person_dave, TestData,
     },
+    Sequenced,
 };
-use futures::StreamExt;
 
 #[tokio::test]
 async fn test_take_latest_when_empty_streams() -> anyhow::Result<()> {
@@ -29,11 +27,7 @@ async fn test_take_latest_when_empty_streams() -> anyhow::Result<()> {
     let mut output_stream = source_stream.take_latest_when(filter_stream, filter_fn);
 
     // Act & Assert
-    let next_item = output_stream.next().await;
-    assert!(
-        next_item.is_none(),
-        "Expected no items from an empty stream with `take_latest_when`"
-    );
+    assert_stream_ended(&mut output_stream, 500).await;
 
     Ok(())
 }
@@ -517,5 +511,5 @@ async fn test_take_latest_when_filter_panics() {
     filter_tx.send(Sequenced::new(animal_dog())).unwrap();
 
     // Assert
-    let _ = output_stream.next().await;
+    let _ = unwrap_stream(&mut output_stream, 100).await;
 }

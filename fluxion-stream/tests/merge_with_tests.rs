@@ -7,6 +7,7 @@ use fluxion_stream::MergedStream;
 use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{
     animal::Animal,
+    assert_stream_ended,
     person::Person,
     plant::Plant,
     test_channel,
@@ -68,9 +69,8 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
     non_empty_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
-    let state = unwrap_stream(&mut merged_stream, 100).await;
     assert_eq!(
-        state.into_inner(),
+        unwrap_stream(&mut merged_stream, 100).await.into_inner(),
         1,
         "First emission should increment counter to 1"
     );
@@ -79,9 +79,8 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
     non_empty_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
-    let state = unwrap_stream(&mut merged_stream, 100).await;
     assert_eq!(
-        state.into_inner(),
+        unwrap_stream(&mut merged_stream, 100).await.into_inner(),
         2,
         "Second emission should increment counter to 2"
     );
@@ -90,9 +89,8 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
     non_empty_tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert
-    let state = unwrap_stream(&mut merged_stream, 100).await;
     assert_eq!(
-        state.into_inner(),
+        unwrap_stream(&mut merged_stream, 100).await.into_inner(),
         3,
         "Third emission should increment counter to 3"
     );
@@ -545,7 +543,7 @@ async fn test_merge_with_user_closure_panics() {
 
     // Act: Second emission triggers panic
     tx.send(Sequenced::new(person_bob())).unwrap();
-    let _second = merged_stream.next().await; // This will panic
+    let _second = unwrap_stream(&mut merged_stream, 100).await; // This will panic
 }
 
 #[tokio::test]
@@ -596,7 +594,7 @@ async fn test_merge_with_into_fluxion_stream_empty() -> anyhow::Result<()> {
     drop(tx);
 
     // Assert: Stream should end without errors
-    assert!(fluxion_stream.next().await.is_none());
+    assert_stream_ended(&mut fluxion_stream, 500).await;
 
     Ok(())
 }
