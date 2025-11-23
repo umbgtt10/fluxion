@@ -130,11 +130,11 @@ where
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let stream = unsafe { self.as_mut().map_unchecked_mut(|s| &mut s.stream) };
-        
+
         match ready!(stream.poll_next(cx)) {
             Some(StreamItem::Error(err)) => {
                 let handler = unsafe { self.get_unchecked_mut() }.handler;
-                
+
                 if handler(&err) {
                     // Error handled, skip it and poll next item
                     cx.waker().wake_by_ref();
@@ -249,7 +249,7 @@ async fn test_on_error_consumes_matched_errors() {
     let mut handled = stream.on_error(|err| {
         matches!(err, FluxionError::Stream(_))
     });
-    
+
     // Only non-Stream errors should propagate
     assert!(matches!(next_item(&mut handled).await, StreamItem::Value(_)));
 }
@@ -258,7 +258,7 @@ async fn test_on_error_consumes_matched_errors() {
 async fn test_on_error_propagates_unmatched_errors() {
     let stream = create_stream_with_errors();
     let mut handled = stream.on_error(|_| false);
-    
+
     // All errors should propagate
     assert!(matches!(next_item(&mut handled).await, StreamItem::Error(_)));
 }
@@ -269,7 +269,7 @@ async fn test_on_error_chain() {
     let mut handled = stream
         .on_error(|err| matches!(err, FluxionError::User(_)))
         .on_error(|err| matches!(err, FluxionError::Stream(_)));
-    
+
     // All errors consumed by chain
     assert!(matches!(next_item(&mut handled).await, StreamItem::Value(_)));
 }
