@@ -53,26 +53,21 @@
 //!
 //! ```
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt};
-//! use fluxion_test_utils::Sequenced;
-//! use futures::StreamExt;
+//! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, test_channel};
 //!
 //! # #[tokio::main]
 //! # async fn main() {
-//! let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
-//! let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+//! let (tx2, stream2) = test_channel::<Sequenced<i32>>();
 //!
-//! let stream1 = FluxionStream::from_unbounded_receiver(rx1);
-//! let stream2 = FluxionStream::from_unbounded_receiver(rx2);
-//!
-//! let merged = stream1.ordered_merge(vec![stream2]);
-//! let mut merged = merged;
+//! let mut merged = stream1.ordered_merge(vec![stream2]);
 //!
 //! // Send out of order - stream2 sends seq=1, stream1 sends seq=2
 //! tx2.send((100, 1).into()).unwrap();
 //! tx1.send((200, 2).into()).unwrap();
 //!
 //! // Items are emitted in temporal order (seq 1, then seq 2)
-//! let first = merged.next().await.unwrap().unwrap();
+//! let first = unwrap_stream(&mut merged, 500).await.unwrap();
 //! assert_eq!(first.value, 100); // seq=1 arrives first despite being sent second
 //! # }
 //! ```
@@ -210,29 +205,24 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, WithLatestFromExt};
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
-//! use futures::StreamExt;
 //!
 //! # async fn example() {
 //! // User clicks enriched with latest configuration
-//! let (click_tx, click_rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<String>>();
-//! let (config_tx, config_rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<String>>();
+//! let (click_tx, clicks) = test_channel::<Sequenced<String>>();
+//! let (config_tx, configs) = test_channel::<Sequenced<String>>();
 //!
-//! let clicks = FluxionStream::from_unbounded_receiver(click_rx);
-//! let configs = FluxionStream::from_unbounded_receiver(config_rx);
-//!
-//! let enriched = clicks.with_latest_from(
+//! let mut enriched = clicks.with_latest_from(
 //!     configs,
 //!     |state| state.clone()
 //! );
-//! let mut enriched = enriched;
 //!
 //! // Send config first, then click
 //! config_tx.send(("theme=dark".to_string(), 1).into()).unwrap();
 //! click_tx.send(("button1".to_string(), 2).into()).unwrap();
 //!
-//! let result = enriched.next().await.unwrap().unwrap();
+//! let result = unwrap_value(Some(unwrap_stream(&mut enriched, 500).await));
 //! assert_eq!(result.values().len(), 2); // Has both click and config
 //! # }
 //! ```
@@ -244,25 +234,20 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt};
-//! use fluxion_test_utils::Sequenced;
-//! use futures::StreamExt;
+//! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
 //!
 //! # async fn example() {
 //! // Combine logs from multiple services in temporal order
-//! let (service1_tx, service1_rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<String>>();
-//! let (service2_tx, service2_rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<String>>();
+//! let (service1_tx, service1) = test_channel::<Sequenced<String>>();
+//! let (service2_tx, service2) = test_channel::<Sequenced<String>>();
 //!
-//! let service1 = FluxionStream::from_unbounded_receiver(service1_rx);
-//! let service2 = FluxionStream::from_unbounded_receiver(service2_rx);
-//!
-//! let unified_log = service1.ordered_merge(vec![service2]);
-//! let mut unified_log = unified_log;
+//! let mut unified_log = service1.ordered_merge(vec![service2]);
 //!
 //! // Send logs with different timestamps
 //! service1_tx.send(("service1: started".to_string(), 1).into()).unwrap();
 //! service2_tx.send(("service2: ready".to_string(), 2).into()).unwrap();
 //!
-//! let first = unified_log.next().await.unwrap().unwrap();
+//! let first = unwrap_value(Some(unwrap_stream(&mut unified_log, 500).await));
 //! assert_eq!(first.value, "service1: started");
 //! # }
 //! ```
@@ -274,31 +259,28 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
-//! use futures::StreamExt;
 //!
 //! # async fn example() {
-//! let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
-//! let stream = FluxionStream::from_unbounded_receiver(rx);
+//! let (tx, stream) = test_channel::<Sequenced<i32>>();
 //!
 //! // Pair each value with its previous value
-//! let paired = stream.combine_with_previous();
-//! let mut paired = paired;
+//! let mut paired = stream.combine_with_previous();
 //!
 //! // Send values
 //! tx.send((1, 1).into()).unwrap();
 //! tx.send((1, 2).into()).unwrap(); // Same value
 //! tx.send((2, 3).into()).unwrap(); // Changed!
 //!
-//! let result = paired.next().await.unwrap().unwrap();
+//! let result = unwrap_value(Some(unwrap_stream(&mut paired, 500).await));
 //! assert!(result.previous.is_none()); // First has no previous
 //!
-//! let result = paired.next().await.unwrap().unwrap();
+//! let result = unwrap_value(Some(unwrap_stream(&mut paired, 500).await));
 //! let changed = result.previous.as_ref().unwrap().value != result.current.value;
 //! assert!(!changed); // 1 == 1, no change
 //!
-//! let result = paired.next().await.unwrap().unwrap();
+//! let result = unwrap_value(Some(unwrap_stream(&mut paired, 500).await));
 //! let changed = result.previous.as_ref().unwrap().value != result.current.value;
 //! assert!(changed); // 1 != 2, changed!
 //! # }
@@ -311,30 +293,25 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, EmitWhenExt};
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
-//! use futures::StreamExt;
 //!
 //! # async fn example() {
 //! // Send notifications only when enabled
-//! let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
-//! let (enabled_tx, enabled_rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+//! let (event_tx, events) = test_channel::<Sequenced<i32>>();
+//! let (enabled_tx, enabled) = test_channel::<Sequenced<i32>>();
 //!
-//! let events = FluxionStream::from_unbounded_receiver(event_rx);
-//! let enabled = FluxionStream::from_unbounded_receiver(enabled_rx);
-//!
-//! let notifications = events.emit_when(
+//! let mut notifications = events.emit_when(
 //!     enabled,
 //!     |state| state.values().get(1).map(|v| *v > 0).unwrap_or(false)
 //! );
-//! let mut notifications = notifications;
 //!
 //! // Enable notifications
 //! enabled_tx.send((1, 1).into()).unwrap();
 //! // Send event
 //! event_tx.send((999, 2).into()).unwrap();
 //!
-//! let result = notifications.next().await.unwrap().unwrap();
+//! let result = unwrap_value(Some(unwrap_stream(&mut notifications, 500).await));
 //! assert_eq!(result.value, 999);
 //! # }
 //! ```
@@ -401,9 +378,8 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineWithPreviousExt, TakeLatestWhenExt};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
-//! use futures::StreamExt;
 //!
 //! async fn example() {
 //! let (source_tx, source_stream) = test_channel::<Sequenced<i32>>();
@@ -416,7 +392,7 @@
 //! source_tx.send(Sequenced::new(42)).unwrap();
 //! filter_tx.send(Sequenced::new(1)).unwrap();
 //!
-//! let item = composed.next().await.unwrap().unwrap();
+//! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert!(item.previous.is_none());
 //! assert_eq!(&item.current.value, &42);
 //! }
@@ -429,9 +405,8 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
-//! use futures::StreamExt;
 //!
 //! async fn example() {
 //! let (tx, stream) = test_channel::<Sequenced<i32>>();
@@ -444,7 +419,7 @@
 //! tx.send(Sequenced::new(-1)).unwrap();
 //! tx.send(Sequenced::new(5)).unwrap();
 //!
-//! let result = composed.next().await.unwrap().unwrap();
+//! let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert_eq!(result, "Value: 5");
 //! }
 //! ```
@@ -455,9 +430,8 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
-//! use futures::StreamExt;
 //!
 //! async fn example() {
 //! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
@@ -471,7 +445,7 @@
 //! tx1.send(Sequenced::new(1)).unwrap();
 //! tx2.send(Sequenced::new(2)).unwrap();
 //!
-//! let item = composed.next().await.unwrap().unwrap();
+//! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert!(item.previous.is_none());
 //! assert_eq!(item.current.values().len(), 2);
 //! }
@@ -495,9 +469,8 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt, CombineWithPreviousExt};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
-//! use futures::StreamExt;
 //!
 //! async fn example() {
 //! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
@@ -509,12 +482,12 @@
 //!     .combine_with_previous();
 //!
 //! tx1.send(Sequenced::new(1)).unwrap();
-//! let item = composed.next().await.unwrap().unwrap();
+//! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert!(item.previous.is_none());
 //! assert_eq!(&item.current.value, &1);
 //!
 //! tx2.send(Sequenced::new(2)).unwrap();
-//! let item = composed.next().await.unwrap().unwrap();
+//! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert_eq!(&item.previous.unwrap().value, &1);
 //! assert_eq!(&item.current.value, &2);
 //! }
@@ -526,9 +499,8 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
-//! use futures::StreamExt;
 //!
 //! async fn example() {
 //! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
@@ -542,12 +514,12 @@
 //! tx1.send(Sequenced::new(1)).unwrap();
 //! tx2.send(Sequenced::new(2)).unwrap();
 //!
-//! let item = composed.next().await.unwrap().unwrap();
+//! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert!(item.previous.is_none());
 //! assert_eq!(item.current.values().len(), 2);
 //!
 //! tx1.send(Sequenced::new(3)).unwrap();
-//! let item = composed.next().await.unwrap().unwrap();
+//! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! // Previous state had [1, 2], current has [3, 2]
 //! assert!(item.previous.is_some());
 //! }
@@ -559,9 +531,8 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, CombineLatestExt, TakeWhileExt};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
-//! use futures::StreamExt;
 //!
 //! async fn example() {
 //! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
@@ -577,7 +548,7 @@
 //! tx1.send(Sequenced::new(1)).unwrap();
 //! tx2.send(Sequenced::new(2)).unwrap();
 //!
-//! let combined = composed.next().await.unwrap().unwrap();
+//! let combined = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert_eq!(combined.values().len(), 2);
 //! }
 //! ```
@@ -588,9 +559,8 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, OrderedStreamExt, TakeWhileExt};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
-//! use futures::StreamExt;
 //!
 //! async fn example() {
 //! let (tx1, stream1) = test_channel::<Sequenced<i32>>();
@@ -605,11 +575,11 @@
 //! filter_tx.send(Sequenced::new(true)).unwrap();
 //! tx1.send(Sequenced::new(1)).unwrap();
 //!
-//! let item = composed.next().await.unwrap().unwrap().value.clone();
+//! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value.clone();
 //! assert_eq!(item, 1);
 //!
 //! tx2.send(Sequenced::new(2)).unwrap();
-//! let item = composed.next().await.unwrap().unwrap().value.clone();
+//! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value.clone();
 //! assert_eq!(item, 2);
 //! }
 //! ```
@@ -620,9 +590,8 @@
 //!
 //! ```rust
 //! use fluxion_stream::{FluxionStream, TakeLatestWhenExt, CombineWithPreviousExt};
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
-//! use futures::StreamExt;
 //!
 //! async fn example() {
 //! let (source_tx, source_stream) = test_channel::<Sequenced<i32>>();
@@ -635,12 +604,12 @@
 //! source_tx.send(Sequenced::new(42)).unwrap();
 //! filter_tx.send(Sequenced::new(0)).unwrap();
 //!
-//! let item = composed.next().await.unwrap().unwrap();
+//! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert!(item.previous.is_none());
 //! assert_eq!(&item.current.value, &42);
 //!
 //! source_tx.send(Sequenced::new(99)).unwrap();
-//! let item = composed.next().await.unwrap().unwrap();
+//! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert_eq!(&item.previous.unwrap().value, &42);
 //! assert_eq!(&item.current.value, &99);
 //! }

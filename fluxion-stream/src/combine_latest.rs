@@ -75,18 +75,13 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{CombineLatestExt, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
-    ///
-    /// // Create streams
-    /// let stream1 = FluxionStream::from_unbounded_receiver(rx1);
-    /// let stream2 = FluxionStream::from_unbounded_receiver(rx2);
+    /// let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+    /// let (tx2, stream2) = test_channel::<Sequenced<i32>>();
     ///
     /// // Combine streams
     /// let mut combined = stream1.combine_latest(
@@ -99,7 +94,7 @@ where
     /// tx2.send((2, 2).into()).unwrap();
     ///
     /// // Assert
-    /// let result = combined.next().await.unwrap().unwrap();
+    /// let result = unwrap_value(Some(unwrap_stream(&mut combined, 500).await));
     /// let values = result.values();
     /// assert_eq!(values.len(), 2);
     /// # }

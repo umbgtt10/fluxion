@@ -51,18 +51,13 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{TakeLatestWhenExt, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx_data, rx_data) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let (tx_trigger, rx_trigger) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
-    ///
-    /// // Create streams
-    /// let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
-    /// let trigger_stream = FluxionStream::from_unbounded_receiver(rx_trigger);
+    /// let (tx_data, data_stream) = test_channel::<Sequenced<i32>>();
+    /// let (tx_trigger, trigger_stream) = test_channel::<Sequenced<i32>>();
     ///
     /// // Combine streams
     /// let mut sampled = data_stream.take_latest_when(
@@ -75,7 +70,7 @@ where
     /// tx_trigger.send((1, 2).into()).unwrap();  // Trigger
     ///
     /// // Assert - trigger emits the latest data value
-    /// let result = sampled.next().await.unwrap().unwrap();
+    /// let result = unwrap_value(Some(unwrap_stream(&mut sampled, 500).await));
     /// assert_eq!(result.value, 100);
     /// # }
     /// ```

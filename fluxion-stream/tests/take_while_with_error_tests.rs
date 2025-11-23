@@ -18,14 +18,14 @@ async fn test_take_while_with_propagates_source_error() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut filtered_stream = source_stream.take_while_with(filter_stream, |f| *f > 0);
+    let mut result = source_stream.take_while_with(filter_stream, |f| *f > 0);
 
     // Act & Assert: Send filter value first then source value
     filter_tx.send(StreamItem::Value(Sequenced::with_timestamp(100, 1)))?;
-    assert_no_element_emitted(&mut filtered_stream, 100).await;
+    assert_no_element_emitted(&mut result, 100).await;
     source_tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 2)))?;
     assert!(matches!(
-        unwrap_stream(&mut filtered_stream, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
@@ -36,14 +36,14 @@ async fn test_take_while_with_propagates_source_error() -> anyhow::Result<()> {
 
     // Error should be propagated
     assert!(matches!(
-        unwrap_stream(&mut filtered_stream, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Stream continues after error
     source_tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 3)))?;
     assert!(matches!(
-        unwrap_stream(&mut filtered_stream, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
@@ -52,7 +52,7 @@ async fn test_take_while_with_propagates_source_error() -> anyhow::Result<()> {
     drop(filter_tx);
 
     // stream terminates when channels close
-    assert_stream_ended(&mut filtered_stream, 500).await;
+    assert_stream_ended(&mut result, 500).await;
 
     Ok(())
 }
@@ -63,14 +63,14 @@ async fn test_take_while_with_propagates_filter_error() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut filtered_stream = source_stream.take_while_with(filter_stream, |f| *f > 0);
+    let mut result = source_stream.take_while_with(filter_stream, |f| *f > 0);
 
     // Act & Assert: Send filter value
     filter_tx.send(StreamItem::Value(Sequenced::with_timestamp(100, 1)))?;
-    assert_no_element_emitted(&mut filtered_stream, 100).await;
+    assert_no_element_emitted(&mut result, 100).await;
     source_tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 2)))?;
     assert!(matches!(
-        unwrap_stream(&mut filtered_stream, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
@@ -81,14 +81,14 @@ async fn test_take_while_with_propagates_filter_error() -> anyhow::Result<()> {
 
     // Error should be propagated
     assert!(matches!(
-        unwrap_stream(&mut filtered_stream, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Stream continues after error
     source_tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 3)))?;
     assert!(matches!(
-        unwrap_stream(&mut filtered_stream, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
@@ -96,7 +96,7 @@ async fn test_take_while_with_propagates_filter_error() -> anyhow::Result<()> {
     drop(filter_tx);
 
     // stream terminates when channels close
-    assert_stream_ended(&mut filtered_stream, 500).await;
+    assert_stream_ended(&mut result, 500).await;
 
     Ok(())
 }

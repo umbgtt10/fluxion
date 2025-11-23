@@ -50,18 +50,13 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{EmitWhenExt, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx_data, rx_data) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let (tx_enable, rx_enable) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
-    ///
-    /// // Create streams
-    /// let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
-    /// let enable_stream = FluxionStream::from_unbounded_receiver(rx_enable);
+    /// let (tx_data, data_stream) = test_channel::<Sequenced<i32>>();
+    /// let (tx_enable, enable_stream) = test_channel::<Sequenced<i32>>();
     ///
     /// // Combine streams
     /// let mut gated = data_stream.emit_when(
@@ -77,7 +72,7 @@ where
     /// tx_data.send((42, 2).into()).unwrap();
     ///
     /// // Assert - data emits when enabled
-    /// let result = gated.next().await.unwrap().unwrap();
+    /// let result = unwrap_value(Some(unwrap_stream(&mut gated, 500).await));
     /// assert_eq!(result.value, 42);
     /// # }
     /// ```

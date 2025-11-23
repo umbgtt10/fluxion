@@ -53,7 +53,7 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
     drop(empty_tx);
 
     // Use a simple counter state to verify emissions from the non-empty stream
-    let mut merged_stream = MergedStream::seed::<Sequenced<usize>>(0usize)
+    let mut result = MergedStream::seed::<Sequenced<usize>>(0usize)
         .merge_with(non_empty_stream, |_item: TestData, state: &mut usize| {
             *state += 1;
             *state
@@ -68,7 +68,7 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
 
     // Assert
     assert_eq!(
-        unwrap_stream(&mut merged_stream, 100).await.into_inner(),
+        unwrap_stream(&mut result, 100).await.into_inner(),
         1,
         "First emission should increment counter to 1"
     );
@@ -78,7 +78,7 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
 
     // Assert
     assert_eq!(
-        unwrap_stream(&mut merged_stream, 100).await.into_inner(),
+        unwrap_stream(&mut result, 100).await.into_inner(),
         2,
         "Second emission should increment counter to 2"
     );
@@ -88,7 +88,7 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
 
     // Assert
     assert_eq!(
-        unwrap_stream(&mut merged_stream, 100).await.into_inner(),
+        unwrap_stream(&mut result, 100).await.into_inner(),
         3,
         "Third emission should increment counter to 3"
     );
@@ -101,7 +101,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
     let (tx1, stream1) = test_channel::<Sequenced<TestData>>();
     let (tx2, stream2) = test_channel::<Sequenced<TestData>>();
 
-    let mut merged_stream = MergedStream::seed::<Sequenced<Repository>>(Repository::new())
+    let mut result = MergedStream::seed::<Sequenced<Repository>>(Repository::new())
         .merge_with(stream1, |item: TestData, state: &mut Repository| {
             state.from_testdata(item)
         })
@@ -114,7 +114,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        unwrap_stream(&mut merged_stream, 100)
+        unwrap_stream(&mut result, 100)
             .await
             .into_inner()
             .person_name,
@@ -127,7 +127,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        unwrap_stream(&mut merged_stream, 100)
+        unwrap_stream(&mut result, 100)
             .await
             .into_inner()
             .person_name,
@@ -140,7 +140,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        unwrap_stream(&mut merged_stream, 100)
+        unwrap_stream(&mut result, 100)
             .await
             .into_inner()
             .person_name,
@@ -153,7 +153,7 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        unwrap_stream(&mut merged_stream, 100)
+        unwrap_stream(&mut result, 100)
             .await
             .into_inner()
             .person_name,
@@ -170,7 +170,7 @@ async fn test_merge_with_parallel_processing() -> anyhow::Result<()> {
     let (tx1, stream1) = test_channel::<Sequenced<TestData>>();
     let (tx2, stream2) = test_channel::<Sequenced<TestData>>();
 
-    let mut merged_stream = MergedStream::seed::<Sequenced<Repository>>(Repository::new())
+    let mut result = MergedStream::seed::<Sequenced<Repository>>(Repository::new())
         .merge_with(stream1, |item: TestData, state: &mut Repository| {
             state.from_testdata(item)
         })
@@ -193,7 +193,7 @@ async fn test_merge_with_parallel_processing() -> anyhow::Result<()> {
     // Assert - Wait for all 5 emissions (3 person + 2 animal)
     let mut last = None;
     for _ in 0..5 {
-        let item = unwrap_stream(&mut merged_stream, 500).await;
+        let item = unwrap_stream(&mut result, 500).await;
         last = Some(item.into_inner());
     }
 
@@ -218,7 +218,7 @@ async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
     let (tx1, large_stream1) = test_channel::<Sequenced<TestData>>();
     let (tx2, large_stream2) = test_channel::<Sequenced<TestData>>();
 
-    let mut merged_stream = MergedStream::seed::<Sequenced<i32>>(0)
+    let mut result = MergedStream::seed::<Sequenced<i32>>(0)
         .merge_with(large_stream1, |item: TestData, state: &mut i32| {
             let num: i32 = match item {
                 TestData::Person(p) => p.age as i32,
@@ -250,7 +250,7 @@ async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
     let mut count = 0;
     let mut final_state = None;
     for _ in 0..20000 {
-        let state = unwrap_stream(&mut merged_stream, 100).await;
+        let state = unwrap_stream(&mut result, 100).await;
         count += 1;
         final_state = Some(state.into_inner());
     }
@@ -271,7 +271,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (plant_tx, plant_stream) = test_channel::<Sequenced<TestData>>();
 
-    let mut merged_stream = MergedStream::seed::<Sequenced<Repository>>(Repository::new())
+    let mut result = MergedStream::seed::<Sequenced<Repository>>(Repository::new())
         .merge_with(animal_stream, |item: TestData, state| {
             state.from_testdata(item)
         })
@@ -286,7 +286,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     animal_tx.send(Sequenced::new(animal_dog()))?;
 
     // Assert
-    let state = unwrap_stream(&mut merged_stream, 100).await;
+    let state = unwrap_stream(&mut result, 100).await;
     assert_eq!(
         state.clone().into_inner(),
         Repository {
@@ -306,7 +306,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     animal_tx.send(Sequenced::new(animal_bird()))?;
 
     // Assert
-    let state = unwrap_stream(&mut merged_stream, 100).await;
+    let state = unwrap_stream(&mut result, 100).await;
     assert_eq!(
         state.into_inner(),
         Repository {
@@ -326,7 +326,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     person_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert
-    let state = unwrap_stream(&mut merged_stream, 100).await;
+    let state = unwrap_stream(&mut result, 100).await;
     assert_eq!(
         state.into_inner(),
         Repository {
@@ -346,7 +346,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     person_tx.send(Sequenced::new(person_bob())).unwrap();
 
     // Assert
-    let state = unwrap_stream(&mut merged_stream, 100).await;
+    let state = unwrap_stream(&mut result, 100).await;
     assert_eq!(
         state.into_inner(),
         Repository {
@@ -366,7 +366,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     plant_tx.send(Sequenced::new(plant_fern()))?;
 
     // Assert
-    let state = unwrap_stream(&mut merged_stream, 100).await;
+    let state = unwrap_stream(&mut result, 100).await;
     assert_eq!(
         state.into_inner(),
         Repository {
@@ -386,7 +386,7 @@ async fn test_merge_with_hybrid_using_repository_emits() -> anyhow::Result<()> {
     plant_tx.send(Sequenced::new(plant_oak()))?;
 
     // Assert
-    let state = unwrap_stream(&mut merged_stream, 100).await;
+    let state = unwrap_stream(&mut result, 100).await;
     assert_eq!(
         state.into_inner(),
         Repository {
@@ -522,7 +522,7 @@ async fn test_merge_with_user_closure_panics() {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     // Create a merge_with stream where the closure panics on the second emission
-    let mut merged_stream = MergedStream::seed::<Sequenced<usize>>(0usize).merge_with(
+    let mut result = MergedStream::seed::<Sequenced<usize>>(0usize).merge_with(
         stream,
         |_item: TestData, state: &mut usize| {
             *state += 1;
@@ -536,14 +536,14 @@ async fn test_merge_with_user_closure_panics() {
     // Act: First emission should succeed
     tx.send(Sequenced::new(person_alice())).unwrap();
     assert_eq!(
-        unwrap_stream(&mut merged_stream, 100).await.into_inner(),
+        unwrap_stream(&mut result, 100).await.into_inner(),
         1,
         "First emission should increment state to 1"
     );
 
     // Act: Second emission triggers panic
     tx.send(Sequenced::new(person_bob())).unwrap();
-    let _second = unwrap_stream(&mut merged_stream, 100).await; // This will panic
+    let _second = unwrap_stream(&mut result, 100).await; // This will panic
 }
 
 #[tokio::test]

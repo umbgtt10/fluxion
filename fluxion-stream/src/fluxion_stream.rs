@@ -127,9 +127,8 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
-    /// use fluxion_test_utils::{Sequenced, test_channel};
+    /// use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -144,7 +143,7 @@ where
     ///     });
     ///
     /// tx.send(Sequenced::new(42)).unwrap();
-    /// assert_eq!(mapped.next().await.unwrap().unwrap(), "Value: 42");
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut mapped, 500).await)), "Value: 42");
     /// # }
     /// ```
     ///
@@ -214,9 +213,8 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
     /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
@@ -231,8 +229,8 @@ where
     /// tx.send(Sequenced::new(3)).unwrap();
     /// tx.send(Sequenced::new(4)).unwrap();
     ///
-    /// assert_eq!(&evens.next().await.unwrap().unwrap().value, &2);
-    /// assert_eq!(&evens.next().await.unwrap().unwrap().value, &4);
+    /// assert_eq!(&unwrap_value(Some(unwrap_stream(&mut evens, 500).await)).value, &2);
+    /// assert_eq!(&unwrap_value(Some(unwrap_stream(&mut evens, 500).await)).value, &4);
     /// # }
     /// ```
     ///
@@ -290,32 +288,29 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
-    /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let stream = FluxionStream::from_unbounded_receiver(rx);
-    /// let mut paired = stream.combine_with_previous();
+    /// let (tx, stream) = test_channel::<Sequenced<i32>>();
+    /// let mut paired = FluxionStream::new(stream).combine_with_previous();
     ///
     /// tx.send(Sequenced::new(10)).unwrap();
     /// tx.send(Sequenced::new(20)).unwrap();
     /// tx.send(Sequenced::new(30)).unwrap();
     ///
     /// // First item has no previous
-    /// let item = paired.next().await.unwrap().unwrap();
+    /// let item = unwrap_value(Some(unwrap_stream(&mut paired, 500).await));
     /// assert!(item.previous.is_none());
     /// assert_eq!(&item.current.value, &10);
     ///
     /// // Second item has previous value
-    /// let item = paired.next().await.unwrap().unwrap();
+    /// let item = unwrap_value(Some(unwrap_stream(&mut paired, 500).await));
     /// assert_eq!(&item.previous.unwrap().value, &10);
     /// assert_eq!(&item.current.value, &20);
     ///
     /// // Third item pairs 20 and 30
-    /// let item = paired.next().await.unwrap().unwrap();
+    /// let item = unwrap_value(Some(unwrap_stream(&mut paired, 500).await));
     /// assert_eq!(&item.previous.unwrap().value, &20);
     /// assert_eq!(&item.current.value, &30);
     /// # }
@@ -365,28 +360,22 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
-    /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let (filter_tx, filter_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
+    /// let (source_tx, source) = test_channel::<Sequenced<i32>>();
+    /// let (filter_tx, filter) = test_channel::<Sequenced<i32>>();
     ///
-    /// let source = FluxionStream::from_unbounded_receiver(source_rx);
-    /// let filter = FluxionStream::from_unbounded_receiver(filter_rx);
-    ///
-    /// let mut taken = source.take_while_with(filter, |value: &i32| *value > 0);
+    /// let mut taken = FluxionStream::new(source).take_while_with(FluxionStream::new(filter), |value: &i32| *value > 0);
     ///
     /// // Filter allows emissions (value = 1)
     /// filter_tx.send(Sequenced::new(1)).unwrap();
     /// source_tx.send(Sequenced::new(100)).unwrap();
     /// source_tx.send(Sequenced::new(200)).unwrap();
     ///
-    /// let mut taken = Box::pin(taken);
-    /// assert_eq!(&taken.next().await.unwrap().unwrap().value, &100);
-    /// assert_eq!(&taken.next().await.unwrap().unwrap().value, &200);
+    /// assert_eq!(&unwrap_value(Some(unwrap_stream(&mut taken, 500).await)).value, &100);
+    /// assert_eq!(&unwrap_value(Some(unwrap_stream(&mut taken, 500).await)).value, &200);
     /// # }
     /// ```
     ///
@@ -439,19 +428,14 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::{HasTimestamp, Timestamped as TimestampedTrait};
-    /// use futures::StreamExt;
-    /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let (trigger_tx, trigger_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
+    /// let (source_tx, source) = test_channel::<Sequenced<i32>>();
+    /// let (trigger_tx, trigger) = test_channel::<Sequenced<i32>>();
     ///
-    /// let source = FluxionStream::from_unbounded_receiver(source_rx);
-    /// let trigger = FluxionStream::from_unbounded_receiver(trigger_rx);
-    ///
-    /// let mut sampled = source.take_latest_when(trigger, |_| true);
+    /// let mut sampled = FluxionStream::new(source).take_latest_when(FluxionStream::new(trigger), |_| true);
     ///
     /// // Buffer source values
     /// source_tx.send((10, 1).into()).unwrap();
@@ -461,13 +445,13 @@ where
     /// // Trigger emission - emits latest buffered value (30)
     /// trigger_tx.send((0, 4).into()).unwrap();
     ///
-    /// let result = sampled.next().await.unwrap().unwrap();
+    /// let result = unwrap_value(Some(unwrap_stream(&mut sampled, 500).await));
     /// assert_eq!(&result.value, &30);
     /// assert_eq!(result.timestamp(), 4); // Uses trigger's sequence
     ///
     /// // After trigger, source values emit immediately
     /// source_tx.send((40, 5).into()).unwrap();
-    /// let result = sampled.next().await.unwrap().unwrap();
+    /// let result = unwrap_value(Some(unwrap_stream(&mut sampled, 500).await));
     /// assert_eq!(&result.value, &40);
     /// assert_eq!(result.timestamp(), 5); // Uses source's sequence
     /// # }
@@ -524,20 +508,15 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombinedState};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
-    /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (source_tx, source_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let (threshold_tx, threshold_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
-    ///
-    /// let source = FluxionStream::from_unbounded_receiver(source_rx);
-    /// let threshold = FluxionStream::from_unbounded_receiver(threshold_rx);
+    /// let (source_tx, source) = test_channel::<Sequenced<i32>>();
+    /// let (threshold_tx, threshold) = test_channel::<Sequenced<i32>>();
     ///
     /// // Emit only when source value exceeds threshold
-    /// let mut gated = source.emit_when(threshold, |state: &CombinedState<i32>| {
+    /// let mut gated = FluxionStream::new(source).emit_when(FluxionStream::new(threshold), |state: &CombinedState<i32>| {
     ///     let values = state.values();
     ///     values[0] > values[1] // source > threshold
     /// });
@@ -547,9 +526,8 @@ where
     /// source_tx.send(Sequenced::new(30)).unwrap(); // Below threshold, not emitted
     /// source_tx.send(Sequenced::new(60)).unwrap(); // Above threshold, emitted
     ///
-    /// let mut gated = Box::pin(gated);
-    /// let result = gated.next().await.unwrap().unwrap();
-    /// assert_eq!(&result.value, &42);
+    /// let result = unwrap_value(Some(unwrap_stream(&mut gated, 500).await));
+    /// assert_eq!(&result.value, &60);
     /// # }
     /// ```
     ///
@@ -599,19 +577,14 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{FluxionStream, CombinedState};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
-    /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (primary_tx, primary_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let (secondary_tx, secondary_rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
+    /// let (primary_tx, primary) = test_channel::<Sequenced<i32>>();
+    /// let (secondary_tx, secondary) = test_channel::<Sequenced<i32>>();
     ///
-    /// let primary = FluxionStream::from_unbounded_receiver(primary_rx);
-    /// let secondary = FluxionStream::from_unbounded_receiver(secondary_rx);
-    ///
-    /// let mut combined = primary.with_latest_from(secondary, |state: &CombinedState<i32, u64>| {
+    /// let mut combined = FluxionStream::new(primary).with_latest_from(FluxionStream::new(secondary), |state: &CombinedState<i32, u64>| {
     ///     state.clone() // Return the combined state itself
     /// });
     ///
@@ -622,7 +595,7 @@ where
     /// primary_tx.send(Sequenced::new(1)).unwrap();
     /// primary_tx.send(Sequenced::new(2)).unwrap();
     ///
-    /// let result = combined.next().await.unwrap().unwrap();
+    /// let result = unwrap_value(Some(unwrap_stream(&mut combined, 500).await));
     /// let values = result.values();
     /// assert_eq!(values[0] + values[1], 101); // 1 + 100
     /// # }
@@ -680,31 +653,26 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
-    /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<i32>>();
+    /// let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+    /// let (tx2, stream2) = test_channel::<Sequenced<i32>>();
     ///
-    /// let stream1 = FluxionStream::from_unbounded_receiver(rx1);
-    /// let stream2 = FluxionStream::from_unbounded_receiver(rx2);
-    ///
-    /// let mut combined = stream1.combine_latest(vec![stream2], |_| true);
+    /// let mut combined = FluxionStream::new(stream1).combine_latest(vec![FluxionStream::new(stream2)], |_| true);
     ///
     /// tx1.send(Sequenced::new(10)).unwrap();
     /// tx2.send(Sequenced::new(20)).unwrap();
     ///
-    /// let result = combined.next().await.unwrap().unwrap();
+    /// let result = unwrap_value(Some(unwrap_stream(&mut combined, 500).await));
     /// let state = result.values();
     /// assert_eq!(state[0], 10); // First stream's value
     /// assert_eq!(state[1], 20); // Second stream's value
     ///
     /// // When either stream updates, a new combined state is emitted
     /// tx1.send(Sequenced::new(30)).unwrap();
-    /// let result = combined.next().await.unwrap().unwrap();
+    /// let result = unwrap_value(Some(unwrap_stream(&mut combined, 500).await));
     /// let state = result.values();
     /// assert_eq!(state[0], 30); // Updated
     /// assert_eq!(state[1], 20); // Still latest from stream2
@@ -758,21 +726,15 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::FluxionStream;
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
-    /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
-    /// let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<&str>>();
-    /// let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<&str>>();
-    /// let (tx3, rx3) = mpsc::unbounded_channel::<Sequenced<&str>>();
+    /// let (tx1, stream1) = test_channel::<Sequenced<&str>>();
+    /// let (tx2, stream2) = test_channel::<Sequenced<&str>>();
+    /// let (tx3, stream3) = test_channel::<Sequenced<&str>>();
     ///
-    /// let stream1 = FluxionStream::from_unbounded_receiver(rx1);
-    /// let stream2 = FluxionStream::from_unbounded_receiver(rx2);
-    /// let stream3 = FluxionStream::from_unbounded_receiver(rx3);
-    ///
-    /// let mut merged = stream1.ordered_merge(vec![stream2, stream3]);
+    /// let mut merged = FluxionStream::new(stream1).ordered_merge(vec![FluxionStream::new(stream2), FluxionStream::new(stream3)]);
     ///
     /// // Send out of order across streams
     /// tx1.send(("first", 1).into()).unwrap();
@@ -780,9 +742,9 @@ where
     /// tx2.send(("second", 2).into()).unwrap();
     ///
     /// // Items are emitted in temporal order
-    /// assert_eq!(&merged.next().await.unwrap().unwrap().value, &"first");
-    /// assert_eq!(&merged.next().await.unwrap().unwrap().value, &"second");
-    /// assert_eq!(&merged.next().await.unwrap().unwrap().value, &"third");
+    /// assert_eq!(&unwrap_value(Some(unwrap_stream(&mut merged, 500).await)).value, &"first");
+    /// assert_eq!(&unwrap_value(Some(unwrap_stream(&mut merged, 500).await)).value, &"second");
+    /// assert_eq!(&unwrap_value(Some(unwrap_stream(&mut merged, 500).await)).value, &"third");
     /// # }
     /// ```
     ///
@@ -827,8 +789,7 @@ where
     /// ```rust
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_core::{FluxionError, StreamItem, Timestamped};
-    /// use fluxion_test_utils::{Sequenced, test_channel_with_errors};
-    /// use futures::StreamExt;
+    /// use fluxion_test_utils::{Sequenced, test_channel_with_errors, helpers::unwrap_stream};
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -843,10 +804,10 @@ where
     /// tx.send(StreamItem::Error(FluxionError::stream_error("oops"))).unwrap();
     /// tx.send(StreamItem::Value(Sequenced::new(2))).unwrap();
     ///
-    /// if let StreamItem::Value(v) = stream.next().await.unwrap() {
+    /// if let StreamItem::Value(v) = unwrap_stream(&mut stream, 500).await {
     ///     assert_eq!(v.into_inner(), 1);
     /// }
-    /// if let StreamItem::Value(v) = stream.next().await.unwrap() {
+    /// if let StreamItem::Value(v) = unwrap_stream(&mut stream, 500).await {
     ///     assert_eq!(v.into_inner(), 2);
     /// }
     /// # }
@@ -857,8 +818,7 @@ where
     /// ```rust
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_core::{FluxionError, StreamItem, Timestamped};
-    /// use fluxion_test_utils::{Sequenced, test_channel_with_errors};
-    /// use futures::StreamExt;
+    /// use fluxion_test_utils::{Sequenced, test_channel_with_errors, helpers::unwrap_stream};
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -872,7 +832,7 @@ where
     /// tx.send(StreamItem::Error(FluxionError::stream_error("network"))).unwrap();
     /// tx.send(StreamItem::Value(Sequenced::new(1))).unwrap();
     ///
-    /// if let StreamItem::Value(v) = stream.next().await.unwrap() {
+    /// if let StreamItem::Value(v) = unwrap_stream(&mut stream, 500).await {
     ///     assert_eq!(v.into_inner(), 1);
     /// }
     /// # }

@@ -14,7 +14,7 @@ async fn test_combine_latest_propagates_error_from_primary_stream() -> anyhow::R
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut combined = stream1.combine_latest(vec![stream2], |_| true);
+    let mut result = stream1.combine_latest(vec![stream2], |_| true);
 
     // Act: Send initial values
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
@@ -22,7 +22,7 @@ async fn test_combine_latest_propagates_error_from_primary_stream() -> anyhow::R
 
     // First emission combines both values
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
@@ -33,7 +33,7 @@ async fn test_combine_latest_propagates_error_from_primary_stream() -> anyhow::R
 
     // Should propagate error
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
@@ -43,7 +43,7 @@ async fn test_combine_latest_propagates_error_from_primary_stream() -> anyhow::R
 
     // Should emit value after error
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
@@ -58,7 +58,7 @@ async fn test_combine_latest_propagates_error_from_secondary_stream() -> anyhow:
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut combined = stream1.combine_latest(vec![stream2], |_| true);
+    let mut result = stream1.combine_latest(vec![stream2], |_| true);
 
     // Send initial values
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
@@ -66,7 +66,7 @@ async fn test_combine_latest_propagates_error_from_secondary_stream() -> anyhow:
 
     // First emission should succeed
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
@@ -77,7 +77,7 @@ async fn test_combine_latest_propagates_error_from_secondary_stream() -> anyhow:
 
     // Should propagate error from secondary
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
@@ -86,7 +86,7 @@ async fn test_combine_latest_propagates_error_from_secondary_stream() -> anyhow:
 
     // Stream should continue after error
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
@@ -101,14 +101,14 @@ async fn test_combine_latest_multiple_errors_from_different_streams() -> anyhow:
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut combined = stream1.combine_latest(vec![stream2], |_| true);
+    let mut result = stream1.combine_latest(vec![stream2], |_| true);
 
     // Send initial values
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     tx2.send(StreamItem::Value(Sequenced::with_timestamp(10, 2)))?;
 
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
@@ -116,7 +116,7 @@ async fn test_combine_latest_multiple_errors_from_different_streams() -> anyhow:
     tx1.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
 
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
@@ -124,7 +124,7 @@ async fn test_combine_latest_multiple_errors_from_different_streams() -> anyhow:
     tx2.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
 
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
@@ -132,7 +132,7 @@ async fn test_combine_latest_multiple_errors_from_different_streams() -> anyhow:
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(2, 3)))?;
 
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
@@ -148,7 +148,7 @@ async fn test_combine_latest_error_at_start() -> anyhow::Result<()> {
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut combined = stream1.combine_latest(vec![stream2], |_| true);
+    let mut result = stream1.combine_latest(vec![stream2], |_| true);
 
     // Send error immediately
     tx1.send(StreamItem::Error(FluxionError::stream_error(
@@ -157,7 +157,7 @@ async fn test_combine_latest_error_at_start() -> anyhow::Result<()> {
 
     // First item should be the error
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
@@ -167,7 +167,7 @@ async fn test_combine_latest_error_at_start() -> anyhow::Result<()> {
 
     // Should continue processing
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
@@ -184,7 +184,7 @@ async fn test_combine_latest_filter_predicate_continues_after_error() -> anyhow:
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Filter predicate should still be evaluated after error
-    let mut combined = stream1.combine_latest(vec![stream2], |state| {
+    let mut result = stream1.combine_latest(vec![stream2], |state| {
         state.values()[0] > 1 // Only pass values > 1
     });
 
@@ -198,7 +198,7 @@ async fn test_combine_latest_filter_predicate_continues_after_error() -> anyhow:
     )))?;
 
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
@@ -206,7 +206,7 @@ async fn test_combine_latest_filter_predicate_continues_after_error() -> anyhow:
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
 
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
@@ -217,7 +217,7 @@ async fn test_combine_latest_filter_predicate_continues_after_error() -> anyhow:
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(3, 5)))?;
 
     assert!(matches!(
-        unwrap_stream(&mut combined, 100).await,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
