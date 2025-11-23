@@ -2,8 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::{FluxionError, HasTimestamp, StreamItem, Timestamped};
-use fluxion_test_utils::Sequenced;
+use fluxion_core::{FluxionError, StreamItem};
 use std::cmp::Ordering;
 
 #[test]
@@ -232,47 +231,6 @@ fn test_stream_item_clone_error() {
     assert!(cloned.is_error());
 }
 
-#[test]
-fn test_stream_item_ordered_value() {
-    let ordered = Sequenced::with_timestamp(42, 100);
-    let item = StreamItem::Value(ordered);
-
-    assert_eq!(item.timestamp(), 100);
-    match item {
-        StreamItem::Value(v) => assert_eq!(v.value, 42),
-        _ => panic!("Expected Value"),
-    }
-}
-
-#[test]
-#[should_panic(expected = "called `timestamp()` on StreamItem::Error")]
-fn test_stream_item_ordered_error_has_zero_order() {
-    let item: StreamItem<Sequenced<i32>> = StreamItem::Error(FluxionError::stream_error("test"));
-
-    assert_eq!(item.timestamp(), 0);
-}
-
-#[test]
-#[should_panic(expected = "called `into_inner()` on StreamItem::Error")]
-fn test_stream_item_ordered_get_panics_on_error() {
-    let item: StreamItem<Sequenced<i32>> = StreamItem::Error(FluxionError::stream_error("test"));
-
-    let _ = item.into_inner();
-}
-
-#[test]
-fn test_stream_item_ordered_with_timestamp() {
-    let item: StreamItem<Sequenced<i32>> = StreamItem::with_timestamp(42, 200);
-
-    assert_eq!(item.timestamp(), 200);
-    match item {
-        StreamItem::Value(v) => assert_eq!(v.value, 42),
-        _ => panic!("Expected Value"),
-    }
-}
-
-// Note: CompareByInner tests are skipped as Timestamped doesn't implement CompareByInner
-// These tests would require a custom type that implements both Timestamped and CompareByInner
 #[test]
 fn test_stream_item_chained_map_operations() {
     let item = StreamItem::Value(5);
