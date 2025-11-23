@@ -290,13 +290,13 @@ async fn test_fluxion_stream_ordered_merge() -> anyhow::Result<()> {
     animal_tx.send(Sequenced::new(animal_dog()))?;
     plant_tx.send(Sequenced::new(plant_rose()))?;
 
-    let result1 = merged.next().await.unwrap();
+    let result1 = unwrap_stream(&mut merged, 500).await;
     assert_eq!(&result1.unwrap().value, &person_alice());
 
-    let result2 = merged.next().await.unwrap();
+    let result2 = unwrap_stream(&mut merged, 500).await;
     assert_eq!(&result2.unwrap().value, &animal_dog());
 
-    let result3 = merged.next().await.unwrap();
+    let result3 = unwrap_stream(&mut merged, 500).await;
     assert_eq!(&result3.unwrap().value, &plant_rose());
 
     Ok(())
@@ -1771,7 +1771,7 @@ async fn test_merge_with_chaining_with_map_ordered() -> anyhow::Result<()> {
     tx.send(Sequenced::new(person_alice()))?;
 
     // Assert first result: state=1, doubled=2
-    let StreamItem::Value(first) = result.next().await.unwrap() else {
+    let StreamItem::Value(first) = unwrap_stream(&mut result, 500).await else {
         panic!("Expected Value");
     };
     assert_eq!(first.into_inner(), 2, "First emission: (0+1)*2 = 2");
@@ -1780,7 +1780,7 @@ async fn test_merge_with_chaining_with_map_ordered() -> anyhow::Result<()> {
     tx.send(Sequenced::new(person_bob()))?;
 
     // Assert second result: state=2, doubled=4
-    let StreamItem::Value(second) = result.next().await.unwrap() else {
+    let StreamItem::Value(second) = unwrap_stream(&mut result, 500).await else {
         panic!("Expected Value");
     };
     assert_eq!(second.into_inner(), 4, "Second emission: (1+1)*2 = 4");
@@ -1813,7 +1813,7 @@ async fn test_merge_with_chaining_with_filter_ordered() -> anyhow::Result<()> {
     tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert: only the third emission passes the filter
-    let StreamItem::Value(first_kept) = result.next().await.unwrap() else {
+    let StreamItem::Value(first_kept) = unwrap_stream(&mut result, 500).await else {
         panic!("Expected Value");
     };
     assert_eq!(
@@ -1826,7 +1826,7 @@ async fn test_merge_with_chaining_with_filter_ordered() -> anyhow::Result<()> {
     tx.send(Sequenced::new(person_dave()))?;
 
     // Assert: fourth emission also passes
-    let StreamItem::Value(second_kept) = result.next().await.unwrap() else {
+    let StreamItem::Value(second_kept) = unwrap_stream(&mut result, 500).await else {
         panic!("Expected Value");
     };
     assert_eq!(
@@ -1871,7 +1871,7 @@ async fn test_merge_with_chaining_multiple_operators() -> anyhow::Result<()> {
     tx.send(Sequenced::new(person_charlie()))?;
 
     // Assert: first kept value
-    let StreamItem::Value(first_kept) = result.next().await.unwrap() else {
+    let StreamItem::Value(first_kept) = unwrap_stream(&mut result, 500).await else {
         panic!("Expected Value");
     };
     assert_eq!(
@@ -1884,7 +1884,7 @@ async fn test_merge_with_chaining_multiple_operators() -> anyhow::Result<()> {
     tx.send(Sequenced::new(person_dave()))?;
 
     // Assert: second kept value
-    let StreamItem::Value(second_kept) = result.next().await.unwrap() else {
+    let StreamItem::Value(second_kept) = unwrap_stream(&mut result, 500).await else {
         panic!("Expected Value");
     };
     assert_eq!(

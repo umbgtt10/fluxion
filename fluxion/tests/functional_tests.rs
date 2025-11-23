@@ -12,7 +12,6 @@ use fluxion_test_utils::test_data::{
 use fluxion_test_utils::unwrap_value;
 use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{assert_stream_ended, test_channel};
-use futures::StreamExt;
 use tokio::sync::mpsc::unbounded_channel;
 
 static ALWAYS_TRUE: fn(&TestData) -> bool = |_| true;
@@ -160,8 +159,11 @@ async fn test_functional_take_while_with() -> anyhow::Result<()> {
     source_tx.send(charlie.clone())?;
 
     // Assert
-    assert_eq!(taken.next().await.unwrap(), StreamItem::Value(bob));
-    assert_eq!(taken.next().await.unwrap(), StreamItem::Value(charlie));
+    assert_eq!(unwrap_stream(&mut taken, 500).await, StreamItem::Value(bob));
+    assert_eq!(
+        unwrap_stream(&mut taken, 500).await,
+        StreamItem::Value(charlie)
+    );
 
     Ok(())
 }

@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::{HasTimestamp, StreamItem, Timestamped};
+use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::MergedStream;
 use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{
@@ -17,7 +17,6 @@ use fluxion_test_utils::{
     },
     unwrap_stream,
 };
-use futures::StreamExt;
 use tokio::spawn;
 
 #[tokio::test]
@@ -30,7 +29,7 @@ async fn test_merge_with_empty_streams() -> anyhow::Result<()> {
     drop(tx2);
 
     // Act
-    let result_stream = MergedStream::seed::<Sequenced<i32>>(0)
+    let mut result_stream = MergedStream::seed::<Sequenced<i32>>(0)
         .merge_with(empty_stream1, |_item: TestData, state: &mut i32| {
             *state += 1;
             *state
@@ -41,8 +40,7 @@ async fn test_merge_with_empty_streams() -> anyhow::Result<()> {
         });
 
     // Assert
-    let result: Vec<StreamItem<Sequenced<i32>>> = result_stream.collect().await;
-    assert_eq!(result, vec![], "Empty streams should produce empty result");
+    assert_stream_ended(&mut result_stream, 500).await;
 
     Ok(())
 }
@@ -172,7 +170,7 @@ async fn test_merge_with_parallel_processing() -> anyhow::Result<()> {
     let (tx1, stream1) = test_channel::<Sequenced<TestData>>();
     let (tx2, stream2) = test_channel::<Sequenced<TestData>>();
 
-    let merged_stream = MergedStream::seed::<Sequenced<Repository>>(Repository::new())
+    let mut merged_stream = MergedStream::seed::<Sequenced<Repository>>(Repository::new())
         .merge_with(stream1, |item: TestData, state: &mut Repository| {
             state.from_testdata(item)
         })
@@ -192,12 +190,14 @@ async fn test_merge_with_parallel_processing() -> anyhow::Result<()> {
         tx2.send(Sequenced::new(animal_spider())).unwrap();
     });
 
-    // Assert
-    let result: Vec<StreamItem<Sequenced<Repository>>> = merged_stream.collect().await;
-    let StreamItem::Value(last) = result.last().expect("at least one state").clone() else {
-        panic!("Expected Value");
-    };
-    let last = last.into_inner();
+    // Assert - Wait for all 5 emissions (3 person + 2 animal)
+    let mut last = None;
+    for _ in 0..5 {
+        let item = unwrap_stream(&mut merged_stream, 500).await;
+        last = Some(item.into_inner());
+    }
+
+    let last = last.expect("Should have received at least one emission");
     assert_eq!(
         last.person_name,
         Some("Charlie".to_string()),
