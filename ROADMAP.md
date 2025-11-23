@@ -82,9 +82,10 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 ## 🚀 Version 0.3.0 - Bench & Sample Application
 **Essential Features:**
 - [ ] At least one error operator implemented, documented and tested
-- [ ] 1 fully functional example application showing
+- [ ] 1 fully functional example application showing:
     - [ ] the wrapped integration path
     - [ ] the usage of `merge_with` integrated with the other operators
+    - [ ] the usage of the error operator
 
 **Documentation:**
 - [ ] Example application documented

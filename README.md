@@ -649,11 +649,17 @@ Inspired by ReactiveX and other reactive programming libraries, with a focus on 
 All commits and releases are **GPG signed**.
 
 **Key ID:** `5729DA194B0929542BF79074C2A11DED229A1E51`
+
 **Fingerprint:** `5729 DA19 4B09 2954 2BF7 9074 C2A1 1DED 229A 1E51`
+
 ![GPG Verified](https://img.shields.io/badge/GPG-Verified-success)
 
 ## Author
-Name: Umberto Gotti
-Email: umberto.gotti@umbertogotti.dev
-Twitter: https://x.com/GottiUmberto
-LinkedIn: www.linkedin.com/in/umberto-gotti-85346b48
+
+**Name:** Umberto Gotti
+
+**Email:** umberto.gotti@umbertogotti.dev
+
+**Twitter:** https://x.com/GottiUmberto
+
+**LinkedIn:** www.linkedin.com/in/umberto-gotti-85346b48

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.2] - 2025-01-XX
+## [0.2.2] - 2024-11-24
 
 ### Added
 - **Trait Hierarchy**: Introduced 5 specialized traits in `fluxion-core` for operator bounds
@@ -22,6 +22,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - GitHub Actions workflow now runs `cargo test --doc`
   - Local CI script (`.ci/ci.ps1`) now includes doctest step
   - Ensures all documentation examples compile and pass
+- **CI/CD**: Added benchmark compilation verification to CI pipeline (`cargo bench --no-run`)
+- **CI/CD**: Integrated Tarpaulin for code coverage tracking in CI pipeline
+- **Benchmarks**: Comprehensive performance benchmarking suite for all stream operators
+  - Added 10 operator benchmarks: `map_ordered`, `filter_ordered`, `combine_latest`, `combine_with_previous`, `with_latest_from`, `merge_with`, `ordered_merge`, `emit_when`, `take_latest_when`, `take_while_with`
+  - Benchmarks test multiple payload sizes (0, 128 bytes) and stream sizes (100, 1K, 10K elements)
+  - All benchmarks use Criterion.rs for statistical analysis
+- **Documentation**: Added benchmark links to all operator documentation in `fluxion-stream/README.md`
+  - Each operator now includes links to: Full documentation | Tests | Benchmarks
+- **Documentation**: Added `merge_with` operator documentation
+  - Comprehensive documentation in `fluxion-stream/README.md` under Combination Operators
+  - Added to operator selection guide table
+  - Added to `FLUXION_OPERATOR_SUMMARY.md` with usage examples
+  - Included in order attribute semantics table
+- **Testing**: Added comprehensive unit tests for `channel_ext` module
+- **Testing**: Added missing test coverage across multiple modules
+- **Testing**: Introduced `Sequenced<T>` test wrapper with global counter-based timestamps
+  - Replaces complex timestamp implementations with simple atomic counter
+  - Implements `Timestamped` trait for easy test data wrapping
+  - Located in `fluxion-test-utils` crate for reuse across test suites
+- **Documentation**: Expanded test documentation with links to example files
+- **Documentation**: Added self-contained examples for `subscribe_async` and `subscribe_latest_async`
+  - Examples demonstrate sequential processing and burst cancellation patterns
+  - Include inline data structures for easy understanding
+- **Testing**: Added `assert_stream_ended` utility function integrated across all test files
 
 ### Changed
 - **Refactoring**: Reorganized trait structure in `fluxion-core`
@@ -31,30 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cleanup**: Removed redundant `OrderedFluxionItem` bounds from operators
   - Cleaned up 3 instances where trait bounds were duplicated
   - Simpler, more concise trait bounds throughout
-
-### Fixed
-- **Documentation**: Fixed all 8 doctest compilation errors
-  - Updated 7 examples using old `Timestamped` trait API to use `HasTimestamp`
-  - Added missing trait imports (`Debug`, `HasTimestamp`) in various doctests
-  - All 66 doctests now compile and pass (0 ignored)
-  - Updated examples in: `comparable_inner.rs`, `comparable_unpin.rs`, `timestamped.rs`, `fluxion_item.rs`, `ordered_fluxion_item.rs`, `channel_ext.rs`, `fluxion_stream.rs`
-
-### Added
-- **Benchmarks**: Comprehensive performance benchmarking suite for all stream operators
-  - Added 10 operator benchmarks: `map_ordered`, `filter_ordered`, `combine_latest`, `combine_with_previous`, `with_latest_from`, `merge_with`, `ordered_merge`, `emit_when`, `take_latest_when`, `take_while_with`
-  - Benchmarks test multiple payload sizes (0, 128 bytes) and stream sizes (100, 1K, 10K elements)
-  - Created `BENCHMARKS.md` with comprehensive performance documentation
-  - Added `.ci/benchmarks.ps1` script to automate benchmark execution and documentation generation
-  - All benchmarks use Criterion.rs for statistical analysis
-- **Documentation**: Added benchmark links to all operator documentation in `fluxion-stream/README.md`
-  - Each operator now includes links to: Full documentation | Tests | Benchmarks
-- **Documentation**: Added `merge_with` operator documentation
-  - Comprehensive documentation in `fluxion-stream/README.md` under Combination Operators
-  - Added to operator selection guide table
-  - Added to `FLUXION_OPERATOR_SUMMARY.md` with usage examples
-  - Included in order attribute semantics table
-
-### Changed
 - **BREAKING**: Refactored lock utilities to use recovery-based approach
   - Renamed `lock_or_error` → `lock_or_recover` for honest naming
   - Changed return type from `Result<MutexGuard<T>, FluxionError>` to `MutexGuard<T>`
@@ -76,42 +76,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All stream operators updated to use new trait
   - More idiomatic Rust: eliminated convenience methods in favor of standard patterns
   - Net -19 lines of code after refactoring (simpler, cleaner API)
-
-### Fixed
-- **Bug**: Fixed timestamp preservation in `take_latest_when` operator
-  - Now stores full timestamped value instead of just inner value
-  - Correctly preserves trigger event's timestamp when emitting
-- **Bug**: Fixed `merge_with` operator to generate timestamps internally
-  - No longer depends on test utilities in production code
-  - Properly assigns timestamps to merged values
-- **Documentation**: Resolved all rustdoc warnings (4 → 0)
-  - Fixed 3 broken intra-doc links to `Ordered` trait
-  - Fixed unclosed HTML tag error in `timestamped.rs`
-  - Updated all trait signatures in documentation
-- **Documentation**: Comprehensive documentation consistency review
-  - Updated INTEGRATION.md with current `Timestamped` trait examples
-  - Updated all README files across workspace
-  - Fixed all code examples to use `Sequenced<T>` test wrapper
-  - Synchronized code samples with actual test implementations
-  - Fixed terminology inconsistencies (sequence numbers → timestamps, ordered streams → timestamped streams)
-  - Enhanced `CompareByInner` trait documentation with examples and clearer explanations
-
-### Added
-- **CI/CD**: Integrated Tarpaulin for code coverage tracking in CI pipeline
-- **CI/CD**: Added benchmark compilation verification to CI pipeline (`cargo bench --no-run`)
-- **Testing**: Added comprehensive unit tests for `channel_ext` module
-- **Testing**: Added missing test coverage across multiple modules
-- **Testing**: Introduced `Sequenced<T>` test wrapper with global counter-based timestamps
-  - Replaces complex timestamp implementations with simple atomic counter
-  - Implements `Timestamped` trait for easy test data wrapping
-  - Located in `fluxion-test-utils` crate for reuse across test suites
-- **Documentation**: Expanded test documentation with links to example files
-- **Documentation**: Added self-contained examples for `subscribe_async` and `subscribe_latest_async`
-  - Examples demonstrate sequential processing and burst cancellation patterns
-  - Include inline data structures for easy understanding
-- **Testing**: Added `assert_stream_ended` utility function integrated across all test files
-
-### Improved
 - **Code Quality**: Eliminated dead code in lock error handling
   - Removed unreachable error branches that were showing as uncovered in codecov
   - Lock recovery behavior now matches Rust standard library semantics
@@ -137,6 +101,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Zero `unwrap()` calls in production code
   - Only 2 justified `expect()` calls with invariant checks
 - **Quality**: Fixed all Clippy warnings across workspace
+
+### Fixed
+- **Documentation**: Fixed all 8 doctest compilation errors
+  - Updated 7 examples using old `Timestamped` trait API to use `HasTimestamp`
+  - Added missing trait imports (`Debug`, `HasTimestamp`) in various doctests
+  - All 66 doctests now compile and pass (0 ignored)
+  - Updated examples in: `comparable_inner.rs`, `comparable_unpin.rs`, `timestamped.rs`, `fluxion_item.rs`, `ordered_fluxion_item.rs`, `channel_ext.rs`, `fluxion_stream.rs`
+- **Bug**: Fixed timestamp preservation in `take_latest_when` operator
+  - Now stores full timestamped value instead of just inner value
+  - Correctly preserves trigger event's timestamp when emitting
+- **Bug**: Fixed `merge_with` operator to generate timestamps internally
+  - No longer depends on test utilities in production code
+  - Properly assigns timestamps to merged values
+- **Documentation**: Resolved all rustdoc warnings (4 → 0)
+  - Fixed 3 broken intra-doc links to `Ordered` trait
+  - Fixed unclosed HTML tag error in `timestamped.rs`
+  - Updated all trait signatures in documentation
+- **Documentation**: Comprehensive documentation consistency review
+  - Updated INTEGRATION.md with current `Timestamped` trait examples
+  - Updated all README files across workspace
+  - Fixed all code examples to use `Sequenced<T>` test wrapper
+  - Synchronized code samples with actual test implementations
+  - Fixed terminology inconsistencies (sequence numbers → timestamps, ordered streams → timestamped streams)
+  - Enhanced `CompareByInner` trait documentation with examples and clearer explanations
 
 ## [0.2.1] - 2025-11-18
 
