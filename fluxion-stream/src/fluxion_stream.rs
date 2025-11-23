@@ -11,7 +11,8 @@ use crate::take_while_with::TakeWhileExt;
 use crate::types::{CombinedState, WithPrevious};
 use crate::with_latest_from::WithLatestFromExt;
 use fluxion_core::ComparableUnpin;
-use fluxion_core::{StreamItem, Timestamped};
+use fluxion_core::{FluxionError, StreamItem, Timestamped};
+use futures::future::ready;
 use futures::Stream;
 use futures::StreamExt;
 use pin_project::pin_project;
@@ -808,5 +809,97 @@ where
         let inner = self.into_inner();
         let other_streams: Vec<S2> = others.into_iter().map(|fs| fs.into_inner()).collect();
         FluxionStream::new(OrderedStreamExt::ordered_merge(inner, other_streams))
+    }
+
+    /// Handle errors in the stream with a handler function.
+    ///
+    /// The handler receives a reference to each error and returns:
+    /// - `true` to consume the error (remove from stream)
+    /// - `false` to propagate the error downstream
+    ///
+    /// Multiple `on_error` operators can be chained to implement the
+    /// Chain of Responsibility pattern for error handling.
+    ///
+    /// # Examples
+    ///
+    /// ## Basic Error Consumption
+    ///
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_core::{FluxionError, StreamItem, Timestamped};
+    /// use fluxion_test_utils::{Sequenced, test_channel_with_errors};
+    /// use futures::StreamExt;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    /// let mut stream = FluxionStream::new(stream)
+    ///     .on_error(|err| {
+    ///         eprintln!("Error: {}", err);
+    ///         true // Consume all errors
+    ///     });
+    ///
+    /// tx.send(StreamItem::Value(Sequenced::new(1))).unwrap();
+    /// tx.send(StreamItem::Error(FluxionError::stream_error("oops"))).unwrap();
+    /// tx.send(StreamItem::Value(Sequenced::new(2))).unwrap();
+    ///
+    /// if let StreamItem::Value(v) = stream.next().await.unwrap() {
+    ///     assert_eq!(v.into_inner(), 1);
+    /// }
+    /// if let StreamItem::Value(v) = stream.next().await.unwrap() {
+    ///     assert_eq!(v.into_inner(), 2);
+    /// }
+    /// # }
+    /// ```
+    ///
+    /// ## Chain of Responsibility
+    ///
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_core::{FluxionError, StreamItem, Timestamped};
+    /// use fluxion_test_utils::{Sequenced, test_channel_with_errors};
+    /// use futures::StreamExt;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    /// let mut stream = FluxionStream::new(stream)
+    ///     .on_error(|err| err.to_string().contains("validation"))
+    ///     .on_error(|err| err.to_string().contains("network"))
+    ///     .on_error(|_| true); // Catch-all
+    ///
+    /// tx.send(StreamItem::Error(FluxionError::stream_error("validation"))).unwrap();
+    /// tx.send(StreamItem::Error(FluxionError::stream_error("network"))).unwrap();
+    /// tx.send(StreamItem::Value(Sequenced::new(1))).unwrap();
+    ///
+    /// if let StreamItem::Value(v) = stream.next().await.unwrap() {
+    ///     assert_eq!(v.into_inner(), 1);
+    /// }
+    /// # }
+    /// ```
+    ///
+    /// # See Also
+    ///
+    /// - [Error Handling Guide](../docs/ERROR-HANDLING.md) - Comprehensive error patterns
+    pub fn on_error<F>(self, mut handler: F) -> FluxionStream<impl Stream<Item = StreamItem<T>>>
+    where
+        S: Stream<Item = StreamItem<T>>,
+        F: FnMut(&FluxionError) -> bool,
+    {
+        let inner = self.into_inner();
+        FluxionStream::new(inner.filter_map(move |item| {
+            ready(match item {
+                StreamItem::Error(err) => {
+                    if handler(&err) {
+                        // Error handled, skip it
+                        None
+                    } else {
+                        // Error not handled, propagate
+                        Some(StreamItem::Error(err))
+                    }
+                }
+                other => Some(other),
+            })
+        }))
     }
 }
