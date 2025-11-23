@@ -62,18 +62,13 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{OrderedStreamExt, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
-    ///
-    /// // Create streams
-    /// let stream1 = FluxionStream::from_unbounded_receiver(rx1);
-    /// let stream2 = FluxionStream::from_unbounded_receiver(rx2);
+    /// let (tx1, stream1) = test_channel::<Sequenced<i32>>();
+    /// let (tx2, stream2) = test_channel::<Sequenced<i32>>();
     ///
     /// // Merge streams
     /// let mut merged = stream1.ordered_merge(vec![stream2]);
@@ -84,9 +79,9 @@ where
     /// tx1.send((3, 300).into()).unwrap();
     ///
     /// // Assert - values emitted in temporal order
-    /// assert_eq!(merged.next().await.unwrap().unwrap().value, 1);
-    /// assert_eq!(merged.next().await.unwrap().unwrap().value, 2);
-    /// assert_eq!(merged.next().await.unwrap().unwrap().value, 3);
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut merged, 500).await)).value, 1);
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut merged, 500).await)).value, 2);
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut merged, 500).await)).value, 3);
     /// # }
     /// ```
     ///

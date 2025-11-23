@@ -17,7 +17,7 @@ This guide describes the three fundamental patterns for integrating events with 
 
 ## Overview
 
-Fluxion processes streams of timestamped events. The `Timestamped` trait is the core abstraction that defines how events are sequenced. There are three main patterns for providing timestamp information:
+Fluxion processes streams of timestamped events. The `HasTimestamp` trait is the core abstraction that defines how events are sequenced (read-only access), while `Timestamped` extends it with construction methods. There are three main patterns for providing timestamp information:
 
 1. **Intrinsic Timestamps** - Events carry their own timestamps (production)
 2. **Extrinsic Timestamps** - Test infrastructure controls timestamps (testing)
@@ -37,7 +37,7 @@ Fluxion processes streams of timestamped events. The `Timestamped` trait is the 
 ### Implementation
 
 ```rust
-use fluxion_core::Timestamped;
+use fluxion_core::HasTimestamp;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct SensorReading {
@@ -46,27 +46,18 @@ struct SensorReading {
     temperature: f64,
 }
 
-impl Timestamped for SensorReading {
+impl HasTimestamp for SensorReading {
     type Inner = Self;
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
         self.timestamp  // Use the event's intrinsic timestamp
     }
-
-    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
-        Self { timestamp, ..value }
-    }
-
-    fn with_fresh_timestamp(value: Self::Inner) -> Self {
-        value  // For domain types, use existing timestamp
-    }
-
-    fn into_inner(self) -> Self::Inner {
-        self  // Domain type extracts to itself
-    }
 }
 ```
+
+**Note:** For intrinsic ordering, you typically only need to implement `HasTimestamp`.
+Implement `Timestamped` only if you need construction methods (`with_timestamp`, etc.).
 
 ### Usage
 
@@ -173,7 +164,7 @@ async fn test_ordered_filtering() {
 ### Implementation
 
 ```rust
-use fluxion_core::Timestamped;
+use fluxion_core::{HasTimestamp, Timestamped};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 // External system provides non-timestamped events
@@ -201,14 +192,16 @@ impl TimestampedEvent {
     }
 }
 
-impl Timestamped for TimestampedEvent {
+impl HasTimestamp for TimestampedEvent {
     type Inner = Self;
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
     }
+}
 
+impl Timestamped for TimestampedEvent {
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self { timestamp, ..value }
     }

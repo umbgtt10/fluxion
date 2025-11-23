@@ -97,7 +97,8 @@ enum SensorEvent {
     Humidity(u32),
 }
 
-// Implement Timestamped for your type...
+// Implement HasTimestamp for your type if it has intrinsic timestamps,
+// or use Sequenced<T> wrapper for automatic timestamping
 
 #[tokio::main]
 async fn main() {

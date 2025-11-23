@@ -3,10 +3,41 @@
 Operators planned for implementation in future versions of Fluxion.
 
 ## Status Legend
+- ✅ **Implemented** - Available in current version
 - 🚀 **Planned** - Scheduled for next release
 - 💭 **Considering** - Under evaluation
 - 📝 **Research** - Investigating feasibility
 - ⏸️ **Deferred** - Low priority, future consideration
+
+---
+
+## ✅ Recently Implemented (Version 0.2.2+)
+
+### `on_error` ✅
+**Composable error handling with Chain of Responsibility**
+
+```rust
+let stream = stream
+    .on_error(|err| {
+        if err.to_string().contains("retry") {
+            retry_queue.push(err);
+            true
+        } else {
+            false
+        }
+    })
+    .on_error(|err| {
+        log::error!("Unhandled: {}", err);
+        true
+    });
+```
+
+**Status**: Implemented in v0.2.2
+**Use case**: Logging, metrics, selective error recovery
+**Complexity**: Low
+**Documentation**: [ON_ERROR_OPERATOR.md](ON_ERROR_OPERATOR.md)
+**Tests**: 13 comprehensive tests
+**Similar to**: RxJS `catchError` (but filter-based, not replacement-based)
 
 ---
 

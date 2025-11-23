@@ -50,11 +50,92 @@ pub enum FluxionError {
 
 See the [FluxionError API documentation](https://docs.rs/fluxion-core) for detailed descriptions of each variant.
 
+## Error Handling Patterns
+
+Fluxion provides several patterns for handling errors in stream processing:
+
+### Using the `on_error` Operator
+
+The `on_error` operator provides composable, selective error handling:
+
+#### Basic Error Consumption
+
+```rust
+use fluxion_stream::FluxionStream;
+use fluxion_core::FluxionError;
+
+let stream = source_stream
+    .on_error(|err| {
+        log::error!("Stream error: {}", err);
+        true // Consume all errors
+    });
+```
+
+#### Chain of Responsibility Pattern
+
+```rust
+let stream = source_stream
+    .on_error(|err| {
+        // Handle validation errors
+        if err.to_string().contains("validation") {
+            metrics::increment("validation_errors");
+            log::warn!("Validation error: {}", err);
+            true // Consume
+        } else {
+            false // Pass to next handler
+        }
+    })
+    .on_error(|err| {
+        // Handle network errors
+        if err.to_string().contains("network") {
+            metrics::increment("network_errors");
+            log::error!("Network error: {}", err);
+            true // Consume
+        } else {
+            false // Pass to next handler
+        }
+    })
+    .on_error(|err| {
+        // Catch-all for unhandled errors
+        log::error!("Unhandled error: {}", err);
+        metrics::increment("unhandled_errors");
+        true // Consume all remaining errors
+    });
+```
+
+See [ON_ERROR_OPERATOR.md](ON_ERROR_OPERATOR.md) for complete specification.
+
+### Pattern Matching on StreamItem
+
+Match on each stream item to handle values and errors separately:
+
+```rust
+use fluxion_stream::FluxionStream;
+use futures::StreamExt;
+
+let stream = FluxionStream::from_unbounded_receiver(rx);
+let mut combined = stream.combine_latest(vec![other_stream], |_| true);
+
+while let Some(item) = combined.next().await {
+    match item {
+        StreamItem::Value(data) => {
+            // Process successful value
+            println!("Data: {:?}", data);
+        }
+        StreamItem::Error(e) => {
+            // Handle lock error or other failures
+            eprintln!("Stream error: {}", e);
+            // Decide: continue processing, retry, or abort?
+        }
+    }
+}
+```
+
 ## Common Error Scenarios
 
 ### Lock Contention
 
-Stream operators use internal locks for shared state. If a lock becomes poisoned (thread panicked while holding it), a `LockError` is emitted:
+Stream operators use internal locks for shared state. If a lock becomes poisoned (thread panicked while holding it), a `LockError` is emitted. Use pattern matching or `on_error` to handle these:
 
 ```rust
 use fluxion_stream::FluxionStream;

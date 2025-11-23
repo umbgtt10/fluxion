@@ -72,18 +72,13 @@ where
     ///
     /// ```rust
     /// use fluxion_stream::{TakeWhileExt, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
-    /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// // Create channels
-    /// let (tx_data, rx_data) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let (tx_gate, rx_gate) = tokio::sync::mpsc::unbounded_channel::<Sequenced<bool>>();
-    ///
-    /// // Create streams
-    /// let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
-    /// let gate_stream = FluxionStream::from_unbounded_receiver(rx_gate);
+    /// let (tx_data, data_stream) = test_channel::<Sequenced<i32>>();
+    /// let (tx_gate, gate_stream) = test_channel::<Sequenced<bool>>();
     ///
     /// // Combine streams
     /// let mut gated = data_stream.take_while_with(
@@ -96,7 +91,7 @@ where
     /// tx_data.send((1, 2).into()).unwrap();
     ///
     /// // Assert
-    /// assert_eq!(&gated.next().await.unwrap().unwrap().value, &1);
+    /// assert_eq!(&unwrap_value(Some(unwrap_stream(&mut gated, 500).await)).value, &1);
     /// # }
     /// ```
     ///
