@@ -56,7 +56,7 @@ impl HasTimestamp for SensorReading {
 }
 ```
 
-**Note:** For intrinsic ordering, you typically only need to implement `HasTimestamp`. 
+**Note:** For intrinsic ordering, you typically only need to implement `HasTimestamp`.
 Implement `Timestamped` only if you need construction methods (`with_timestamp`, etc.).
 
 ### Usage
