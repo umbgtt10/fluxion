@@ -154,31 +154,6 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 
 ---
 
-## Past Releases
-
-### Version 0.2.2 - Test and Consolidation (Published)
-**Essential Features:**
-- ✅ All tests consolidated and buautified
-- ✅ Code coverage metrix available and integrated in the PITCH
-- ✅ Code coverage integrated in the CI with badge on the README
-- ✅ Integrate `merge_with` in fluxion-stream. Remove the separate crate.
-- ✅ Benches exaustive
-- ✅ Add benchmark to the CI and publish the results
-- ✅ Fully implement the changes proposed in TRAIT_ANALYSIS_REPORT.md
-
-**Documentation:**
-- ✅ `subcscribe` and `subscribe_latest` documented
-- ✅ `merge_with` documented
-- ✅ docs finalized
-
----
-
-## Archived Planning (Completed in 0.3.0)
-
-**Documentation:**
-
-**Quality Gates:**
-
 ## 🚀 Version 0.5.0 - Cloning
 **Essential Features:**
 - [ ] Investigate the best way to clone or share streams between multiple consumers
