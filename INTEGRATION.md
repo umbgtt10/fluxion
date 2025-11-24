@@ -292,15 +292,32 @@ async fn main() {
 
 ## Examples
 
-See the `examples/stream-aggregation` directory for a **complete production example** using intrinsic timestamps with sensor readings, metrics, and system events.
+### Pattern 1: Intrinsic Timestamps - stream-aggregation
+
+See the **[stream-aggregation](examples/stream-aggregation/)** example for a complete production implementation using intrinsic timestamps:
 
 **What makes this example valuable:**
 - **Real-world architecture**: Demonstrates how to structure a multi-stream event processing system
-- **Three data sources**: Sensor readings, metrics, and system events - all with different types
+- **Three data sources**: Sensor readings, metrics, and system events - all with different types and intrinsic timestamps
 - **Type-safe aggregation**: Shows `UnboundedReceiverExt::into_fluxion_stream()` pattern for combining heterogeneous streams
 - **Graceful shutdown**: Proper cleanup and resource management with `CancellationToken`
 - **Production patterns**: Error handling, logging, and event filtering
 
-Run it: `cargo run --example stream-aggregation`
+Run it: `cargo run --bin rabbitmq_aggregator`
 
-For testing examples, see the test suites in `fluxion-stream/tests/` which extensively use `Sequenced<T>` for controlled timestamp scenarios.
+### Pattern 3: Wrapper Timestamps - legacy-integration
+
+See the **[legacy-integration](examples/legacy-integration/)** example for a complete implementation of the wrapper pattern:
+
+**What makes this example valuable:**
+- **Adapter pattern**: Shows how to add timestamps at system boundaries for legacy sources
+- **Three legacy sources**: Database (JSON), Message Queue (XML), File Watcher (CSV) - none have intrinsic timestamps
+- **Stateful aggregation**: Uses `merge_with` to build a unified repository from heterogeneous event streams
+- **Real-time processing**: Demonstrates `subscribe_async` for sequential event processing with analytics
+- **Lifecycle management**: Ctrl+C handling, auto-timeout, and graceful shutdown of all adapters
+
+Run it: `cargo run --bin legacy-integration`
+
+### Pattern 2: Extrinsic Timestamps - Test Suites
+
+For testing examples using `Sequenced<T>`, see the test suites in `fluxion-stream/tests/` which extensively use extrinsic timestamps for controlled scenario testing.

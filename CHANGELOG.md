@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-11-24
+
 ### Added
+- **Complete Example Application**: New `legacy-integration` example demonstrating wrapper pattern for legacy systems
+  - Integrates 3 legacy data sources: Database (JSON), Message Queue (XML), File Watcher (CSV)
+  - Demonstrates adapter pattern for adding timestamps at system boundaries
+  - Uses `merge_with` for stateful repository aggregation with shared state
+  - Real-time analytics with `subscribe_async` for event processing
+  - Graceful shutdown with Ctrl+C handling and 1-minute auto-timeout
+  - Comprehensive README with architecture diagrams and key concepts
+  - Added to CI build script for continuous validation
 - **Error Handling Operator**: Implemented `on_error` operator for composable error handling
   - Chain of Responsibility pattern for selective error handling
   - Handlers can consume errors (return `true`) or propagate them (return `false`)
@@ -15,6 +25,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Full documentation in `docs/ON_ERROR_OPERATOR.md`
   - Comprehensive test suite with 13 tests covering all scenarios
   - Examples in rustdoc showing basic consumption and chain of responsibility
+- **Documentation**: Enhanced error handling documentation in `docs/ERROR-HANDLING.md`
+  - Added complete section on `on_error` operator with examples
+  - Chain of Responsibility pattern explained with code samples
+  - Error recovery strategies documented
+  - Integration with existing error propagation patterns
+
+### Changed
+- **Documentation**: Reorganized README.md examples section into two categories
+  - **Stream Aggregation**: Intrinsic Timestamps pattern (production event sources with built-in ordering)
+  - **Legacy Integration**: Wrapper Pattern (adding timestamps at system boundaries)
+  - Each example now clearly labeled with its integration pattern
+- **Documentation**: Updated `INTEGRATION.md` guide with both example applications
+  - Pattern 1 (Intrinsic Timestamps) links to `stream-aggregation` example
+  - Pattern 3 (Wrapper Timestamps) links to `legacy-integration` example
+  - Pattern 2 (Extrinsic Timestamps) links to test suites
+  - Comprehensive examples section with clear pattern associations
+- **Testing**: Consolidated test patterns across workspace for consistency
+  - All tests now follow established create/compose/send/next pattern
+  - Improved test readability and maintainability
+  - Updated 450+ test assertions across 13 test files
+- **CI/CD**: Added `legacy-integration` example to CI build script
+  - Both examples now validated in continuous integration
+  - Ensures examples remain up-to-date with library changes
+
+### Fixed
+- **Documentation**: Removed duplicate `docs/fluxion_operators_roadmap.md` file
+  - Fixed case sensitivity issue (kept uppercase `FLUXION_OPERATORS_ROADMAP.md`)
+  - All documentation references already pointed to correct uppercase version
+  - Prevents broken links on case-sensitive filesystems (Linux/macOS)
 
 ## [0.2.2] - 2025-11-23
 

@@ -4,7 +4,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 ---
 
-## 📦 Version 0.1.x - Initial Release
+## 📦 Version 0.1.0 - Initial Release
 
 **Status:** Published to crates.io
 
@@ -31,6 +31,60 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ Zero clippy warnings
 - ✅ Zero compiler warnings
 - ✅ Doc tests passing
+
+## 📦 Version 0.1.1 - Documentation Improvements
+
+**Status:** Published to crates.io
+
+**Goal:** Enhance documentation and examples for better developer experience
+
+**Essential Features:**
+- ✅ Comprehensive operator reference guide (`docs/FLUXION_OPERATOR_SUMMARY.md`)
+- ✅ Operators roadmap (`docs/FLUXION_OPERATORS_ROADMAP.md`)
+- ✅ Error handling refactoring plan documentation
+- ✅ Chaining examples in README with real-world operator composition
+- ✅ Integrated `stream-aggregation` example into workspace
+- ✅ Comprehensive API documentation for all FluxionStream extension methods
+- ✅ Code of Conduct
+
+**Quality Gates:**
+- ✅ All tests passing
+- ✅ Zero clippy warnings
+- ✅ Fixed code formatting to match rustfmt standards
+- ✅ Cleaned up unused imports
+
+## 🚀 Version 0.2.0 - Error Handling Foundation [YANKED]
+
+**Status:** Yanked from crates.io (replaced by 0.2.1)
+
+**Goal:** Comprehensive error propagation through all operators
+
+**Essential Features:**
+- ✅ Introduced `StreamItem<T>` enum for error propagation (`Value(T)` | `Error(FluxionError)`)
+- ✅ Merged `fluxion-error` into `fluxion-core`
+- ✅ All 9 stream operators return `StreamItem<T>` instead of bare `T`
+- ✅ Simplified `FluxionError` from 12 variants to 4 essential variants
+- ✅ Comprehensive error handling guide (`docs/ERROR-HANDLING.md`)
+- ✅ API method naming improvements (`both()` → `as_pair()`, etc.)
+- ✅ Lock errors now propagate instead of silently dropping items
+- ✅ Test suite updated to handle `StreamItem<T>` wrapper (200+ replacements)
+
+**Quality Gates:**
+- ✅ All 186 tests passing
+- ✅ Zero unsafe `unwrap()` calls in production code
+- ✅ All test functions return `anyhow::Result<()>`
+
+## 📦 Version 0.2.1 - Publishing Fixes
+
+**Status:** Published to crates.io
+
+**Goal:** Fix crates.io publishing issues from 0.2.0
+
+**Essential Features:**
+- ✅ Corrected README path for fluxion-rx crate display on crates.io
+- ✅ Fixed broken anchor links in README.md table of contents
+- ✅ Standardized Error Handling Guide links across all source files
+- ✅ Updated all version references from 0.2.0 to 0.2.1
 
 ## 🚀 Version 0.2.2 - Trait Refactoring & Benchmarks
 
@@ -64,7 +118,45 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ Doc tests passing
 - ✅ CI green
 
-## 🚀 Version 0.2.2 - Test and Consolidation
+## 🚀 Version 0.3.0 - Error Handling & Legacy Integration
+
+**Status:** Published to crates.io
+
+**Goal:** Complete error handling with `on_error` operator and demonstrate wrapper pattern integration
+
+**Essential Features:**
+- ✅ `on_error` operator for Chain of Responsibility error handling
+- ✅ Complete `legacy-integration` example application (wrapper pattern)
+- ✅ Integration guide updated with both example applications
+- ✅ Documentation cleanup and consistency improvements
+
+**Quality Gates:**
+- ✅ All tests passing (1,700+)
+- ✅ Zero clippy warnings
+- ✅ Zero compiler warnings
+- ✅ Doc tests passing
+- ✅ CI green
+- ✅ Both examples validated in CI
+
+## 🚀 Version 0.4.0 - Additional Operators & Advanced Features
+
+**Goal:** Expand operator library and add advanced streaming capabilities
+
+**Planned Features:**
+- [ ] `scan` operator - Stateful accumulation across stream
+- [ ] `debounce` operator - Time-based event throttling
+- [ ] `throttle` operator - Rate limiting
+- [ ] `buffer` operator - Windowing and batching
+- [ ] `distinct_until_changed` operator - Duplicate suppression
+- [ ] Additional error handling operators
+
+See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator implementation timeline beyond v0.3.0.
+
+---
+
+## Past Releases
+
+### Version 0.2.2 - Test and Consolidation (Published)
 **Essential Features:**
 - ✅ All tests consolidated and buautified
 - ✅ Code coverage metrix available and integrated in the PITCH
@@ -79,24 +171,9 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ `merge_with` documented
 - ✅ docs finalized
 
-## 🚀 Version 0.3.0 - Bench & Sample Application
-**Essential Features:**
-- [x] At least one error operator implemented, documented and tested (`on_error`)
-- [ ] 1 fully functional example application showing:
-    - [ ] the wrapped integration path
-    - [ ] the usage of `merge_with` integrated with the other operators
-    - [x] the usage of the error operator (`on_error`)
+---
 
-**Documentation:**
-- [ ] Example application documented
-
-**Quality Gates:**
-- [ ] performance table available and comprehensible
-
-## 🚀 Version 0.4.0 - More of it
-**Essential Features:**
-- [ ] Implement 5 more operators from the operator roadmap
-- [ ] Implement one more error handling operator from the operator roadmap
+## Archived Planning (Completed in 0.3.0)
 
 **Documentation:**
 

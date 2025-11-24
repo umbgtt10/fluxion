@@ -554,9 +554,11 @@ async fn test_subscribe_latest_async_example() -> anyhow::Result<()> {
 - **[fluxion-ordered-merge](fluxion-ordered-merge/README.md)** - Generic ordered merging
 - **[fluxion-test-utils](fluxion-test-utils/README.md)** - Testing helpers and fixtures
 
-### 💡 Complete Example
+### 💡 Complete Examples
 
-The **[stream-aggregation](examples/stream-aggregation/)** example demonstrates production-ready patterns:
+#### Stream Aggregation (Intrinsic Timestamps)
+
+The **[stream-aggregation](examples/stream-aggregation/)** example demonstrates production-ready patterns with intrinsic timestamps:
 
 - **Real-world architecture**: 3 producers, 1 aggregator, 1 consumer
 - **Ordered stream combining**: Merges sensor readings, metrics, and system events
@@ -571,6 +573,25 @@ The **[stream-aggregation](examples/stream-aggregation/)** example demonstrates 
 - Serves as a template for building your own event processing systems
 
 Run it with: `cargo run --bin rabbitmq_aggregator`
+
+#### Legacy Integration (Wrapper Pattern)
+
+The **[legacy-integration](examples/legacy-integration/)** example demonstrates integrating legacy systems using the wrapper pattern:
+
+- **Wrapper pattern**: Add timestamps at system boundaries for sources without intrinsic ordering
+- **Multiple data sources**: Database (JSON), Message Queue (XML), File Watcher (CSV)
+- **Stateful aggregation**: Uses `merge_with` for repository pattern with shared state
+- **Heterogeneous streams**: Unifies different event types into single aggregated stream
+- **Real-time analytics**: Order tracking with live statistics and event counting
+- **Graceful shutdown**: Ctrl+C handling and 1-minute auto-timeout
+
+**Why this example matters:**
+- Shows how to integrate legacy systems that lack intrinsic timestamps
+- Demonstrates the adapter pattern for adding temporal ordering at boundaries
+- Uses `merge_with` to build stateful repository aggregation
+- Illustrates processing events with `subscribe_async` and cancellation tokens
+
+Run it with: `cargo run --bin legacy-integration`
 
 ### 🔧 API Documentation
 
@@ -621,7 +642,7 @@ See individual crate READMEs for detailed documentation.
 
 ## Project Status
 
-**Current Version:** 0.2.2
+**Current Version:** 0.3.0
 
 - ✅ Published to crates.io
 - ✅ Core functionality complete

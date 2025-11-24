@@ -11,7 +11,7 @@ Operators planned for implementation in future versions of Fluxion.
 
 ---
 
-## ✅ Recently Implemented (Version 0.2.2+)
+## ✅ Recently Implemented (Version 0.3.0)
 
 ### `on_error` ✅
 **Composable error handling with Chain of Responsibility**
@@ -32,7 +32,7 @@ let stream = stream
     });
 ```
 
-**Status**: Implemented in v0.2.2
+**Status**: Implemented in v0.3.0
 **Use case**: Logging, metrics, selective error recovery
 **Complexity**: Low
 **Documentation**: [ON_ERROR_OPERATOR.md](ON_ERROR_OPERATOR.md)
