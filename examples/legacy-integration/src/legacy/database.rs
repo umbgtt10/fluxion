@@ -28,7 +28,13 @@ impl LegacyDatabase {
     pub async fn poll_users(self, tx: UnboundedSender<User>, cancel: CancellationToken) {
         println!("  🗄️  Legacy Database: Polling for new users (every 3s)");
 
-        let names = ["Alice Smith", "Bob Jones", "Carol Davis", "David Wilson", "Eve Martinez"];
+        let names = [
+            "Alice Smith",
+            "Bob Jones",
+            "Carol Davis",
+            "David Wilson",
+            "Eve Martinez",
+        ];
 
         loop {
             tokio::select! {

@@ -4,16 +4,53 @@
 
 //! Adapter that wraps legacy Order events with timestamps
 
-use tokio::sync::mpsc::UnboundedReceiver;
+use crate::domain::{events::UnifiedEvent, TimestampedEvent};
+use crate::legacy::message_queue::LegacyMessageQueue;
+use fluxion_stream::FluxionStream;
+use futures::{Stream, StreamExt};
+use tokio::spawn;
+use tokio::sync::mpsc::unbounded_channel;
+use tokio::task::JoinHandle;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_util::sync::CancellationToken;
 
-use crate::domain::{events::UnifiedEvent, models::Order, TimestampedEvent};
+/// Order adapter that manages the legacy message queue consumer and timestamp wrapping
+pub struct OrderAdapter {
+    task_handle: Option<JoinHandle<()>>,
+}
 
-pub fn wrap_orders(
-    rx: UnboundedReceiver<Order>,
-) -> impl futures::Stream<Item = TimestampedEvent> + Send + Unpin {
-    Box::pin(tokio_stream::StreamExt::map(
-        UnboundedReceiverStream::new(rx),
-        |order| TimestampedEvent::new(UnifiedEvent::OrderReceived(order)),
-    ))
+impl OrderAdapter {
+    /// Create a new OrderAdapter
+    pub fn new() -> Self {
+        Self { task_handle: None }
+    }
+
+    /// Start consuming from the legacy message queue and return a stream of timestamped events
+    pub fn start(
+        &mut self,
+        cancel_token: CancellationToken,
+    ) -> FluxionStream<impl Stream<Item = TimestampedEvent> + Send + Unpin> {
+        let (order_tx, order_rx) = unbounded_channel();
+
+        // Spawn legacy message queue consumer
+        let mq = LegacyMessageQueue::new();
+        let task_handle = spawn(async move {
+            mq.consume_orders(order_tx, cancel_token).await;
+        });
+
+        self.task_handle = Some(task_handle);
+
+        // Create stream that wraps with timestamps
+        let stream = UnboundedReceiverStream::new(order_rx)
+            .map(|order| TimestampedEvent::new(UnifiedEvent::OrderReceived(order)));
+
+        FluxionStream::new(stream)
+    }
+
+    /// Shutdown and wait for task completion
+    pub async fn shutdown(mut self) {
+        if let Some(handle) = self.task_handle.take() {
+            let _ = handle.await;
+        }
+    }
 }

@@ -17,15 +17,14 @@ mod domain;
 mod legacy;
 mod processing;
 
-use crate::adapters::{inventory_adapter, order_adapter, user_adapter};
-use crate::domain::repository::build_repository_stream;
-use crate::legacy::{
-    database::LegacyDatabase, file_watcher::LegacyFileWatcher, message_queue::LegacyMessageQueue,
-};
+use crate::adapters::{InventoryAdapter, OrderAdapter, UserAdapter};
+use crate::domain::repository::Repository;
 use crate::processing::business_logic;
 use anyhow::Result;
-use tokio::spawn;
-use tokio::sync::mpsc::unbounded_channel;
+use futures::future::ready;
+use futures::StreamExt;
+use tokio::sync::broadcast;
+use tokio_stream::wrappers::BroadcastStream;
 use tokio_util::sync::CancellationToken;
 
 #[tokio::main]
@@ -35,50 +34,105 @@ async fn main() -> Result<()> {
     // Cancellation token for graceful shutdown
     let cancel_token = CancellationToken::new();
 
-    // Channels for legacy data sources (unwrapped, no timestamps)
-    let (user_tx, user_rx) = unbounded_channel();
-    let (order_tx, order_rx) = unbounded_channel();
-    let (inventory_tx, inventory_rx) = unbounded_channel();
-
-    // Spawn legacy data source simulators
-    println!("📊 Starting legacy data sources...");
-
-    let db = LegacyDatabase::new();
-
-    spawn(db.poll_users(user_tx, cancel_token.clone()));
-    let cancel_token_orders = cancel_token.clone();
-    spawn(async move {
-        let mq = LegacyMessageQueue::new();
-        mq.consume_orders(order_tx, cancel_token_orders).await;
-    });
-    let cancel_token_inventory = cancel_token.clone();
-    spawn(async move {
-        let fw = LegacyFileWatcher::new();
-        fw.watch_inventory(inventory_tx, cancel_token_inventory)
-            .await;
+    // Setup Ctrl+C handler
+    let cancel_token_ctrlc = cancel_token.clone();
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to listen for Ctrl+C");
+        println!("\n\n🛑 Ctrl+C received, shutting down gracefully...");
+        cancel_token_ctrlc.cancel();
     });
 
-    // Wrap legacy sources with timestamps using adapters
-    println!("🔄 Creating timestamped adapters...");
+    // Create and start adapters, getting streams directly
+    println!("📊 Starting legacy data source adapters...");
 
-    let user_stream = user_adapter::wrap_users(user_rx);
-    let order_stream = order_adapter::wrap_orders(order_rx);
-    let inventory_stream = inventory_adapter::wrap_inventory(inventory_rx);
+    let mut user_adapter = UserAdapter::new();
+    let mut order_adapter = OrderAdapter::new();
+    let mut inventory_adapter = InventoryAdapter::new();
+
+    let user_stream = user_adapter.start(cancel_token.clone());
+    let order_stream = order_adapter.start(cancel_token.clone());
+    let inventory_stream = inventory_adapter.start(cancel_token.clone());
+
+    println!("🔄 Building timestamped streams...");
+
+    // Split streams for repository and analytics using broadcast
+
+    let (event_tx, _) = broadcast::channel(100);
+
+    let event_tx_clone = event_tx.clone();
+    let user_stream_broadcast = user_stream.map(move |e| {
+        let _ = event_tx_clone.send(e.clone());
+        e
+    });
+
+    let event_tx_clone = event_tx.clone();
+    let order_stream_broadcast = order_stream.map(move |e| {
+        let _ = event_tx_clone.send(e.clone());
+        e
+    });
+
+    let event_tx_clone = event_tx.clone();
+    let inventory_stream_broadcast = inventory_stream.map(move |e| {
+        let _ = event_tx_clone.send(e.clone());
+        e
+    });
 
     // Aggregate using merge_with into a unified repository
-    println!("🗄️  Building aggregated repository stream...\n");
+    println!("🗄️  Building aggregated repository and analytics streams...\n");
 
-    let aggregated_stream = build_repository_stream(user_stream, order_stream, inventory_stream);
+    let aggregated_stream = Repository::new(
+        user_stream_broadcast,
+        order_stream_broadcast,
+        inventory_stream_broadcast,
+    )
+    .create_stream();
+
+    // Get analytics stream from broadcast
+    let analytics_rx = event_tx.subscribe();
+    let analytics_events = BroadcastStream::new(analytics_rx).filter_map(|r| ready(r.ok()));
 
     // Process business logic
-    println!("💼 Processing business logic...\n");
+    println!("💼 Processing business logic with analytics...\n");
     println!("Press Ctrl+C to stop...\n");
     println!("{}", "=".repeat(80));
 
-    business_logic::process_events(aggregated_stream, cancel_token.clone()).await?;
+    let business_logic_task = tokio::spawn(business_logic::process_events_with_analytics(
+        aggregated_stream,
+        analytics_events,
+        cancel_token.clone(),
+    ));
 
-    println!("\n{}", "=".repeat(80));
-    println!("✅ Demo completed successfully!");
+    // Wait for either business logic completion or cancellation
+    tokio::select! {
+        result = business_logic_task => {
+            match result {
+                Ok(Ok(())) => {
+                    println!("\n{}", "=".repeat(80));
+                    println!("✅ Demo completed successfully!");
+                }
+                Ok(Err(e)) => {
+                    println!("\n{}", "=".repeat(80));
+                    println!("❌ Business logic error: {}", e);
+                }
+                Err(e) => {
+                    println!("\n{}", "=".repeat(80));
+                    println!("❌ Task join error: {}", e);
+                }
+            }
+        }
+        _ = cancel_token.cancelled() => {
+            println!("\n{}", "=".repeat(80));
+            println!("🛑 Shutdown requested, cleaning up...");
+            user_adapter.shutdown().await;
+            order_adapter.shutdown().await;
+            inventory_adapter.shutdown().await;
+            println!("✅ Adapters shut down gracefully.");
+        }
+    }
+
+    println!("✅ All tasks completed, exiting.");
 
     Ok(())
 }
