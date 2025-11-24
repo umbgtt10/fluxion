@@ -1,7 +1,11 @@
 [package]
 name = "legacy-integration"
-version = "0.3.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
 
 [dependencies]
 fluxion-rx = { workspace = true }
