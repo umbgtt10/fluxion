@@ -17,10 +17,14 @@ mod domain;
 mod legacy;
 mod processing;
 
+use std::time::Duration;
+
 use crate::adapters::{InventoryAdapter, OrderAdapter, UserAdapter};
 use crate::domain::repository::Repository;
-use crate::processing::business_logic::EventProcessor;
+use crate::processing::event_processor::EventProcessor;
 use anyhow::Result;
+use tokio::time::sleep;
+use tokio::{select, signal};
 use tokio_util::sync::CancellationToken;
 
 #[tokio::main]
@@ -41,28 +45,69 @@ async fn main() -> Result<()> {
     let order_stream = order_adapter.start(cancel_token.clone());
     let inventory_stream = inventory_adapter.start(cancel_token.clone());
 
-    // Aggregate using merge_with into a unified repository
-    println!("🗄️  Building aggregated repository stream...\n");
-
     let aggregated_stream =
         Repository::new(user_stream, order_stream, inventory_stream).create_stream();
 
     // Process business logic
-    println!("💼 Processing business logic with analytics...\n");
-    println!("Press Ctrl+C to stop...\n");
-    println!("{}", "=".repeat(80));
+    println!("Demo will run for 20 seconds or press Ctrl+C to stop...\n");
 
-    let event_processor = EventProcessor::start(aggregated_stream, cancel_token.clone());
+    let mut event_processor = EventProcessor::start(aggregated_stream, cancel_token.clone());
 
-    // Wait for event processor to complete
-    match event_processor.wait().await {
-        Ok(()) => {
-            println!("\n{}", "=".repeat(80));
-            println!("✅ Demo completed successfully!");
+    select! {
+        _ = signal::ctrl_c() => {
+            println!("\n\n🛑 Ctrl+C received, shutting down gracefully...");
+            cancel_token.cancel();
+            // Wait for processor to finish
+            match event_processor.task_handle.await {
+                Ok(Ok(())) => {
+                    println!("\n{}", "=".repeat(80));
+                    println!("✅ Demo completed successfully!");
+                }
+                Ok(Err(e)) => {
+                    println!("\n{}", "=".repeat(80));
+                    println!("❌ Business logic error: {}", e);
+                }
+                Err(e) => {
+                    println!("\n{}", "=".repeat(80));
+                    println!("❌ Task join error: {}", e);
+                }
+            }
         }
-        Err(e) => {
-            println!("\n{}", "=".repeat(80));
-            println!("❌ Business logic error: {}", e);
+        _ = sleep(Duration::from_secs(20)) => {
+            println!("\n\n⏱️  20 seconds elapsed, shutting down gracefully...");
+            cancel_token.cancel();
+            // Wait for processor to finish
+            match event_processor.task_handle.await {
+                Ok(Ok(())) => {
+                    println!("\n{}", "=".repeat(80));
+                    println!("✅ Demo completed successfully!");
+                }
+                Ok(Err(e)) => {
+                    println!("\n{}", "=".repeat(80));
+                    println!("❌ Business logic error: {}", e);
+                }
+                Err(e) => {
+                    println!("\n{}", "=".repeat(80));
+                    println!("❌ Task join error: {}", e);
+                }
+            }
+        }
+        result = &mut event_processor.task_handle => {
+            // Processor completed normally (all events processed)
+            match result {
+                Ok(Ok(())) => {
+                    println!("\n{}", "=".repeat(80));
+                    println!("✅ Demo completed successfully!");
+                }
+                Ok(Err(e)) => {
+                    println!("\n{}", "=".repeat(80));
+                    println!("❌ Business logic error: {}", e);
+                }
+                Err(e) => {
+                    println!("\n{}", "=".repeat(80));
+                    println!("❌ Task join error: {}", e);
+                }
+            }
         }
     }
 

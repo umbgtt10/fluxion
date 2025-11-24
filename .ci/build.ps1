@@ -151,4 +151,8 @@ Invoke-StepAction "Run stream-aggregation example" {
   cargo run --release --package rabbitmq-aggregator-example
 }
 
+Invoke-StepAction "Run legacy-integration example" {
+  cargo run --release --bin legacy-integration
+}
+
 Write-Color "Upgrade + build + test sequence completed successfully." Green

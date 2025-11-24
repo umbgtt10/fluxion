@@ -15,12 +15,9 @@ serde = { workspace = true }
 futures = { workspace = true }
 serde_json = { workspace = true }
 quick-xml = { workspace = true }
-csv = { workspace = true }
-rand = { workspace = true }
-chrono = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
-fastrand = "2.3.0"
+fastrand = { workspace = true }
 
 [[bin]]
 name = "legacy-integration"
