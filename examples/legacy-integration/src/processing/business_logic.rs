@@ -4,16 +4,14 @@
 
 //! Business logic processing using the aggregated repository state
 
-use std::time::Duration;
-
+use crate::domain::{events::UnifiedEvent, repository::OrderAnalytics, TimestampedEvent};
 use anyhow::Result;
 use fluxion_core::stream_item::StreamItem;
 use futures::{Stream, StreamExt};
+use std::time::Duration;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
-
-use crate::domain::{events::UnifiedEvent, repository::OrderAnalytics, TimestampedEvent};
 
 /// Business logic processor that handles event processing with analytics
 pub struct EventProcessor {
