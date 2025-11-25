@@ -13,7 +13,7 @@ A reactive stream processing library for Rust with temporal ordering guarantee, 
 
 ## Table of Contents
 - [Features](#features)
-- [Independent Code Reviews](#independent-code-reviews)
+- [Independent Code Reviews](#-independent-code-reviews)
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
 - [Documentation](#documentation)
