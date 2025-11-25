@@ -3,12 +3,14 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use async_trait::async_trait;
-use futures::{Stream, StreamExt};
-use std::sync::Arc;
-use tokio::sync::{Mutex, Notify};
-use tokio_util::sync::CancellationToken;
-
 use fluxion_core::{FluxionError, Result};
+use futures::{Stream, StreamExt};
+use std::fmt::Debug;
+use std::future::Future;
+use std::sync::Mutex as StdMutx;
+use std::{error::Error, sync::Arc};
+use tokio::sync::{Mutex as TokioMutex, Notify};
+use tokio_util::sync::CancellationToken;
 
 /// Extension trait providing async subscription with automatic cancellation of outdated work.
 ///
@@ -310,10 +312,10 @@ where
     ) -> Result<()>
     where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
-        Fut: std::future::Future<Output = std::result::Result<(), E>> + Send + 'static,
+        Fut: Future<Output = std::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
-        E: std::error::Error + Send + Sync + 'static,
-        T: std::fmt::Debug + Clone + Send + Sync + 'static;
+        E: Error + Send + Sync + 'static,
+        T: Debug + Clone + Send + Sync + 'static;
 }
 
 #[async_trait]
@@ -330,15 +332,15 @@ where
     ) -> Result<()>
     where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
-        Fut: std::future::Future<Output = std::result::Result<(), E>> + Send + 'static,
+        Fut: Future<Output = std::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
-        E: std::error::Error + Send + Sync + 'static,
-        T: std::fmt::Debug + Clone + Send + Sync + 'static,
+        E: Error + Send + Sync + 'static,
+        T: Debug + Clone + Send + Sync + 'static,
     {
         let state = Arc::new(Context::default());
         let cancellation_token = cancellation_token.unwrap_or_default();
         let state_for_wait = state.clone();
-        let errors: Arc<std::sync::Mutex<Vec<E>>> = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let errors: Arc<StdMutx<Vec<E>>> = Arc::new(StdMutx::new(Vec::new()));
         let errors_clone = errors.clone();
 
         self.for_each(move |new_data| {
@@ -391,22 +393,23 @@ where
         state_for_wait.wait_for_processing_complete().await;
 
         // Check if any errors were collected
-        let collected_errors = {
-            let mut guard = errors_clone.lock().unwrap_or_else(|e| e.into_inner());
-            std::mem::take(&mut *guard)
-        };
+        let collected_errors = errors_clone
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .drain(..)
+            .collect::<Vec<_>>();
 
-        if !collected_errors.is_empty() {
-            Err(FluxionError::from_user_errors(collected_errors))
-        } else {
+        if collected_errors.is_empty() {
             Ok(())
+        } else {
+            Err(FluxionError::from_user_errors(collected_errors))
         }
     }
 }
 
 #[derive(Debug)]
 struct Context<T> {
-    state: Mutex<State<T>>,
+    state: TokioMutex<State<T>>,
     processing_complete: Notify,
 }
 
@@ -488,7 +491,7 @@ impl<T> Context<T> {
 impl<T> Default for Context<T> {
     fn default() -> Self {
         Self {
-            state: Mutex::new(State {
+            state: TokioMutex::new(State {
                 item: None,
                 is_processing: false,
             }),

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING**: Moved `type Inner` from `HasTimestamp` trait to `Timestamped` trait
+  - `HasTimestamp` now only defines `type Timestamp` and `fn timestamp()` for minimal read-only access
+  - `Timestamped` trait now includes `type Inner: Clone` along with construction methods
+  - Better separation of concerns: ordering (HasTimestamp) vs wrapping (Timestamped)
+  - Updated all implementations across workspace (24 files)
+  - Updated documentation in README files and INTEGRATION.md to reflect new trait structure
+  - Migration: Add `type Inner = YourType;` to your `Timestamped` implementations and remove it from `HasTimestamp`
+
 ## [0.3.0] - 2025-11-24
 
 ### Added

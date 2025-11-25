@@ -5,6 +5,8 @@
 use async_trait::async_trait;
 use futures::stream::Stream;
 use futures::stream::StreamExt;
+use std::error::Error;
+use std::fmt::Debug;
 use std::future::Future;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio_util::sync::CancellationToken;
@@ -267,8 +269,8 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
         Fut: Future<Output = std::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
-        T: std::fmt::Debug + Send + Clone + 'static,
-        E: std::error::Error + Send + Sync + 'static;
+        T: Debug + Send + Clone + 'static,
+        E: Error + Send + Sync + 'static;
 }
 
 #[async_trait]
@@ -287,8 +289,8 @@ where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
         Fut: Future<Output = std::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
-        T: std::fmt::Debug + Send + Clone + 'static,
-        E: std::error::Error + Send + Sync + 'static,
+        T: Debug + Send + Clone + 'static,
+        E: Error + Send + Sync + 'static,
     {
         let cancellation_token = cancellation_token.unwrap_or_default();
         let (error_tx, mut error_rx) = unbounded_channel();
