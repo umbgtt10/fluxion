@@ -5,8 +5,8 @@
 use fluxion_core::FluxionError;
 use fluxion_core::{HasTimestamp, StreamItem, Timestamped};
 use fluxion_rx::{CombinedState, FluxionStream};
-use fluxion_stream::MergedStream;
 use fluxion_stream::WithPrevious;
+use fluxion_stream::{DistinctUntilChangedExt, MergedStream};
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::helpers::unwrap_stream;
 use fluxion_test_utils::test_channel;
@@ -2127,6 +2127,188 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
         1,
         "Should have handled 1 unknown error"
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_distinct_until_changed_with_filter_composition() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<i32>>();
+
+    // Composition: filter -> distinct_until_changed
+    let mut result = FluxionStream::new(stream)
+        .filter_ordered(|x| *x >= 0) // Filter out negatives
+        .distinct_until_changed();
+
+    // Act & Assert
+    tx.send(Sequenced::with_timestamp(-5, 1))?; // Filtered out
+    tx.send(Sequenced::with_timestamp(1, 2))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 1);
+
+    tx.send(Sequenced::with_timestamp(1, 3))?; // Duplicate, filtered by distinct
+    tx.send(Sequenced::with_timestamp(2, 4))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 2);
+
+    tx.send(Sequenced::with_timestamp(-10, 5))?; // Filtered out
+    tx.send(Sequenced::with_timestamp(2, 6))?; // Duplicate, filtered by distinct
+    tx.send(Sequenced::with_timestamp(3, 7))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 3);
+
+    drop(tx);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_distinct_until_changed_with_map_composition() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<i32>>();
+
+    // Composition: map -> distinct_until_changed
+    let mut result = FluxionStream::new(stream)
+        .map_ordered(|s| {
+            let abs_value = s.value.abs();
+            Sequenced::new(abs_value)
+        })
+        .distinct_until_changed();
+
+    // Act & Assert
+    tx.send(Sequenced::with_timestamp(-5, 1))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 5);
+
+    tx.send(Sequenced::with_timestamp(5, 2))?; // Same after abs()
+    tx.send(Sequenced::with_timestamp(-10, 3))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 10);
+
+    tx.send(Sequenced::with_timestamp(10, 4))?; // Same after abs()
+    tx.send(Sequenced::with_timestamp(-10, 5))?; // Same after abs()
+    tx.send(Sequenced::with_timestamp(7, 6))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 7);
+
+    drop(tx);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_distinct_until_changed_with_combine_with_previous_composition() -> anyhow::Result<()>
+{
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<i32>>();
+
+    // Composition: distinct_until_changed -> combine_with_previous
+    let mut result = FluxionStream::new(stream)
+        .distinct_until_changed()
+        .combine_with_previous();
+
+    // Act & Assert
+    tx.send(Sequenced::with_timestamp(1, 1))?;
+    let combined = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(combined.current.value, 1);
+    assert_eq!(combined.previous, None);
+
+    tx.send(Sequenced::with_timestamp(1, 2))?; // Filtered by distinct
+    tx.send(Sequenced::with_timestamp(2, 3))?;
+    let combined = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(combined.current.value, 2);
+    assert_eq!(combined.previous.as_ref().unwrap().value, 1);
+
+    tx.send(Sequenced::with_timestamp(2, 4))?; // Filtered by distinct
+    tx.send(Sequenced::with_timestamp(2, 5))?; // Filtered by distinct
+    tx.send(Sequenced::with_timestamp(3, 6))?;
+    let combined = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(combined.current.value, 3);
+    assert_eq!(combined.previous.as_ref().unwrap().value, 2);
+
+    drop(tx);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow::Result<()> {
+    // Arrange
+    let (stream1_tx, stream1) = test_channel::<Sequenced<i32>>();
+    let (stream2_tx, stream2) = test_channel::<Sequenced<i32>>();
+
+    // Composition: combine_latest -> map to sum -> distinct_until_changed
+    let mut result = FluxionStream::new(stream1)
+        .combine_latest(vec![stream2], |_| true)
+        .map_ordered(|state| {
+            let sum = state.values()[0] + state.values()[1];
+            Sequenced::new(sum)
+        })
+        .distinct_until_changed();
+
+    // Act & Assert
+    // Initial values: 1 + 2 = 3
+    stream1_tx.send(Sequenced::with_timestamp(1, 1))?;
+    stream2_tx.send(Sequenced::with_timestamp(2, 2))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 3);
+
+    // Update stream1: 2 + 2 = 4 (different, should emit)
+    stream1_tx.send(Sequenced::with_timestamp(2, 3))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 4);
+
+    // Update stream2: 2 + 3 = 5 (different, should emit)
+    stream2_tx.send(Sequenced::with_timestamp(3, 4))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 5);
+
+    // Update stream1: 3 + 3 = 6 (different, should emit)
+    stream1_tx.send(Sequenced::with_timestamp(3, 5))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 6);
+
+    // Update stream2: 3 + 4 = 7 (different, should emit)
+    stream2_tx.send(Sequenced::with_timestamp(4, 6))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 7);
+
+    // Update stream1: 4 + 4 = 8 (different, should emit)
+    stream1_tx.send(Sequenced::with_timestamp(4, 7))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 8);
+
+    // Update stream2: 4 + 5 = 9 (different, should emit)
+    stream2_tx.send(Sequenced::with_timestamp(5, 8))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 9);
+
+    // Update stream1 to make sum same as before: 5 + 5 = 10 (different, should emit)
+    stream1_tx.send(Sequenced::with_timestamp(5, 9))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 10);
+
+    // Update stream2: 5 + 6 = 11 (different, should emit)
+    stream2_tx.send(Sequenced::with_timestamp(6, 10))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 11);
+
+    // Update stream1 to get same sum: 6 + 6 = 12 (different, should emit)
+    stream1_tx.send(Sequenced::with_timestamp(6, 11))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 12);
+
+    // Update stream2 to make sum same as before: 6 + 6 = 12 (same! should NOT emit)
+    stream2_tx.send(Sequenced::with_timestamp(6, 12))?;
+
+    // Update stream1 to different sum: 7 + 6 = 13 (different, should emit)
+    stream1_tx.send(Sequenced::with_timestamp(7, 13))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 13);
+
+    drop(stream1_tx);
+    drop(stream2_tx);
 
     Ok(())
 }
