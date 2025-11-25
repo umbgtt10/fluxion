@@ -11,6 +11,7 @@ mod filter_ordered_bench;
 mod map_ordered_bench;
 mod merge_with_bench;
 mod ordered_merge_bench;
+mod scan_ordered_bench;
 mod take_latest_when_bench;
 mod take_while_with_bench;
 mod with_latest_from_bench;
@@ -25,6 +26,9 @@ use filter_ordered_bench::bench_filter_ordered;
 use map_ordered_bench::bench_map_ordered;
 use merge_with_bench::bench_merge_with;
 use ordered_merge_bench::bench_ordered_merge;
+use scan_ordered_bench::{
+    bench_scan_ordered_count, bench_scan_ordered_sum, bench_scan_ordered_vec_accumulator,
+};
 use take_latest_when_bench::bench_take_latest_when;
 use take_while_with_bench::bench_take_while_with;
 use with_latest_from_bench::bench_with_latest_from;
@@ -40,6 +44,9 @@ criterion_group!(
     bench_map_ordered,
     bench_merge_with,
     bench_ordered_merge,
+    bench_scan_ordered_count,
+    bench_scan_ordered_sum,
+    bench_scan_ordered_vec_accumulator,
     bench_take_latest_when,
     bench_take_while_with,
     bench_with_latest_from

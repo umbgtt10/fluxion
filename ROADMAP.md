@@ -143,11 +143,12 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 **Goal:** Expand operator library and add advanced streaming capabilities
 
 **Planned Features:**
-- [ ] `scan` operator - Stateful accumulation across stream
+- ✅ `scan` operator - Stateful accumulation across stream
 - [ ] `debounce` operator - Time-based event throttling
 - [ ] `throttle` operator - Rate limiting
 - [ ] `buffer` operator - Windowing and batching
 - ✅ `distinct_until_changed` operator - Duplicate suppression
+- ✅ `distinct_until_changed_by` operator - Duplicate suppression with custom comparison
 - [ ] Additional error handling operators
 
 See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator implementation timeline beyond v0.3.0.
@@ -157,6 +158,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 ## 🚀 Version 0.5.0 - Cloning
 **Essential Features:**
 - [ ] Investigate the best way to clone or share streams between multiple consumers
+- [ ] Investigate FluxionSubject
 
 **Documentation:**
 

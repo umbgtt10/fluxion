@@ -5,77 +5,78 @@
 use fluxion_core::HasTimestamp;
 use fluxion_stream::DistinctUntilChangedByExt;
 use fluxion_test_utils::{
+    animal::Animal,
     helpers::{assert_no_element_emitted, assert_stream_ended, unwrap_stream},
-    test_channel, Sequenced,
+    person::Person,
+    test_channel,
+    test_data::{animal_dog, animal_spider, person_alice, person_bob, person_diane, TestData},
+    Sequenced,
 };
-
-#[derive(Clone, Debug, PartialEq)]
-struct User {
-    id: u32,
-    name: String,
-    version: u32,
-}
 
 #[tokio::test]
 async fn test_distinct_until_changed_by_field_comparison() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<User>>();
-    // Compare by ID only, ignoring name and version
-    let mut distinct = stream.distinct_until_changed_by(|a, b| a.id == b.id);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    // Compare by age only, ignoring name
+    let mut distinct = stream.distinct_until_changed_by(|a, b| match (a, b) {
+        (TestData::Person(p1), TestData::Person(p2)) => p1.age == p2.age,
+        _ => false,
+    });
 
     // Act & Assert: First value always emitted
-    tx.send(Sequenced::new(User {
-        id: 1,
-        name: "Alice".into(),
-        version: 1,
-    }))?;
-    let user = unwrap_stream(&mut distinct, 500)
+    tx.send(Sequenced::new(person_alice()))?;
+    let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
         .into_inner();
-    assert_eq!(user.id, 1);
-    assert_eq!(user.name, "Alice");
+    if let TestData::Person(p) = person {
+        assert_eq!(p.age, 25);
+        assert_eq!(p.name, "Alice");
+    } else {
+        panic!("Expected Person");
+    }
 
-    // Same ID, different name/version - filtered
-    tx.send(Sequenced::new(User {
-        id: 1,
-        name: "Alice Updated".into(),
-        version: 2,
-    }))?;
+    // Same age, different name - filtered
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "Alice Updated".to_string(),
+        25,
+    ))))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    // Different ID - emitted
-    tx.send(Sequenced::new(User {
-        id: 2,
-        name: "Bob".into(),
-        version: 1,
-    }))?;
-    let user = unwrap_stream(&mut distinct, 500)
+    // Different age - emitted
+    tx.send(Sequenced::new(person_bob()))?;
+    let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
         .into_inner();
-    assert_eq!(user.id, 2);
+    if let TestData::Person(p) = person {
+        assert_eq!(p.age, 30);
+    } else {
+        panic!("Expected Person");
+    }
 
-    // Same ID as previous - filtered
-    tx.send(Sequenced::new(User {
-        id: 2,
-        name: "Bob v2".into(),
-        version: 2,
-    }))?;
+    // Same age as previous - filtered
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "Bob v2".to_string(),
+        30,
+    ))))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    // Back to ID 1 - emitted (different from previous ID 2)
-    tx.send(Sequenced::new(User {
-        id: 1,
-        name: "Alice v3".into(),
-        version: 3,
-    }))?;
-    let user = unwrap_stream(&mut distinct, 500)
+    // Back to age 25 - emitted (different from previous age 30)
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "Alice v3".to_string(),
+        25,
+    ))))?;
+    let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
         .into_inner();
-    assert_eq!(user.id, 1);
-    assert_eq!(user.version, 3);
+    if let TestData::Person(p) = person {
+        assert_eq!(p.age, 25);
+        assert_eq!(p.name, "Alice v3");
+    } else {
+        panic!("Expected Person");
+    }
 
     Ok(())
 }
@@ -83,53 +84,84 @@ async fn test_distinct_until_changed_by_field_comparison() -> anyhow::Result<()>
 #[tokio::test]
 async fn test_distinct_until_changed_by_case_insensitive() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<String>>();
-    // Case-insensitive comparison
-    let mut distinct =
-        stream.distinct_until_changed_by(|a, b| a.to_lowercase() == b.to_lowercase());
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    // Case-insensitive comparison by name
+    let mut distinct = stream.distinct_until_changed_by(|a, b| match (a, b) {
+        (TestData::Person(p1), TestData::Person(p2)) => {
+            p1.name.to_lowercase() == p2.name.to_lowercase()
+        }
+        _ => false,
+    });
 
     // Act & Assert
-    tx.send(Sequenced::new("hello".to_string()))?;
-    assert_eq!(
-        unwrap_stream(&mut distinct, 500)
-            .await
-            .unwrap()
-            .into_inner(),
-        "hello"
-    );
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "hello".to_string(),
+        25,
+    ))))?;
+    let person = unwrap_stream(&mut distinct, 500)
+        .await
+        .unwrap()
+        .into_inner();
+    if let TestData::Person(p) = person {
+        assert_eq!(p.name, "hello");
+    } else {
+        panic!("Expected Person");
+    }
 
-    // Same string, different case - filtered
-    tx.send(Sequenced::new("HELLO".to_string()))?;
-    tx.send(Sequenced::new("HeLLo".to_string()))?;
+    // Same name, different case - filtered
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "HELLO".to_string(),
+        25,
+    ))))?;
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "HeLLo".to_string(),
+        25,
+    ))))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    // Different string - emitted
-    tx.send(Sequenced::new("world".to_string()))?;
-    assert_eq!(
-        unwrap_stream(&mut distinct, 500)
-            .await
-            .unwrap()
-            .into_inner(),
-        "world"
-    );
+    // Different name - emitted
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "world".to_string(),
+        30,
+    ))))?;
+    let person = unwrap_stream(&mut distinct, 500)
+        .await
+        .unwrap()
+        .into_inner();
+    if let TestData::Person(p) = person {
+        assert_eq!(p.name, "world");
+    } else {
+        panic!("Expected Person");
+    }
 
-    // Same string, different case - filtered
-    tx.send(Sequenced::new("WORLD".to_string()))?;
+    // Same name, different case - filtered
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "WORLD".to_string(),
+        30,
+    ))))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
     // Back to previous value with different case - filtered
-    tx.send(Sequenced::new("World".to_string()))?;
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "World".to_string(),
+        30,
+    ))))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
     // Truly different value
-    tx.send(Sequenced::new("rust".to_string()))?;
-    assert_eq!(
-        unwrap_stream(&mut distinct, 500)
-            .await
-            .unwrap()
-            .into_inner(),
-        "rust"
-    );
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "rust".to_string(),
+        35,
+    ))))?;
+    let person = unwrap_stream(&mut distinct, 500)
+        .await
+        .unwrap()
+        .into_inner();
+    if let TestData::Person(p) = person {
+        assert_eq!(p.name, "rust");
+    } else {
+        panic!("Expected Person");
+    }
 
     Ok(())
 }
@@ -137,48 +169,69 @@ async fn test_distinct_until_changed_by_case_insensitive() -> anyhow::Result<()>
 #[tokio::test]
 async fn test_distinct_until_changed_by_threshold() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<f64>>();
-    // Only emit if difference is >= 0.5
-    let mut distinct = stream.distinct_until_changed_by(|a, b| (a - b).abs() < 0.5);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    // Only emit if age difference is >= 5 years
+    let mut distinct = stream.distinct_until_changed_by(|a, b| match (a, b) {
+        (TestData::Person(p1), TestData::Person(p2)) => (p1.age as i32 - p2.age as i32).abs() < 5,
+        _ => false,
+    });
 
     // Act & Assert
-    tx.send(Sequenced::new(1.0))?;
-    assert_eq!(
-        unwrap_stream(&mut distinct, 500)
-            .await
-            .unwrap()
-            .into_inner(),
-        1.0
-    );
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "Alice".to_string(),
+        20,
+    ))))?;
+    let person = unwrap_stream(&mut distinct, 500)
+        .await
+        .unwrap()
+        .into_inner();
+    if let TestData::Person(p) = person {
+        assert_eq!(p.age, 20);
+    } else {
+        panic!("Expected Person");
+    }
 
     // Small change - filtered
-    tx.send(Sequenced::new(1.2))?;
-    tx.send(Sequenced::new(1.4))?;
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "Bob".to_string(),
+        22,
+    ))))?;
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "Carol".to_string(),
+        24,
+    ))))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
     // Large change - emitted
-    tx.send(Sequenced::new(2.0))?;
-    assert_eq!(
-        unwrap_stream(&mut distinct, 500)
-            .await
-            .unwrap()
-            .into_inner(),
-        2.0
-    );
+    tx.send(Sequenced::new(person_bob()))?; // Age 30
+    let person = unwrap_stream(&mut distinct, 500)
+        .await
+        .unwrap()
+        .into_inner();
+    if let TestData::Person(p) = person {
+        assert_eq!(p.age, 30);
+    } else {
+        panic!("Expected Person");
+    }
 
-    // Small change from 2.0 - filtered
-    tx.send(Sequenced::new(2.3))?;
+    // Small change from 30 - filtered
+    tx.send(Sequenced::new(TestData::Person(Person::new(
+        "Eve".to_string(),
+        33,
+    ))))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
     // Large change - emitted
-    tx.send(Sequenced::new(3.0))?;
-    assert_eq!(
-        unwrap_stream(&mut distinct, 500)
-            .await
-            .unwrap()
-            .into_inner(),
-        3.0
-    );
+    tx.send(Sequenced::new(person_diane()))?; // Age 40
+    let person = unwrap_stream(&mut distinct, 500)
+        .await
+        .unwrap()
+        .into_inner();
+    if let TestData::Person(p) = person {
+        assert_eq!(p.age, 40);
+    } else {
+        panic!("Expected Person");
+    }
 
     Ok(())
 }
@@ -303,49 +356,69 @@ async fn test_distinct_until_changed_by_preserves_timestamps() -> anyhow::Result
 #[tokio::test]
 async fn test_distinct_until_changed_by_many_duplicates() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<String>>();
-    // Compare by length
-    let mut distinct = stream.distinct_until_changed_by(|a, b| a.len() == b.len());
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    // Compare by legs
+    let mut distinct = stream.distinct_until_changed_by(|a, b| match (a, b) {
+        (TestData::Animal(a1), TestData::Animal(a2)) => a1.legs == a2.legs,
+        _ => false,
+    });
 
     // Act & Assert
-    tx.send(Sequenced::new("a".to_string()))?;
-    assert_eq!(
-        unwrap_stream(&mut distinct, 500)
-            .await
-            .unwrap()
-            .into_inner(),
-        "a"
-    );
+    tx.send(Sequenced::new(TestData::Animal(Animal::new(
+        "Ant".to_string(),
+        6,
+    ))))?;
+    let animal = unwrap_stream(&mut distinct, 500)
+        .await
+        .unwrap()
+        .into_inner();
+    if let TestData::Animal(a) = animal {
+        assert_eq!(a.legs, 6);
+    } else {
+        panic!("Expected Animal");
+    }
 
-    // Many single-char strings - all filtered
-    for c in 'b'..='z' {
-        tx.send(Sequenced::new(c.to_string()))?;
+    // Many 6-legged animals - all filtered
+    for i in 0..25 {
+        tx.send(Sequenced::new(TestData::Animal(Animal::new(
+            format!("Insect{}", i),
+            6,
+        ))))?;
     }
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    // Two-char string - emitted
-    tx.send(Sequenced::new("aa".to_string()))?;
-    assert_eq!(
-        unwrap_stream(&mut distinct, 500)
-            .await
-            .unwrap()
-            .into_inner(),
-        "aa"
-    );
+    // 4-legged animal - emitted
+    tx.send(Sequenced::new(animal_dog()))?;
+    let animal = unwrap_stream(&mut distinct, 500)
+        .await
+        .unwrap()
+        .into_inner();
+    if let TestData::Animal(a) = animal {
+        assert_eq!(a.legs, 4);
+    } else {
+        panic!("Expected Animal");
+    }
 
-    // More two-char strings - filtered
+    // More 4-legged animals - filtered
     for i in 0..10 {
-        tx.send(Sequenced::new(format!("x{}", i)))?;
+        tx.send(Sequenced::new(TestData::Animal(Animal::new(
+            format!("Mammal{}", i),
+            4,
+        ))))?;
     }
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    // Three-char string - emitted
-    tx.send(Sequenced::new("abc".to_string()))?;
+    // 8-legged animal - emitted
+    tx.send(Sequenced::new(animal_spider()))?;
     let result = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
         .into_inner();
-    assert_eq!(result.len(), 3);
+    if let TestData::Animal(a) = result {
+        assert_eq!(a.legs, 8);
+    } else {
+        panic!("Expected Animal");
+    }
 
     Ok(())
 }

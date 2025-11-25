@@ -321,6 +321,35 @@ let bounded = source.take_while_with(
 
 ### Transformation Operators
 
+#### `scan_ordered`
+Accumulates state across stream items, emitting intermediate results.
+
+**Use case:** Running totals, moving averages, state machines, building collections over time
+
+```rust
+use fluxion_stream::{FluxionStream, ScanOrderedExt};
+
+let sums = stream.scan_ordered::<Sequenced<i32>, _, _>(0, |acc, val| {
+    *acc += val;
+    *acc
+});
+```
+
+**Behavior:**
+- Maintains accumulator state that persists across all items
+- Emits transformed value for each input
+- Errors propagate without affecting state
+- Can transform types (e.g., i32 → String)
+- Preserves timestamps from source items
+
+**Common Patterns:**
+- **Running sum/count**: Accumulate numeric values
+- **Building collections**: Gather items into Vec/HashMap
+- **State machines**: Track state transitions with context
+- **Moving calculations**: Windowed statistics
+
+[Full documentation](src/scan_ordered.rs) | [Tests](tests/scan_ordered_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#scan_ordered---stateful-accumulation)
+
 #### `combine_with_previous`
 Pairs each value with the previous value.
 
@@ -430,6 +459,7 @@ let handled = stream
 |----------|--------|----------|----------|
 | `ordered_merge` | Every item | Temporal | Event logs, audit trails |
 | `combine_with_previous` | Pairs (prev, curr) | Temporal | Change detection, deltas |
+| `scan_ordered` | Accumulated state | Temporal | Running totals, state machines |
 
 ### When You Need Conditional Emission
 
@@ -559,6 +589,44 @@ async fn main() -> anyhow::Result<()> {
     // Items 1 and 2 are now emitted
     let first = gated.next().await.unwrap().unwrap();
     assert_eq!(first.value, 1);
+
+    Ok(())
+}
+```
+
+### Running Total with scan_ordered
+
+```rust
+use fluxion_stream::{FluxionStream, ScanOrderedExt};
+use fluxion_test_utils::Sequenced;
+use futures::StreamExt;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let stream = FluxionStream::from_unbounded_receiver(rx);
+
+    // Calculate running sum
+    let mut running_sum = stream.scan_ordered::<Sequenced<i32>, _, _>(0, |acc, val| {
+        *acc += val;
+        *acc
+    });
+
+    tx.send(Sequenced::with_sequence(10, 1)).unwrap();
+    tx.send(Sequenced::with_sequence(20, 2)).unwrap();
+    tx.send(Sequenced::with_sequence(30, 3)).unwrap();
+
+    // First sum: 0 + 10 = 10
+    let first = running_sum.next().await.unwrap().unwrap();
+    assert_eq!(first.value, 10);
+
+    // Second sum: 10 + 20 = 30
+    let second = running_sum.next().await.unwrap().unwrap();
+    assert_eq!(second.value, 30);
+
+    // Third sum: 30 + 30 = 60
+    let third = running_sum.next().await.unwrap().unwrap();
+    assert_eq!(third.value, 60);
 
     Ok(())
 }

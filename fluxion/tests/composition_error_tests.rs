@@ -413,3 +413,133 @@ async fn test_distinct_until_changed_by_multiple_errors_in_composition() -> anyh
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_scan_ordered_error_propagation_with_map() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+
+    let accumulator = |sum: &mut i32, value: &i32| {
+        *sum += value;
+        *sum
+    };
+
+    let mut result = FluxionStream::new(stream)
+        .scan_ordered(0, accumulator)
+        .map_ordered(|sum: Sequenced<i32>| Sequenced::new(sum.into_inner() * 2));
+
+    // Act & Assert
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(ref v) if v.value == 20 // sum=10, doubled=20
+    ));
+
+    // Error doesn't affect accumulator state
+    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
+
+    // Accumulator continues from previous state
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(ref v) if v.value == 30 // sum=15, doubled=30
+    ));
+
+    drop(tx);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_scan_ordered_error_propagation_with_filter() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+
+    let accumulator = |count: &mut i32, _value: &i32| {
+        *count += 1;
+        *count
+    };
+
+    let mut result = FluxionStream::new(stream)
+        .scan_ordered(0, accumulator)
+        .filter_ordered(|count| count % 2 == 0); // Only even counts
+
+    // Act & Assert
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(100, 1)))?; // count=1, filtered
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(200, 2)))?; // count=2, emitted
+    assert!(matches!(
+        unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
+        StreamItem::Value(ref v) if v.value == 2
+    ));
+
+    // Error propagates through
+    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
+
+    // Count continues, filtered
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(300, 4)))?; // count=3, filtered
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(400, 5)))?; // count=4, emitted
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(ref v) if v.value == 4
+    ));
+
+    drop(tx);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_scan_ordered_chained_with_errors() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+
+    // Chain two scans with errors in between
+    let mut result = FluxionStream::new(stream)
+        .scan_ordered::<Sequenced<i32>, _, _>(0, |sum: &mut i32, value: &i32| {
+            *sum += value;
+            *sum
+        })
+        .scan_ordered(0, |count: &mut i32, _sum: &i32| {
+            *count += 1;
+            *count
+        });
+
+    // Act & Assert
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?; // sum=10, count=1
+    assert!(matches!(
+        unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
+        StreamItem::Value(ref v) if v.value == 1
+    ));
+
+    // Error between scans
+    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
+
+    // Both accumulators preserve state
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(20, 3)))?; // sum=30, count=2
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(ref v) if v.value == 2
+    ));
+
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(30, 4)))?; // sum=60, count=3
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(ref v) if v.value == 3
+    ));
+
+    drop(tx);
+
+    Ok(())
+}

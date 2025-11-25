@@ -6,61 +6,63 @@ use fluxion_core::HasTimestamp;
 use fluxion_stream::{DistinctUntilChangedExt, FluxionStream};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, assert_stream_ended, unwrap_stream},
-    test_channel, Sequenced,
+    test_channel,
+    test_data::{person_alice, person_bob, person_charlie, TestData},
+    Sequenced,
 };
 
 #[tokio::test]
 async fn test_distinct_until_changed_basic() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<i32>>();
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut distinct = stream.distinct_until_changed();
 
     // Act & Assert: First value always emitted
-    tx.send(Sequenced::new(1))?;
+    tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
         unwrap_stream(&mut distinct, 500)
             .await
             .unwrap()
             .into_inner(),
-        1
+        person_alice()
     );
 
     // Duplicate - filtered
-    tx.send(Sequenced::new(1))?;
+    tx.send(Sequenced::new(person_alice()))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
     // New value - emitted
-    tx.send(Sequenced::new(2))?;
+    tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
         unwrap_stream(&mut distinct, 500)
             .await
             .unwrap()
             .into_inner(),
-        2
+        person_bob()
     );
 
     // Another duplicate - filtered
-    tx.send(Sequenced::new(2))?;
+    tx.send(Sequenced::new(person_bob()))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
     // New value - emitted
-    tx.send(Sequenced::new(3))?;
+    tx.send(Sequenced::new(person_charlie()))?;
     assert_eq!(
         unwrap_stream(&mut distinct, 500)
             .await
             .unwrap()
             .into_inner(),
-        3
+        person_charlie()
     );
 
-    // Return to previous value - emitted (different from 3)
-    tx.send(Sequenced::new(2))?;
+    // Return to previous value - emitted (different from charlie)
+    tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
         unwrap_stream(&mut distinct, 500)
             .await
             .unwrap()
             .into_inner(),
-        2
+        person_bob()
     );
 
     Ok(())
@@ -108,30 +110,30 @@ async fn test_distinct_until_changed_boolean_toggle() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_distinct_until_changed_many_duplicates() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<i32>>();
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut distinct = stream.distinct_until_changed();
 
     // Act: Send many duplicates
-    tx.send(Sequenced::new(42))?;
+    tx.send(Sequenced::new(person_alice()))?;
     for _ in 0..100 {
-        tx.send(Sequenced::new(42))?;
+        tx.send(Sequenced::new(person_alice()))?;
     }
-    tx.send(Sequenced::new(99))?;
+    tx.send(Sequenced::new(person_bob()))?;
 
-    // Assert: Only two values emitted (42 and 99)
+    // Assert: Only two values emitted (alice and bob)
     assert_eq!(
         unwrap_stream(&mut distinct, 500)
             .await
             .unwrap()
             .into_inner(),
-        42
+        person_alice()
     );
     assert_eq!(
         unwrap_stream(&mut distinct, 500)
             .await
             .unwrap()
             .into_inner(),
-        99
+        person_bob()
     );
     assert_no_element_emitted(&mut distinct, 100).await;
 
@@ -141,15 +143,15 @@ async fn test_distinct_until_changed_many_duplicates() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_distinct_until_changed_alternating() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<i32>>();
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut distinct = stream.distinct_until_changed();
 
     // Act: Alternating values - all should be emitted
-    tx.send(Sequenced::new(1))?;
-    tx.send(Sequenced::new(2))?;
-    tx.send(Sequenced::new(1))?;
-    tx.send(Sequenced::new(2))?;
-    tx.send(Sequenced::new(1))?;
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(person_alice()))?;
 
     // Assert: All values emitted (each different from previous)
     assert_eq!(
@@ -157,70 +159,81 @@ async fn test_distinct_until_changed_alternating() -> anyhow::Result<()> {
             .await
             .unwrap()
             .into_inner(),
-        1
+        person_alice()
     );
     assert_eq!(
         unwrap_stream(&mut distinct, 500)
             .await
             .unwrap()
             .into_inner(),
-        2
+        person_bob()
     );
     assert_eq!(
         unwrap_stream(&mut distinct, 500)
             .await
             .unwrap()
             .into_inner(),
-        1
+        person_alice()
     );
     assert_eq!(
         unwrap_stream(&mut distinct, 500)
             .await
             .unwrap()
             .into_inner(),
-        2
+        person_bob()
     );
     assert_eq!(
         unwrap_stream(&mut distinct, 500)
             .await
             .unwrap()
             .into_inner(),
-        1
+        person_alice()
     );
 
     Ok(())
 }
 
 #[tokio::test]
-async fn test_distinct_until_changed_string_values() -> anyhow::Result<()> {
+async fn test_distinct_until_changed_different_types() -> anyhow::Result<()> {
+    use fluxion_test_utils::test_data::{animal_dog, plant_rose};
+
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<String>>();
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut distinct = stream.distinct_until_changed();
 
     // Act & Assert
-    tx.send(Sequenced::new("hello".to_string()))?;
+    tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
         unwrap_stream(&mut distinct, 500)
             .await
             .unwrap()
             .into_inner(),
-        "hello"
+        person_alice()
     );
 
-    tx.send(Sequenced::new("hello".to_string()))?;
+    tx.send(Sequenced::new(person_alice()))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    tx.send(Sequenced::new("world".to_string()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
     assert_eq!(
         unwrap_stream(&mut distinct, 500)
             .await
             .unwrap()
             .into_inner(),
-        "world"
+        animal_dog()
     );
 
-    tx.send(Sequenced::new("world".to_string()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
     assert_no_element_emitted(&mut distinct, 100).await;
+
+    tx.send(Sequenced::new(plant_rose()))?;
+    assert_eq!(
+        unwrap_stream(&mut distinct, 500)
+            .await
+            .unwrap()
+            .into_inner(),
+        plant_rose()
+    );
 
     Ok(())
 }
@@ -230,11 +243,11 @@ async fn test_distinct_until_changed_fresh_timestamps() -> anyhow::Result<()> {
     use std::time::Duration;
 
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<i32>>();
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut distinct = stream.distinct_until_changed();
 
     // Act: Send first value
-    tx.send(Sequenced::new(1))?;
+    tx.send(Sequenced::new(person_alice()))?;
     let first = unwrap_stream(&mut distinct, 500).await.unwrap();
     let ts1 = first.timestamp();
 
@@ -242,13 +255,13 @@ async fn test_distinct_until_changed_fresh_timestamps() -> anyhow::Result<()> {
     tokio::time::sleep(Duration::from_millis(10)).await;
 
     // Send duplicate (should be filtered)
-    tx.send(Sequenced::new(1))?;
+    tx.send(Sequenced::new(person_alice()))?;
 
     // Wait a bit more
     tokio::time::sleep(Duration::from_millis(10)).await;
 
     // Send new value
-    tx.send(Sequenced::new(2))?;
+    tx.send(Sequenced::new(person_bob()))?;
     let second = unwrap_stream(&mut distinct, 500).await.unwrap();
     let ts2 = second.timestamp();
 
@@ -263,34 +276,51 @@ async fn test_distinct_until_changed_fresh_timestamps() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_distinct_until_changed_with_filter_ordered() -> anyhow::Result<()> {
-    // Arrange: Compose with filter_ordered
-    let (tx, stream) = test_channel::<Sequenced<i32>>();
+    use fluxion_test_utils::test_data::{animal_dog, person_dave};
+
+    // Arrange: Compose with filter_ordered - filter out people under 30
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut composed = FluxionStream::new(stream)
         .distinct_until_changed()
-        .filter_ordered(|&x| x > 0);
+        .filter_ordered(|data| match data {
+            TestData::Person(p) => p.age >= 30,
+            _ => true,
+        });
 
     // Act & Assert
-    tx.send(Sequenced::new(-1))?; // Emitted by distinct, filtered by filter_ordered
-    tx.send(Sequenced::new(-1))?; // Filtered by distinct
-    tx.send(Sequenced::new(5))?; // Emitted by both
+    tx.send(Sequenced::new(person_alice()))?; // age=25, emitted by distinct, filtered by filter_ordered
+    tx.send(Sequenced::new(person_alice()))?; // Filtered by distinct
+    tx.send(Sequenced::new(person_bob()))?; // age=30, emitted by both
     assert_eq!(
         unwrap_stream(&mut composed, 500)
             .await
             .unwrap()
             .into_inner(),
-        5
+        person_bob()
     );
 
-    tx.send(Sequenced::new(5))?; // Filtered by distinct
+    tx.send(Sequenced::new(person_bob()))?; // Filtered by distinct
     assert_no_element_emitted(&mut composed, 100).await;
 
-    tx.send(Sequenced::new(10))?; // Emitted by both
+    tx.send(Sequenced::new(person_charlie()))?; // age=35, emitted by both
     assert_eq!(
         unwrap_stream(&mut composed, 500)
             .await
             .unwrap()
             .into_inner(),
-        10
+        person_charlie()
+    );
+
+    tx.send(Sequenced::new(person_dave()))?; // age=28, emitted by distinct, filtered by filter_ordered
+    assert_no_element_emitted(&mut composed, 100).await;
+
+    tx.send(Sequenced::new(animal_dog()))?; // Emitted by both (not a Person)
+    assert_eq!(
+        unwrap_stream(&mut composed, 500)
+            .await
+            .unwrap()
+            .into_inner(),
+        animal_dog()
     );
 
     Ok(())
@@ -299,7 +329,7 @@ async fn test_distinct_until_changed_with_filter_ordered() -> anyhow::Result<()>
 #[tokio::test]
 async fn test_distinct_until_changed_empty_stream() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<i32>>();
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut distinct = stream.distinct_until_changed();
 
     // Act: Close stream without sending anything
@@ -314,11 +344,11 @@ async fn test_distinct_until_changed_empty_stream() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_distinct_until_changed_single_value() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel::<Sequenced<i32>>();
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut distinct = stream.distinct_until_changed();
 
     // Act
-    tx.send(Sequenced::new(42))?;
+    tx.send(Sequenced::new(person_alice()))?;
 
     // Assert: Single value emitted
     assert_eq!(
@@ -326,7 +356,7 @@ async fn test_distinct_until_changed_single_value() -> anyhow::Result<()> {
             .await
             .unwrap()
             .into_inner(),
-        42
+        person_alice()
     );
 
     drop(tx);

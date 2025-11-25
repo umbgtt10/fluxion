@@ -33,6 +33,7 @@
 //!
 //! ### Transformation Operators
 //!
+//! - **[`scan_ordered`](ScanOrderedExt::scan_ordered)**: Accumulates state across stream items, emitting intermediate results
 //! - **[`combine_with_previous`](CombineWithPreviousExt::combine_with_previous)**: Pairs each value with previous value
 //!
 //! # Temporal Ordering Explained
@@ -653,6 +654,7 @@ pub mod emit_when;
 pub mod fluxion_stream;
 pub mod merge_with;
 pub mod ordered_merge;
+pub mod scan_ordered;
 pub mod take_latest_when;
 pub mod take_while_with;
 pub mod types;
@@ -667,6 +669,7 @@ pub use emit_when::EmitWhenExt;
 pub use fluxion_stream::FluxionStream;
 pub use merge_with::MergedStream;
 pub use ordered_merge::OrderedStreamExt;
+pub use scan_ordered::ScanOrderedExt;
 pub use take_latest_when::TakeLatestWhenExt;
 pub use take_while_with::TakeWhileExt;
 pub use types::{CombinedState, WithPrevious};

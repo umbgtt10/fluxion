@@ -6,19 +6,26 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::DistinctUntilChangedExt;
-use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors, unwrap_stream, Sequenced};
+use fluxion_test_utils::{
+    assert_stream_ended, test_channel_with_errors,
+    test_data::{person_alice, person_bob, TestData},
+    unwrap_stream, Sequenced,
+};
 
 #[tokio::test]
 async fn test_distinct_until_changed_propagates_errors() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.distinct_until_changed();
 
     // Act & Assert: First value emitted
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_alice(),
+        1,
+    )))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(v) if v.value == 1
+        StreamItem::Value(v) if v.value == person_alice()
     ));
 
     // Error should be propagated
@@ -29,13 +36,19 @@ async fn test_distinct_until_changed_propagates_errors() -> anyhow::Result<()> {
     ));
 
     // Duplicate value after error - should be filtered
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 2)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_alice(),
+        2,
+    )))?;
 
     // Different value - should be emitted
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 3)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_bob(),
+        3,
+    )))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(v) if v.value == 2
+        StreamItem::Value(v) if v.value == person_bob()
     ));
 
     drop(tx);
@@ -47,7 +60,7 @@ async fn test_distinct_until_changed_propagates_errors() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_distinct_until_changed_error_at_start() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.distinct_until_changed();
 
     // Act & Assert: Error before any values
@@ -60,20 +73,29 @@ async fn test_distinct_until_changed_error_at_start() -> anyhow::Result<()> {
     ));
 
     // First value should still be emitted (no previous to compare)
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 1)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_alice(),
+        1,
+    )))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(v) if v.value == 5
+        StreamItem::Value(v) if v.value == person_alice()
     ));
 
     // Duplicate - filtered
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 2)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_alice(),
+        2,
+    )))?;
 
     // Different value - emitted
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 3)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_bob(),
+        3,
+    )))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(v) if v.value == 10
+        StreamItem::Value(v) if v.value == person_bob()
     ));
 
     drop(tx);
@@ -85,17 +107,17 @@ async fn test_distinct_until_changed_error_at_start() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_distinct_until_changed_multiple_errors() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Sequenced<String>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.distinct_until_changed();
 
     // Act & Assert
     tx.send(StreamItem::Value(Sequenced::with_timestamp(
-        "hello".to_string(),
+        person_alice(),
         1,
     )))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(v) if v.value == "hello"
+        StreamItem::Value(v) if v.value == person_alice()
     ));
 
     // Error 1
@@ -114,7 +136,7 @@ async fn test_distinct_until_changed_multiple_errors() -> anyhow::Result<()> {
 
     // Duplicate value - filtered
     tx.send(StreamItem::Value(Sequenced::with_timestamp(
-        "hello".to_string(),
+        person_alice(),
         2,
     )))?;
 
@@ -127,12 +149,12 @@ async fn test_distinct_until_changed_multiple_errors() -> anyhow::Result<()> {
 
     // New value - emitted
     tx.send(StreamItem::Value(Sequenced::with_timestamp(
-        "world".to_string(),
+        person_bob(),
         3,
     )))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(v) if v.value == "world"
+        StreamItem::Value(v) if v.value == person_bob()
     ));
 
     drop(tx);
@@ -144,18 +166,24 @@ async fn test_distinct_until_changed_multiple_errors() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_distinct_until_changed_error_between_duplicates() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.distinct_until_changed();
 
     // Act & Assert: First value
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(42, 1)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_alice(),
+        1,
+    )))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(v) if v.value == 42
+        StreamItem::Value(v) if v.value == person_alice()
     ));
 
     // Duplicate - filtered
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(42, 2)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_alice(),
+        2,
+    )))?;
 
     // Error in the middle of duplicates
     tx.send(StreamItem::Error(FluxionError::stream_error(
@@ -167,14 +195,23 @@ async fn test_distinct_until_changed_error_between_duplicates() -> anyhow::Resul
     ));
 
     // More duplicates after error - still filtered
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(42, 3)))?;
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(42, 4)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_alice(),
+        3,
+    )))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_alice(),
+        4,
+    )))?;
 
     // Different value - emitted
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(99, 5)))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_bob(),
+        5,
+    )))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(v) if v.value == 99
+        StreamItem::Value(v) if v.value == person_bob()
     ));
 
     drop(tx);
@@ -186,21 +223,27 @@ async fn test_distinct_until_changed_error_between_duplicates() -> anyhow::Resul
 #[tokio::test]
 async fn test_distinct_until_changed_preserves_state_after_error() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.distinct_until_changed();
 
-    // Act & Assert: Establish state with value 1
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
+    // Act & Assert: Establish state with alice
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_alice(),
+        1,
+    )))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(v) if v.value == 1
+        StreamItem::Value(v) if v.value == person_alice()
     ));
 
-    // Change to value 2
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
+    // Change to bob
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_bob(),
+        2,
+    )))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(v) if v.value == 2
+        StreamItem::Value(v) if v.value == person_bob()
     ));
 
     // Error occurs
@@ -210,14 +253,20 @@ async fn test_distinct_until_changed_preserves_state_after_error() -> anyhow::Re
         StreamItem::Error(_)
     ));
 
-    // State should be preserved: last emitted was 2, so duplicate 2 is filtered
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 3)))?;
+    // State should be preserved: last emitted was bob, so duplicate bob is filtered
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_bob(),
+        3,
+    )))?;
 
-    // Change back to 1 - should be emitted (different from last emitted value 2)
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 4)))?;
+    // Change back to alice - should be emitted (different from last emitted value bob)
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_alice(),
+        4,
+    )))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(v) if v.value == 1
+        StreamItem::Value(v) if v.value == person_alice()
     ));
 
     drop(tx);
@@ -280,7 +329,7 @@ async fn test_distinct_until_changed_alternating_errors_and_values() -> anyhow::
 #[tokio::test]
 async fn test_distinct_until_changed_error_only_stream() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.distinct_until_changed();
 
     // Act & Assert: Send only errors, no values
