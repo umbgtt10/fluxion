@@ -41,6 +41,48 @@ let stream = stream
 
 ---
 
+### `distinct_until_changed` ✅
+**Suppress consecutive duplicate values**
+
+```rust
+let distinct = stream.distinct_until_changed();
+```
+
+**Status**: Implemented (unreleased)
+**Use case**: Change detection, noise reduction, state monitoring
+**Complexity**: Low - simple `PartialEq` check
+**Tests**: 9 unit tests + 7 error tests + 4 composition tests + 3 doctests
+**Benchmarks**: Various duplicate factors (1x-10x) + worst case scenarios
+**Similar to**: RxJS `distinctUntilChanged`
+
+---
+
+### `distinct_until_changed_by` ✅
+**Custom duplicate suppression with comparison function**
+
+```rust
+// Field-based comparison
+let distinct = stream.distinct_until_changed_by(|a, b| a.id == b.id);
+
+// Case-insensitive
+let distinct = stream.distinct_until_changed_by(|a, b|
+    a.to_lowercase() == b.to_lowercase()
+);
+
+// Threshold-based
+let distinct = stream.distinct_until_changed_by(|a, b| (a - b).abs() < 0.5);
+```
+
+**Status**: Implemented (unreleased)
+**Use case**: Field comparison, case-insensitive matching, threshold filtering, custom equality logic
+**Complexity**: Low - user-provided comparison function
+**Pattern**: Follows Rust stdlib (`sort_by`, `dedup_by`, `max_by`)
+**Tests**: 9 unit tests + 8 error tests + 3 composition tests + 3 doctests
+**Benchmarks**: Field comparison, case-insensitive strings, threshold-based (f64)
+**Similar to**: RxJS `distinctUntilChanged` with custom comparer
+
+---
+
 ## High Priority (Version 0.4.0)
 
 ### `scan` 🚀
@@ -82,19 +124,6 @@ let throttled = stream.throttle(Duration::from_millis(100));
 **Use case**: Rate limiting, API call throttling
 **Complexity**: Medium - requires timing logic
 **RxJS equivalent**: `throttleTime`
-
----
-
-### `distinct_until_changed` 🚀
-**Suppress consecutive duplicate values**
-
-```rust
-let distinct = stream.distinct_until_changed();
-```
-
-**Use case**: Change detection, removing noise
-**Complexity**: Low - simple equality check
-**RxJS equivalent**: `distinctUntilChanged`
 
 ---
 

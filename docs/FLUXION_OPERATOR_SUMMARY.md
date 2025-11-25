@@ -13,6 +13,8 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`combine_with_previous`](#combine_with_previous) | Windowing | Pair consecutive values | Source |
 | [`map_ordered`](#map_ordered) | Transformation | Transform items | Source |
 | [`filter_ordered`](#filter_ordered) | Filtering | Filter items | Source |
+| [`distinct_until_changed`](#distinct_until_changed) | Filtering | Suppress consecutive duplicates | Source |
+| [`distinct_until_changed_by`](#distinct_until_changed_by) | Filtering | Custom duplicate suppression | Source |
 | [`take_while_with`](#take_while_with) | Filtering | Take while predicate holds | Source + Filter |
 | [`take_latest_when`](#take_latest_when) | Sampling | Sample on trigger | Trigger |
 | [`emit_when`](#emit_when) | Gating | Gate with combined state | Source (filtered) |
@@ -143,6 +145,46 @@ let filtered = stream.filter_ordered(|value| value % 2 == 0);
 - Maintains ordering guarantees (unlike `StreamExt::filter`)
 - Preserves `FluxionStream` wrapper
 - Filters based on source value only
+- See API docs for detailed examples
+
+---
+
+#### `distinct_until_changed`
+**Suppress consecutive duplicate values**
+
+```rust
+let distinct = stream.distinct_until_changed();
+```
+
+- Filters out consecutive duplicate values using `PartialEq`
+- Only compares adjacent items (not global deduplication)
+- Maintains temporal ordering
+- Useful for change detection and noise reduction
+- See API docs for detailed examples
+
+---
+
+#### `distinct_until_changed_by`
+**Custom duplicate suppression with comparison function**
+
+```rust
+// Field-based comparison
+let distinct = stream.distinct_until_changed_by(|a, b| a.id == b.id);
+
+// Case-insensitive string comparison
+let distinct = stream.distinct_until_changed_by(|a, b| {
+    a.to_lowercase() == b.to_lowercase()
+});
+
+// Threshold-based comparison
+let distinct = stream.distinct_until_changed_by(|a, b| (a - b).abs() < 0.5);
+```
+
+- Custom comparison function for flexible duplicate detection
+- No `PartialEq` requirement on inner type
+- Comparison function returns `true` if values considered equal (filtered)
+- Useful for field comparison, case-insensitive matching, threshold filtering
+- Follows Rust patterns: `sort_by`, `dedup_by`, `max_by`
 - See API docs for detailed examples
 
 ---

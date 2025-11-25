@@ -362,6 +362,24 @@ let filtered = stream.filter_ordered(|x| *x > 10);
 
 [Full documentation](src/filter_ordered.rs) | [Tests](tests/filter_ordered_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#filter_ordered---conditional-filtering)
 
+#### `distinct_until_changed`
+Suppresses consecutive duplicate values.
+
+[Full documentation](src/distinct_until_changed.rs) | [Tests](tests/distinct_until_changed_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#distinct_until_changed---consecutive-duplicate-suppression)
+
+#### `distinct_until_changed_by`
+Custom duplicate suppression with comparison function.
+
+**Use case:** Field comparison, case-insensitive matching, threshold filtering, custom equality
+
+**Behavior:**
+- Custom comparison function for flexible duplicate detection
+- No `PartialEq` requirement on inner type
+- Comparison returns `true` if values considered equal (filtered)
+- Follows Rust patterns: `sort_by`, `dedup_by`, `max_by`
+
+[Full documentation](src/distinct_until_changed_by.rs) | [Tests](tests/distinct_until_changed_by_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#distinct_until_changed_by---custom-duplicate-suppression)
+
 ### Error Handling Operators
 
 #### `on_error`
@@ -420,6 +438,13 @@ let handled = stream
 | `emit_when` | Yes (buffers when gated) | Source completes | Conditional processing |
 | `take_latest_when` | No (only latest) | Source completes | Sampling, snapshots |
 | `take_while_with` | No | First false | Bounded processing |
+
+### When You Need Deduplication
+
+| Operator | Comparison | Requirement | Best For |
+|----------|------------|-------------|----------|
+| `distinct_until_changed` | `PartialEq` | Inner type must implement `PartialEq` | Simple duplicate suppression |
+| `distinct_until_changed_by` | Custom function | No trait requirements | Field comparison, case-insensitive, threshold-based |
 
 ### When You Need Error Handling
 

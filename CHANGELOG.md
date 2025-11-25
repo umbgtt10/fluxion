@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Filtering Operators**: Implemented `distinct_until_changed` and `distinct_until_changed_by` operators
+  - `distinct_until_changed` - Suppress consecutive duplicate values using `PartialEq`
+  - `distinct_until_changed_by` - Custom comparison function for duplicate suppression (no `PartialEq` requirement)
+  - Use cases: Change detection, noise reduction, field-based comparison, case-insensitive filtering, threshold-based filtering
+  - Comprehensive test suite: 17 unit/error tests + 7 composition tests + 6 doctests = 30 total tests
+  - Performance benchmarks covering various duplicate factors and comparison strategies
+  - Follows Rust stdlib patterns (`sort`/`sort_by`, `dedup`/`dedup_by`, `max`/`max_by`)
+
 ### Changed
 - **BREAKING**: Moved `type Inner` from `HasTimestamp` trait to `Timestamped` trait
   - `HasTimestamp` now only defines `type Timestamp` and `fn timestamp()` for minimal read-only access

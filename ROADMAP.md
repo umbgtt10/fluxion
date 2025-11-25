@@ -147,7 +147,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - [ ] `debounce` operator - Time-based event throttling
 - [ ] `throttle` operator - Rate limiting
 - [ ] `buffer` operator - Windowing and batching
-- [ ] `distinct_until_changed` operator - Duplicate suppression
+- ✅ `distinct_until_changed` operator - Duplicate suppression
 - [ ] Additional error handling operators
 
 See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator implementation timeline beyond v0.3.0.
