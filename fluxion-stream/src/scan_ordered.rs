@@ -66,7 +66,7 @@ where
     /// let (tx, stream) = test_channel::<Sequenced<i32>>();
     ///
     /// // Accumulate sum
-    /// let mut sums = stream.scan_ordered(0, |acc, val| {
+    /// let mut sums = stream.scan_ordered::<Sequenced<i32>, _, _>(0, |acc, val| {
     ///     *acc += val;
     ///     *acc
     /// });
@@ -75,9 +75,9 @@ where
     /// tx.send((20, 2).into())?;
     /// tx.send((30, 3).into())?;
     ///
-    /// assert_eq!(unwrap_value::<Sequenced<i32>>(Some(unwrap_stream(&mut sums, 500).await)).value, 10);  // 0 + 10
-    /// assert_eq!(unwrap_value::<Sequenced<i32>>(Some(unwrap_stream(&mut sums, 500).await)).value, 30);  // 10 + 20
-    /// assert_eq!(unwrap_value::<Sequenced<i32>>(Some(unwrap_stream(&mut sums, 500).await)).value, 60);  // 30 + 30
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut sums, 500).await)).value, 10);  // 0 + 10
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut sums, 500).await)).value, 30);  // 10 + 20
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut sums, 500).await)).value, 60);  // 30 + 30
     /// # Ok(())
     /// # }
     /// ```
@@ -92,7 +92,7 @@ where
     /// let (tx, stream) = test_channel::<Sequenced<String>>();
     ///
     /// // Count items and produce formatted strings
-    /// let mut counts = stream.scan_ordered(0i32, |count: &mut i32, _item: &String| {
+    /// let mut counts = stream.scan_ordered::<Sequenced<String>, _, _>(0i32, |count: &mut i32, _item: &String| {
     ///     *count += 1;
     ///     format!("Item #{}", count)
     /// });
@@ -100,8 +100,8 @@ where
     /// tx.send(("apple".to_string(), 1).into())?;
     /// tx.send(("banana".to_string(), 2).into())?;
     ///
-    /// assert_eq!(unwrap_value::<Sequenced<String>>(Some(unwrap_stream(&mut counts, 500).await)).value, "Item #1");
-    /// assert_eq!(unwrap_value::<Sequenced<String>>(Some(unwrap_stream(&mut counts, 500).await)).value, "Item #2");
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut counts, 500).await)).value, "Item #1");
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut counts, 500).await)).value, "Item #2");
     /// # Ok(())
     /// # }
     /// ```
@@ -116,7 +116,7 @@ where
     /// let (tx, stream) = test_channel::<Sequenced<i32>>();
     ///
     /// // Collect all values seen so far
-    /// let mut history = stream.scan_ordered(Vec::<i32>::new(), |list: &mut Vec<i32>, val: &i32| {
+    /// let mut history = stream.scan_ordered::<Sequenced<Vec<i32>>, _, _>(Vec::<i32>::new(), |list: &mut Vec<i32>, val: &i32| {
     ///     list.push(*val);
     ///     list.clone() // Return snapshot
     /// });
@@ -125,9 +125,9 @@ where
     /// tx.send((20, 2).into())?;
     /// tx.send((30, 3).into())?;
     ///
-    /// assert_eq!(unwrap_value::<Sequenced<Vec<i32>>>(Some(unwrap_stream(&mut history, 500).await)).value, vec![10]);
-    /// assert_eq!(unwrap_value::<Sequenced<Vec<i32>>>(Some(unwrap_stream(&mut history, 500).await)).value, vec![10, 20]);
-    /// assert_eq!(unwrap_value::<Sequenced<Vec<i32>>>(Some(unwrap_stream(&mut history, 500).await)).value, vec![10, 20, 30]);
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut history, 500).await)).value, vec![10]);
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut history, 500).await)).value, vec![10, 20]);
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut history, 500).await)).value, vec![10, 20, 30]);
     /// # Ok(())
     /// # }
     /// ```
@@ -151,7 +151,7 @@ where
     /// - [`map_ordered`](crate::FluxionStream::map_ordered) - Stateless transformation
     /// - [`combine_with_previous`](crate::CombineWithPreviousExt::combine_with_previous) - Simple stateful pairing
     /// - [`filter_ordered`](crate::FluxionStream::filter_ordered) - Conditional filtering
-    fn scan_ordered<Acc, Out, F>(
+    fn scan_ordered<Out, Acc, F>(
         self,
         initial: Acc,
         accumulator: F,
@@ -168,7 +168,7 @@ where
     S: Stream<Item = StreamItem<T>> + Send + Sized + 'static,
     T: FluxionItem,
 {
-    fn scan_ordered<Acc, Out, F>(
+    fn scan_ordered<Out, Acc, F>(
         self,
         initial: Acc,
         accumulator: F,
