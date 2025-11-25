@@ -3,10 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::FluxionStream;
-use fluxion_core::{StreamItem, Timestamped};
+use fluxion_core::{FluxionItem, StreamItem};
 use futures::stream::StreamExt;
 use futures::Stream;
-use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
 /// Extension trait providing the `distinct_until_changed` operator for streams.
@@ -15,22 +14,22 @@ use std::sync::{Arc, Mutex};
 /// the value changes from the previous emission.
 pub trait DistinctUntilChangedExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: Timestamped + Clone + Debug + Send + Sync + Unpin + 'static,
-    T::Inner: Clone + Debug + PartialEq + Send + Sync + Unpin + 'static,
+    T: FluxionItem,
+    T::Inner: Clone + PartialEq + Send + Sync + 'static,
 {
     /// Emits values only when they differ from the previous emitted value.
     ///
     /// This operator maintains the last emitted inner value and compares each new
     /// value against it. Only values that differ are emitted. The comparison is
-    /// performed on the inner values (`T::Inner`), but the emitted values maintain
-    /// their original timestamps.
+    /// performed on the inner values (`T::Inner`), and timestamps from the original
+    /// values are preserved.
     ///
     /// # Behavior
     ///
     /// - First value is always emitted (no previous value to compare)
     /// - Subsequent values are compared to the last emitted value
     /// - Only values where `current != previous` are emitted
-    /// - Each emitted value gets a **fresh timestamp** representing the moment of emission
+    /// - Timestamps are preserved from the original incoming values
     /// - Errors are always propagated immediately
     ///
     /// # Type Parameters
@@ -98,16 +97,15 @@ where
     /// # }
     /// ```
     ///
-    /// ## Fresh Timestamps on Changes
+    /// ## Timestamp Preservation
     ///
-    /// Each emission gets a new timestamp representing when the distinct value was detected:
+    /// Timestamps are preserved from the original incoming values:
     ///
     /// ```rust
     /// use fluxion_stream::{DistinctUntilChangedExt, FluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use fluxion_core::HasTimestamp;
     /// use futures::StreamExt;
-    /// use std::time::Duration;
     ///
     /// # async fn example() {
     /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
@@ -119,15 +117,14 @@ where
     /// let first = distinct.next().await.unwrap().unwrap();
     /// let ts1 = first.timestamp();
     ///
-    /// tokio::time::sleep(Duration::from_millis(10)).await;
-    ///
-    /// tx.send(Sequenced::new(1)).unwrap(); // Filtered
-    /// tx.send(Sequenced::new(2)).unwrap(); // Emitted with NEW timestamp
+    /// tx.send(Sequenced::new(1)).unwrap(); // Filtered (duplicate)
+    /// tx.send(Sequenced::new(2)).unwrap(); // Emitted with its original timestamp
     ///
     /// let second = distinct.next().await.unwrap().unwrap();
     /// let ts2 = second.timestamp();
     ///
-    /// assert!(ts2 > ts1); // Fresh timestamp generated
+    /// // Timestamps come from the original Sequenced values
+    /// assert!(ts2 > ts1);
     /// # }
     /// ```
     ///
@@ -157,8 +154,8 @@ where
 impl<T, S> DistinctUntilChangedExt<T> for S
 where
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-    T: Timestamped + Clone + Debug + Send + Sync + Unpin + 'static,
-    T::Inner: Clone + Debug + PartialEq + Send + Sync + Unpin + 'static,
+    T: FluxionItem,
+    T::Inner: Clone + PartialEq + Send + Sync + 'static,
 {
     fn distinct_until_changed(
         self,
@@ -182,10 +179,10 @@ where
 
                         if should_emit {
                             // Update last value
-                            *last = Some(current_inner.clone());
+                            *last = Some(current_inner);
 
-                            // Generate fresh timestamp for this emission
-                            Some(StreamItem::Value(T::with_fresh_timestamp(current_inner)))
+                            // Preserve original timestamp
+                            Some(StreamItem::Value(value))
                         } else {
                             None // Filter out duplicate
                         }
