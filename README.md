@@ -22,7 +22,7 @@ A reactive stream processing library for Rust with temporal ordering guarantee, 
 ## Features
 
 - 🔄 **Rx-Style Operators**: Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, etc.)
-- ⏱️ **Temporal Ordering**: Guaranteed ordering semantics with `Sequenced<T>` wrapper
+- ⏱️ **Temporal Ordering**: Guaranteed ordering semantics via `Timestamped` trait
 - ⚡ **Async Execution**: Efficient async processing with `subscribe_async` and `subscribe_latest_async`
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs

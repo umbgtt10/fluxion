@@ -20,7 +20,6 @@ impl<T> HasTimestamp for TestWrapper<T>
 where
     T: Clone + Send + Sync + 'static,
 {
-    type Inner = T;
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -32,6 +31,8 @@ impl<T> Timestamped for TestWrapper<T>
 where
     T: Clone + Send + Sync + 'static,
 {
+    type Inner = T;
+
     fn into_inner(self) -> Self::Inner {
         self.value
     }

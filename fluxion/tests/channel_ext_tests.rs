@@ -20,7 +20,6 @@ mod no_coverage_helpers {
     }
 
     impl HasTimestamp for SensorReading {
-        type Inner = Self;
         type Timestamp = u64;
 
         fn timestamp(&self) -> Self::Timestamp {
@@ -29,6 +28,8 @@ mod no_coverage_helpers {
     }
 
     impl Timestamped for SensorReading {
+        type Inner = Self;
+
         fn into_inner(self) -> Self::Inner {
             self
         }
@@ -47,7 +48,6 @@ mod no_coverage_helpers {
     }
 
     impl HasTimestamp for StatusUpdate {
-        type Inner = Self;
         type Timestamp = u64;
         fn timestamp(&self) -> Self::Timestamp {
             self.timestamp
@@ -55,6 +55,8 @@ mod no_coverage_helpers {
     }
 
     impl Timestamped for StatusUpdate {
+        type Inner = Self;
+
         fn into_inner(self) -> Self::Inner {
             self
         }
@@ -73,7 +75,6 @@ mod no_coverage_helpers {
     }
 
     impl HasTimestamp for CombinedEvent {
-        type Inner = Self;
         type Timestamp = u64;
         fn timestamp(&self) -> Self::Timestamp {
             match self {
@@ -84,6 +85,8 @@ mod no_coverage_helpers {
     }
 
     impl Timestamped for CombinedEvent {
+        type Inner = Self;
+
         fn into_inner(self) -> Self::Inner {
             self
         }

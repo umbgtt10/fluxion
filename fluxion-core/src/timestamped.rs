@@ -35,7 +35,6 @@ use crate::HasTimestamp;
 /// }
 ///
 /// impl<T: Clone> HasTimestamp for TimestampedEvent<T> {
-///     type Inner = T;
 ///     type Timestamp = u64;
 ///
 ///     fn timestamp(&self) -> Self::Timestamp {
@@ -44,6 +43,8 @@ use crate::HasTimestamp;
 /// }
 ///
 /// impl<T: Clone> Timestamped for TimestampedEvent<T> {
+///     type Inner = T;
+///
 ///     fn with_timestamp(value: T, timestamp: Self::Timestamp) -> Self {
 ///         TimestampedEvent { value, timestamp }
 ///     }
@@ -74,12 +75,12 @@ use crate::HasTimestamp;
 /// }
 ///
 /// impl<T: Clone> HasTimestamp for SequenceNumbered<T> {
-///     type Inner = T;
 ///     type Timestamp = u64;
 ///     fn timestamp(&self) -> u64 { self.seq }
 /// }
 ///
 /// impl<T: Clone> Timestamped for SequenceNumbered<T> {
+///     type Inner = T;
 ///     fn with_timestamp(value: T, seq: u64) -> Self { Self { value, seq } }
 ///     fn with_fresh_timestamp(value: T) -> Self {
 ///         // Use atomic counter in production
@@ -101,12 +102,12 @@ use crate::HasTimestamp;
 /// }
 ///
 /// impl<T: Clone> HasTimestamp for TimedEvent<T> {
-///     type Inner = T;
 ///     type Timestamp = Instant;
 ///     fn timestamp(&self) -> Instant { self.time }
 /// }
 ///
 /// impl<T: Clone> Timestamped for TimedEvent<T> {
+///     type Inner = T;
 ///     fn with_timestamp(value: T, time: Instant) -> Self { Self { value, time } }
 ///     fn with_fresh_timestamp(value: T) -> Self {
 ///         Self { value, time: Instant::now() }
@@ -115,6 +116,9 @@ use crate::HasTimestamp;
 /// }
 /// ```
 pub trait Timestamped: HasTimestamp + Clone {
+    /// The type of the inner value wrapped by this timestamped type
+    type Inner: Clone;
+
     /// Creates a new instance wrapping the given value with the specified timestamp.
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self;
 
