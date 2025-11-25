@@ -2430,3 +2430,98 @@ async fn test_distinct_until_changed_by_with_combine_latest_composition() -> any
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_scan_ordered_composed_with_map() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let accumulator = |count: &mut i32, _: &TestData| {
+        *count += 1;
+        *count
+    };
+
+    let mut result = FluxionStream::new(stream)
+        .scan_ordered::<Sequenced<i32>, _, _>(0, accumulator)
+        .map_ordered(|count| Sequenced::new(count.into_inner() * 10));
+
+    // Act & Assert
+    tx.send(Sequenced::new(person_alice()))?;
+    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    assert_eq!(value.value, 10);
+
+    tx.send(Sequenced::new(person_bob()))?;
+    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    assert_eq!(value.value, 20);
+
+    tx.send(Sequenced::new(person_charlie()))?;
+    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    assert_eq!(value.value, 30);
+
+    drop(tx);
+
+    Ok(())
+}
+#[tokio::test]
+async fn test_scan_ordered_composed_with_filter() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let accumulator = |count: &mut i32, _: &TestData| {
+        *count += 1;
+        *count
+    };
+
+    let mut result = FluxionStream::new(stream)
+        .scan_ordered::<Sequenced<i32>, _, _>(0, accumulator)
+        .filter_ordered(|count| count % 2 == 0); // Only even counts
+
+    // Act & Assert
+    tx.send(Sequenced::new(person_alice()))?; // count=1, filtered out
+    tx.send(Sequenced::new(person_bob()))?; // count=2, emitted
+    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    assert_eq!(value.value, 2);
+
+    tx.send(Sequenced::new(person_charlie()))?; // count=3, filtered out
+    tx.send(Sequenced::new(person_dave()))?; // count=4, emitted
+    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    assert_eq!(value.value, 4);
+
+    drop(tx);
+
+    Ok(())
+}
+#[tokio::test]
+async fn test_scan_ordered_chained() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<i32>>();
+
+    // First scan: running sum
+    // Second scan: count of emissions
+    let mut result = FluxionStream::new(stream)
+        .scan_ordered::<Sequenced<i32>, _, _>(0, |sum: &mut i32, value: &i32| {
+            *sum += value;
+            *sum
+        })
+        .scan_ordered::<Sequenced<i32>, _, _>(0, |count: &mut i32, _sum: &i32| {
+            *count += 1;
+            *count
+        });
+
+    // Act & Assert
+    tx.send(Sequenced::new(10))?; // sum=10, count=1
+    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    assert_eq!(value.value, 1);
+
+    tx.send(Sequenced::new(20))?; // sum=30, count=2
+    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    assert_eq!(value.value, 2);
+
+    tx.send(Sequenced::new(30))?; // sum=60, count=3
+    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    assert_eq!(value.value, 3);
+
+    drop(tx);
+
+    Ok(())
+}
