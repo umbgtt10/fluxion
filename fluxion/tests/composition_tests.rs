@@ -2442,8 +2442,8 @@ async fn test_scan_ordered_composed_with_map() -> anyhow::Result<()> {
     };
 
     let mut result = FluxionStream::new(stream)
-        .scan_ordered::<Sequenced<i32>, _, _>(0, accumulator)
-        .map_ordered(|count| Sequenced::new(count.into_inner() * 10));
+        .scan_ordered(0, accumulator)
+        .map_ordered(|count: Sequenced<i32>| Sequenced::new(count.into_inner() * 10));
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
@@ -2473,18 +2473,22 @@ async fn test_scan_ordered_composed_with_filter() -> anyhow::Result<()> {
     };
 
     let mut result = FluxionStream::new(stream)
-        .scan_ordered::<Sequenced<i32>, _, _>(0, accumulator)
+        .scan_ordered(0, accumulator)
         .filter_ordered(|count| count % 2 == 0); // Only even counts
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // count=1, filtered out
     tx.send(Sequenced::new(person_bob()))?; // count=2, emitted
-    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    let value = unwrap_value(Some(
+        unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
+    ));
     assert_eq!(value.value, 2);
 
     tx.send(Sequenced::new(person_charlie()))?; // count=3, filtered out
     tx.send(Sequenced::new(person_dave()))?; // count=4, emitted
-    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    let value = unwrap_value(Some(
+        unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
+    ));
     assert_eq!(value.value, 4);
 
     drop(tx);
@@ -2503,14 +2507,16 @@ async fn test_scan_ordered_chained() -> anyhow::Result<()> {
             *sum += value;
             *sum
         })
-        .scan_ordered::<Sequenced<i32>, _, _>(0, |count: &mut i32, _sum: &i32| {
+        .scan_ordered(0, |count: &mut i32, _sum: &i32| {
             *count += 1;
             *count
         });
 
     // Act & Assert
     tx.send(Sequenced::new(10))?; // sum=10, count=1
-    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    let value = unwrap_value(Some(
+        unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
+    ));
     assert_eq!(value.value, 1);
 
     tx.send(Sequenced::new(20))?; // sum=30, count=2

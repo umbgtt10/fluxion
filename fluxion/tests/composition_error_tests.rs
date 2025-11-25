@@ -425,8 +425,8 @@ async fn test_scan_ordered_error_propagation_with_map() -> anyhow::Result<()> {
     };
 
     let mut result = FluxionStream::new(stream)
-        .scan_ordered::<Sequenced<i32>, _, _>(0, accumulator)
-        .map_ordered(|sum| Sequenced::new(sum.into_inner() * 2));
+        .scan_ordered(0, accumulator)
+        .map_ordered(|sum: Sequenced<i32>| Sequenced::new(sum.into_inner() * 2));
 
     // Act & Assert
     tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
@@ -465,14 +465,14 @@ async fn test_scan_ordered_error_propagation_with_filter() -> anyhow::Result<()>
     };
 
     let mut result = FluxionStream::new(stream)
-        .scan_ordered::<Sequenced<i32>, _, _>(0, accumulator)
+        .scan_ordered(0, accumulator)
         .filter_ordered(|count| count % 2 == 0); // Only even counts
 
     // Act & Assert
     tx.send(StreamItem::Value(Sequenced::with_timestamp(100, 1)))?; // count=1, filtered
     tx.send(StreamItem::Value(Sequenced::with_timestamp(200, 2)))?; // count=2, emitted
     assert!(matches!(
-        unwrap_stream(&mut result, 100).await,
+        unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 2
     ));
 
@@ -507,7 +507,7 @@ async fn test_scan_ordered_chained_with_errors() -> anyhow::Result<()> {
             *sum += value;
             *sum
         })
-        .scan_ordered::<Sequenced<i32>, _, _>(0, |count: &mut i32, _sum: &i32| {
+        .scan_ordered(0, |count: &mut i32, _sum: &i32| {
             *count += 1;
             *count
         });
@@ -515,7 +515,7 @@ async fn test_scan_ordered_chained_with_errors() -> anyhow::Result<()> {
     // Act & Assert
     tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?; // sum=10, count=1
     assert!(matches!(
-        unwrap_stream(&mut result, 100).await,
+        unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 1
     ));
 
