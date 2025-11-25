@@ -6,7 +6,7 @@ use fluxion_core::FluxionError;
 use fluxion_core::{HasTimestamp, StreamItem, Timestamped};
 use fluxion_rx::{CombinedState, FluxionStream};
 use fluxion_stream::WithPrevious;
-use fluxion_stream::{DistinctUntilChangedExt, MergedStream};
+use fluxion_stream::{DistinctUntilChangedByExt, DistinctUntilChangedExt, MergedStream};
 use fluxion_test_utils::helpers::assert_no_element_emitted;
 use fluxion_test_utils::helpers::unwrap_stream;
 use fluxion_test_utils::test_channel;
@@ -2306,6 +2306,124 @@ async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow
     stream1_tx.send(Sequenced::with_timestamp(7, 13))?;
     let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
     assert_eq!(item.value, 13);
+
+    drop(stream1_tx);
+    drop(stream2_tx);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_distinct_until_changed_by_with_filter_composition() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<i32>>();
+
+    // Composition: filter -> distinct_until_changed_by (parity check)
+    let mut result = FluxionStream::new(stream)
+        .filter_ordered(|x| *x > 0) // Filter out negatives and zero
+        .distinct_until_changed_by(|a, b| a % 2 == b % 2); // Only emit when parity changes
+
+    // Act & Assert
+    tx.send(Sequenced::with_timestamp(-5, 1))?; // Filtered out
+    tx.send(Sequenced::with_timestamp(0, 2))?; // Filtered out
+    tx.send(Sequenced::with_timestamp(1, 3))?; // Odd - emitted
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 1);
+
+    tx.send(Sequenced::with_timestamp(3, 4))?; // Odd - filtered by distinct_by
+    tx.send(Sequenced::with_timestamp(5, 5))?; // Odd - filtered by distinct_by
+    assert_no_element_emitted(&mut result, 100).await;
+
+    tx.send(Sequenced::with_timestamp(2, 6))?; // Even - emitted (parity changed)
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 2);
+
+    tx.send(Sequenced::with_timestamp(4, 7))?; // Even - filtered by distinct_by
+    assert_no_element_emitted(&mut result, 100).await;
+
+    tx.send(Sequenced::with_timestamp(-1, 8))?; // Filtered by filter_ordered
+    tx.send(Sequenced::with_timestamp(7, 9))?; // Odd - emitted (parity changed)
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 7);
+
+    drop(tx);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_distinct_until_changed_by_with_map_composition() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<String>>();
+
+    // Composition: map to length -> distinct_until_changed_by (threshold comparison)
+    let mut result = FluxionStream::new(stream)
+        .map_ordered(|s| {
+            let len = s.value.len();
+            Sequenced::new(len)
+        })
+        .distinct_until_changed_by(|a, b| {
+            // Consider lengths "same" if difference < 2
+            (*a as i32 - *b as i32).abs() < 2
+        });
+
+    // Act & Assert
+    tx.send(Sequenced::with_timestamp("a".to_string(), 1))?; // len=1
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 1);
+
+    tx.send(Sequenced::with_timestamp("ab".to_string(), 2))?; // len=2, diff=1 < 2 - filtered
+    assert_no_element_emitted(&mut result, 100).await;
+
+    tx.send(Sequenced::with_timestamp("abc".to_string(), 3))?; // len=3, diff=2 >= 2 - emitted
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 3);
+
+    tx.send(Sequenced::with_timestamp("abcd".to_string(), 4))?; // len=4, diff=1 - filtered
+    assert_no_element_emitted(&mut result, 100).await;
+
+    tx.send(Sequenced::with_timestamp("abcdef".to_string(), 5))?; // len=6, diff=3 >= 2 - emitted
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 6);
+
+    drop(tx);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_distinct_until_changed_by_with_combine_latest_composition() -> anyhow::Result<()> {
+    // Arrange
+    let (stream1_tx, stream1) = test_channel::<Sequenced<i32>>();
+    let (stream2_tx, stream2) = test_channel::<Sequenced<i32>>();
+
+    // Composition: combine_latest -> map to max -> distinct_until_changed_by (threshold)
+    let mut result = FluxionStream::new(stream1)
+        .combine_latest(vec![stream2], |_| true)
+        .map_ordered(|state| {
+            let max = *state.values().iter().max().unwrap();
+            Sequenced::new(max)
+        })
+        .distinct_until_changed_by(|a, b| {
+            // Only emit if max changes by at least 5
+            (a - b).abs() < 5
+        });
+
+    // Act & Assert
+    stream1_tx.send(Sequenced::with_timestamp(10, 1))?;
+    stream2_tx.send(Sequenced::with_timestamp(5, 2))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 10); // max(10, 5) = 10
+
+    // Small changes - filtered
+    stream1_tx.send(Sequenced::with_timestamp(11, 3))?;
+    stream2_tx.send(Sequenced::with_timestamp(7, 4))?;
+    assert_no_element_emitted(&mut result, 100).await;
+
+    // Large change - emitted
+    stream1_tx.send(Sequenced::with_timestamp(20, 5))?;
+    let item = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(item.value, 20); // max(20, 7) = 20, diff=10 >= 5
 
     drop(stream1_tx);
     drop(stream2_tx);
