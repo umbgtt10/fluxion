@@ -201,7 +201,7 @@ impl HasTimestamp for TimestampedEvent {
 
 impl Timestamped for TimestampedEvent {
     type Inner = Self;
-    
+
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self { timestamp, ..value }
     }

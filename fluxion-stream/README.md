@@ -72,7 +72,7 @@ Extends `HasTimestamp` with an `Inner` type and construction/deconstruction capa
 ```rust
 pub trait Timestamped: HasTimestamp {
     type Inner: Clone;
-    
+
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self;
     fn with_fresh_timestamp(value: Self::Inner) -> Self;
     fn into_inner(self) -> Self::Inner;
