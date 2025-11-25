@@ -9,7 +9,7 @@ use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, assert_stream_ended, unwrap_stream},
     person::Person,
     test_channel,
-    test_data::{animal_dog, animal_spider, TestData},
+    test_data::{animal_dog, animal_spider, person_alice, person_bob, person_diane, TestData},
     Sequenced,
 };
 
@@ -24,10 +24,7 @@ async fn test_distinct_until_changed_by_field_comparison() -> anyhow::Result<()>
     });
 
     // Act & Assert: First value always emitted
-    tx.send(Sequenced::new(TestData::Person(Person::new(
-        "Alice".to_string(),
-        25,
-    ))))?;
+    tx.send(Sequenced::new(person_alice()))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -47,10 +44,7 @@ async fn test_distinct_until_changed_by_field_comparison() -> anyhow::Result<()>
     assert_no_element_emitted(&mut distinct, 100).await;
 
     // Different age - emitted
-    tx.send(Sequenced::new(TestData::Person(Person::new(
-        "Bob".to_string(),
-        30,
-    ))))?;
+    tx.send(Sequenced::new(person_bob()))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -209,10 +203,7 @@ async fn test_distinct_until_changed_by_threshold() -> anyhow::Result<()> {
     assert_no_element_emitted(&mut distinct, 100).await;
 
     // Large change - emitted
-    tx.send(Sequenced::new(TestData::Person(Person::new(
-        "Dave".to_string(),
-        30,
-    ))))?;
+    tx.send(Sequenced::new(person_bob()))?; // Age 30
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -231,10 +222,7 @@ async fn test_distinct_until_changed_by_threshold() -> anyhow::Result<()> {
     assert_no_element_emitted(&mut distinct, 100).await;
 
     // Large change - emitted
-    tx.send(Sequenced::new(TestData::Person(Person::new(
-        "Frank".to_string(),
-        40,
-    ))))?;
+    tx.send(Sequenced::new(person_diane()))?; // Age 40
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()

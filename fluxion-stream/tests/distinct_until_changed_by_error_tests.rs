@@ -8,7 +8,7 @@ use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     person::Person,
     test_channel_with_errors,
-    test_data::TestData,
+    test_data::{person_alice, person_bob, person_charlie, TestData},
     Sequenced,
 };
 
@@ -43,9 +43,7 @@ async fn test_distinct_until_changed_by_propagates_errors() -> anyhow::Result<()
     ));
 
     // Continue after error
-    tx.send(StreamItem::Value(Sequenced::new(TestData::Person(
-        Person::new("Bob".to_string(), 30),
-    ))))?;
+    tx.send(StreamItem::Value(Sequenced::new(person_bob())))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -76,9 +74,7 @@ async fn test_distinct_until_changed_by_error_at_start() -> anyhow::Result<()> {
     ));
 
     // First value after error
-    tx.send(StreamItem::Value(Sequenced::new(TestData::Person(
-        Person::new("Alice".to_string(), 25),
-    ))))?;
+    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -108,9 +104,7 @@ async fn test_distinct_until_changed_by_multiple_errors() -> anyhow::Result<()> 
     });
 
     // Act & Assert
-    tx.send(StreamItem::Value(Sequenced::new(TestData::Person(
-        Person::new("Alice".to_string(), 25),
-    ))))?;
+    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -135,9 +129,7 @@ async fn test_distinct_until_changed_by_multiple_errors() -> anyhow::Result<()> 
     ));
 
     // Continue with values
-    tx.send(StreamItem::Value(Sequenced::new(TestData::Person(
-        Person::new("Bob".to_string(), 30),
-    ))))?;
+    tx.send(StreamItem::Value(Sequenced::new(person_bob())))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -161,9 +153,7 @@ async fn test_distinct_until_changed_by_error_between_duplicates() -> anyhow::Re
     });
 
     // Act & Assert
-    tx.send(StreamItem::Value(Sequenced::new(TestData::Person(
-        Person::new("Alice".to_string(), 25),
-    ))))?;
+    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -194,9 +184,7 @@ async fn test_distinct_until_changed_by_error_between_duplicates() -> anyhow::Re
     assert_no_element_emitted(&mut distinct, 100).await;
 
     // Different value
-    tx.send(StreamItem::Value(Sequenced::new(TestData::Person(
-        Person::new("Bob".to_string(), 30),
-    ))))?;
+    tx.send(StreamItem::Value(Sequenced::new(person_bob())))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -220,9 +208,7 @@ async fn test_distinct_until_changed_by_preserves_state_after_error() -> anyhow:
     });
 
     // Act & Assert
-    tx.send(StreamItem::Value(Sequenced::new(TestData::Person(
-        Person::new("Alice".to_string(), 25),
-    ))))?;
+    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -247,9 +233,7 @@ async fn test_distinct_until_changed_by_preserves_state_after_error() -> anyhow:
     assert_no_element_emitted(&mut distinct, 100).await;
 
     // Different value - emitted
-    tx.send(StreamItem::Value(Sequenced::new(TestData::Person(
-        Person::new("Bob".to_string(), 30),
-    ))))?;
+    tx.send(StreamItem::Value(Sequenced::new(person_bob())))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -273,9 +257,7 @@ async fn test_distinct_until_changed_by_alternating_errors_and_values() -> anyho
     });
 
     // Act & Assert: Interleave values and errors
-    tx.send(StreamItem::Value(Sequenced::new(TestData::Person(
-        Person::new("Alice".to_string(), 25),
-    ))))?;
+    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -292,9 +274,7 @@ async fn test_distinct_until_changed_by_alternating_errors_and_values() -> anyho
         StreamItem::Error(_)
     ));
 
-    tx.send(StreamItem::Value(Sequenced::new(TestData::Person(
-        Person::new("Bob".to_string(), 30),
-    ))))?;
+    tx.send(StreamItem::Value(Sequenced::new(person_bob())))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -311,9 +291,7 @@ async fn test_distinct_until_changed_by_alternating_errors_and_values() -> anyho
         StreamItem::Error(_)
     ));
 
-    tx.send(StreamItem::Value(Sequenced::new(TestData::Person(
-        Person::new("Charlie".to_string(), 35),
-    ))))?;
+    tx.send(StreamItem::Value(Sequenced::new(person_charlie())))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
