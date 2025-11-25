@@ -6,6 +6,7 @@ use crate::combine_latest::CombineLatestExt;
 use crate::combine_with_previous::CombineWithPreviousExt;
 use crate::emit_when::EmitWhenExt;
 use crate::ordered_merge::OrderedStreamExt;
+use crate::scan_ordered::ScanOrderedExt;
 use crate::take_latest_when::TakeLatestWhenExt;
 use crate::take_while_with::TakeWhileExt;
 use crate::types::{CombinedState, WithPrevious};
@@ -273,6 +274,77 @@ where
                 StreamItem::Error(e) => Some(StreamItem::Error(e)),
             })
         }))
+    }
+
+    /// Accumulates state across stream items, emitting intermediate results.
+    ///
+    /// This operator maintains an accumulator value that is updated for each input item,
+    /// producing output values that can be of a different type. It's similar to `Iterator::fold`
+    /// but emits a result for each input item rather than just the final result.
+    ///
+    /// # Type Parameters
+    ///
+    /// - `Out`: The output item type (must implement `FluxionItem`)
+    /// - `Acc`: The accumulator type (internal state)
+    /// - `F`: The accumulator function type
+    ///
+    /// # Behavior
+    ///
+    /// - **Timestamp Preservation**: Output items preserve the timestamp of their source items
+    /// - **State Accumulation**: The accumulator state persists across all items
+    /// - **Error Handling**: Errors are propagated immediately without affecting accumulator state
+    /// - **Type Transformation**: Can transform input type to different output type
+    ///
+    /// # Arguments
+    ///
+    /// * `initial` - Initial accumulator value
+    /// * `accumulator` - Function that updates state and produces output: `FnMut(&mut Acc, &T::Inner) -> Out::Inner`
+    ///
+    /// # Returns
+    ///
+    /// A `FluxionStream` of `Out` where each item is the result of accumulation at that point.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream};
+    ///
+    /// # async fn example() {
+    /// let (tx, stream) = test_channel::<Sequenced<i32>>();
+    /// let accumulator = |count: &mut i32, _value: &i32| {
+    ///     *count += 1;
+    ///     *count
+    /// };
+    /// let mut counts = FluxionStream::new(stream).scan_ordered(0, accumulator);
+    ///
+    /// tx.send(Sequenced::new(100)).unwrap();
+    /// let result = unwrap_stream::<Sequenced<i32>, _>(&mut counts, 500).await.unwrap();
+    /// assert_eq!(result.into_inner(), 1);
+    ///
+    /// tx.send(Sequenced::new(200)).unwrap();
+    /// let result = unwrap_stream::<Sequenced<i32>, _>(&mut counts, 500).await.unwrap();
+    /// assert_eq!(result.into_inner(), 2);
+    /// # }
+    /// ```
+    ///
+    /// # See Also
+    ///
+    /// - [`map_ordered`](FluxionStream::map_ordered) - Stateless transformation
+    /// - [`combine_with_previous`](FluxionStream::combine_with_previous) - Access to previous value only
+    pub fn scan_ordered<Out, Acc, F>(
+        self,
+        initial: Acc,
+        accumulator: F,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<Out>>>
+    where
+        S: Send + Sync + 'static,
+        Out: fluxion_core::FluxionItem + 'static,
+        Out::Timestamp: From<T::Timestamp>,
+        Acc: Send + 'static,
+        F: FnMut(&mut Acc, &T::Inner) -> Out::Inner + Send + 'static,
+    {
+        ScanOrderedExt::scan_ordered(self.into_inner(), initial, accumulator)
     }
 
     /// Pairs each item with its previous value, creating a sliding window of consecutive items.

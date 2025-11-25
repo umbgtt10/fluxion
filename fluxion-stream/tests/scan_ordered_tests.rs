@@ -16,7 +16,8 @@ use fluxion_test_utils::{
 async fn test_scan_ordered_count_people() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut counts = stream.scan_ordered(0, |count, _| {
+
+    let mut counts = stream.scan_ordered(0, |count: &mut i32, _: &TestData| {
         *count += 1;
         *count
     });
