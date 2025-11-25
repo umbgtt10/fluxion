@@ -647,6 +647,7 @@
 mod logging;
 pub mod combine_latest;
 pub mod combine_with_previous;
+pub mod distinct_until_changed;
 pub mod emit_when;
 pub mod fluxion_stream;
 pub mod merge_with;
@@ -659,6 +660,7 @@ pub mod with_latest_from;
 // Re-export commonly used types
 pub use combine_latest::CombineLatestExt;
 pub use combine_with_previous::CombineWithPreviousExt;
+pub use distinct_until_changed::DistinctUntilChangedExt;
 pub use emit_when::EmitWhenExt;
 pub use fluxion_stream::FluxionStream;
 pub use merge_with::MergedStream;
