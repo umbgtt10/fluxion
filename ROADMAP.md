@@ -143,7 +143,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 **Goal:** Expand operator library and add advanced streaming capabilities
 
 **Planned Features:**
-- [ ] `scan` operator - Stateful accumulation across stream
+- ✅ `scan` operator - Stateful accumulation across stream
 - [ ] `debounce` operator - Time-based event throttling
 - [ ] `throttle` operator - Rate limiting
 - [ ] `buffer` operator - Windowing and batching
