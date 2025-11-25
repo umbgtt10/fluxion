@@ -24,7 +24,6 @@ Minimal trait for types that expose a timestamp value:
 
 ```rust
 pub trait HasTimestamp {
-    type Inner: Clone;
     type Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug;
 
     fn timestamp(&self) -> Self::Timestamp;  // Get timestamp for ordering
@@ -35,10 +34,12 @@ Use this when your type only needs to provide a timestamp for ordering (most com
 
 #### Timestamped - Full Wrapper Interface
 
-Extends `HasTimestamp` with construction methods for wrapper types:
+Extends `HasTimestamp` with an `Inner` type and construction methods for wrapper types:
 
 ```rust
 pub trait Timestamped: HasTimestamp {
+    type Inner: Clone;
+    
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self;
     fn with_fresh_timestamp(value: Self::Inner) -> Self;
     fn into_inner(self) -> Self::Inner;

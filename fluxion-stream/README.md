@@ -59,7 +59,6 @@ Provides read-only access to timestamp values:
 
 ```rust
 pub trait HasTimestamp {
-    type Inner: Clone;
     type Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug;
 
     fn timestamp(&self) -> Self::Timestamp;  // Get the timestamp for ordering
@@ -68,10 +67,12 @@ pub trait HasTimestamp {
 
 #### Timestamped - Construction Methods
 
-Extends `HasTimestamp` with construction and deconstruction capabilities:
+Extends `HasTimestamp` with an `Inner` type and construction/deconstruction capabilities:
 
 ```rust
 pub trait Timestamped: HasTimestamp {
+    type Inner: Clone;
+    
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self;
     fn with_fresh_timestamp(value: Self::Inner) -> Self;
     fn into_inner(self) -> Self::Inner;

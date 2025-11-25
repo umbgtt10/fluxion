@@ -47,7 +47,6 @@ struct SensorReading {
 }
 
 impl HasTimestamp for SensorReading {
-    type Inner = Self;
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -57,7 +56,7 @@ impl HasTimestamp for SensorReading {
 ```
 
 **Note:** For intrinsic ordering, you typically only need to implement `HasTimestamp`.
-Implement `Timestamped` only if you need construction methods (`with_timestamp`, etc.).
+Implement `Timestamped` only if you need construction methods and access to an inner wrapped value (`with_timestamp`, `into_inner`, etc.).
 
 ### Usage
 
@@ -193,7 +192,6 @@ impl TimestampedEvent {
 }
 
 impl HasTimestamp for TimestampedEvent {
-    type Inner = Self;
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -202,6 +200,8 @@ impl HasTimestamp for TimestampedEvent {
 }
 
 impl Timestamped for TimestampedEvent {
+    type Inner = Self;
+    
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self { timestamp, ..value }
     }
