@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::HasTimestamp;
+use fluxion_core::{HasTimestamp, StreamItem};
 use fluxion_stream::ScanOrderedExt;
 use fluxion_test_utils::{
     assert_stream_ended,
@@ -16,22 +16,28 @@ use fluxion_test_utils::{
 async fn test_scan_ordered_count_people() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut counts = stream.scan_ordered::<Sequenced<i32>, _, _>(0, |count, _| {
+    let mut counts = stream.scan_ordered(0, |count, _| {
         *count += 1;
         *count
     });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
-    let result = unwrap_stream(&mut counts, 500).await.unwrap();
+    let result = unwrap_stream::<Sequenced<i32>, _>(&mut counts, 500)
+        .await
+        .unwrap();
     assert_eq!(result.into_inner(), 1);
 
     tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_stream(&mut counts, 500).await.unwrap();
+    let result = unwrap_stream::<Sequenced<i32>, _>(&mut counts, 500)
+        .await
+        .unwrap();
     assert_eq!(result.into_inner(), 2);
 
     tx.send(Sequenced::new(person_charlie()))?;
-    let result = unwrap_stream(&mut counts, 500).await.unwrap();
+    let result = unwrap_stream::<Sequenced<i32>, _>(&mut counts, 500)
+        .await
+        .unwrap();
     assert_eq!(result.into_inner(), 3);
 
     drop(tx);
@@ -44,13 +50,12 @@ async fn test_scan_ordered_count_people() -> anyhow::Result<()> {
 async fn test_scan_ordered_collect_names() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut names =
-        stream.scan_ordered::<Sequenced<Vec<String>>, _, _>(Vec::<String>::new(), |list, data| {
-            if let TestData::Person(p) = data {
-                list.push(p.name.clone());
-            }
-            list.clone()
-        });
+    let mut names = stream.scan_ordered(Vec::<String>::new(), |list, data| {
+        if let TestData::Person(p) = data {
+            list.push(p.name.clone());
+        }
+        list.clone()
+    });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
@@ -60,11 +65,15 @@ async fn test_scan_ordered_collect_names() -> anyhow::Result<()> {
     assert_eq!(result.into_inner(), vec!["Alice"]);
 
     tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_stream(&mut names, 500).await.unwrap();
+    let result = unwrap_stream::<Sequenced<Vec<String>>, _>(&mut names, 500)
+        .await
+        .unwrap();
     assert_eq!(result.into_inner(), vec!["Alice", "Bob"]);
 
     tx.send(Sequenced::new(person_charlie()))?;
-    let result = unwrap_stream(&mut names, 500).await.unwrap();
+    let result = unwrap_stream::<Sequenced<Vec<String>>, _>(&mut names, 500)
+        .await
+        .unwrap();
     assert_eq!(result.into_inner(), vec!["Alice", "Bob", "Charlie"]);
 
     drop(tx);
@@ -77,7 +86,7 @@ async fn test_scan_ordered_collect_names() -> anyhow::Result<()> {
 async fn test_scan_ordered_total_age() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut total_ages = stream.scan_ordered::<Sequenced<u32>, _, _>(0u32, |total, data| {
+    let mut total_ages = stream.scan_ordered(0u32, |total, data| {
         if let TestData::Person(p) = data {
             *total += p.age;
         }
@@ -92,11 +101,15 @@ async fn test_scan_ordered_total_age() -> anyhow::Result<()> {
     assert_eq!(result.into_inner(), 25);
 
     tx.send(Sequenced::new(person_bob()))?; // age 30
-    let result = unwrap_stream(&mut total_ages, 500).await.unwrap();
+    let result = unwrap_stream::<Sequenced<u32>, _>(&mut total_ages, 500)
+        .await
+        .unwrap();
     assert_eq!(result.into_inner(), 55);
 
     tx.send(Sequenced::new(person_charlie()))?; // age 35
-    let result = unwrap_stream(&mut total_ages, 500).await.unwrap();
+    let result = unwrap_stream::<Sequenced<u32>, _>(&mut total_ages, 500)
+        .await
+        .unwrap();
     assert_eq!(result.into_inner(), 90);
 
     drop(tx);
@@ -109,11 +122,10 @@ async fn test_scan_ordered_total_age() -> anyhow::Result<()> {
 async fn test_scan_ordered_format_summary() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut summaries =
-        stream.scan_ordered::<Sequenced<String>, _, _>(0, |count: &mut i32, data: &TestData| {
-            *count += 1;
-            format!("Item #{}: {}", count, data)
-        });
+    let mut summaries = stream.scan_ordered(0, |count: &mut i32, data: &TestData| {
+        *count += 1;
+        format!("Item #{}: {}", count, data)
+    });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
@@ -136,14 +148,13 @@ async fn test_scan_ordered_format_summary() -> anyhow::Result<()> {
 async fn test_scan_ordered_min_max_age() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut age_range =
-        stream.scan_ordered::<Sequenced<(u32, u32)>, _, _>((u32::MAX, u32::MIN), |state, data| {
-            if let TestData::Person(p) = data {
-                state.0 = state.0.min(p.age);
-                state.1 = state.1.max(p.age);
-            }
-            *state
-        });
+    let mut age_range = stream.scan_ordered((u32::MAX, u32::MIN), |state, data| {
+        if let TestData::Person(p) = data {
+            state.0 = state.0.min(p.age);
+            state.1 = state.1.max(p.age);
+        }
+        *state
+    });
 
     // Act & Assert
     tx.send(Sequenced::new(person_bob()))?; // age 30
@@ -170,7 +181,7 @@ async fn test_scan_ordered_min_max_age() -> anyhow::Result<()> {
 async fn test_scan_ordered_empty_stream() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut counts = stream.scan_ordered::<Sequenced<i32>, _, _>(0, |count, _| {
+    let mut counts = stream.scan_ordered(0, |count, _| {
         *count += 1;
         *count
     });
@@ -179,7 +190,7 @@ async fn test_scan_ordered_empty_stream() -> anyhow::Result<()> {
     drop(tx);
 
     // Assert: Stream should end without emitting
-    assert_stream_ended(&mut counts, 100).await;
+    assert_stream_ended::<_, StreamItem<Sequenced<i32>>>(&mut counts, 100).await;
 
     Ok(())
 }
@@ -188,7 +199,7 @@ async fn test_scan_ordered_empty_stream() -> anyhow::Result<()> {
 async fn test_scan_ordered_single_element() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut counts = stream.scan_ordered::<Sequenced<i32>, _, _>(100, |count, _| {
+    let mut counts = stream.scan_ordered(100, |count, _| {
         *count += 1;
         *count
     });
@@ -212,7 +223,7 @@ async fn test_scan_ordered_single_element() -> anyhow::Result<()> {
 async fn test_scan_ordered_timestamp_preservation() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut counts = stream.scan_ordered::<Sequenced<i32>, _, _>(0, |count, _| {
+    let mut counts = stream.scan_ordered(0, |count, _| {
         *count += 1;
         *count
     });
@@ -250,7 +261,7 @@ async fn test_scan_ordered_timestamp_preservation() -> anyhow::Result<()> {
 async fn test_scan_ordered_build_roster() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut roster = stream.scan_ordered::<Sequenced<String>, _, _>(String::new(), |acc, data| {
+    let mut roster = stream.scan_ordered(String::new(), |acc, data| {
         if !acc.is_empty() {
             acc.push_str(", ");
         }
@@ -282,9 +293,8 @@ async fn test_scan_ordered_build_roster() -> anyhow::Result<()> {
 async fn test_scan_ordered_average_age() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut averages = stream.scan_ordered::<Sequenced<u32>, _, _>(
-        (0u32, 0u32),
-        |state: &mut (u32, u32), data: &TestData| {
+    let mut averages =
+        stream.scan_ordered((0u32, 0u32), |state: &mut (u32, u32), data: &TestData| {
             if let TestData::Person(p) = data {
                 state.0 += p.age;
                 state.1 += 1;
@@ -294,8 +304,7 @@ async fn test_scan_ordered_average_age() -> anyhow::Result<()> {
             } else {
                 0
             }
-        },
-    );
+        });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // age 25
@@ -322,13 +331,10 @@ async fn test_scan_ordered_average_age() -> anyhow::Result<()> {
 async fn test_scan_ordered_multiple_people() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut history = stream.scan_ordered::<Sequenced<Vec<TestData>>, _, _>(
-        Vec::<TestData>::new(),
-        |list, data| {
-            list.push(data.clone());
-            list.clone()
-        },
-    );
+    let mut history = stream.scan_ordered(Vec::<TestData>::new(), |list, data| {
+        list.push(data.clone());
+        list.clone()
+    });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;

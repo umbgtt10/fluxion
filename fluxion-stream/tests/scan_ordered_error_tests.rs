@@ -18,7 +18,7 @@ use fluxion_test_utils::{
 async fn test_scan_ordered_propagates_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
-    let mut result = stream.scan_ordered::<Sequenced<i32>, _, _>(0, |count, _| {
+    let mut result = stream.scan_ordered(0, |count, _| {
         *count += 1;
         *count
     });
@@ -54,7 +54,7 @@ async fn test_scan_ordered_propagates_errors() -> anyhow::Result<()> {
 async fn test_scan_ordered_error_at_start() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
-    let mut result = stream.scan_ordered::<Sequenced<i32>, _, _>(100, |count, _| {
+    let mut result = stream.scan_ordered(100, |count, _| {
         *count += 1;
         *count
     });
@@ -92,13 +92,12 @@ async fn test_scan_ordered_error_at_start() -> anyhow::Result<()> {
 async fn test_scan_ordered_multiple_consecutive_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
-    let mut result =
-        stream.scan_ordered::<Sequenced<Vec<String>>, _, _>(Vec::<String>::new(), |names, data| {
-            if let TestData::Person(p) = data {
-                names.push(p.name.clone());
-            }
-            names.clone()
-        });
+    let mut result = stream.scan_ordered(Vec::<String>::new(), |names, data| {
+        if let TestData::Person(p) = data {
+            names.push(p.name.clone());
+        }
+        names.clone()
+    });
 
     // Act & Assert: Value
     tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
@@ -145,13 +144,10 @@ async fn test_scan_ordered_multiple_consecutive_errors() -> anyhow::Result<()> {
 async fn test_scan_ordered_error_between_values() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
-    let mut result = stream.scan_ordered::<Sequenced<Vec<TestData>>, _, _>(
-        Vec::<TestData>::new(),
-        |list, data| {
-            list.push(data.clone());
-            list.clone()
-        },
-    );
+    let mut result = stream.scan_ordered(Vec::<TestData>::new(), |list, data| {
+        list.push(data.clone());
+        list.clone()
+    });
 
     // Act & Assert: First value
     tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
@@ -247,7 +243,7 @@ async fn test_scan_ordered_error_doesnt_reset_complex_state() -> anyhow::Result<
 async fn test_scan_ordered_only_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
-    let mut result = stream.scan_ordered::<Sequenced<i32>, _, _>(0, |count, _| {
+    let mut result = stream.scan_ordered(0, |count, _| {
         *count += 1;
         *count
     });
@@ -281,11 +277,10 @@ async fn test_scan_ordered_only_errors() -> anyhow::Result<()> {
 async fn test_scan_ordered_error_with_type_transformation() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
-    let mut result =
-        stream.scan_ordered::<Sequenced<String>, _, _>(0, |count: &mut i32, data: &TestData| {
-            *count += 1;
-            format!("Item #{}: {}", count, data)
-        });
+    let mut result = stream.scan_ordered(0, |count: &mut i32, data: &TestData| {
+        *count += 1;
+        format!("Item #{}: {}", count, data)
+    });
 
     // Act & Assert
     tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
@@ -318,7 +313,7 @@ async fn test_scan_ordered_error_with_type_transformation() -> anyhow::Result<()
 async fn test_scan_ordered_alternating_values_and_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
-    let mut result = stream.scan_ordered::<Sequenced<u32>, _, _>(0u32, |total, data| {
+    let mut result = stream.scan_ordered(0u32, |total, data| {
         if let TestData::Person(p) = data {
             *total += p.age;
         }
@@ -366,7 +361,7 @@ async fn test_scan_ordered_alternating_values_and_errors() -> anyhow::Result<()>
 async fn test_scan_ordered_error_with_string_accumulation() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
-    let mut result = stream.scan_ordered::<Sequenced<String>, _, _>(String::new(), |acc, data| {
+    let mut result = stream.scan_ordered(String::new(), |acc, data| {
         if !acc.is_empty() {
             acc.push_str(", ");
         }
