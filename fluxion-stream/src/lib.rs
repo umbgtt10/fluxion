@@ -33,6 +33,7 @@
 //!
 //! ### Transformation Operators
 //!
+//! - **[`scan_ordered`](ScanOrderedExt::scan_ordered)**: Accumulates state across stream items, emitting intermediate results
 //! - **[`combine_with_previous`](CombineWithPreviousExt::combine_with_previous)**: Pairs each value with previous value
 //!
 //! # Temporal Ordering Explained

@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Transformation Operator**: Implemented `scan_ordered` operator for stateful accumulation
+  - Accumulates state across stream items, emitting intermediate results for each input
+  - Similar to `Iterator::fold` but emits per-item instead of final result only
+  - Use cases: Running totals/averages, state machines, building collections over time, moving window calculations
+  - Can transform types (e.g., i32 → String, Event → State)
+  - Error propagation without state reset
+  - Comprehensive test suite: 11 functional tests + 9 error tests + 6 composition tests = 26 total tests
+  - Performance benchmarks covering simple accumulation, counting, and complex state (Vec accumulator)
+  - Fully integrated into FluxionStream with method forwarding
+  - Complete documentation with 5 examples (running sum, type transformation, list building, state machine, error handling)
 - **Filtering Operators**: Implemented `distinct_until_changed` and `distinct_until_changed_by` operators
   - `distinct_until_changed` - Suppress consecutive duplicate values using `PartialEq`
   - `distinct_until_changed_by` - Custom comparison function for duplicate suppression (no `PartialEq` requirement)

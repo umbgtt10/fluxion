@@ -9,9 +9,16 @@ use std::sync::{Arc, Mutex};
 
 /// Extension trait providing the `scan_ordered` operator for streams.
 ///
-/// The `scan_ordered` operator accumulates state across stream items, emitting
-/// intermediate accumulated values. It's similar to `Iterator::fold` but
-/// emits a result for each input item rather than just the final result.
+/// This operator accumulates state across stream items, emitting intermediate
+/// accumulated values. It's similar to `Iterator::fold` but emits a result
+/// for each input item rather than just the final result.
+///
+/// # Key Characteristics
+///
+/// - **Stateful**: Maintains accumulator state across all stream items
+/// - **Emits per item**: Produces output for each input (unlike fold which emits once)
+/// - **Type transformation**: Can change output type from input type
+/// - **Error preserving**: Errors propagate without resetting state
 pub trait ScanOrderedExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: FluxionItem,
@@ -139,6 +146,57 @@ where
     /// - Counting occurrences or tracking frequencies
     /// - State machines with accumulated context
     /// - Moving window calculations
+    ///
+    /// # Advanced Example: State Machine
+    ///
+    /// ```rust
+    /// use fluxion_stream::{FluxionStream, ScanOrderedExt};
+    /// use fluxion_test_utils::{Sequenced, test_channel, unwrap_stream};
+    ///
+    /// #[derive(Debug, Clone, PartialEq)]
+    /// enum Event { Login, Logout, Action(String) }
+    ///
+    /// #[derive(Debug, Clone, PartialEq)]
+    /// struct SessionState {
+    ///     logged_in: bool,
+    ///     action_count: usize,
+    /// }
+    ///
+    /// # async fn example() -> anyhow::Result<()> {
+    /// let (tx, stream) = test_channel::<Sequenced<Event>>();
+    ///
+    /// let mut states = stream.scan_ordered::<Sequenced<SessionState>, _, _>(
+    ///     SessionState { logged_in: false, action_count: 0 },
+    ///     |state, event| {
+    ///         match event {
+    ///             Event::Login => state.logged_in = true,
+    ///             Event::Logout => {
+    ///                 state.logged_in = false;
+    ///                 state.action_count = 0;
+    ///             }
+    ///             Event::Action(_) if state.logged_in => {
+    ///                 state.action_count += 1;
+    ///             }
+    ///             _ => {}
+    ///         }
+    ///         state.clone()
+    ///     }
+    /// );
+    ///
+    /// tx.send(Sequenced::new(Event::Login))?;
+    /// let s1 = unwrap_stream(&mut states, 500).await.unwrap().into_inner();
+    /// assert!(s1.logged_in && s1.action_count == 0);
+    ///
+    /// tx.send(Sequenced::new(Event::Action("click".to_string())))?;
+    /// let s2 = unwrap_stream(&mut states, 500).await.unwrap().into_inner();
+    /// assert!(s2.logged_in && s2.action_count == 1);
+    ///
+    /// tx.send(Sequenced::new(Event::Logout))?;
+    /// let s3 = unwrap_stream(&mut states, 500).await.unwrap().into_inner();
+    /// assert!(!s3.logged_in && s3.action_count == 0);
+    /// # Ok(())
+    /// # }
+    /// ```
     ///
     /// # Performance
     ///

@@ -11,6 +11,7 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`combine_latest`](#combine_latest) | Combining | Combine latest from all streams | Any stream |
 | [`with_latest_from`](#with_latest_from) | Combining | Sample secondary on primary | Primary only |
 | [`combine_with_previous`](#combine_with_previous) | Windowing | Pair consecutive values | Source |
+| [`scan_ordered`](#scan_ordered) | Transformation | Accumulate state, emit intermediate results | Source |
 | [`map_ordered`](#map_ordered) | Transformation | Transform items | Source |
 | [`filter_ordered`](#filter_ordered) | Filtering | Filter items | Source |
 | [`distinct_until_changed`](#distinct_until_changed) | Filtering | Suppress consecutive duplicates | Source |
@@ -116,6 +117,35 @@ let paired = stream.combine_with_previous();
 ---
 
 ### 🔄 Transformation
+
+#### `scan_ordered`
+**Accumulate state across stream items, emitting intermediate results**
+
+```rust
+// Running sum
+let sums = stream.scan_ordered::<Sequenced<i32>, _, _>(0, |acc, val| {
+    *acc += val;
+    *acc
+});
+
+// State machine
+let states = events.scan_ordered::<Sequenced<State>, _, _>(
+    State::initial(),
+    |state, event| {
+        state.transition(event);
+        state.clone()
+    }
+);
+```
+
+- Maintains accumulator state across all stream items
+- Emits transformed value for each input item
+- Can transform types (e.g., i32 → String, Event → State)
+- Errors propagate without resetting state
+- Useful for running totals, state machines, building collections
+- See API docs for detailed examples
+
+---
 
 #### `map_ordered`
 **Transform items while preserving temporal order**
@@ -315,9 +345,10 @@ Every item in a Fluxion stream has an `order` attribute (accessed via `.order()`
 ### Rules by Operator
 
 | Operator | Order of Emitted Values | Rationale |
-|----------|-------------------------|-----------|
+|----------|-------------------------|-----------||
 | `ordered_merge` | Original source order | Pass-through operator |
 | `merge_with` | Original source order | Stateful transformation preserves source timing |
+| `scan_ordered` | Original source order | Stateful transformation preserves source timing |
 | `map_ordered` | Original source order | Transformation preserves timing |
 | `filter_ordered` | Original source order | Filtering preserves timing |
 | `combine_with_previous` | Current value's order | Window driven by current item |
