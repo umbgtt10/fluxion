@@ -15,7 +15,7 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 **Essential Features:**
 - ✅ Core stream operators (`combine_latest`, `with_latest_from`, `ordered_merge`, etc.)
 - ✅ Execution utilities (`subscribe_async`, `subscribe_latest_async`)
-- ✅ Temporal ordering with `Sequenced<T>` wrapper
+- ✅ Temporal ordering with `Timestamped` trait
 - ✅ Comprehensive test coverage (1,500+ tests)
 - ✅ Error handling with `FluxionError` type
 - ✅ Phase 1 error propagation (subscribe functions return `Result<()>`)

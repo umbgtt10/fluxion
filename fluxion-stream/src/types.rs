@@ -39,7 +39,6 @@ impl<T> WithPrevious<T> {
 }
 
 impl<T: Timestamped> HasTimestamp for WithPrevious<T> {
-    type Inner = T::Inner;
     type Timestamp = T::Timestamp;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -48,6 +47,8 @@ impl<T: Timestamped> HasTimestamp for WithPrevious<T> {
 }
 
 impl<T: Timestamped> Timestamped for WithPrevious<T> {
+    type Inner = T::Inner;
+
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self {
             previous: None,
@@ -123,7 +124,6 @@ where
     V: Clone + Debug + Ord,
     TS: Clone + Debug + Ord + Copy + Send + Sync,
 {
-    type Inner = Self;
     type Timestamp = TS;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -136,6 +136,8 @@ where
     V: Clone + Debug + Ord,
     TS: Clone + Debug + Ord + Copy + Send + Sync,
 {
+    type Inner = Self;
+
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self {
             state: value.state,

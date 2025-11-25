@@ -19,7 +19,6 @@ impl<T> TestItem<T> {
 }
 
 impl<T: Clone + Send + Sync + 'static> HasTimestamp for TestItem<T> {
-    type Inner = T;
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -28,6 +27,8 @@ impl<T: Clone + Send + Sync + 'static> HasTimestamp for TestItem<T> {
 }
 
 impl<T: Clone + Send + Sync + 'static> Timestamped for TestItem<T> {
+    type Inner = T;
+
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self { value, timestamp }
     }

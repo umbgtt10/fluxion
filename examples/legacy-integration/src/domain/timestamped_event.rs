@@ -38,7 +38,6 @@ impl TimestampedEvent {
 }
 
 impl HasTimestamp for TimestampedEvent {
-    type Inner = UnifiedEvent;
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -47,6 +46,8 @@ impl HasTimestamp for TimestampedEvent {
 }
 
 impl Timestamped for TimestampedEvent {
+    type Inner = UnifiedEvent;
+
     fn into_inner(self) -> Self::Inner {
         self.event
     }

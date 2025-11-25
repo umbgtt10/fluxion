@@ -4,19 +4,19 @@
 
 /// A minimal trait for types that have an intrinsic timestamp for stream ordering.
 ///
-/// This trait provides read-only access to a timestamp value and the wrapped value type,
+/// This trait provides read-only access to a timestamp value,
 /// allowing stream operators to order and compare items based on their temporal position.
 ///
 /// # Relationship with `Timestamped`
 ///
-/// `HasTimestamp` is a minimal trait for reading timestamps and knowing the inner type,
-/// while `Timestamped` extends it with construction methods (`with_timestamp`, `with_fresh_timestamp`, `into_inner`).
+/// `HasTimestamp` is a minimal trait for reading timestamps,
+/// while `Timestamped` extends it with an `Inner` type and construction methods
+/// (`with_timestamp`, `with_fresh_timestamp`, `into_inner`).
 ///
 /// Use `HasTimestamp` when you only need to read timestamps (e.g., ordering, comparison).
-/// Use `Timestamped` when you need to construct new timestamped values.
+/// Use `Timestamped` when you need to construct new timestamped values or access inner values.
 ///
 /// # Type Parameters
-/// * `Inner` - The type of the value wrapped by this timestamped type
 /// * `Timestamp` - The type representing the timestamp (must be `Ord + Copy`)
 ///
 /// # Examples
@@ -31,7 +31,6 @@
 /// }
 ///
 /// impl<T: Clone> HasTimestamp for TimestampedEvent<T> {
-///     type Inner = T;
 ///     type Timestamp = u64;
 ///
 ///     fn timestamp(&self) -> Self::Timestamp {
@@ -55,7 +54,6 @@
 /// }
 ///
 /// impl<T: Clone> HasTimestamp for SequenceNumbered<T> {
-///     type Inner = T;
 ///     type Timestamp = u64;
 ///     fn timestamp(&self) -> u64 { self.seq }
 /// }
@@ -73,15 +71,11 @@
 /// }
 ///
 /// impl<T: Clone> HasTimestamp for TimedEvent<T> {
-///     type Inner = T;
 ///     type Timestamp = Instant;
 ///     fn timestamp(&self) -> Instant { self.time }
 /// }
 /// ```
 pub trait HasTimestamp {
-    /// The type of the inner value wrapped by this timestamped type
-    type Inner: Clone;
-
     /// The type representing the timestamp
     type Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug;
 

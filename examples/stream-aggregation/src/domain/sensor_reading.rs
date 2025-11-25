@@ -14,7 +14,6 @@ pub struct SensorReading {
 }
 
 impl HasTimestamp for SensorReading {
-    type Inner = Self;
     type Timestamp = u64;
 
     fn timestamp(&self) -> Self::Timestamp {
@@ -23,6 +22,8 @@ impl HasTimestamp for SensorReading {
 }
 
 impl Timestamped for SensorReading {
+    type Inner = Self;
+
     fn with_timestamp(inner: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self { timestamp, ..inner }
     }

@@ -76,12 +76,12 @@ where
         S::Item: Into<Item>,
         NewStream: Stream + Send + Sync + 'static,
         NewStream::Item: Timestamped + Send + Sync + Ord + Unpin + 'static,
-        <NewStream::Item as HasTimestamp>::Inner: Clone + Send + Sync + 'static,
+        <NewStream::Item as Timestamped>::Inner: Clone + Send + Sync + 'static,
         <NewStream::Item as HasTimestamp>::Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug,
         F: FnMut(
-                <NewStream::Item as HasTimestamp>::Inner,
+                <NewStream::Item as Timestamped>::Inner,
                 &mut State,
-            ) -> <Item as HasTimestamp>::Inner
+            ) -> <Item as Timestamped>::Inner
             + Send
             + Sync
             + Clone

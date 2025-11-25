@@ -23,11 +23,11 @@ use crate::Timestamped;
 /// # #[derive(Clone)]
 /// # struct MyType;
 /// # impl HasTimestamp for MyType {
-/// #     type Inner = MyType;
 /// #     type Timestamp = u64;
 /// #     fn timestamp(&self) -> u64 { 0 }
 /// # }
 /// # impl Timestamped for MyType {
+/// #     type Inner = MyType;
 /// #     fn with_timestamp(value: Self::Inner, _: u64) -> Self { value }
 /// #     fn with_fresh_timestamp(value: Self::Inner) -> Self { value }
 /// #     fn into_inner(self) -> Self::Inner { self }

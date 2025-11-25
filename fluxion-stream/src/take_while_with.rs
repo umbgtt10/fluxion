@@ -199,7 +199,6 @@ where
     TItem: HasTimestamp,
     TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
-    type Inner = TItem::Inner;
     type Timestamp = TItem::Timestamp;
 
     fn timestamp(&self) -> Self::Timestamp {
