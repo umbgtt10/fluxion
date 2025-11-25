@@ -4,6 +4,8 @@
 
 mod combine_latest_bench;
 mod combine_with_previous_bench;
+mod distinct_until_changed_bench;
+mod distinct_until_changed_by_bench;
 mod emit_when_bench;
 mod filter_ordered_bench;
 mod map_ordered_bench;
@@ -16,6 +18,8 @@ mod with_latest_from_bench;
 use combine_latest_bench::bench_combine_latest;
 use combine_with_previous_bench::bench_combine_with_previous;
 use criterion::{criterion_group, criterion_main};
+use distinct_until_changed_bench::bench_distinct_until_changed;
+use distinct_until_changed_by_bench::bench_distinct_until_changed_by;
 use emit_when_bench::bench_emit_when;
 use filter_ordered_bench::bench_filter_ordered;
 use map_ordered_bench::bench_map_ordered;
@@ -29,6 +33,8 @@ criterion_group!(
     stream_benches,
     bench_combine_latest,
     bench_combine_with_previous,
+    bench_distinct_until_changed,
+    bench_distinct_until_changed_by,
     bench_emit_when,
     bench_filter_ordered,
     bench_map_ordered,
