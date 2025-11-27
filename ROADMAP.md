@@ -153,9 +153,33 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator implementation timeline beyond v0.3.0.
 
+## 🚀 Version 0.5.0 - Double-Time POC
+**Essential Features:**
+- [ ] POC: three operators implemented without ordering guarantees as per design doc
+- [ ] All existing and new tests green
+- [ ] New benches implemented for new operators
+
+**Documentation:**
+- [ ] POC: Dual/Expanded documentation implemented
+
+**Quality Gates:**
+- [ ] No blockers for the final migration to the dual ordering models
+
+## 🚀 Version 0.6.0 - Double-Time
+**Essential Features:**
+- [ ] All operators migrated to dual ordering models as per design doc
+
+**Documentation:**
+- [ ] Dual/Expanded documentation implemented and consistent across all operators
+- [ ] Bench comparison available and deployed with the CI
+
+**Quality Gates:**
+- [ ] Fully-fledged test suite up and running for both ordering models
+- [ ] CI green
+
 ---
 
-## 🚀 Version 0.5.0 - Cloning
+## 🚀 Version 0.6.0 - Cloning
 **Essential Features:**
 - [ ] Investigate the best way to clone or share streams between multiple consumers
 - [ ] Investigate FluxionSubject
@@ -164,7 +188,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 
 **Quality Gates:**
 
-## 🚀 Version 0.6.0 - Wasm & Runtime abstraction
+## 🚀 Version 0.7.0 - Wasm & Runtime abstraction
 **Essential Features:**
 - [ ] Implement runtime abstraction
 
@@ -180,12 +204,11 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 ### Requirements for 1.0.0
 
 #### 1. Complete Error Handling
-- [X] Error handling implemented
-- [] Standard error handling operators implemented
+- [ ] Error handling implemented
+- [ ] Standard error handling operators implemented
 
 **Phase 2: Stream Operator Error Propagation**
-
-- [ ] All standard Rx operators supported along with chaining and error propagation
+- [ ] All standard Rx operators supported along with chaining and error propagation for both ordering mmodels
 
 **Phase 3: Documentation & Finalization**
 - [ ] Create `docs/error-handling.md` guide

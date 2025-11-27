@@ -31,6 +31,13 @@ $example3Code = $example3Code + "`n"
 Write-Host "Extracting dependency versions from Cargo.toml..." -ForegroundColor Cyan
 $cargoToml = Get-Content $cargoTomlPath -Raw
 
+# Extract workspace version for fluxion crates
+$workspaceVersion = "0.3.0" # Default fallback
+if ($cargoToml -match '\[workspace\.package\][\s\S]*?version\s*=\s*"([^"]+)"') {
+    $workspaceVersion = $matches[1]
+    Write-Host "  Found workspace version: $workspaceVersion" -ForegroundColor Gray
+}
+
 # Detect which external crates are used in the examples
 $allExampleCode = $example1Code + $example2Code + $example3Code
 $usedCrates = @{}
@@ -70,8 +77,8 @@ foreach ($crate in $externalCrates) {
 # Always include fluxion crates
 $dependenciesLines = @(
     "[dependencies]",
-    "fluxion-rx = `"0.2.2`"",
-    "fluxion-test-utils = `"0.2.2`""
+    "fluxion-rx = `"$workspaceVersion`"",
+    "fluxion-test-utils = `"$workspaceVersion`""
 )
 
 # Add tokio with features if used
@@ -101,11 +108,15 @@ $basicUsageCodeStart = $readme.IndexOf('```rust', $basicUsageStart)
 $basicUsageCodeEnd = $readme.IndexOf('```', $basicUsageCodeStart + 7)
 
 $chainingStart = $readme.IndexOf('### Chaining Multiple Operators')
-$chainingCodeStart = $readme.IndexOf('```rust', $chainingStart)
+$chainingDepsStart = $readme.IndexOf('```toml', $chainingStart)
+$chainingDepsEnd = $readme.IndexOf('```', $chainingDepsStart + 7)
+$chainingCodeStart = $readme.IndexOf('```rust', $chainingDepsEnd)
 $chainingCodeEnd = $readme.IndexOf('```', $chainingCodeStart + 7)
 
 $mergeWithStart = $readme.IndexOf('### Stateful, Builder-like Stream Merging')
-$mergeWithCodeStart = $readme.IndexOf('```rust', $mergeWithStart)
+$mergeWithDepsStart = $readme.IndexOf('```toml', $mergeWithStart)
+$mergeWithDepsEnd = $readme.IndexOf('```', $mergeWithDepsStart + 7)
+$mergeWithCodeStart = $readme.IndexOf('```rust', $mergeWithDepsEnd)
 $mergeWithCodeEnd = $readme.IndexOf('```', $mergeWithCodeStart + 7)
 
 # Build new README with updated dependencies and examples
@@ -113,9 +124,13 @@ $newReadme = $readme.Substring(0, $dependenciesStart) # Up to dependencies code 
 $newReadme += $dependenciesSection
 $newReadme += $readme.Substring($dependenciesEnd + 3, $basicUsageCodeStart - ($dependenciesEnd + 3) + 8) # From deps ``` to Basic Usage ```rust\n
 $newReadme += $example1Code
-$newReadme += $readme.Substring($basicUsageCodeEnd, $chainingCodeStart - $basicUsageCodeEnd + 8) # From first ``` to second ```rust\n
+$newReadme += $readme.Substring($basicUsageCodeEnd, $chainingDepsStart - $basicUsageCodeEnd) # From first ``` to chaining deps
+$newReadme += $dependenciesSection
+$newReadme += $readme.Substring($chainingDepsEnd + 3, $chainingCodeStart - ($chainingDepsEnd + 3) + 8) # From chaining deps ``` to ```rust\n
 $newReadme += $example2Code
-$newReadme += $readme.Substring($chainingCodeEnd, $mergeWithCodeStart - $chainingCodeEnd + 8) # From second ``` to third ```rust\n
+$newReadme += $readme.Substring($chainingCodeEnd, $mergeWithDepsStart - $chainingCodeEnd) # From second ``` to merge deps
+$newReadme += $dependenciesSection
+$newReadme += $readme.Substring($mergeWithDepsEnd + 3, $mergeWithCodeStart - ($mergeWithDepsEnd + 3) + 8) # From merge deps ``` to ```rust\n
 $newReadme += $example3Code
 $newReadme += $readme.Substring($mergeWithCodeEnd) # From third ``` to end
 
@@ -144,7 +159,7 @@ if (Test-Path $subscribeAsyncExamplePath) {
     $exampleUseStatements = $subscribeAsyncLines | Where-Object { $_ -match '^use ' }
 
     # Always include fluxion-exec
-    $usedExecCrates['fluxion-exec'] = '0.2.2'
+    $usedExecCrates['fluxion-exec'] = $workspaceVersion
 
     # Check for other crates in use statements
     $execExternalCrates = @('tokio', 'tokio-stream', 'tokio-util', 'anyhow', 'thiserror')
@@ -163,7 +178,7 @@ if (Test-Path $subscribeAsyncExamplePath) {
     }
 
     # Build dependencies section for subscribe_async
-    $execDepsLines = @("[dependencies]", "fluxion-exec = `"0.2.2`"")
+    $execDepsLines = @("[dependencies]", "fluxion-exec = `"$workspaceVersion`"")
 
     # Add tokio with features if used
     if ($usedExecCrates.ContainsKey('tokio')) {
@@ -225,7 +240,7 @@ if (Test-Path $subscribeLatestAsyncExamplePath) {
     $latestExampleUseStatements = $subscribeLatestAsyncLines | Where-Object { $_ -match '^use ' }
 
     # Always include fluxion-exec
-    $usedLatestCrates['fluxion-exec'] = '0.2.2'
+    $usedLatestCrates['fluxion-exec'] = $workspaceVersion
 
     # Check for other crates in use statements
     $latestExternalCrates = @('tokio', 'tokio-stream', 'tokio-util', 'anyhow', 'thiserror')
@@ -244,7 +259,7 @@ if (Test-Path $subscribeLatestAsyncExamplePath) {
     }
 
     # Build dependencies section for subscribe_latest_async
-    $latestDepsLines = @("[dependencies]", "fluxion-exec = `"0.2.2`"")
+    $latestDepsLines = @("[dependencies]", "fluxion-exec = `"$workspaceVersion`"")
 
     # Add tokio with features if used
     if ($usedLatestCrates.ContainsKey('tokio')) {
