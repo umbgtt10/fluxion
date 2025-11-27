@@ -33,7 +33,8 @@ pub fn bench_take_items(c: &mut Criterion) {
         for &payload_size in &payload_sizes {
             for &take_pct in &take_percentages {
                 let take_count = (size * take_pct) / 100;
-                let id = BenchmarkId::from_parameter(format!("m{size}_p{payload_size}_t{take_pct}pct"));
+                let id =
+                    BenchmarkId::from_parameter(format!("m{size}_p{payload_size}_t{take_pct}pct"));
                 // Throughput is items emitted, not total stream size
                 group.throughput(Throughput::Elements(take_count as u64));
                 group.bench_with_input(

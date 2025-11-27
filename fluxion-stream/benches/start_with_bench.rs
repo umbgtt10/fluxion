@@ -32,8 +32,9 @@ pub fn bench_start_with(c: &mut Criterion) {
     for &size in &sizes {
         for &payload_size in &payload_sizes {
             for &initial_count in &initial_counts {
-                let id =
-                    BenchmarkId::from_parameter(format!("m{size}_p{payload_size}_i{initial_count}"));
+                let id = BenchmarkId::from_parameter(format!(
+                    "m{size}_p{payload_size}_i{initial_count}"
+                ));
                 // Throughput is total elements (initial + stream)
                 group.throughput(Throughput::Elements((size + initial_count) as u64));
                 group.bench_with_input(
