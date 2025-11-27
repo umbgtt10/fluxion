@@ -46,7 +46,6 @@ anyhow = "1.0.100"
 
 # Bench & testing utilities (used in members via workspace = true)
 criterion = { version = "0.7.0", features = ["async", "html_reports"] }
-rstest = "0.26.1"
 
 # Platform bindings (unify versions across workspace)
 windows-sys = "0.61.2"

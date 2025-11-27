@@ -146,7 +146,19 @@ Invoke-StepAction "Refresh lockfile" { cargo update }
 Invoke-StepAction "Format check" { cargo fmt --all -- --check }
 Invoke-StepAction "Build (all targets & features)" { cargo build --all-targets --all-features --verbose }
 Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-targets --all-features -- -D warnings }
-Invoke-StepAction "Run tests" { cargo test --all-features --all-targets --verbose }
+
+# Ensure cargo-nextest is installed
+if (-not (Get-Command cargo-nextest -ErrorAction SilentlyContinue)) {
+    Write-Color "cargo-nextest not found; installing..." Cyan
+    & cargo install --locked cargo-nextest
+    if ($LASTEXITCODE -ne 0) {
+      Write-Color "Failed to install cargo-nextest" Red
+      exit $LASTEXITCODE
+    }
+}
+
+Invoke-StepAction "Run tests" { cargo nextest run --all-features --all-targets --verbose }
+Invoke-StepAction "Run doc tests" { cargo test --all-features --doc --verbose }
 Invoke-StepAction "Run stream-aggregation example" {
   cargo run --release --package rabbitmq-aggregator-example
 }

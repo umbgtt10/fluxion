@@ -34,7 +34,8 @@ pub fn bench_skip_items(c: &mut Criterion) {
             for &skip_pct in &skip_percentages {
                 let skip_count = (size * skip_pct) / 100;
                 let emit_count = size - skip_count;
-                let id = BenchmarkId::from_parameter(format!("m{size}_p{payload_size}_s{skip_pct}pct"));
+                let id =
+                    BenchmarkId::from_parameter(format!("m{size}_p{payload_size}_s{skip_pct}pct"));
                 // Throughput is items emitted after skip, not total stream size
                 group.throughput(Throughput::Elements(emit_count as u64));
                 group.bench_with_input(

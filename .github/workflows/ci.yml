@@ -146,8 +146,11 @@ jobs:
       - name: Build (release, all targets & features)
         run: cargo build --release --all-targets --all-features --verbose
 
+      - name: Install cargo-nextest
+        run: cargo install --locked cargo-nextest
+
       - name: Run tests
-        run: cargo test --all-features --all-targets --verbose
+        run: cargo nextest run --all-features --verbose
 
       - name: Run doc tests
         run: cargo test --all-features --doc --verbose
@@ -163,6 +166,9 @@ jobs:
 
       - name: Run coverage
         run: cargo tarpaulin
+
+      - name: Run doc tests for coverage
+        run: cargo test --all-features --doc --verbose
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
