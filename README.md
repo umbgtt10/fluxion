@@ -26,7 +26,7 @@ A reactive stream processing library for Rust with temporal ordering guarantee, 
 - ⚡ **Async Execution**: Efficient async processing with `subscribe_async` and `subscribe_latest_async`
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
-- ✅ **Well Tested**: 1,500+ tests with comprehensive coverage
+- ✅ **Well Tested**: 641 tests with comprehensive coverage
 
 ### 📋 Independent Code Reviews
 
@@ -57,7 +57,8 @@ anyhow = "1.0.100"
 
 ### Basic Usage
 
-```rustuse fluxion_core::HasTimestamp;
+```rust
+use fluxion_core::HasTimestamp;
 use fluxion_rx::FluxionStream;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use tokio::sync::mpsc::unbounded_channel;
@@ -128,7 +129,8 @@ anyhow = "1.0.100"
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rustuse fluxion_core::Timestamped;
+```rust
+use fluxion_core::Timestamped;
 use fluxion_rx::FluxionStream;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use tokio::sync::mpsc::unbounded_channel;
@@ -202,7 +204,8 @@ anyhow = "1.0.100"
 
 **Example: Event Sourcing with Repository Pattern**
 
-```rustuse fluxion_stream::MergedStream;
+```rust
+use fluxion_stream::MergedStream;
 use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
 
 #[tokio::test]
@@ -352,7 +355,8 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Sequential Processing:**
 
 **Dependencies:**
-```toml[dependencies]
+```toml
+[dependencies]
 fluxion-exec = "0.3.0"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
@@ -360,7 +364,8 @@ tokio-util = "0.7.17"
 ```
 
 **Example:**
-```rustuse fluxion_exec::subscribe_async::SubscribeAsyncExt;
+```rust
+use fluxion_exec::subscribe_async::SubscribeAsyncExt;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
@@ -453,7 +458,8 @@ async fn test_subscribe_async_example() -> anyhow::Result<()> {
 **Latest-Value Processing (with auto-cancellation):**
 
 **Dependencies:**
-```toml[dependencies]
+```toml
+[dependencies]
 fluxion-exec = "0.3.0"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
@@ -461,7 +467,8 @@ tokio-util = "0.7.17"
 ```
 
 **Example:**
-```rustuse fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
+```rust
+use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;

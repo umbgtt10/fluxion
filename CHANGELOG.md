@@ -262,7 +262,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **API**: Removed redundant `FluxionStream::from_stream()` method (use `::new()` instead)
 - **Documentation**: Enhanced `filter_ordered` documentation with comprehensive examples and use cases
 - **Documentation**: Updated README.md to reference error handling guide in features and guides sections
-- **Tests**: Updated all 186 tests across workspace to handle `StreamItem<T>` wrapper
+- **Tests**: Updated all tests across workspace to handle `StreamItem<T>` wrapper (186 at v0.2.0)
 - **Tests**: Moved `sequenced_tests.rs` to `fluxion-test-utils/tests/` for better organization
 
 ### Removed

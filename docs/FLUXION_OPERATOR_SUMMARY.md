@@ -10,6 +10,7 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`merge_with`](#merge_with) | Combining | Stateful merging with shared state | All streams |
 | [`combine_latest`](#combine_latest) | Combining | Combine latest from all streams | Any stream |
 | [`with_latest_from`](#with_latest_from) | Combining | Sample secondary on primary | Primary only |
+| [`start_with`](#start_with) | Combining | Prepend initial values | Source |
 | [`combine_with_previous`](#combine_with_previous) | Windowing | Pair consecutive values | Source |
 | [`scan_ordered`](#scan_ordered) | Transformation | Accumulate state, emit intermediate results | Source |
 | [`map_ordered`](#map_ordered) | Transformation | Transform items | Source |
@@ -17,11 +18,44 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`distinct_until_changed`](#distinct_until_changed) | Filtering | Suppress consecutive duplicates | Source |
 | [`distinct_until_changed_by`](#distinct_until_changed_by) | Filtering | Custom duplicate suppression | Source |
 | [`take_while_with`](#take_while_with) | Filtering | Take while predicate holds | Source + Filter |
+| [`take_items`](#take_items) | Limiting | Take first N items | Source |
+| [`skip_items`](#skip_items) | Limiting | Skip first N items | Source |
 | [`take_latest_when`](#take_latest_when) | Sampling | Sample on trigger | Trigger |
 | [`emit_when`](#emit_when) | Gating | Gate with combined state | Source (filtered) |
 | [`on_error`](#on_error) | Error Handling | Selectively consume or propagate errors | Source |
 
 ## Operators by Category
+
+### 🔀 Combining Streams
+- [`ordered_merge`](#ordered_merge) - Merge streams in temporal order
+- [`merge_with`](#merge_with) - Stateful merging with shared state
+- [`combine_latest`](#combine_latest) - Combine latest from all streams
+- [`with_latest_from`](#with_latest_from) - Sample secondary on primary emission
+- [`start_with`](#start_with) - Prepend initial values to stream
+
+### 🪟 Windowing & Pairing
+- [`combine_with_previous`](#combine_with_previous) - Pair consecutive values
+
+### 🔄 Transformation
+- [`scan_ordered`](#scan_ordered) - Accumulate state, emit intermediate results
+- [`map_ordered`](#map_ordered) - Transform items
+
+### 🔍 Filtering
+- [`filter_ordered`](#filter_ordered) - Filter items by predicate
+- [`take_items`](#take_items) - Take first N items
+- [`skip_items`](#skip_items) - Skip first N items
+- [`distinct_until_changed`](#distinct_until_changed) - Suppress consecutive duplicates
+- [`distinct_until_changed_by`](#distinct_until_changed_by) - Custom duplicate suppression
+- [`take_while_with`](#take_while_with) - Take while condition holds
+
+### 📊 Sampling & Gating
+- [`take_latest_when`](#take_latest_when) - Sample on trigger events
+- [`emit_when`](#emit_when) - Gate based on combined state
+
+### 🛡️ Error Handling
+- [`on_error`](#on_error) - Selectively consume or propagate errors
+
+---
 
 ### 🔀 Combining Streams
 
@@ -95,6 +129,23 @@ let combined = primary.with_latest_from(secondary, |state| {
 - Emissions occur **only when primary emits**
 - Samples latest from secondary stream(s)
 - Primary-driven combination pattern
+- See API docs for detailed examples
+
+---
+
+#### `start_with`
+**Prepend initial values to stream**
+
+```rust
+let with_defaults = stream.start_with(vec![
+    StreamItem::Value(Sequenced::new(default_value1)),
+    StreamItem::Value(Sequenced::new(default_value2)),
+]);
+```
+
+- Emits initial values before any source stream values
+- Useful for providing default/placeholder values
+- Initial values can include errors for testing error handling
 - See API docs for detailed examples
 
 ---
@@ -175,6 +226,35 @@ let filtered = stream.filter_ordered(|value| value % 2 == 0);
 - Maintains ordering guarantees (unlike `StreamExt::filter`)
 - Preserves `FluxionStream` wrapper
 - Filters based on source value only
+- See API docs for detailed examples
+
+---
+
+#### `take_items`
+**Emit only the first N items**
+
+```rust
+let limited = stream.take_items(10);
+```
+
+- Emits at most N items then completes
+- Errors count as items (use `on_error()` first to filter errors)
+- Stream completes after N items
+- Useful for pagination, testing, and limiting results
+- See API docs for detailed examples
+
+---
+
+#### `skip_items`
+**Skip the first N items**
+
+```rust
+let after_skip = stream.skip_items(5);
+```
+
+- Discards first N items, emits all remaining items
+- Errors count as items (use `on_error()` first to filter errors)
+- Useful for pagination and skipping initial values
 - See API docs for detailed examples
 
 ---
