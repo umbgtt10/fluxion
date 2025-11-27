@@ -934,4 +934,167 @@ where
             })
         }))
     }
+
+    /// Prepends initial values to the stream.
+    ///
+    /// The initial values will be emitted first, in the order provided, followed by
+    /// all values from the source stream. The initial values must have timestamps
+    /// that respect the temporal ordering constraints.
+    ///
+    /// # Arguments
+    ///
+    /// * `initial_values` - Vector of timestamped values to emit before the source stream.
+    ///
+    /// # Returns
+    ///
+    /// A new stream that emits the initial values followed by all values from the source stream.
+    ///
+    /// # Error Handling
+    ///
+    /// Errors in both the initial values and the source stream are propagated as-is.
+    /// This operator does not consume or transform errors - they flow through unchanged.
+    /// Use `.on_error()` before or after `start_with()` to handle errors if needed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_core::StreamItem;
+    /// use fluxion_test_utils::{test_channel, Sequenced};
+    /// use fluxion_test_utils::test_data::{person_alice, person_bob};
+    /// use futures::StreamExt;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() -> anyhow::Result<()> {
+    /// let (tx, stream) = test_channel::<Sequenced<_>>();
+    ///
+    /// let initial = vec![
+    ///     Sequenced::new(person_alice()),
+    ///     Sequenced::new(person_bob()),
+    /// ];
+    ///
+    /// let mut result = FluxionStream::new(stream).start_with(
+    ///     initial.into_iter().map(StreamItem::Value).collect()
+    /// );
+    ///
+    /// // First two items are the initial values
+    /// let item1 = result.next().await;
+    /// let item2 = result.next().await;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn start_with(
+        self,
+        initial_values: Vec<StreamItem<T>>,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>>>
+    where
+        S: Stream<Item = StreamItem<T>>,
+    {
+        let initial_stream = futures::stream::iter(initial_values);
+        FluxionStream::new(initial_stream.chain(self.into_inner()))
+    }
+
+    /// Emits only the first `n` items from the stream, then completes.
+    ///
+    /// After emitting `n` items, the stream will complete and no further items
+    /// will be emitted, even if the source stream continues to produce values.
+    ///
+    /// # Arguments
+    ///
+    /// * `n` - The maximum number of items to emit.
+    ///
+    /// # Returns
+    ///
+    /// A new stream that emits at most `n` items from the source stream.
+    ///
+    /// # Error Handling
+    ///
+    /// **Important:** Errors count as items for the purpose of the limit.
+    /// If you want to take 3 values and the stream emits `[Value, Error, Value, Value, Value]`,
+    /// only the first 3 items will be emitted: `[Value, Error, Value]`.
+    ///
+    /// Errors are propagated unchanged. Use `.on_error()` before `take_items()` if you want
+    /// to filter errors before counting.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_test_utils::{test_channel, Sequenced};
+    /// use fluxion_test_utils::test_data::person_alice;
+    /// use futures::StreamExt;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() -> anyhow::Result<()> {
+    /// let (tx, stream) = test_channel::<Sequenced<_>>();
+    ///
+    /// let mut result = FluxionStream::new(stream).take_items(2);
+    ///
+    /// tx.send(Sequenced::new(person_alice()))?;
+    /// tx.send(Sequenced::new(person_alice()))?;
+    /// tx.send(Sequenced::new(person_alice()))?; // This won't be emitted
+    ///
+    /// let item1 = result.next().await;
+    /// let item2 = result.next().await;
+    /// let item3 = result.next().await; // None
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn take_items(self, n: usize) -> FluxionStream<impl Stream<Item = StreamItem<T>>>
+    where
+        S: Stream<Item = StreamItem<T>>,
+    {
+        FluxionStream::new(StreamExt::take(self.into_inner(), n))
+    }
+
+    /// Skips the first `n` items from the stream.
+    ///
+    /// The first `n` items will be discarded, and only items after that will be emitted.
+    /// If the stream has fewer than `n` items, no items will be emitted.
+    ///
+    /// # Arguments
+    ///
+    /// * `n` - The number of items to skip.
+    ///
+    /// # Returns
+    ///
+    /// A new stream that skips the first `n` items from the source stream.
+    ///
+    /// # Error Handling
+    ///
+    /// **Important:** Errors count as items for the purpose of skipping.
+    /// If you want to skip 2 items and the stream emits `[Error, Error, Value]`,
+    /// both errors will be skipped and only the value will be emitted.
+    ///
+    /// Use `.on_error()` before `skip_items()` if you want to handle errors before they
+    /// are counted in the skip count.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_test_utils::{test_channel, Sequenced};
+    /// use fluxion_test_utils::test_data::{person_alice, person_bob, person_charlie};
+    /// use futures::StreamExt;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() -> anyhow::Result<()> {
+    /// let (tx, stream) = test_channel::<Sequenced<_>>();
+    ///
+    /// let mut result = FluxionStream::new(stream).skip_items(2);
+    ///
+    /// tx.send(Sequenced::new(person_alice()))?;  // Skipped
+    /// tx.send(Sequenced::new(person_bob()))?;     // Skipped
+    /// tx.send(Sequenced::new(person_charlie()))?; // Emitted
+    ///
+    /// let item = result.next().await; // charlie
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn skip_items(self, n: usize) -> FluxionStream<impl Stream<Item = StreamItem<T>>>
+    where
+        S: Stream<Item = StreamItem<T>>,
+    {
+        FluxionStream::new(StreamExt::skip(self.into_inner(), n))
+    }
 }

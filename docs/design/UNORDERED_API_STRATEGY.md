@@ -1333,11 +1333,63 @@ Assuming spike succeeds, here's the migration order for remaining operators:
 - `take_latest_when` - sampling logic
 - `combine_with_previous` - window-based
 
-### Phase 5: Cleanup
+### Phase 5: Unordered-Exclusive Operators
+
+**Wall-clock time-based operators (only make sense for unordered):**
+
+```rust
+// fluxion-stream-unordered ONLY
+impl<S, T> UnorderedStream<S> {
+    /// Suppresses rapid arrivals based on wall-clock time
+    pub fn debounce(self, duration: Duration) -> UnorderedStream<...> {
+        // Uses tokio::time::sleep
+        // Emits only if no new item arrives within duration
+    }
+
+    /// Rate limits emissions based on wall-clock time
+    pub fn throttle(self, duration: Duration) -> UnorderedStream<...> {
+        // Ensures minimum duration between emissions
+    }
+
+    /// Time-based windowing using wall-clock time
+    pub fn window_time(self, duration: Duration) -> UnorderedStream<...> {
+        // Buffers items arriving within time window
+    }
+}
+```
+
+**Why unordered-only?**
+
+| Aspect | Ordered (Event-Time) | Unordered (Wall-Clock) |
+|--------|---------------------|------------------------|
+| Time meaning | Event timestamps (historical, replayed) | Wall-clock arrival time (real-time) |
+| `debounce(100ms)` | Ambiguous - 100ms of event time? | Clear - 100ms of wall-clock time |
+| Use case | Temporal reasoning, event sourcing | Real-time processing, latency-sensitive |
+| Timer source | Would need watermarks (complex) | `tokio::time::sleep` (natural) |
+| Semantic fit | ❌ Breaks temporal consistency | ✅ Natural for arrival-order processing |
+
+**Key insight:** Wall-clock operations belong in the unordered variant because:
+1. Unordered = real-time, arrival-order processing
+2. Ordered = temporal reasoning with event timestamps from data
+3. Mixing wall-clock timers with event timestamps breaks ordering guarantees
+4. This is a feature of separate crates - variant-specific operators!
+
+**Documentation note:**
+```rust
+// This will NOT compile - debounce doesn't exist on OrderedStream
+let stream = OrderedStream::from_receiver(rx);
+stream.debounce(Duration::from_millis(100));  // ❌ Compile error!
+
+// This works - debounce is exclusive to UnorderedStream
+let stream = UnorderedStream::from_receiver(rx);
+stream.debounce(Duration::from_millis(100));  // ✅ Wall-clock debouncing
+```
+
+### Phase 6: Cleanup
 - Deprecate `fluxion-stream`
 - Update all documentation
 - Update examples
-- Publish `0.4.0`
+- Publish `0.5.0` (or appropriate version)
 
 ---
 
@@ -1601,8 +1653,10 @@ Based on the architecture differences:
 | `map_ordered` | **1.05-1.1x** | Single stream - minimal ordering overhead |
 | `filter_ordered` | **1.05-1.1x** | Single stream |
 | `scan_ordered` | **1.1-1.3x** | Stateful but no merge |
+| `debounce` | **N/A** | **Unordered-only** - wall-clock operation |
+| `throttle` | **N/A** | **Unordered-only** - wall-clock operation |
 
-**Key insight:** Multi-stream operators see the biggest gains.
+**Key insight:** Multi-stream operators see the biggest gains. Wall-clock operators only exist in unordered variant.
 
 ---
 
@@ -1650,14 +1704,16 @@ After benchmarking, update user-facing docs with a decision table:
 ```markdown
 ## When to Use Ordered vs Unordered
 
-| Your Scenario | Recommendation | Expected Performance |
-|---------------|----------------|---------------------|
-| Multi-stream combining (3+ streams) | **Unordered** if ordering doesn't matter | 2-3x faster |
-| Event sourcing / audit logs | **Ordered** (correctness required) | Baseline |
-| High-throughput analytics | **Unordered** | 2-3x faster |
-| Single-stream transforms | **Either** (minimal difference) | <10% difference |
-| Real-time dashboards | **Unordered** (latency matters) | 2-3x faster |
-| Temporal causality required | **Ordered** (only option) | Baseline |
+| Your Scenario | Recommendation | Expected Performance | Available Operators |
+|---------------|----------------|---------------------|---------------------|
+| Multi-stream combining (3+ streams) | **Unordered** if ordering doesn't matter | 2-3x faster | All shared operators |
+| Event sourcing / audit logs | **Ordered** (correctness required) | Baseline | All shared operators |
+| High-throughput analytics | **Unordered** | 2-3x faster | All shared operators |
+| Single-stream transforms | **Either** (minimal difference) | <10% difference | All shared operators |
+| Real-time dashboards | **Unordered** (latency matters) | 2-3x faster | All shared + debounce/throttle |
+| Temporal causality required | **Ordered** (only option) | Baseline | All shared operators |
+| Wall-clock debouncing/throttling | **Unordered** (only option) | N/A | debounce, throttle, window_time |
+| Historical data replay | **Ordered** (event timestamps) | Baseline | All shared operators |
 ```
 
 ---
