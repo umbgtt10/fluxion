@@ -150,35 +150,15 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 - ✅ `take_items` operator - Take the first N items
 - ✅ `start_with` operator - Prepend initial values to stream
 
+**Documentation:**
+- ✅ POC: Sample operator implemented and bench comparison documented => Done. No advantages found.
+
+**Quality Gates:**
+- ✅ Final decision whether to proceed with the dual API model or not => Rejected!
+
 See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator implementation timeline beyond v0.3.0.
 
-## 🚀 Version 0.5.0 - Double-Time POC
-**Essential Features:**
-- [ ] POC: three operators implemented without ordering guarantees as per design doc
-- [ ] All existing and new tests green
-- [ ] New benches implemented for new operators
-
-**Documentation:**
-- [ ] POC: Dual/Expanded documentation implemented
-
-**Quality Gates:**
-- [ ] No blockers for the final migration to the dual ordering models
-
-## 🚀 Version 0.6.0 - Double-Time
-**Essential Features:**
-- [ ] All operators migrated to dual ordering models as per design doc
-
-**Documentation:**
-- [ ] Dual/Expanded documentation implemented and consistent across all operators
-- [ ] Bench comparison available and deployed with the CI
-
-**Quality Gates:**
-- [ ] Fully-fledged test suite up and running for both ordering models
-- [ ] CI green
-
----
-
-## 🚀 Version 0.6.0 - Cloning
+## 🚀 Version 0.5.0 - Cloning
 **Essential Features:**
 - [ ] Investigate the best way to clone or share streams between multiple consumers
 - [ ] Investigate FluxionSubject

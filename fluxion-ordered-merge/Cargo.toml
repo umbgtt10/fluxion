@@ -1,3 +1,4 @@
+
 [package]
 name = "fluxion-ordered-merge"
 version.workspace = true
@@ -20,7 +21,12 @@ futures = { workspace = true }
 pin-project = { workspace = true }
 
 [dev-dependencies]
+criterion = { workspace = true }
 fluxion-test-utils = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 anyhow = { workspace = true }
+
+[[bench]]
+name = "benchmarks"
+harness = false
