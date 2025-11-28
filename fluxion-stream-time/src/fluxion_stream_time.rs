@@ -1,0 +1,73 @@
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
+use crate::{chrono_timestamped::ChronoTimestamped, delay};
+use fluxion_core::{ComparableUnpin, StreamItem};
+use fluxion_stream::FluxionStream;
+use futures::Stream;
+use std::fmt::Debug;
+
+/// Extension trait for time-based operators on `FluxionStream` with `ChronoTimestamped` items.
+///
+/// This trait provides time-based operators for streams where items are
+/// `ChronoTimestamped<T>`, following the same pattern as `map_ordered` and
+/// `filter_ordered` in `FluxionStream`.
+pub trait FluxionStreamTimeOps<S, T>
+where
+    S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync + Unpin + 'static,
+    T: ComparableUnpin + Send + 'static,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin,
+{
+    /// Delays each emission by the specified duration while preserving temporal ordering.
+    ///
+    /// This operator shifts all emissions forward in time by the given duration.
+    /// Each item is delayed independently, maintaining the stream's temporal ordering.
+    /// Errors pass through immediately without delay for timely error propagation.
+    ///
+    /// # Arguments
+    ///
+    /// * `duration` - The duration by which to delay each emission
+    ///
+    /// # Returns
+    ///
+    /// A new `FluxionStream` where each value emission is delayed by the specified duration.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
+    /// use fluxion_core::StreamItem;
+    /// use futures::stream;
+    /// use chrono::Duration;
+    ///
+    /// # async fn example() {
+    /// let source = stream::iter(vec![
+    ///     StreamItem::Value(ChronoTimestamped::now(42)),
+    /// ]);
+    ///
+    /// let delayed = FluxionStream::new(source)
+    ///     .delay(Duration::milliseconds(100));
+    /// # }
+    /// ```
+    fn delay(
+        self,
+        duration: chrono::Duration,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync>;
+}
+
+impl<S, T> FluxionStreamTimeOps<S, T> for FluxionStream<S>
+where
+    S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync + Unpin + 'static,
+    T: ComparableUnpin + Send + 'static,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin,
+{
+    fn delay(
+        self,
+        duration: chrono::Duration,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync> {
+        let inner = self.into_inner();
+        FluxionStream::new(delay(inner, duration))
+    }
+}

@@ -1,0 +1,30 @@
+[package]
+name = "fluxion-stream-time"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+description = "Time-based operators extending fluxion-stream with chrono timestamps"
+keywords = ["async", "stream", "time", "debounce", "throttle"]
+categories = ["asynchronous", "concurrency", "date-and-time"]
+readme = "README.md"
+
+[dependencies]
+fluxion-core = { workspace = true }
+fluxion-stream = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+tracing = { workspace = true, optional = true }
+pin-project = { workspace = true }
+
+[features]
+default = []
+tracing = ["dep:tracing", "fluxion-core/tracing"]
+
+[dev-dependencies]
+tokio = { workspace = true }
+anyhow = { workspace = true }
+fluxion-test-utils = { workspace = true }

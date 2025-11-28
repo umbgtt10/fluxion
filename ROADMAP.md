@@ -158,7 +158,37 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator implementation timeline beyond v0.3.0.
 
-## 🚀 Version 0.5.0 - Stream Composition & Sampling
+## 🚀 Version 0.5.0 - Time-Based Operators
+
+**Status:** Planned
+
+**Goal:** Introduce time-based reactive operators through optional `fluxion-time` crate
+
+**Essential Features:**
+- [ ] `fluxion-time` crate - Optional time-based operators with chrono dependency
+- [ ] `debounce(duration)` operator - Emit only after silence period (essential for search inputs, API rate limiting)
+- [ ] `throttle(duration)` operator - Rate-limit emissions (critical for scroll/resize handlers)
+- [ ] `timeout(duration)` operator - Error if no emission within duration (network reliability)
+- [ ] `delay(duration)` operator - Shift emissions forward in time
+- [ ] `sample(duration)` operator - Periodic sampling at fixed intervals
+- [ ] `TimeBasedOps` extension trait for chrono-based `Timestamped` types
+
+**Documentation:**
+- [ ] Time-based operators guide with real-world examples
+- [ ] Chrono integration patterns
+- [ ] Performance characteristics of temporal operators
+- [ ] Migration guide for users needing time-based features
+- [ ] Comparison with counter-based timestamps in core
+
+**Quality Gates:**
+- [ ] All tests passing with both counter and chrono timestamps
+- [ ] Zero clippy warnings
+- [ ] Zero compiler warnings
+- [ ] Doc tests for all time-based operators
+- [ ] Benchmarks comparing time-based vs counter-based performance
+- [ ] CI green
+
+## 🚀 Version 0.6.0 - Stream Composition & Sampling
 
 **Status:** Planned
 
@@ -178,14 +208,14 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - [ ] Performance characteristics of each operator
 
 **Quality Gates:**
-- [ ] All tests passing (641+)
+- [ ] All tests passing
 - [ ] Zero clippy warnings
 - [ ] Zero compiler warnings
 - [ ] Doc tests for all new operators
 - [ ] Benchmarks for sampling operators
 - [ ] CI green
 
-## 🚀 Version 0.6.0 - WASM & Runtime Abstraction
+## 🚀 Version 0.7.0 - WASM & Runtime Abstraction
 
 **Status:** Planned
 
@@ -398,4 +428,4 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - Breaking changes are only introduced in major versions (post-1.0)
 - Security fixes may be backported to previous minor versions
 
-**Last Updated:** November 17, 2025
+**Last Updated:** November 28, 2025
