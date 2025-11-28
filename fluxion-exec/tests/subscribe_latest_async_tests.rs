@@ -9,11 +9,11 @@ use fluxion_test_utils::test_data::{
     person_dave, person_diane, plant_rose, TestData,
 };
 use fluxion_test_utils::Sequenced;
-use tokio::task::yield_now;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
+use tokio::task::yield_now;
 use tokio::{
     sync::mpsc,
     sync::Mutex,
