@@ -69,7 +69,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-exec = "0.2"
+fluxion-exec = "0.4"
 tokio = { version = "1.48", features = ["rt", "sync", "macros"] }
 tokio-stream = "0.1"
 futures = "0.3"

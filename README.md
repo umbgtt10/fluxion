@@ -49,8 +49,8 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.3.0"
-fluxion-test-utils = "0.3.0"
+fluxion-rx = "0.4.0"
+fluxion-test-utils = "0.4.0"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -121,8 +121,8 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.3.0"
-fluxion-test-utils = "0.3.0"
+fluxion-rx = "0.4.0"
+fluxion-test-utils = "0.4.0"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -196,8 +196,8 @@ The `merge_with` operator enables elegant stateful stream processing by merging 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.3.0"
-fluxion-test-utils = "0.3.0"
+fluxion-rx = "0.4.0"
+fluxion-test-utils = "0.4.0"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -327,7 +327,7 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 
 - **[All Operators](docs/FLUXION_OPERATOR_SUMMARY.md)** - Complete operator reference
 - **[Error Handling](docs/ERROR-HANDLING.md)** - Complete guide with `on_error` patterns
-- **[on_error Operator](docs/ON_ERROR_OPERATOR.md)** - Detailed specification and examples
+- **[on_error Operator](docs/FLUXION_OPERATOR_SUMMARY.md#on_error)** - Detailed specification and examples
 - **[Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md)** - Planned future operators
 
 ### Stream Operators
@@ -357,7 +357,7 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.3.0"
+fluxion-exec = "0.4.0"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = "0.7.17"
@@ -460,7 +460,7 @@ async fn test_subscribe_async_example() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.3.0"
+fluxion-exec = "0.4.0"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = "0.7.17"

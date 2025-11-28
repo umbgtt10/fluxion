@@ -10,7 +10,7 @@ This document explores strategies for adding an unordered (non-temporal) API alo
 | [Strategy 1: Feature Flags](#strategy-1-feature-flags) | Compile-time switching between ordered/unordered |
 | [Strategy 2: Generic Strategy Pattern](#strategy-2-generic-strategy-pattern-recommended) | Parameterized FluxionStream with merge strategy |
 | [Strategy 3: Runtime Strategy](#strategy-3-runtime-strategy) | Runtime mode selection |
-| [Strategy 4: Separate Extension Traits](#strategy-4-separate-extension-traits) | Ordered vs Unordered trait namespaces |
+| [Strategy 4: Separate Extension Traits](#strategy-4-separate-extension-traits) | Timestamped vs Unordered trait namespaces |
 | [Strategy 5: Method Suffix Convention](#strategy-5-method-suffix-convention) | `_ordered` vs `_unordered` methods |
 | [Strategy 6: Separate Crates](#strategy-6-completely-separate-types-recommended-with-no-mixing-constraint) | **RECOMMENDED** - Private common crate + public variants |
 | [Comparison Summary](#comparison-summary) | Side-by-side evaluation of all strategies |
@@ -374,7 +374,7 @@ impl<S, T> UnorderedStreamExt<T> for FluxionStream<S> where ... { }
 ### User Experience
 
 ```rust
-use fluxion::OrderedStreamExt;    // Import ordered trait
+use fluxion::OrderedStreamExt;    // Import timestamped trait
 use fluxion::UnorderedStreamExt;  // Import unordered trait
 
 // Ordered (explicit)

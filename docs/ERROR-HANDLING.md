@@ -103,7 +103,7 @@ let stream = source_stream
     });
 ```
 
-See [ON_ERROR_OPERATOR.md](ON_ERROR_OPERATOR.md) for complete specification.
+See [on_error operator specification](FLUXION_OPERATOR_SUMMARY.md#on_error) for complete details.
 
 ### Pattern Matching on StreamItem
 

@@ -441,7 +441,7 @@ let handled = stream
 - Value items pass through unchanged
 - Enables side effects (logging, metrics) while filtering errors
 
-[Full documentation](src/fluxion_stream.rs#L780-L866) | [Tests](tests/on_error_tests.rs) | [Specification](../docs/ON_ERROR_OPERATOR.md)
+[Full documentation](src/fluxion_stream.rs#L780-L866) | [Tests](tests/on_error_tests.rs) | [Specification](../docs/FLUXION_OPERATOR_SUMMARY.md#on_error)
 
 ## Operator Selection Guide
 
@@ -488,8 +488,8 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-stream = "0.2"
-fluxion-core = "0.2"
+fluxion-stream = "0.4"
+fluxion-core = "0.4"
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 ```

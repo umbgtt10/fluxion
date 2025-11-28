@@ -425,7 +425,7 @@ Every item in a Fluxion stream has an `order` attribute (accessed via `.order()`
 ### Rules by Operator
 
 | Operator | Order of Emitted Values | Rationale |
-|----------|-------------------------|-----------||
+|----------|-------------------------|-----------|
 | `ordered_merge` | Original source order | Pass-through operator |
 | `merge_with` | Original source order | Stateful transformation preserves source timing |
 | `scan_ordered` | Original source order | Stateful transformation preserves source timing |
@@ -526,19 +526,137 @@ let sampled = stream.take_latest_when(timer, |_| true);
 #### `on_error`
 **Selectively consume or propagate errors using Chain of Responsibility pattern**
 
+**Signature:**
 ```rust
-let stream = stream
-    .on_error(|err| err.to_string().contains("validation"))
-    .on_error(|err| err.to_string().contains("network"))
-    .on_error(|_| true); // Catch-all
+fn on_error<F>(self, handler: F) -> OnError<Self, F>
+where
+    F: FnMut(&FluxionError) -> bool;
 ```
 
-- Handlers return `true` to consume errors, `false` to propagate
-- Multiple handlers can be chained for layered error handling
-- Enables logging, metrics, and conditional error recovery
-- Preserves value emissions while filtering errors
-- See [ON_ERROR_OPERATOR.md](ON_ERROR_OPERATOR.md) for detailed specification
-- See [Error Handling Guide](ERROR-HANDLING.md) for patterns
+**Basic Usage:**
+```rust
+use fluxion_rx::FluxionStream;
+
+stream
+    .on_error(|err| {
+        log::error!("Stream error occurred: {}", err);
+        true // Consume all errors, continue stream
+    })
+```
+
+**Chain of Responsibility Pattern:**
+```rust
+let stream = stream
+    // Handle network errors specifically
+    .on_error(|err| {
+        if matches!(err, FluxionError::Stream(msg) if msg.contains("network")) {
+            log::warn!("Network error (retrying later): {}", err);
+            metrics::increment("network_errors");
+            true // Consume network errors
+        } else {
+            false // Not a network error, propagate
+        }
+    })
+    // Handle validation errors
+    .on_error(|err| {
+        if matches!(err, FluxionError::User(_)) {
+            log::info!("Validation error: {}", err);
+            metrics::increment("validation_errors");
+            true // Consume validation errors
+        } else {
+            false // Propagate
+        }
+    })
+    // Catch-all for remaining errors
+    .on_error(|err| {
+        log::error!("Unhandled error: {}", err);
+        metrics::increment("unhandled_errors");
+        true // Consume all remaining errors
+    })
+```
+
+**Error Type Discrimination:**
+```rust
+stream
+    .on_error(|err| {
+        match err {
+            FluxionError::User(user_err) => {
+                notify_user(&user_err);
+                true
+            }
+            FluxionError::Stream(msg) if msg.contains("timeout") => {
+                retry_later();
+                true
+            }
+            FluxionError::MultipleErrors(_) => {
+                alert_ops_team(err);
+                true
+            }
+            _ => false // Propagate other errors
+        }
+    })
+```
+
+**Conditional Error Suppression:**
+```rust
+stream
+    .on_error(|err| {
+        // Only suppress errors during grace period
+        if in_grace_period() {
+            log::debug!("Suppressed error during grace period: {}", err);
+            true
+        } else {
+            false // Propagate errors after grace period
+        }
+    })
+```
+
+**Behavior:**
+- **When handler returns `true`** (error matched and handled):
+  - Consume the error - Remove the `StreamItem::Error` from the stream
+  - Continue processing - Allow subsequent `StreamItem::Value` items to flow normally
+  - Enable side effects - Handler can log, send metrics, or perform other actions
+
+- **When handler returns `false`** (error not matched):
+  - Propagate the error - Pass `StreamItem::Error` downstream unchanged
+  - Chain to next handler - Allow subsequent `on_error` operators to handle it
+
+**Design Rationale:**
+- **Chain of Responsibility Pattern** - Like try/catch blocks, handle specific errors first, then general
+- **Composable** - Each handler is independent and focused on one error type
+- **Explicit propagation** - Clear when errors are consumed vs propagated
+- **Simple boolean return** - `true` = handled, `false` = propagate
+- **Non-consuming** - Handler receives `&FluxionError`, doesn't own it (no cloning required)
+
+**Error Handling Guarantees:**
+- ✓ Stream continues after error consumption
+- ✓ Subsequent values flow normally
+- ✓ Multiple errors can be handled independently
+- ✓ Unhandled errors propagate downstream
+- ✓ Error order preserved
+- ✓ No errors silently dropped (unless explicitly consumed)
+
+**Performance Characteristics:**
+- **Minimal overhead** - Single function call per error
+- **No allocations** - Handler receives reference
+- **Zero cost when no errors** - Only affects error path
+- Handler inlining for simple predicates
+
+**Comparison with Other Approaches:**
+- vs. `catch` (Returns Replacement Value) - Fluxion just consumes, no replacement needed
+- vs. `on_error_resume_next` (Returns Stream) - Simpler for most cases
+- vs. `retry` (Automatic Retry) - Manual control for custom retry logic
+
+**Common Patterns:**
+- Logging and metrics collection
+- Selective error filtering by type
+- Conditional error recovery during grace periods
+- Alert/notification triggering
+- Side effect execution before propagation decision
+
+**See Also:**
+- [Error Handling Guide](ERROR-HANDLING.md) for comprehensive patterns
+- [FluxionError types](../fluxion-core/src/error.rs) for error enum details
 
 [Full documentation](../fluxion-stream/src/fluxion_stream.rs#L780-L866) | [Tests](../fluxion-stream/tests/on_error_tests.rs)
 
@@ -550,5 +668,4 @@ let stream = stream
 - **[stream-aggregation example](../examples/stream-aggregation/)** - Production-ready patterns
 - **[API Documentation](https://docs.rs/fluxion-rx)** - Complete API reference
 - **[Error Handling Guide](ERROR-HANDLING.md)** - Comprehensive error handling patterns
-- **[on_error Specification](ON_ERROR_OPERATOR.md)** - Detailed operator specification
 - **[Operators Roadmap](FLUXION_OPERATORS_ROADMAP.md)** - Planned future operators

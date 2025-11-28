@@ -35,7 +35,7 @@ let stream = stream
 **Status**: Implemented in v0.3.0
 **Use case**: Logging, metrics, selective error recovery
 **Complexity**: Low
-**Documentation**: [ON_ERROR_OPERATOR.md](ON_ERROR_OPERATOR.md)
+**Documentation**: [FLUXION_OPERATOR_SUMMARY.md#on_error](FLUXION_OPERATOR_SUMMARY.md#on_error)
 **Tests**: 13 comprehensive tests
 **Similar to**: RxJS `catchError` (but filter-based, not replacement-based)
 

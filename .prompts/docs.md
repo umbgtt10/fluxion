@@ -6,5 +6,6 @@ Then perform a fully-fledged review of the whole documentation including:
 And ensure:
  - absolute consistency
  - no broken links
+ - no broken tables
 Provide a detailed report of the changes.
 Do not change anything for now!

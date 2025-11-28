@@ -158,22 +158,63 @@ This document outlines the release plan for Fluxion, a reactive stream processin
 
 See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator implementation timeline beyond v0.3.0.
 
-## 🚀 Version 0.5.0 - Cloning
+## 🚀 Version 0.5.0 - Stream Composition & Sampling
+
+**Status:** Planned
+
+**Goal:** Enable stream sharing across multiple consumers and add sampling/batching operators
+
 **Essential Features:**
-- [ ] Investigate the best way to clone or share streams between multiple consumers
-- [ ] Investigate FluxionSubject
+- [ ] `FluxionSubject` - Foundation for multi-consumer scenarios
+- [ ] `share()` operator - Share single stream source among multiple subscribers (standard Rx operator)
+- [ ] `sample_ratio(fraction)` operator - Probabilistic downsampling (0.0 to 1.0)
+- [ ] `window_by_count(n)` operator - Count-based batching into Vec<T>
+- [ ] `partition(predicate)` operator - Split stream into two based on condition
 
 **Documentation:**
+- [ ] Stream sharing patterns and examples
+- [ ] FluxionSubject usage guide
+- [ ] Sampling strategies documentation
+- [ ] Performance characteristics of each operator
 
 **Quality Gates:**
+- [ ] All tests passing (641+)
+- [ ] Zero clippy warnings
+- [ ] Zero compiler warnings
+- [ ] Doc tests for all new operators
+- [ ] Benchmarks for sampling operators
+- [ ] CI green
 
-## 🚀 Version 0.7.0 - Wasm & Runtime abstraction
+## 🚀 Version 0.6.0 - WASM & Runtime Abstraction
+
+**Status:** Planned
+
+**Goal:** Enable Fluxion to run on multiple async runtimes and in WASM environments
+
 **Essential Features:**
-- [ ] Implement runtime abstraction
+- [ ] Runtime abstraction layer - Abstract spawn, channels, and time primitives
+- [ ] Feature flags for runtime selection (`tokio`, `async-std`, `wasm-bindgen`)
+- [ ] WASM compatibility - Remove OS-specific dependencies
+- [ ] `wasm-bindgen-futures` integration for browser environments
+- [ ] Conditional compilation for different runtime backends
+- [ ] Time/scheduling abstraction compatible with WASM constraints
 
 **Documentation:**
+- [ ] Runtime selection guide (choosing between Tokio, async-std, etc.)
+- [ ] WASM integration examples
+- [ ] Browser-based reactive streams example
+- [ ] Migration guide for runtime-specific code
+- [ ] Performance characteristics across runtimes
 
 **Quality Gates:**
+- [ ] All tests passing on Tokio runtime
+- [ ] All tests passing on async-std runtime
+- [ ] WASM example compiles and runs in browser
+- [ ] CI tests against multiple runtimes
+- [ ] Zero clippy warnings across all feature combinations
+- [ ] Zero compiler warnings
+- [ ] Doc tests for all runtime configurations
+- [ ] CI green
 
 
 ## 🚀 Version 1.0.0 - Production Ready

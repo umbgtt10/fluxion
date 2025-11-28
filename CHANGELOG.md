@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [0.4.0] - 2025-11-28
+
+**Goal:** Expand operator library with transformation and filtering operators
+
+### Added
 - **Transformation Operator**: Implemented `scan_ordered` operator for stateful accumulation
   - Accumulates state across stream items, emitting intermediate results for each input
   - Similar to `Iterator::fold` but emits per-item instead of final result only
@@ -18,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Performance benchmarks covering simple accumulation, counting, and complex state (Vec accumulator)
   - Fully integrated into FluxionStream with method forwarding
   - Complete documentation with 5 examples (running sum, type transformation, list building, state machine, error handling)
+
 - **Filtering Operators**: Implemented `distinct_until_changed` and `distinct_until_changed_by` operators
   - `distinct_until_changed` - Suppress consecutive duplicate values using `PartialEq`
   - `distinct_until_changed_by` - Custom comparison function for duplicate suppression (no `PartialEq` requirement)
@@ -26,6 +37,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Performance benchmarks covering various duplicate factors and comparison strategies
   - Follows Rust stdlib patterns (`sort`/`sort_by`, `dedup`/`dedup_by`, `max`/`max_by`)
 
+- **Stream Control Operators**: Implemented `skip_items`, `take_items`, and `start_with` operators
+  - `skip_items(n)` - Skip the first n items from the stream
+  - `take_items(n)` - Take only the first n items from the stream
+  - `start_with(values)` - Prepend initial values to the beginning of a stream
+  - Use cases: Pagination, buffering, stream initialization, warm starts with default values
+  - Comprehensive test suites with functional, error, and composition tests
+  - Full documentation with examples and use case descriptions
+
+- **Performance Analysis**: Created comprehensive performance assessment reports
+  - `assessments/COMBINE-ORDERED-VS-COMBINE-UNORDERED-PERFORMANCE-COMPARISON.md` - Operator-level performance analysis showing 0-5% difference (negligible)
+  - `assessments/ORDERED-MERGE-VS-SELECT-ALL-PERFORMANCE-COMPARISON.md` - Low-level primitive benchmarks showing OrderedMerge 10-43% faster
+  - 36 benchmark scenarios per operator comparison (3 message sizes × 4 payload sizes × 3 stream counts)
+  - Data-driven architectural decisions documented
+
 ### Changed
 - **BREAKING**: Moved `type Inner` from `HasTimestamp` trait to `Timestamped` trait
   - `HasTimestamp` now only defines `type Timestamp` and `fn timestamp()` for minimal read-only access
@@ -33,7 +58,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Better separation of concerns: ordering (HasTimestamp) vs wrapping (Timestamped)
   - Updated all implementations across workspace (24 files)
   - Updated documentation in README files and INTEGRATION.md to reflect new trait structure
-  - Migration: Add `type Inner = YourType;` to your `Timestamped` implementations and remove it from `HasTimestamp`
+  - **Migration**: Add `type Inner = YourType;` to your `Timestamped` implementations and remove it from `HasTimestamp`
+
+- **Workspace Standardization**: Updated all member crate Cargo.toml files to use workspace inheritance
+  - All dependencies now use `workspace = true` for consistency
+  - All metadata (edition, rust-version, authors, license) inherited from workspace root
+  - Added missing `fluxion-stream-common` to workspace.dependencies
+  - Cleaner, more maintainable workspace configuration
+
+- **Benchmark Organization**: Reorganized benchmarks in `fluxion-ordered-merge`
+  - Consolidated from separate benchmark files into single `benches/benchmarks.rs` entry point
+  - Modules `merge_ordered_bench` and `select_all_bench` now imported from main benchmark file
+  - Matches pattern used in `fluxion-stream/benches`
+  - Single `[[bench]]` entry in Cargo.toml
+
+### Decision
+- **Dual API Model**: Investigated and **rejected** dual-API approach (ordered vs unordered implementations)
+  - POC implemented and benchmarked with 36 scenarios per comparison
+  - Performance analysis showed negligible difference (0-5%) at operator level due to Arc<Mutex> bottleneck
+  - OrderedMerge primitive showed 10-43% advantage, but doesn't translate to operator level
+  - Conclusion: Complexity of maintaining two APIs not justified by performance gains
+  - Fluxion will remain focused on ordered semantics as its core value proposition
+
+### Fixed
 
 ## [0.3.0] - 2025-11-24
 
@@ -50,7 +97,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Chain of Responsibility pattern for selective error handling
   - Handlers can consume errors (return `true`) or propagate them (return `false`)
   - Multiple `on_error` calls can be chained for layered error handling
-  - Full documentation in `docs/ON_ERROR_OPERATOR.md`
+  - Full documentation in `docs/FLUXION_OPERATOR_SUMMARY.md#on_error`
   - Comprehensive test suite with 13 tests covering all scenarios
   - Examples in rustdoc showing basic consumption and chain of responsibility
 - **Documentation**: Enhanced error handling documentation in `docs/ERROR-HANDLING.md`
@@ -370,7 +417,9 @@ See [Error Handling Guide](docs/ERROR-HANDLING.md) for comprehensive patterns.
 
 ---
 
-[Unreleased]: https://github.com/umbgtt10/fluxion/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/umbgtt10/fluxion/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/umbgtt10/fluxion/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/umbgtt10/fluxion/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/umbgtt10/fluxion/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/umbgtt10/fluxion/releases/tag/v0.2.1
 [0.2.0]: https://github.com/umbgtt10/fluxion/releases/tag/v0.2.0

@@ -80,7 +80,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-core = "0.3.0"
+fluxion-core = "0.4.0"
 ```
 
 ## License

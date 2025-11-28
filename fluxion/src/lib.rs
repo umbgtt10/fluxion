@@ -113,7 +113,7 @@ pub use channel_ext::UnboundedReceiverExt;
 ///
 /// // Now you have access to:
 /// // - FluxionStream
-/// // - Ordered trait
+/// // - Timestamped trait
 /// // - IntoStream trait
 /// // - CombinedState, WithPrevious
 /// // - UnboundedReceiverExt

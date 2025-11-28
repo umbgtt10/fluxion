@@ -12,7 +12,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 authors = ["umberto.gotti@umbertogotti.dev"]
 license = "Apache-2.0"
@@ -38,7 +38,7 @@ serde_json = "1.0.145"
 fastrand = "2.3.0"
 
 # Logging
-tracing = "0.1.41"
+tracing = "0.1.43"
 
 # Error handling
 thiserror = "2.0.17"
@@ -51,9 +51,9 @@ criterion = { version = "0.7.0", features = ["async", "html_reports"] }
 windows-sys = "0.61.2"
 
 # Internal workspace dependencies
-fluxion-rx = { version = "0.3.0", path = "fluxion" }
-fluxion-core = { version = "0.3.0", path = "fluxion-core" }
-fluxion-ordered-merge = { version = "0.3.0", path = "fluxion-ordered-merge" }
-fluxion-stream = { version = "0.3.0", path = "fluxion-stream" }
-fluxion-exec = { version = "0.3.0", path = "fluxion-exec" }
-fluxion-test-utils = { version = "0.3.0", path = "fluxion-test-utils" }
+fluxion-rx = { version = "0.4.0", path = "fluxion" }
+fluxion-core = { version = "0.4.0", path = "fluxion-core" }
+fluxion-ordered-merge = { version = "0.4.0", path = "fluxion-ordered-merge" }
+fluxion-stream = { version = "0.4.0", path = "fluxion-stream" }
+fluxion-exec = { version = "0.4.0", path = "fluxion-exec" }
+fluxion-test-utils = { version = "0.4.0", path = "fluxion-test-utils" }
