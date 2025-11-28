@@ -1,0 +1,25 @@
+
+[package]
+name = "fluxion-stream-ordered"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+fluxion-core = { workspace = true }
+fluxion-stream = { workspace = true }
+fluxion-stream-common = { workspace = true }
+fluxion-ordered-merge = { workspace = true }
+futures = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+anyhow = { workspace = true }
+fluxion-test-utils = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "combine_latest_bench"
+harness = false
