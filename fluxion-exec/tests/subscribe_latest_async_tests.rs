@@ -9,6 +9,7 @@ use fluxion_test_utils::test_data::{
     person_dave, person_diane, plant_rose, TestData,
 };
 use fluxion_test_utils::Sequenced;
+use tokio::task::yield_now;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::spawn;
@@ -603,19 +604,25 @@ async fn test_subscribe_latest_async_high_volume() -> anyhow::Result<()> {
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
-    // Barrier and start channels for deterministic high-load skipping
+    // Gate to block first processing until we're ready
     let (gate_tx, gate_rx) = unbounded_channel::<()>();
     let gate_rx_shared = Arc::new(Mutex::new(Some(gate_rx)));
+
+    // Signal when first processing starts
     let (start_tx, mut start_rx) = unbounded_channel::<()>();
     let start_tx_shared = Arc::new(Mutex::new(Some(start_tx)));
-    // Flood completion channel to ensure bulk enqueue (including Bob) happens
-    // before we allow the first processing to proceed
-    let (flood_done_tx, flood_done_rx) = unbounded_channel::<()>();
-    let flood_done_rx_shared = Arc::new(Mutex::new(Some(flood_done_rx)));
+
+    // Track how many items have been enqueued by the for_each loop
+    let enqueue_count = Arc::new(AtomicUsize::new(0));
+    let enqueue_count_clone = enqueue_count.clone();
 
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
-    let stream = stream.map(|timestamped| timestamped.value);
+    // Increment counter as each item passes through the stream
+    let stream = stream.map(move |timestamped| {
+        enqueue_count_clone.fetch_add(1, Ordering::SeqCst);
+        timestamped.value
+    });
 
     let func = {
         let collected_items = collected_items_clone.clone();
@@ -627,22 +634,14 @@ async fn test_subscribe_latest_async_high_volume() -> anyhow::Result<()> {
             let notify_tx = notify_tx.clone();
             let gate_rx_shared = gate_rx_shared.clone();
             let start_tx_shared = start_tx_shared.clone();
-            let flood_done_rx_shared = flood_done_rx_shared.clone();
             async move {
                 // Signal first processing start once
-                let value = start_tx_shared.lock().await.take();
-                if let Some(tx) = value {
+                if let Some(tx) = start_tx_shared.lock().await.take() {
                     let _ = tx.send(());
                 }
-                // For the first processing, wait until the flood is declared done,
-                // then wait for the external gate release
-                let value = flood_done_rx_shared.lock().await.take();
-                if let Some(mut rx) = value {
-                    let _ = rx.recv().await;
-                }
+
                 // Only first processing waits for the gate
-                let value = gate_rx_shared.lock().await.take();
-                if let Some(mut rx) = value {
+                if let Some(mut rx) = gate_rx_shared.lock().await.take() {
                     let _ = rx.recv().await;
                 }
 
@@ -666,20 +665,25 @@ async fn test_subscribe_latest_async_high_volume() -> anyhow::Result<()> {
         }
     });
 
-    // Act - Block first, flood many, ensure flood is done, then release gate
+    // Act - Block first, flood many, wait for all to be enqueued, then release gate
     tx.send(Sequenced::new(person_alice()))?;
     start_rx.recv().await.expect("first processing started");
 
-    // Flood with many identical items, then a distinct last item
-    for _ in 0..500 {
+    // Flood with many identical items, then a distinct last item (sentinel)
+    let total_flood = 500;
+    for _ in 0..total_flood {
         tx.send(Sequenced::new(person_alice()))?;
     }
     tx.send(Sequenced::new(person_bob()))?; // sentinel latest
 
-    // Signal that flooding (including Bob) is complete
-    let _ = flood_done_tx.send(());
+    // Wait until all items (1 Alice + 500 Alices + 1 Bob = 502) have passed through
+    // the stream's map() and been processed by for_each's enqueue logic
+    let expected_enqueue_count = 1 + total_flood + 1;
+    while enqueue_count.load(Ordering::SeqCst) < expected_enqueue_count {
+        yield_now().await;
+    }
 
-    // Now release the first processing
+    // Now release the first processing - Bob is guaranteed to be the latest in state
     let _ = gate_tx.send(());
 
     // Expect exactly two completions (Alice, then Bob)
@@ -691,11 +695,9 @@ async fn test_subscribe_latest_async_high_volume() -> anyhow::Result<()> {
 
     // Assert - high volume collapses to exactly 2 processed items
     let processed = collected_items.lock().await;
-    assert_eq!(processed.len(), 2,);
+    assert_eq!(processed.len(), 2);
     assert_eq!(processed[0], person_alice());
-
-    // TODO: Find out why this fails intermittently
-    // assert_eq!(processed[1], person_bob());
+    assert_eq!(processed[1], person_bob());
     drop(processed);
 
     Ok(())
