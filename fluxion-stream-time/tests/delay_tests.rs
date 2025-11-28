@@ -10,6 +10,8 @@ use fluxion_test_utils::{
 
 #[tokio::test]
 async fn test_delay_with_chrono_timestamped() -> anyhow::Result<()> {
+    tokio::time::pause(); // Mock time for instant test execution
+
     // Arrange
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let delay_duration = Duration::seconds(1);
@@ -18,21 +20,29 @@ async fn test_delay_with_chrono_timestamped() -> anyhow::Result<()> {
     // Act - Send first value
     tx.send(ChronoTimestamped::now(person_alice()))?;
 
-    // Assert - Should NOT arrive immediately
+    // Assert - Should NOT arrive immediately (advance 100ms)
+    tokio::time::advance(std::time::Duration::from_millis(100)).await;
+    tokio::task::yield_now().await; // Allow tasks to process
     assert_no_element_emitted(&mut delayed, 100).await;
 
-    // Assert - Should arrive after delay (wait up to 1 second)
-    let result = unwrap_stream(&mut delayed, 1000).await.unwrap();
+    // Assert - Advance remaining time, should arrive
+    tokio::time::advance(std::time::Duration::from_millis(900)).await;
+    tokio::task::yield_now().await; // Allow tasks to process
+    let result = unwrap_stream(&mut delayed, 100).await.unwrap();
     assert_eq!(result.value, person_alice());
 
     // Act - Send second value
     tx.send(ChronoTimestamped::now(person_bob()))?;
 
-    // Assert - Should NOT arrive immediately
+    // Assert - Should NOT arrive immediately (advance 100ms)
+    tokio::time::advance(std::time::Duration::from_millis(100)).await;
+    tokio::task::yield_now().await; // Allow tasks to process
     assert_no_element_emitted(&mut delayed, 100).await;
 
-    // Assert - Should arrive after delay (wait up to 1 second)
-    let result = unwrap_stream(&mut delayed, 1000).await.unwrap();
+    // Assert - Advance remaining time, should arrive
+    tokio::time::advance(std::time::Duration::from_millis(900)).await;
+    tokio::task::yield_now().await; // Allow tasks to process
+    let result = unwrap_stream(&mut delayed, 100).await.unwrap();
     assert_eq!(result.value, person_bob());
 
     Ok(())

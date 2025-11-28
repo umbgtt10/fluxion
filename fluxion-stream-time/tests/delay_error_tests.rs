@@ -8,9 +8,15 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob},
     TestData,
 };
+use tokio::{
+    task::yield_now,
+    time::{advance, pause},
+};
 
 #[tokio::test]
 async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
+    pause(); // Mock time for instant test execution
+
     // Arrange
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let delay_duration = Duration::seconds(1);
@@ -19,27 +25,42 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
     // Act - Send value
     tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
 
-    // Assert - Should NOT arrive immediately
+    // Assert - Should NOT arrive immediately (advance 100ms)
+    advance(std::time::Duration::from_millis(100)).await;
+    yield_now().await; // Allow tasks to process
     assert_no_element_emitted(&mut delayed, 100).await;
 
-    // Assert - Should arrive after delay
-    assert_eq!(unwrap_stream(&mut delayed, 1000).await.unwrap().value, person_alice());
+    // Assert - Advance remaining time, should arrive
+    advance(std::time::Duration::from_millis(900)).await;
+    yield_now().await; // Allow tasks to process
+    assert_eq!(
+        unwrap_stream(&mut delayed, 100).await.unwrap().value,
+        person_alice()
+    );
 
     // Act - Send error - should pass through immediately
     tx.send(StreamItem::Error(FluxionError::stream_error("test error")))?;
 
-    // Assert - Error should arrive immediately (no delay)
+    // Assert - Error should arrive immediately (no time advance needed)
+    yield_now().await; // Allow tasks to process
     let error_result = unwrap_stream(&mut delayed, 100).await;
     assert!(matches!(error_result, StreamItem::Error(_)));
 
     // Act - Send another value
     tx.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;
 
-    // Assert - Should NOT arrive immediately
+    // Assert - Should NOT arrive immediately (advance 100ms)
+    advance(std::time::Duration::from_millis(100)).await;
+    yield_now().await; // Allow tasks to process
     assert_no_element_emitted(&mut delayed, 100).await;
 
-    // Assert - Should arrive after delay
-    assert_eq!(unwrap_stream(&mut delayed, 1000).await.unwrap().value, person_bob());
+    // Assert - Advance remaining time, should arrive
+    advance(std::time::Duration::from_millis(900)).await;
+    yield_now().await; // Allow tasks to process
+    assert_eq!(
+        unwrap_stream(&mut delayed, 100).await.unwrap().value,
+        person_bob()
+    );
 
     Ok(())
 }
