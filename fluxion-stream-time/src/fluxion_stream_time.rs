@@ -55,6 +55,48 @@ where
         self,
         duration: chrono::Duration,
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync>;
+
+    /// Debounces the stream by the specified duration.
+    ///
+    /// The debounce operator emits a value only after a pause in emissions of at least
+    /// the given duration. If a new value arrives before the timer expires, the timer
+    /// resets and only the newest value is eventually emitted.
+    ///
+    /// This implements **trailing debounce** (Rx standard): values are emitted only after
+    /// the specified quiet period. When the stream ends, any pending value is emitted immediately.
+    ///
+    /// Errors pass through immediately without debounce to ensure timely error propagation.
+    ///
+    /// # Arguments
+    ///
+    /// * `duration` - The duration of required inactivity before emitting a value
+    ///
+    /// # Returns
+    ///
+    /// A new `FluxionStream` where values are debounced by the specified duration.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
+    /// use fluxion_core::StreamItem;
+    /// use futures::stream;
+    /// use chrono::Duration;
+    ///
+    /// # async fn example() {
+    /// let source = stream::iter(vec![
+    ///     StreamItem::Value(ChronoTimestamped::now(42)),
+    /// ]);
+    ///
+    /// let debounced = FluxionStream::new(source)
+    ///     .debounce(Duration::milliseconds(100));
+    /// # }
+    /// ```
+    fn debounce(
+        self,
+        duration: chrono::Duration,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync>;
 }
 
 impl<S, T> FluxionStreamTimeOps<S, T> for FluxionStream<S>
@@ -69,5 +111,13 @@ where
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync> {
         let inner = self.into_inner();
         FluxionStream::new(delay(inner, duration))
+    }
+
+    fn debounce(
+        self,
+        duration: chrono::Duration,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync> {
+        let inner = self.into_inner();
+        FluxionStream::new(crate::debounce(inner, duration))
     }
 }
