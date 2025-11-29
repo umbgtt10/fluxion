@@ -57,7 +57,7 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
 async fn test_debounce_error_discards_pending() -> anyhow::Result<()> {
     // Arrange
     pause();
-    
+
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let debounce_duration = std::time::Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);

@@ -102,7 +102,7 @@ async fn test_debounce_multiple_resets() -> anyhow::Result<()> {
 async fn test_debounce_emits_pending_on_stream_end() -> anyhow::Result<()> {
     // Arrange
     pause();
-    
+
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let debounce_duration = std::time::Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);

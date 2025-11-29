@@ -8,7 +8,7 @@ use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     test_channel_with_errors,
-    test_data::person_alice,
+    test_data::{person_alice, person_bob},
     TestData,
 };
 use futures::StreamExt;
@@ -67,7 +67,7 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let throttle_duration = std::time::Duration::from_secs(1);
     let throttled = FluxionStream::new(stream).throttle(throttle_duration);
 
@@ -81,8 +81,8 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
     });
 
     // Act & Assert
-    tx.send(StreamItem::Value(ChronoTimestamped::now(1)))?;
-    let _ = recv_timeout(&mut result_rx, 1000).await; // Consume 1
+    tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
+    let _ = recv_timeout(&mut result_rx, 1000).await; // Consume Alice
 
     let error = FluxionError::stream_error("error during throttle");
     tx.send(StreamItem::Error(error.clone()))?;
@@ -97,7 +97,7 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
         error.to_string()
     );
 
-    tx.send(StreamItem::Value(ChronoTimestamped::now(2)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;
     advance(std::time::Duration::from_millis(100)).await;
     assert_no_recv(&mut result_rx, 100).await;
 

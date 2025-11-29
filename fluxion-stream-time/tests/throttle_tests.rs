@@ -6,6 +6,7 @@ use fluxion_stream::FluxionStream;
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
+    person::Person,
     test_channel,
     test_data::{person_alice, person_bob, person_charlie},
     TestData,
@@ -59,7 +60,7 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let throttle_duration = std::time::Duration::from_millis(100);
     let throttled = FluxionStream::new(stream).throttle(throttle_duration);
 
@@ -74,9 +75,15 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(ChronoTimestamped::now(0))?;
+    tx.send(ChronoTimestamped::now(TestData::Person(Person::new(
+        "Alice".to_string(),
+        0,
+    ))))?;
     for i in 1..10 {
-        tx.send(ChronoTimestamped::now(i))?;
+        tx.send(ChronoTimestamped::now(TestData::Person(Person::new(
+            "Alice".to_string(),
+            i,
+        ))))?;
     }
 
     // Allow processing of initial items
@@ -86,7 +93,10 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
     advance(std::time::Duration::from_millis(100)).await;
 
     // Send 10 - emitted
-    tx.send(ChronoTimestamped::now(10))?;
+    tx.send(ChronoTimestamped::now(TestData::Person(Person::new(
+        "Alice".to_string(),
+        10,
+    ))))?;
 
     // Assert
     let mut results = Vec::new();
@@ -102,7 +112,13 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
         results.push(item);
     }
 
-    assert_eq!(results, vec![0, 10]);
+    assert_eq!(
+        results,
+        vec![
+            TestData::Person(Person::new("Alice".to_string(), 0)),
+            TestData::Person(Person::new("Alice".to_string(), 10))
+        ]
+    );
 
     Ok(())
 }

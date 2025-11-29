@@ -5,7 +5,10 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::FluxionStream;
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
-use fluxion_test_utils::{helpers::recv_timeout, test_channel_with_errors};
+use fluxion_test_utils::{
+    helpers::recv_timeout, person::Person, test_channel_with_errors, test_data::person_alice,
+    TestData,
+};
 use futures::StreamExt;
 use tokio::time::pause;
 use tokio::{spawn, sync::mpsc::unbounded_channel};
@@ -15,13 +18,19 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let throttle_duration = std::time::Duration::from_millis(100);
 
     // Throttle then Map
     let throttled = FluxionStream::new(stream)
         .throttle(throttle_duration)
-        .map_ordered(|x| x.value * 2);
+        .map_ordered(|x| {
+            if let TestData::Person(p) = x.value {
+                TestData::Person(Person::new(p.name, p.age * 2))
+            } else {
+                x.value
+            }
+        });
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -46,14 +55,14 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
         error.to_string()
     );
 
-    tx.send(StreamItem::Value(ChronoTimestamped::now(10)))?;
+    tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await
             .unwrap()
             .ok()
             .expect("Expected Value"),
-        20
+        TestData::Person(Person::new("Alice".to_string(), 50))
     );
 
     Ok(())

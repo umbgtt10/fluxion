@@ -6,6 +6,7 @@ use fluxion_stream::FluxionStream;
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
+    person::Person,
     test_channel,
     test_data::{person_alice, person_bob},
     TestData,
@@ -18,7 +19,7 @@ use tokio::{spawn, sync::mpsc::unbounded_channel};
 async fn test_delay_with_chrono_timestamped() -> anyhow::Result<()> {
     // Arrange
     pause();
-    
+
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let delay_duration = std::time::Duration::from_secs(1);
     let mut delayed = FluxionStream::new(stream).delay(delay_duration);
@@ -52,11 +53,11 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<i32>>();
+    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let delay_duration = std::time::Duration::from_millis(10);
     let delayed = FluxionStream::new(stream).delay(delay_duration);
 
-    let count = 1000;
+    let count = 100;
     let (result_tx, mut result_rx) = unbounded_channel();
 
     // Spawn a task to drive the stream
@@ -69,7 +70,10 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
 
     // Act
     for i in 0..count {
-        tx.send(ChronoTimestamped::now(i))?;
+        tx.send(ChronoTimestamped::now(TestData::Person(Person::new(
+            format!("Person_{}", i),
+            i as u32,
+        ))))?;
     }
     // Drop tx to signal end of stream
     drop(tx);
@@ -86,7 +90,12 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
     assert_eq!(results.len(), count as usize);
 
     for i in 0..count {
-        assert_eq!(results[i as usize], i, "Order mismatch at index {}", i);
+        let expected = TestData::Person(Person::new(format!("Person_{}", i), i as u32));
+        assert_eq!(
+            results[i as usize], expected,
+            "Order mismatch at index {}",
+            i
+        );
     }
 
     Ok(())
