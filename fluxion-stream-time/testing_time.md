@@ -164,10 +164,10 @@ use std::time::{Duration, Instant};
 
 pub trait AsyncTimer: Send + Sync + 'static {
     type Sleep: Future<Output = ()> + Send;
-    
+
     /// Creates a future that completes after `duration`.
     fn sleep(&self, duration: Duration) -> Self::Sleep;
-    
+
     /// Returns the current instant according to this timer.
     fn now(&self) -> Instant;
 }
@@ -183,11 +183,11 @@ pub struct TokioTimer;
 
 impl AsyncTimer for TokioTimer {
     type Sleep = tokio::time::Sleep;
-    
+
     fn sleep(&self, duration: Duration) -> Self::Sleep {
         tokio::time::sleep(duration)
     }
-    
+
     fn now(&self) -> Instant {
         tokio::time::Instant::now().into_std()
     }
@@ -259,7 +259,7 @@ struct MockTimerState {
 
 impl MockTimer {
     pub fn new() -> Self { ... }
-    
+
     /// Advances the mock clock, waking all sleeps whose deadline has passed.
     pub fn advance(&self, duration: Duration) {
         let mut state = self.inner.lock().unwrap();
@@ -290,10 +290,10 @@ async fn test_debounce() {
     let mock_timer = MockTimer::new();
     let (tx, stream) = test_channel();
     let mut debounced = debounce_with_timer(stream, Duration::from_millis(500), mock_timer.clone());
-    
+
     tx.send(value)?;
     mock_timer.advance(Duration::from_millis(500));
-    
+
     assert_eq!(debounced.next().await, Some(value));
 }
 ```
