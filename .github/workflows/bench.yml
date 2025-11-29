@@ -38,6 +38,9 @@ jobs:
       - name: Run all fluxion-stream benchmarks
         run: cargo bench --package fluxion-stream
 
+      - name: Run all fluxion-stream-time benchmarks
+        run: cargo bench --package fluxion-stream-time
+
       # --------------------------------------------------------------
       # 1. ALWAYS create/update baseline from this run (before comparison)
       # --------------------------------------------------------------
@@ -161,7 +164,7 @@ jobs:
             }
 
             const runUrl = process.env.GITHUB_SERVER_URL + '/' + process.env.GITHUB_REPOSITORY + '/actions/runs/' + process.env.GITHUB_RUN_ID + '/artifacts';
-            const body = '### 📊 Benchmark Results (fluxion-stream)\n\n' +
+            const body = '### 📊 Benchmark Results (all packages)\n\n' +
                          '```\n' + comparison + '\n```\n\n' +
                          '📈 Full interactive report (HTML tables + graphs): [Download benchmark-report artifact](' + runUrl + ')';
 
