@@ -1,5 +1,5 @@
 use fluxion_core::StreamItem;
-use futures::stream::FuturesUnordered;
+use futures::stream::FuturesOrdered;
 use futures::{Stream, StreamExt};
 use pin_project::pin_project;
 use std::future::Future;
@@ -29,12 +29,12 @@ use tokio::time::{sleep, Sleep};
 pub fn delay<S, T>(stream: S, duration: chrono::Duration) -> impl Stream<Item = StreamItem<T>>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: Send + Sync + 'static,
+    T: Send,
 {
     DelayStream {
         stream,
         duration,
-        in_flight: FuturesUnordered::new(),
+        in_flight: FuturesOrdered::new(),
         upstream_done: false,
     }
 }
@@ -69,14 +69,14 @@ struct DelayStream<S, T> {
     #[pin]
     stream: S,
     duration: chrono::Duration,
-    in_flight: FuturesUnordered<DelayFuture<T>>,
+    in_flight: FuturesOrdered<DelayFuture<T>>,
     upstream_done: bool,
 }
 
 impl<S, T> Stream for DelayStream<S, T>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: Send + Sync + 'static,
+    T: Send,
 {
     type Item = StreamItem<T>;
 
@@ -93,7 +93,7 @@ where
                             delay: sleep(std_duration),
                             value: Some(value),
                         };
-                        this.in_flight.push(future);
+                        this.in_flight.push_back(future);
                     }
                     Poll::Ready(Some(StreamItem::Error(err))) => {
                         // Errors pass through immediately without delay
