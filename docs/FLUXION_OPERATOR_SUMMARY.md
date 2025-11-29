@@ -25,6 +25,13 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`take_latest_when`](#take_latest_when) | Sampling | Sample on trigger | Trigger |
 | [`emit_when`](#emit_when) | Gating | Gate with combined state | Source (filtered) |
 | [`on_error`](#on_error) | Error Handling | Selectively consume or propagate errors | Source |
+| `debounce` ⏱️ | Time | Emit after silence | Source (debounced) |
+| `throttle` ⏱️ | Time | Rate limiting | Source (throttled) |
+| `delay` ⏱️ | Time | Delay emissions | Source (delayed) |
+| `sample` ⏱️ | Time | Periodic sampling | Time intervals |
+| `timeout` ⏱️ | Time | Timeout detection | Source or timeout |
+
+**⏱️** = Available in [fluxion-stream-time](../fluxion-stream-time/README.md) crate
 
 ## Operators by Category
 
@@ -56,6 +63,15 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 
 ### 🛡️ Error Handling
 - [`on_error`](#on_error) - Selectively consume or propagate errors
+
+### ⏱️ Time-Based Operators (fluxion-stream-time)
+- `debounce` - Emit only after silence period
+- `throttle` - Emit at most once per time window
+- `delay` - Delay all emissions by duration
+- `sample` - Sample at regular intervals
+- `timeout` - Emit error if no items within duration
+
+**See [fluxion-stream-time documentation](../fluxion-stream-time/README.md) for details**
 
 ---
 
