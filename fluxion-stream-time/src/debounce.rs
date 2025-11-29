@@ -4,6 +4,7 @@ use pin_project::pin_project;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::time::Duration;
 use tokio::time::{sleep, Instant, Sleep};
 
 /// Debounces values from the source stream by the specified duration.
@@ -27,12 +28,23 @@ use tokio::time::{sleep, Instant, Sleep};
 /// ```rust
 /// use fluxion_stream_time::debounce;
 /// use fluxion_core::StreamItem;
-/// use futures::stream;
+/// use fluxion_test_utils::test_data::{person_alice, person_bob};
+/// use futures::stream::{self, StreamExt};
 /// use std::time::Duration;
 ///
-/// # async fn example() {
-/// let source = stream::iter(vec![StreamItem::Value(42)]);
-/// let debounced = debounce(source, Duration::from_millis(100));
+/// # #[tokio::main]
+/// # async fn main() {
+/// // Alice and Bob emitted immediately. Alice should be debounced (dropped).
+/// let source = stream::iter(vec![
+///     StreamItem::Value(person_alice()),
+///     StreamItem::Value(person_bob()),
+/// ]);
+///
+/// let mut debounced = debounce(source, Duration::from_millis(100));
+///
+/// // Only Bob should remain (trailing debounce)
+/// let item = debounced.next().await.unwrap().unwrap();
+/// assert_eq!(item, person_bob());
 /// # }
 /// ```
 pub fn debounce<S, T>(stream: S, duration: std::time::Duration) -> impl Stream<Item = StreamItem<T>>
@@ -43,7 +55,7 @@ where
     DebounceStream {
         stream,
         duration,
-        sleep: Box::pin(sleep(std::time::Duration::from_millis(0))), // Initial dummy sleep
+        sleep: Box::pin(sleep(Duration::from_millis(0))), // Initial dummy sleep
         pending_value: None,
         stream_ended: false,
     }

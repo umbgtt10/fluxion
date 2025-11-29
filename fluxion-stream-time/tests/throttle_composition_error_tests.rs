@@ -10,6 +10,7 @@ use fluxion_test_utils::{
     TestData,
 };
 use futures::StreamExt;
+use std::time::Duration;
 use tokio::time::pause;
 use tokio::{spawn, sync::mpsc::unbounded_channel};
 
@@ -19,7 +20,7 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
     pause();
 
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let throttle_duration = std::time::Duration::from_millis(100);
+    let throttle_duration = Duration::from_millis(100);
 
     // Map then Throttle
     let throttled = FluxionStream::new(stream)

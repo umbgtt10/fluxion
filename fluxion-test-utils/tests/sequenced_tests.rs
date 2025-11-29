@@ -5,6 +5,7 @@
 use fluxion_core::HasTimestamp;
 use fluxion_test_utils::Sequenced;
 use std::cmp::Ordering;
+use std::time::Duration;
 
 #[test]
 fn test_sequenced_ordering() {
@@ -143,7 +144,7 @@ fn test_sequenced_sequence_monotonic() {
         .map(|i| {
             let item = Sequenced::new(i);
             // Small sleep to ensure timestamp differences
-            std::thread::sleep(std::time::Duration::from_micros(100));
+            std::thread::sleep(Duration::from_micros(100));
             item
         })
         .collect();

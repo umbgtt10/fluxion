@@ -5,6 +5,7 @@ use pin_project::pin_project;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::time::Duration;
 use tokio::time::{sleep, Sleep};
 
 /// Delays each emission from the source stream by the specified duration.
@@ -18,15 +19,23 @@ use tokio::time::{sleep, Sleep};
 /// ```rust
 /// use fluxion_stream_time::delay;
 /// use fluxion_core::StreamItem;
-/// use futures::stream;
+/// use fluxion_test_utils::test_data::person_alice;
+/// use futures::stream::{self, StreamExt};
 /// use std::time::Duration;
 ///
-/// # async fn example() {
-/// let source = stream::iter(vec![StreamItem::Value(42)]);
-/// let delayed = delay(source, Duration::from_millis(100));
+/// # #[tokio::main]
+/// # async fn main() {
+/// let source = stream::iter(vec![
+///     StreamItem::Value(person_alice()),
+/// ]);
+///
+/// let mut delayed = delay(source, Duration::from_millis(10));
+///
+/// let item = delayed.next().await.unwrap().unwrap();
+/// assert_eq!(item, person_alice());
 /// # }
 /// ```
-pub fn delay<S, T>(stream: S, duration: std::time::Duration) -> impl Stream<Item = StreamItem<T>>
+pub fn delay<S, T>(stream: S, duration: Duration) -> impl Stream<Item = StreamItem<T>>
 where
     S: Stream<Item = StreamItem<T>>,
     T: Send,
@@ -68,7 +77,7 @@ impl<T> Future for DelayFuture<T> {
 struct DelayStream<S, T> {
     #[pin]
     stream: S,
-    duration: std::time::Duration,
+    duration: Duration,
     in_flight: FuturesOrdered<DelayFuture<T>>,
     upstream_done: bool,
 }

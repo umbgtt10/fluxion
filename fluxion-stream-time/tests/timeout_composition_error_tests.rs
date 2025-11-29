@@ -8,6 +8,7 @@ use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
 use fluxion_test_utils::helpers::assert_no_recv;
 use fluxion_test_utils::{helpers::recv_timeout, test_channel_with_errors, TestData};
 use futures::StreamExt;
+use std::time::Duration;
 use tokio::time::{advance, pause};
 use tokio::{spawn, sync::mpsc::unbounded_channel};
 
@@ -17,7 +18,7 @@ async fn test_timeout_chained_error_propagation() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let timeout_duration = std::time::Duration::from_millis(100);
+    let timeout_duration = Duration::from_millis(100);
 
     let pipeline = FluxionStream::new(stream)
         .map_ordered(|item| ChronoTimestamped::new(item.value, item.timestamp))
@@ -45,10 +46,10 @@ async fn test_timeout_chained_error_propagation() -> anyhow::Result<()> {
         "Stream processing error: Chain Error"
     );
 
-    advance(std::time::Duration::from_millis(50)).await;
+    advance(Duration::from_millis(50)).await;
     assert_no_recv(&mut result_rx, 50).await;
 
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_eq!(
         recv_timeout(&mut result_rx, 100)
             .await

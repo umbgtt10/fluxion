@@ -11,6 +11,7 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob},
     TestData,
 };
+use std::time::Duration;
 use tokio::time::{advance, pause};
 
 #[tokio::test]
@@ -19,15 +20,15 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let delay_duration = std::time::Duration::from_secs(1);
+    let delay_duration = Duration::from_secs(1);
     let mut delayed = FluxionStream::new(stream).delay(delay_duration);
 
     // Act & Assert
     tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
-    advance(std::time::Duration::from_millis(900)).await;
+    advance(Duration::from_millis(900)).await;
     assert_eq!(
         unwrap_stream(&mut delayed, 100).await.unwrap().value,
         person_alice()
@@ -40,10 +41,10 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
     ));
 
     tx.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
-    advance(std::time::Duration::from_millis(900)).await;
+    advance(Duration::from_millis(900)).await;
     assert_eq!(
         unwrap_stream(&mut delayed, 100).await.unwrap().value,
         person_bob()

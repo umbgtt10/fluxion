@@ -7,6 +7,7 @@ use fluxion_core::{ComparableUnpin, StreamItem};
 use fluxion_stream::FluxionStream;
 use futures::Stream;
 use std::fmt::Debug;
+use std::time::Duration;
 
 /// Extension trait for time-based operators on `FluxionStream` with `ChronoTimestamped` items.
 ///
@@ -39,21 +40,26 @@ where
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
-    /// use futures::stream;
-    /// use chrono::Duration;
+    /// use fluxion_test_utils::test_data::person_alice;
+    /// use futures::stream::{self, StreamExt};
+    /// use std::time::Duration;
     ///
-    /// # async fn example() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// let source = stream::iter(vec![
-    ///     StreamItem::Value(ChronoTimestamped::now(42)),
+    ///     StreamItem::Value(ChronoTimestamped::now(person_alice())),
     /// ]);
     ///
-    /// let delayed = FluxionStream::new(source)
-    ///     .delay(std::time::Duration::from_millis(100));
+    /// let mut stream = FluxionStream::new(source)
+    ///     .delay(Duration::from_millis(10));
+    ///
+    /// let item = stream.next().await.unwrap().unwrap();
+    /// assert_eq!(item.value, person_alice());
     /// # }
     /// ```
     fn delay(
         self,
-        duration: std::time::Duration,
+        duration: Duration,
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync>;
 
     /// Debounces the stream by the specified duration.
@@ -81,21 +87,29 @@ where
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
-    /// use futures::stream;
-    /// use chrono::Duration;
+    /// use fluxion_test_utils::test_data::{person_alice, person_bob};
+    /// use futures::stream::{self, StreamExt};
+    /// use std::time::Duration;
     ///
-    /// # async fn example() {
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// // Alice and Bob emitted immediately. Alice should be debounced (dropped).
     /// let source = stream::iter(vec![
-    ///     StreamItem::Value(ChronoTimestamped::now(42)),
+    ///     StreamItem::Value(ChronoTimestamped::now(person_alice())),
+    ///     StreamItem::Value(ChronoTimestamped::now(person_bob())),
     /// ]);
     ///
-    /// let debounced = FluxionStream::new(source)
-    ///     .debounce(std::time::Duration::from_millis(100));
+    /// let mut stream = FluxionStream::new(source)
+    ///     .debounce(Duration::from_millis(100));
+    ///
+    /// // Only Bob should remain (trailing debounce)
+    /// let item = stream.next().await.unwrap().unwrap();
+    /// assert_eq!(item.value, person_bob());
     /// # }
     /// ```
     fn debounce(
         self,
-        duration: std::time::Duration,
+        duration: Duration,
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync>;
 
     /// Throttles the stream by the specified duration.
@@ -123,21 +137,29 @@ where
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
-    /// use futures::stream;
-    /// use chrono::Duration;
+    /// use fluxion_test_utils::test_data::{person_alice, person_bob};
+    /// use futures::stream::{self, StreamExt};
+    /// use std::time::Duration;
     ///
-    /// # async fn example() {
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// // Alice and Bob emitted immediately. Bob should be throttled (dropped).
     /// let source = stream::iter(vec![
-    ///     StreamItem::Value(ChronoTimestamped::now(42)),
+    ///     StreamItem::Value(ChronoTimestamped::now(person_alice())),
+    ///     StreamItem::Value(ChronoTimestamped::now(person_bob())),
     /// ]);
     ///
-    /// let throttled = FluxionStream::new(source)
-    ///     .throttle(std::time::Duration::from_millis(100));
+    /// let mut stream = FluxionStream::new(source)
+    ///     .throttle(Duration::from_millis(100));
+    ///
+    /// // Only Alice should remain (leading throttle)
+    /// let item = stream.next().await.unwrap().unwrap();
+    /// assert_eq!(item.value, person_alice());
     /// # }
     /// ```
     fn throttle(
         self,
-        duration: std::time::Duration,
+        duration: Duration,
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync>;
 
     /// Samples the stream at periodic intervals.
@@ -163,21 +185,33 @@ where
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
-    /// use futures::stream;
-    /// use chrono::Duration;
+    /// use fluxion_test_utils::test_data::{person_alice, person_bob};
+    /// use futures::stream::StreamExt;
+    /// use std::time::Duration;
+    /// use tokio::sync::mpsc;
     ///
-    /// # async fn example() {
-    /// let source = stream::iter(vec![
-    ///     StreamItem::Value(ChronoTimestamped::now(42)),
-    /// ]);
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// // Use a channel to control emission timing relative to the sample interval
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let mut stream = FluxionStream::from_unbounded_receiver(rx)
+    ///     .sample(Duration::from_millis(10));
     ///
-    /// let sampled = FluxionStream::new(source)
-    ///     .sample(std::time::Duration::from_millis(100));
+    /// // Emit Alice and Bob immediately
+    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
+    /// tx.send(ChronoTimestamped::now(person_bob())).unwrap();
+    ///
+    /// // Wait for sample duration
+    /// tokio::time::sleep(Duration::from_millis(20)).await;
+    ///
+    /// // Sample should pick the latest one (Bob)
+    /// let item = stream.next().await.unwrap().unwrap();
+    /// assert_eq!(item.value, person_bob());
     /// # }
     /// ```
     fn sample(
         self,
-        duration: std::time::Duration,
+        duration: Duration,
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync>;
 
     /// Errors if the stream does not emit any value within the specified duration.
@@ -204,21 +238,26 @@ where
     /// use fluxion_stream::FluxionStream;
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
-    /// use futures::stream;
-    /// use chrono::Duration;
+    /// use fluxion_test_utils::test_data::person_alice;
+    /// use futures::stream::{self, StreamExt};
+    /// use std::time::Duration;
     ///
-    /// # async fn example() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// let source = stream::iter(vec![
-    ///     StreamItem::Value(ChronoTimestamped::now(42)),
+    ///     StreamItem::Value(ChronoTimestamped::now(person_alice())),
     /// ]);
     ///
-    /// let timed_out = FluxionStream::new(source)
-    ///     .timeout(std::time::Duration::from_millis(100));
+    /// let mut stream = FluxionStream::new(source)
+    ///     .timeout(Duration::from_millis(100));
+    ///
+    /// let item = stream.next().await.unwrap().unwrap();
+    /// assert_eq!(item.value, person_alice());
     /// # }
     /// ```
     fn timeout(
         self,
-        duration: std::time::Duration,
+        duration: Duration,
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync>;
 }
 
@@ -230,7 +269,7 @@ where
 {
     fn delay(
         self,
-        duration: std::time::Duration,
+        duration: Duration,
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync> {
         let inner = self.into_inner();
         FluxionStream::new(delay(inner, duration))
@@ -238,7 +277,7 @@ where
 
     fn debounce(
         self,
-        duration: std::time::Duration,
+        duration: Duration,
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync> {
         let inner = self.into_inner();
         FluxionStream::new(debounce(inner, duration))
@@ -246,7 +285,7 @@ where
 
     fn throttle(
         self,
-        duration: std::time::Duration,
+        duration: Duration,
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync> {
         let inner = self.into_inner();
         FluxionStream::new(throttle(inner, duration))
@@ -254,7 +293,7 @@ where
 
     fn sample(
         self,
-        duration: std::time::Duration,
+        duration: Duration,
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync> {
         let inner = self.into_inner();
         FluxionStream::new(sample(inner, duration))
@@ -262,7 +301,7 @@ where
 
     fn timeout(
         self,
-        duration: std::time::Duration,
+        duration: Duration,
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync> {
         let inner = self.into_inner();
         FluxionStream::new(timeout(inner, duration))

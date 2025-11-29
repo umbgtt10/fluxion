@@ -10,6 +10,7 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob, person_charlie},
     TestData,
 };
+use std::time::Duration;
 use tokio::time::{advance, pause};
 
 #[tokio::test]
@@ -18,7 +19,7 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let delay_duration = std::time::Duration::from_secs(1);
+    let delay_duration = Duration::from_secs(1);
 
     // Chain map_ordered then delay - transform the data before delaying
     let mut processed = FluxionStream::new(stream)
@@ -35,20 +36,20 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
-    advance(std::time::Duration::from_millis(900)).await;
+    advance(Duration::from_millis(900)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_bob()
     );
 
     tx.send(ChronoTimestamped::now(person_charlie()))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
-    advance(std::time::Duration::from_millis(900)).await;
+    advance(Duration::from_millis(900)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_charlie()
@@ -63,7 +64,7 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let delay_duration = std::time::Duration::from_secs(1);
+    let delay_duration = Duration::from_secs(1);
 
     // Chain filter_ordered then delay - keep only Alice and Charlie
     let mut processed = FluxionStream::new(stream)
@@ -72,10 +73,10 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
-    advance(std::time::Duration::from_millis(900)).await;
+    advance(Duration::from_millis(900)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_alice()
@@ -84,10 +85,10 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
     tx.send(ChronoTimestamped::now(person_bob()))?;
     tx.send(ChronoTimestamped::now(person_charlie()))?;
 
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
-    advance(std::time::Duration::from_millis(1000)).await;
+    advance(Duration::from_millis(1000)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_charlie()
@@ -103,7 +104,7 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
 
     let (tx1, stream1) = test_channel::<ChronoTimestamped<TestData>>();
     let (tx2, stream2) = test_channel::<ChronoTimestamped<TestData>>();
-    let delay_duration = std::time::Duration::from_millis(200);
+    let delay_duration = Duration::from_millis(200);
 
     // Merge streams with state (count emissions)
     // We use MergedStream to merge two streams and then apply delay
@@ -123,18 +124,18 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
     tx1.send(ChronoTimestamped::now(person_alice()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 0).await;
 
     tx2.send(ChronoTimestamped::now(person_bob()))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_alice()
     );
 
     assert_no_element_emitted(&mut processed, 0).await;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_bob()

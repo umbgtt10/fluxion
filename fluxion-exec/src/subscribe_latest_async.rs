@@ -75,6 +75,7 @@ where
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
+    /// use std::time::Duration;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -111,10 +112,13 @@ where
     ///
     /// // Send multiple items rapidly
     /// tx.send(1).unwrap();
-    /// tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    /// tokio::time::sleep(Duration::from_millis(10)).await;
     /// tx.send(2).unwrap(); // Will be skipped
     /// tx.send(3).unwrap(); // Will be skipped
     /// tx.send(4).unwrap(); // Latest - will be processed
+    ///
+    /// // Give time for items to be enqueued before releasing gate
+    /// tokio::time::sleep(Duration::from_millis(10)).await;
     ///
     /// // Release the gate
     /// gate_tx.send(()).unwrap();
@@ -140,6 +144,7 @@ where
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
+    /// use std::time::Duration;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -159,7 +164,7 @@ where
     ///                     if token.is_cancelled() {
     ///                         return Ok(()); // Exit gracefully
     ///                     }
-    ///                     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    ///                     tokio::time::sleep(Duration::from_millis(10)).await;
     ///                 }
     ///                 completed.lock().await.push(item);
     ///                 Ok::<(), std::io::Error>(())
@@ -171,7 +176,7 @@ where
     /// });
     ///
     /// tx.send(1).unwrap();
-    /// tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    /// tokio::time::sleep(Duration::from_millis(50)).await;
     /// tx.send(2).unwrap(); // This will cancel work on item 1 if still in progress
     /// drop(tx);
     ///
@@ -190,11 +195,12 @@ where
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
+    /// use std::time::Duration;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// async fn search_api(query: &str) -> Result<Vec<String>, std::io::Error> {
-    ///     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    ///     tokio::time::sleep(Duration::from_millis(100)).await;
     ///     Ok(vec![format!("result_for_{}", query)])
     /// }
     ///
@@ -243,6 +249,7 @@ where
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
+    /// use std::time::Duration;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -261,7 +268,7 @@ where
     ///             let rendered = rendered_clone.clone();
     ///             async move {
     ///                 // Simulate expensive rendering
-    ///                 tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    ///                 tokio::time::sleep(Duration::from_millis(50)).await;
     ///                 if !token.is_cancelled() {
     ///                     rendered.lock().await.push(state);
     ///                 }
@@ -282,7 +289,7 @@ where
     /// handle.await.unwrap().unwrap();
     ///
     /// // Only latest states should be rendered (intermediate ones skipped)
-    /// tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+    /// tokio::time::sleep(Duration::from_millis(200)).await;
     /// let rendered_states = rendered.lock().await;
     /// assert!(rendered_states.len() < 10); // Some states were skipped
     /// # }

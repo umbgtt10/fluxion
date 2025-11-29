@@ -12,6 +12,7 @@ use fluxion_test_utils::{
     TestData,
 };
 use futures::StreamExt;
+use std::time::Duration;
 use tokio::time::{advance, pause};
 use tokio::{spawn, sync::mpsc::unbounded_channel};
 
@@ -21,7 +22,7 @@ async fn test_throttle_with_chrono_timestamped() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let throttle_duration = std::time::Duration::from_secs(1);
+    let throttle_duration = Duration::from_secs(1);
     let throttled = FluxionStream::new(stream).throttle(throttle_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
@@ -41,10 +42,10 @@ async fn test_throttle_with_chrono_timestamped() -> anyhow::Result<()> {
     );
 
     tx.send(ChronoTimestamped::now(person_bob()))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_recv(&mut result_rx, 100).await;
 
-    advance(std::time::Duration::from_millis(900)).await;
+    advance(Duration::from_millis(900)).await;
     tx.send(ChronoTimestamped::now(person_charlie()))?;
 
     assert_eq!(
@@ -61,7 +62,7 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let throttle_duration = std::time::Duration::from_millis(100);
+    let throttle_duration = Duration::from_millis(100);
     let throttled = FluxionStream::new(stream).throttle(throttle_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
@@ -90,7 +91,7 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
     tokio::task::yield_now().await;
 
     // Advance time past window
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
 
     // Send 10 - emitted
     tx.send(ChronoTimestamped::now(TestData::Person(Person::new(

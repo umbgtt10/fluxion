@@ -11,6 +11,7 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob},
     TestData,
 };
+use std::time::Duration;
 use tokio::time::{advance, pause};
 
 #[tokio::test]
@@ -20,7 +21,7 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
 
     let (tx_source, source) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let (tx_filter, filter) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let delay_duration = std::time::Duration::from_millis(200);
+    let delay_duration = Duration::from_millis(200);
 
     // Chain emit_when then delay
     // emit_when gates source emissions based on filter state
@@ -42,7 +43,7 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
         error.to_string()
     );
 
-    advance(std::time::Duration::from_millis(200)).await;
+    advance(Duration::from_millis(200)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_alice()

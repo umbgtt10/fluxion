@@ -12,6 +12,7 @@ use fluxion_test_utils::{
     TestData,
 };
 use futures::StreamExt;
+use std::time::Duration;
 use tokio::time::{advance, pause};
 use tokio::{spawn, sync::mpsc::unbounded_channel};
 
@@ -21,7 +22,7 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let throttle_duration = std::time::Duration::from_millis(100);
+    let throttle_duration = Duration::from_millis(100);
 
     // Map then Throttle
     let throttled = FluxionStream::new(stream)
@@ -71,8 +72,8 @@ async fn test_throttle_chained_with_throttle() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
 
     let throttled = FluxionStream::new(stream)
-        .throttle(std::time::Duration::from_millis(100))
-        .throttle(std::time::Duration::from_millis(200));
+        .throttle(Duration::from_millis(100))
+        .throttle(Duration::from_millis(200));
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -90,15 +91,15 @@ async fn test_throttle_chained_with_throttle() -> anyhow::Result<()> {
         person_alice()
     );
 
-    advance(std::time::Duration::from_millis(49)).await;
+    advance(Duration::from_millis(49)).await;
     tx.send(ChronoTimestamped::now(person_bob()))?;
     assert_no_recv(&mut result_rx, 50).await;
 
-    advance(std::time::Duration::from_millis(10)).await;
+    advance(Duration::from_millis(10)).await;
     tx.send(ChronoTimestamped::now(person_charlie()))?;
     assert_no_recv(&mut result_rx, 50).await;
 
-    advance(std::time::Duration::from_millis(50)).await;
+    advance(Duration::from_millis(50)).await;
     tx.send(ChronoTimestamped::now(person_diane()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
@@ -116,7 +117,7 @@ async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let (filter_tx, filter_stream) = test_channel::<ChronoTimestamped<bool>>();
 
-    let throttle_duration = std::time::Duration::from_millis(100);
+    let throttle_duration = Duration::from_millis(100);
 
     let throttled = FluxionStream::new(stream)
         .take_while_with(filter_stream, |&condition| condition)
@@ -142,7 +143,7 @@ async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
     tx.send(ChronoTimestamped::now(person_bob()))?;
     assert_no_recv(&mut result_rx, 50).await;
 
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     tx.send(ChronoTimestamped::now(person_charlie()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
@@ -150,7 +151,7 @@ async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
     );
 
     filter_tx.send(ChronoTimestamped::now(false))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     tx.send(ChronoTimestamped::now(person_diane()))?;
     assert_no_recv(&mut result_rx, 100).await;
 

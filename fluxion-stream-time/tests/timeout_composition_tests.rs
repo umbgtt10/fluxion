@@ -12,6 +12,7 @@ use fluxion_test_utils::{
     TestData,
 };
 use futures::StreamExt;
+use std::time::Duration;
 use tokio::time::{advance, pause};
 use tokio::{spawn, sync::mpsc::unbounded_channel};
 
@@ -21,7 +22,7 @@ async fn test_timeout_chained_with_map() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let timeout_duration = std::time::Duration::from_millis(100);
+    let timeout_duration = Duration::from_millis(100);
 
     // Chain: map -> timeout
     let pipeline = FluxionStream::new(stream)
@@ -41,13 +42,13 @@ async fn test_timeout_chained_with_map() -> anyhow::Result<()> {
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    advance(std::time::Duration::from_millis(50)).await;
+    advance(Duration::from_millis(50)).await;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())
@@ -59,7 +60,7 @@ async fn test_timeout_chained_with_combine_with_previous() -> anyhow::Result<()>
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let timeout_duration = std::time::Duration::from_millis(100);
+    let timeout_duration = Duration::from_millis(100);
 
     // Chain: combine_with_previous -> map -> timeout
     // We need to map back to ChronoTimestamped for timeout to work
@@ -87,20 +88,20 @@ async fn test_timeout_chained_with_combine_with_previous() -> anyhow::Result<()>
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    advance(std::time::Duration::from_millis(50)).await;
+    advance(Duration::from_millis(50)).await;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         (None, person_alice())
     );
 
     tx.send(ChronoTimestamped::now(person_bob()))?;
-    advance(std::time::Duration::from_millis(50)).await;
+    advance(Duration::from_millis(50)).await;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         (Some(person_alice()), person_bob())
     );
 
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())
@@ -112,7 +113,7 @@ async fn test_timeout_chained_with_scan_ordered() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let timeout_duration = std::time::Duration::from_millis(100);
+    let timeout_duration = Duration::from_millis(100);
 
     // Chain: scan_ordered -> timeout
     let pipeline = FluxionStream::new(stream)
@@ -139,14 +140,14 @@ async fn test_timeout_chained_with_scan_ordered() -> anyhow::Result<()> {
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    advance(std::time::Duration::from_millis(50)).await;
+    advance(Duration::from_millis(50)).await;
     assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap(), 25);
 
     tx.send(ChronoTimestamped::now(person_bob()))?;
-    advance(std::time::Duration::from_millis(50)).await;
+    advance(Duration::from_millis(50)).await;
     assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap(), 55);
 
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())

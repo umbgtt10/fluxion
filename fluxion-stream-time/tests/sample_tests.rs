@@ -11,6 +11,7 @@ use fluxion_test_utils::{
     TestData,
 };
 use futures::StreamExt;
+use std::time::Duration;
 use tokio::time::{advance, pause};
 use tokio::{spawn, sync::mpsc::unbounded_channel};
 
@@ -20,7 +21,7 @@ async fn test_sample_emits_latest_in_window() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let sample_duration = std::time::Duration::from_millis(100);
+    let sample_duration = Duration::from_millis(100);
     let sampled = FluxionStream::new(stream).sample(sample_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
@@ -34,11 +35,11 @@ async fn test_sample_emits_latest_in_window() -> anyhow::Result<()> {
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    advance(std::time::Duration::from_millis(50)).await;
+    advance(Duration::from_millis(50)).await;
     tx.send(ChronoTimestamped::now(person_bob()))?;
     assert_no_recv(&mut result_rx, 10).await;
 
-    advance(std::time::Duration::from_millis(50)).await;
+    advance(Duration::from_millis(50)).await;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_bob()
@@ -53,7 +54,7 @@ async fn test_sample_no_emission_if_no_value() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let sample_duration = std::time::Duration::from_millis(100);
+    let sample_duration = Duration::from_millis(100);
     let sampled = FluxionStream::new(stream).sample(sample_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
@@ -66,12 +67,12 @@ async fn test_sample_no_emission_if_no_value() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_recv(&mut result_rx, 100).await;
 
-    advance(std::time::Duration::from_millis(50)).await;
+    advance(Duration::from_millis(50)).await;
     tx.send(ChronoTimestamped::now(person_charlie()))?;
-    advance(std::time::Duration::from_millis(50)).await;
+    advance(Duration::from_millis(50)).await;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_charlie()

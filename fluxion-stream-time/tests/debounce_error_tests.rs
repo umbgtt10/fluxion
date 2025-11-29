@@ -11,6 +11,7 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob},
     TestData,
 };
+use std::time::Duration;
 use tokio::time::{advance, pause};
 
 #[tokio::test]
@@ -19,14 +20,14 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let debounce_duration = std::time::Duration::from_millis(500);
+    let debounce_duration = Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
 
     // Act & Assert
     tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
     assert_no_element_emitted(&mut debounced, 0).await; // Poll the stream to let debounce see the value
 
-    advance(std::time::Duration::from_millis(300)).await;
+    advance(Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
     tx.send(StreamItem::Error(FluxionError::stream_error("test error")))?;
@@ -35,16 +36,16 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
-    advance(std::time::Duration::from_millis(300)).await;
+    advance(Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
     tx.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;
     assert_no_element_emitted(&mut debounced, 0).await; // Poll the stream to let debounce see the value
 
-    advance(std::time::Duration::from_millis(300)).await;
+    advance(Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    advance(std::time::Duration::from_millis(200)).await;
+    advance(Duration::from_millis(200)).await;
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_bob()
@@ -59,23 +60,23 @@ async fn test_debounce_error_discards_pending() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let debounce_duration = std::time::Duration::from_millis(500);
+    let debounce_duration = Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
 
     // Act & Assert
     tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
 
-    advance(std::time::Duration::from_millis(200)).await;
+    advance(Duration::from_millis(200)).await;
     tx.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;
 
-    advance(std::time::Duration::from_millis(200)).await;
+    advance(Duration::from_millis(200)).await;
     tx.send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut debounced, 100).await,
         StreamItem::Error(_)
     ));
 
-    advance(std::time::Duration::from_millis(500)).await;
+    advance(Duration::from_millis(500)).await;
     assert_no_element_emitted(&mut debounced, 100).await;
 
     Ok(())

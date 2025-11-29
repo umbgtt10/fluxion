@@ -4,6 +4,7 @@ use pin_project::pin_project;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::time::Duration;
 use tokio::time::{sleep_until, Instant, Sleep};
 
 /// Samples the source stream at periodic intervals.
@@ -19,16 +20,33 @@ use tokio::time::{sleep_until, Instant, Sleep};
 ///
 /// ```rust
 /// use fluxion_stream_time::sample;
+/// use fluxion_stream::FluxionStream;
 /// use fluxion_core::StreamItem;
-/// use futures::stream;
+/// use fluxion_test_utils::test_data::{person_alice, person_bob};
+/// use futures::stream::StreamExt;
 /// use std::time::Duration;
+/// use tokio::sync::mpsc;
 ///
-/// # async fn example() {
-/// let source = stream::iter(vec![StreamItem::Value(42)]);
-/// let sampled = sample(source, Duration::from_millis(100));
+/// # #[tokio::main]
+/// # async fn main() {
+/// // Use a channel to control emission timing relative to the sample interval
+/// let (tx, rx) = mpsc::unbounded_channel();
+/// let source = FluxionStream::from_unbounded_receiver(rx);
+/// let mut sampled = sample(source, Duration::from_millis(10));
+///
+/// // Emit Alice and Bob immediately
+/// tx.send(person_alice()).unwrap();
+/// tx.send(person_bob()).unwrap();
+///
+/// // Wait for sample duration
+/// tokio::time::sleep(Duration::from_millis(20)).await;
+///
+/// // Sample should pick the latest one (Bob)
+/// let item = sampled.next().await.unwrap().unwrap();
+/// assert_eq!(item, person_bob());
 /// # }
 /// ```
-pub fn sample<S, T>(stream: S, duration: std::time::Duration) -> impl Stream<Item = StreamItem<T>>
+pub fn sample<S, T>(stream: S, duration: Duration) -> impl Stream<Item = StreamItem<T>>
 where
     S: Stream<Item = StreamItem<T>>,
     T: Send + Clone, // Clone is needed because we might hold a value that we haven't emitted yet
@@ -49,7 +67,7 @@ where
 {
     #[pin]
     stream: S,
-    duration: std::time::Duration,
+    duration: Duration,
     sleep: Pin<Box<Sleep>>,
     pending_value: Option<S::Item>,
     is_done: bool,

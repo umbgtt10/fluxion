@@ -162,7 +162,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 
 **Status:** Planned
 
-**Goal:** Introduce time-based reactive operators through optional `fluxion-time` crate
+**Goal:** Introduce time-based reactive operators through optional `fluxion-stream-time` crate
 
 **Essential Features:**
 - [ ] `fluxion-stream-time` crate - Optional time-based operators with chrono dependency

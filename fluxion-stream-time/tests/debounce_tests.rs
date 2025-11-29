@@ -10,6 +10,7 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob, person_charlie},
     TestData,
 };
+use std::time::Duration;
 use tokio::time::{advance, pause};
 
 #[tokio::test]
@@ -18,20 +19,20 @@ async fn test_debounce_emits_after_quiet_period() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let debounce_duration = std::time::Duration::from_millis(500);
+    let debounce_duration = Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    advance(std::time::Duration::from_millis(300)).await;
+    advance(Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_alice()
@@ -46,21 +47,21 @@ async fn test_debounce_resets_on_new_value() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let debounce_duration = std::time::Duration::from_millis(500);
+    let debounce_duration = Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    advance(std::time::Duration::from_millis(300)).await;
+    advance(Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
     tx.send(ChronoTimestamped::now(person_bob()))?;
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    advance(std::time::Duration::from_millis(300)).await;
+    advance(Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    advance(std::time::Duration::from_millis(200)).await;
+    advance(Duration::from_millis(200)).await;
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_bob()
@@ -75,21 +76,21 @@ async fn test_debounce_multiple_resets() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let debounce_duration = std::time::Duration::from_millis(500);
+    let debounce_duration = Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
 
     tx.send(ChronoTimestamped::now(person_bob()))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
 
     tx.send(ChronoTimestamped::now(person_charlie()))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    advance(std::time::Duration::from_millis(400)).await;
+    advance(Duration::from_millis(400)).await;
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_charlie()
@@ -104,12 +105,12 @@ async fn test_debounce_emits_pending_on_stream_end() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let debounce_duration = std::time::Duration::from_millis(500);
+    let debounce_duration = Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    advance(std::time::Duration::from_millis(200)).await;
+    advance(Duration::from_millis(200)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
     drop(tx);

@@ -9,6 +9,7 @@ use fluxion_test_utils::{
     helpers::recv_timeout, test_channel_with_errors, test_data::person_alice, TestData,
 };
 use futures::StreamExt;
+use std::time::Duration;
 use tokio::time::{advance, pause};
 use tokio::{spawn, sync::mpsc::unbounded_channel};
 
@@ -18,7 +19,7 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let timeout_duration = std::time::Duration::from_millis(100);
+    let timeout_duration = Duration::from_millis(100);
     let timed_out = FluxionStream::new(stream).timeout(timeout_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
@@ -43,7 +44,7 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
         "Stream processing error: Test Error"
     );
 
-    advance(std::time::Duration::from_millis(50)).await;
+    advance(Duration::from_millis(50)).await;
     tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 100)

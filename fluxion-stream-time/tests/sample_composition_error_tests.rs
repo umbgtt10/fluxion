@@ -7,6 +7,7 @@ use fluxion_stream::FluxionStream;
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
 use fluxion_test_utils::{helpers::recv_timeout, test_channel_with_errors, TestData};
 use futures::StreamExt;
+use std::time::Duration;
 use tokio::time::pause;
 use tokio::{spawn, sync::mpsc::unbounded_channel};
 
@@ -16,7 +17,7 @@ async fn test_sample_chained_error_propagation() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let sample_duration = std::time::Duration::from_millis(100);
+    let sample_duration = Duration::from_millis(100);
 
     let pipeline = FluxionStream::new(stream)
         .map_ordered(|item| ChronoTimestamped::new(item.value, item.timestamp))

@@ -11,6 +11,7 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob},
     TestData,
 };
+use std::time::Duration;
 use tokio::time::{advance, pause};
 
 #[tokio::test]
@@ -20,7 +21,7 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
 
     let (tx_source, source) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let (tx_trigger, trigger) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let debounce_duration = std::time::Duration::from_millis(500);
+    let debounce_duration = Duration::from_millis(500);
 
     // Chain take_latest_when then debounce
     // take_latest_when emits the latest source value when trigger emits
@@ -45,7 +46,7 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
     tx_trigger.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    advance(std::time::Duration::from_millis(500)).await;
+    advance(Duration::from_millis(500)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_alice()

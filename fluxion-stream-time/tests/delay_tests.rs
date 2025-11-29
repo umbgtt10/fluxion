@@ -12,6 +12,7 @@ use fluxion_test_utils::{
     TestData,
 };
 use futures::StreamExt;
+use std::time::Duration;
 use tokio::time::{advance, pause};
 use tokio::{spawn, sync::mpsc::unbounded_channel};
 
@@ -21,25 +22,25 @@ async fn test_delay_with_chrono_timestamped() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let delay_duration = std::time::Duration::from_secs(1);
+    let delay_duration = Duration::from_secs(1);
     let mut delayed = FluxionStream::new(stream).delay(delay_duration);
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
-    advance(std::time::Duration::from_millis(900)).await;
+    advance(Duration::from_millis(900)).await;
     assert_eq!(
         unwrap_stream(&mut delayed, 100).await.unwrap().value,
         person_alice()
     );
 
     tx.send(ChronoTimestamped::now(person_bob()))?;
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
-    advance(std::time::Duration::from_millis(900)).await;
+    advance(Duration::from_millis(900)).await;
     assert_eq!(
         unwrap_stream(&mut delayed, 100).await.unwrap().value,
         person_bob()
@@ -54,7 +55,7 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let delay_duration = std::time::Duration::from_millis(10);
+    let delay_duration = Duration::from_millis(10);
     let delayed = FluxionStream::new(stream).delay(delay_duration);
 
     let count = 100;
@@ -79,7 +80,7 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
     drop(tx);
 
     // Advance time to ensure all delays expire
-    advance(std::time::Duration::from_millis(100)).await;
+    advance(Duration::from_millis(100)).await;
 
     // Assert
     let mut results = Vec::with_capacity(count as usize);
