@@ -29,18 +29,21 @@ use tokio::time::{sleep, Instant, Sleep};
 /// use fluxion_stream_time::debounce;
 /// use fluxion_core::StreamItem;
 /// use fluxion_test_utils::test_data::{person_alice, person_bob};
-/// use futures::stream::{self, StreamExt};
+/// use futures::stream::StreamExt;
 /// use std::time::Duration;
+/// use tokio::sync::mpsc;
+/// use tokio_stream::wrappers::UnboundedReceiverStream;
 ///
 /// # #[tokio::main]
 /// # async fn main() {
-/// // Alice and Bob emitted immediately. Alice should be debounced (dropped).
-/// let source = stream::iter(vec![
-///     StreamItem::Value(person_alice()),
-///     StreamItem::Value(person_bob()),
-/// ]);
+/// let (tx, rx) = mpsc::unbounded_channel();
+/// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
 ///
 /// let mut debounced = debounce(source, Duration::from_millis(100));
+///
+/// // Alice and Bob emitted immediately. Alice should be debounced (dropped).
+/// tx.send(person_alice()).unwrap();
+/// tx.send(person_bob()).unwrap();
 ///
 /// // Only Bob should remain (trailing debounce)
 /// let item = debounced.next().await.unwrap().unwrap();

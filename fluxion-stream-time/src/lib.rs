@@ -25,22 +25,22 @@
 //! use fluxion_core::StreamItem;
 //! use futures::stream;
 //! use std::time::Duration;
+//! use tokio::sync::mpsc;
 //!
 //! # async fn example() {
-//! let source = stream::iter(vec![
-//!     StreamItem::Value(ChronoTimestamped::now(42)),
-//!     StreamItem::Value(ChronoTimestamped::now(100)),
-//! ]);
+//! let (tx, rx) = mpsc::unbounded_channel();
 //!
 //! // Delay all emissions by 100ms
-//! let delayed = FluxionStream::new(source)
+//! let delayed = FluxionStream::from_unbounded_receiver(rx)
 //!     .delay(Duration::from_millis(100));
 //!
+//! tx.send(ChronoTimestamped::now(42)).unwrap();
+//! tx.send(ChronoTimestamped::now(100)).unwrap();
+//!
 //! // Or debounce to emit only after 100ms of quiet time
-//! # let source = stream::iter(vec![
-//! #     StreamItem::Value(ChronoTimestamped::now(42)),
-//! # ]);
-//! let debounced = FluxionStream::new(source)
+//! # let (tx, rx) = mpsc::unbounded_channel();
+//! # tx.send(ChronoTimestamped::now(42)).unwrap();
+//! let debounced = FluxionStream::from_unbounded_receiver(rx)
 //!     .debounce(Duration::from_millis(100));
 //! # }
 //! ```
@@ -80,14 +80,15 @@ use std::time::Duration;
 /// use fluxion_core::StreamItem;
 /// use futures::stream;
 /// use std::time::Duration;
+/// use tokio::sync::mpsc;
 ///
 /// # async fn example() {
-/// let source = stream::iter(vec![
-///     StreamItem::Value(ChronoTimestamped::now(42)),
-/// ]);
+/// let (tx, rx) = mpsc::unbounded_channel();
 ///
-/// let delayed = FluxionStream::new(source)
+/// let delayed = FluxionStream::from_unbounded_receiver(rx)
 ///     .delay(Duration::from_millis(100));
+///
+/// tx.send(ChronoTimestamped::now(42)).unwrap();
 /// # }
 /// ```
 pub trait ChronoStreamOps<S, T>
@@ -119,17 +120,17 @@ where
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::person_alice;
-    /// use futures::stream::{self, StreamExt};
+    /// use futures::stream::StreamExt;
     /// use std::time::Duration;
+    /// use tokio::sync::mpsc;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let source = stream::iter(vec![
-    ///     StreamItem::Value(ChronoTimestamped::now(person_alice())),
-    /// ]);
-    ///
-    /// let mut stream = FluxionStream::new(source)
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let mut stream = FluxionStream::from_unbounded_receiver(rx)
     ///     .delay(Duration::from_millis(10));
+    ///
+    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
     ///
     /// let item = stream.next().await.unwrap().unwrap();
     /// assert_eq!(item.value, person_alice());
@@ -168,19 +169,19 @@ where
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
-    /// use futures::stream::{self, StreamExt};
+    /// use futures::stream::StreamExt;
     /// use std::time::Duration;
+    /// use tokio::sync::mpsc;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// // Alice and Bob emitted immediately. Alice should be debounced (dropped).
-    /// let source = stream::iter(vec![
-    ///     StreamItem::Value(ChronoTimestamped::now(person_alice())),
-    ///     StreamItem::Value(ChronoTimestamped::now(person_bob())),
-    /// ]);
-    ///
-    /// let mut stream = FluxionStream::new(source)
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let mut stream = FluxionStream::from_unbounded_receiver(rx)
     ///     .debounce(Duration::from_millis(100));
+    ///
+    /// // Alice and Bob emitted immediately. Alice should be debounced (dropped).
+    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
+    /// tx.send(ChronoTimestamped::now(person_bob())).unwrap();
     ///
     /// // Only Bob should remain (trailing debounce)
     /// let item = stream.next().await.unwrap().unwrap();
@@ -220,19 +221,19 @@ where
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
-    /// use futures::stream::{self, StreamExt};
+    /// use futures::stream::StreamExt;
     /// use std::time::Duration;
+    /// use tokio::sync::mpsc;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// // Alice and Bob emitted immediately. Bob should be throttled (dropped).
-    /// let source = stream::iter(vec![
-    ///     StreamItem::Value(ChronoTimestamped::now(person_alice())),
-    ///     StreamItem::Value(ChronoTimestamped::now(person_bob())),
-    /// ]);
-    ///
-    /// let mut stream = FluxionStream::new(source)
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let mut stream = FluxionStream::from_unbounded_receiver(rx)
     ///     .throttle(Duration::from_millis(100));
+    ///
+    /// // Alice and Bob emitted immediately. Bob should be throttled (dropped).
+    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
+    /// tx.send(ChronoTimestamped::now(person_bob())).unwrap();
     ///
     /// // Only Alice should remain (leading throttle)
     /// let item = stream.next().await.unwrap().unwrap();
@@ -325,17 +326,17 @@ where
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::person_alice;
-    /// use futures::stream::{self, StreamExt};
+    /// use futures::stream::StreamExt;
     /// use std::time::Duration;
+    /// use tokio::sync::mpsc;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let source = stream::iter(vec![
-    ///     StreamItem::Value(ChronoTimestamped::now(person_alice())),
-    /// ]);
-    ///
-    /// let mut stream = FluxionStream::new(source)
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let mut stream = FluxionStream::from_unbounded_receiver(rx)
     ///     .timeout(Duration::from_millis(100));
+    ///
+    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
     ///
     /// let item = stream.next().await.unwrap().unwrap();
     /// assert_eq!(item.value, person_alice());

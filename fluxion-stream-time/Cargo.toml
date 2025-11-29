@@ -27,3 +27,4 @@ tracing = ["dep:tracing", "fluxion-core/tracing"]
 [dev-dependencies]
 anyhow = { workspace = true }
 fluxion-test-utils = { workspace = true }
+tokio-stream = { workspace = true }

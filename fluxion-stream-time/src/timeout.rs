@@ -23,16 +23,19 @@ use tokio::time::{sleep_until, Instant, Sleep};
 /// use fluxion_stream_time::timeout;
 /// use fluxion_core::StreamItem;
 /// use fluxion_test_utils::test_data::person_alice;
-/// use futures::stream::{self, StreamExt};
+/// use futures::stream::StreamExt;
 /// use std::time::Duration;
+/// use tokio::sync::mpsc;
+/// use tokio_stream::wrappers::UnboundedReceiverStream;
 ///
 /// # #[tokio::main]
 /// # async fn main() {
-/// let source = stream::iter(vec![
-///     StreamItem::Value(person_alice()),
-/// ]);
+/// let (tx, rx) = mpsc::unbounded_channel();
+/// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
 ///
 /// let mut timed_out = timeout(source, Duration::from_millis(100));
+///
+/// tx.send(person_alice()).unwrap();
 ///
 /// let item = timed_out.next().await.unwrap().unwrap();
 /// assert_eq!(item, person_alice());
