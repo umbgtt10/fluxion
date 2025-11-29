@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::{chrono_timestamped::ChronoTimestamped, debounce, delay, sample, throttle};
+use crate::{chrono_timestamped::ChronoTimestamped, debounce, delay, sample, throttle, timeout};
 use fluxion_core::{ComparableUnpin, StreamItem};
 use fluxion_stream::FluxionStream;
 use futures::Stream;
@@ -179,6 +179,47 @@ where
         self,
         duration: std::time::Duration,
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync>;
+
+    /// Errors if the stream does not emit any value within the specified duration.
+    ///
+    /// The timeout operator monitors the time interval between emissions from the source stream.
+    /// If the source stream does not emit any value within the specified duration, the operator
+    /// emits a `FluxionError::StreamProcessingError` with "Timeout" context and terminates the stream.
+    ///
+    /// - If the source emits a value, the timer is reset.
+    /// - If the source completes, the timeout operator completes.
+    /// - If the source errors, the error is passed through and the timer is reset.
+    ///
+    /// # Arguments
+    ///
+    /// * `duration` - The timeout duration
+    ///
+    /// # Returns
+    ///
+    /// A new `FluxionStream` that enforces the timeout policy.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
+    /// use fluxion_core::StreamItem;
+    /// use futures::stream;
+    /// use chrono::Duration;
+    ///
+    /// # async fn example() {
+    /// let source = stream::iter(vec![
+    ///     StreamItem::Value(ChronoTimestamped::now(42)),
+    /// ]);
+    ///
+    /// let timed_out = FluxionStream::new(source)
+    ///     .timeout(std::time::Duration::from_millis(100));
+    /// # }
+    /// ```
+    fn timeout(
+        self,
+        duration: std::time::Duration,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync>;
 }
 
 impl<S, T> FluxionStreamTimeOps<S, T> for FluxionStream<S>
@@ -217,5 +258,13 @@ where
     ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync> {
         let inner = self.into_inner();
         FluxionStream::new(sample(inner, duration))
+    }
+
+    fn timeout(
+        self,
+        duration: std::time::Duration,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync> {
+        let inner = self.into_inner();
+        FluxionStream::new(timeout(inner, duration))
     }
 }

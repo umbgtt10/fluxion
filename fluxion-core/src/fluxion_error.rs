@@ -54,12 +54,29 @@ pub enum FluxionError {
         /// The individual errors (limited to prevent unbounded growth)
         errors: Vec<FluxionError>,
     },
+
+    /// Timeout occurred
+    ///
+    /// This error is emitted when a time-based operation (like `timeout`)
+    /// exceeds its specified duration.
+    #[error("Timeout error: {context}")]
+    TimeoutError {
+        /// Context about the timeout (e.g. duration)
+        context: String,
+    },
 }
 
 impl FluxionError {
     /// Create a stream processing error with the given context
     pub fn stream_error(context: impl Into<String>) -> Self {
         Self::StreamProcessingError {
+            context: context.into(),
+        }
+    }
+
+    /// Create a timeout error with the given context
+    pub fn timeout_error(context: impl Into<String>) -> Self {
+        Self::TimeoutError {
             context: context.into(),
         }
     }
@@ -233,6 +250,9 @@ impl Clone for FluxionError {
             Self::MultipleErrors { count, errors } => Self::MultipleErrors {
                 count: *count,
                 errors: errors.clone(),
+            },
+            Self::TimeoutError { context } => Self::TimeoutError {
+                context: context.clone(),
             },
         }
     }
