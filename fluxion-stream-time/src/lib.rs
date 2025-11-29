@@ -12,6 +12,8 @@
 //! - **`ChronoTimestamped<T>`** - Wraps a value with a UTC timestamp
 //! - **`delay(duration)`** - Delays each emission by the specified duration
 //! - **`debounce(duration)`** - Emits values only after a quiet period
+//! - **`throttle(duration)`** - Emits a value then ignores subsequent values for a duration
+//! - **`sample(duration)`** - Emits the most recent value at periodic intervals
 //! - **`ChronoStreamOps`** - Extension trait for chainable time-based operations
 //!
 //! # Example
@@ -48,12 +50,14 @@ mod chrono_timestamped;
 mod debounce;
 mod delay;
 mod fluxion_stream_time;
+mod sample;
 mod throttle;
 
 pub use chrono_timestamped::ChronoTimestamped;
 pub use debounce::debounce;
 pub use delay::delay;
 pub use fluxion_stream_time::FluxionStreamTimeOps;
+pub use sample::sample;
 pub use throttle::throttle;
 
 use fluxion_stream::FluxionStream;
@@ -219,6 +223,49 @@ where
     ) -> FluxionStream<
         impl Stream<Item = fluxion_core::StreamItem<ChronoTimestamped<T>>> + Send + Sync,
     >;
+
+    /// Samples the stream at periodic intervals.
+    ///
+    /// The sample operator emits the most recently emitted value from the source
+    /// stream within periodic time intervals.
+    ///
+    /// - If the source emits multiple values within the interval, only the last one is emitted.
+    /// - If the source emits no values within the interval, nothing is emitted for that interval.
+    /// - Errors are passed through immediately.
+    ///
+    /// # Arguments
+    ///
+    /// * `duration` - The sampling interval
+    ///
+    /// # Returns
+    ///
+    /// A new `FluxionStream` where values are sampled at the specified interval.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
+    /// use fluxion_core::StreamItem;
+    /// use futures::stream;
+    /// use std::time::Duration;
+    ///
+    /// # async fn example() {
+    /// let source = stream::iter(vec![
+    ///     StreamItem::Value(ChronoTimestamped::now(1)),
+    ///     StreamItem::Value(ChronoTimestamped::now(2)),
+    /// ]);
+    ///
+    /// let sampled = FluxionStream::new(source)
+    ///     .sample(Duration::from_millis(100));
+    /// # }
+    /// ```
+    fn sample(
+        self,
+        duration: std::time::Duration,
+    ) -> FluxionStream<
+        impl Stream<Item = fluxion_core::StreamItem<ChronoTimestamped<T>>> + Send + Sync,
+    >;
 }
 
 impl<S, T> ChronoStreamOps<S, T> for FluxionStream<S>
@@ -258,5 +305,15 @@ where
     > {
         let inner = self.into_inner();
         FluxionStream::new(throttle::throttle(inner, duration))
+    }
+
+    fn sample(
+        self,
+        duration: std::time::Duration,
+    ) -> FluxionStream<
+        impl Stream<Item = fluxion_core::StreamItem<ChronoTimestamped<T>>> + Send + Sync,
+    > {
+        let inner = self.into_inner();
+        FluxionStream::new(sample::sample(inner, duration))
     }
 }
