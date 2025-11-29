@@ -84,16 +84,12 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
     );
 
     tx.send(ChronoTimestamped::now(person_bob()))?;
-
     tx.send(ChronoTimestamped::now(person_charlie()))?;
 
     advance(std::time::Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
     advance(std::time::Duration::from_millis(1000)).await;
-    assert_no_element_emitted(&mut processed, 100).await;
-
-    advance(std::time::Duration::from_millis(800)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_charlie()
@@ -131,7 +127,6 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
 
     advance(std::time::Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 0).await;
-
 
     tx2.send(ChronoTimestamped::now(person_bob()))?;
     advance(std::time::Duration::from_millis(100)).await;

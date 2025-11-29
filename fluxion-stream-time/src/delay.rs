@@ -1,6 +1,8 @@
 use fluxion_core::StreamItem;
-use futures::Stream;
+use futures::stream::FuturesUnordered;
+use futures::{Stream, StreamExt};
 use pin_project::pin_project;
+use tokio::time::sleep;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -27,12 +29,13 @@ use std::task::{Context, Poll};
 pub fn delay<S, T>(stream: S, duration: chrono::Duration) -> impl Stream<Item = StreamItem<T>>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: Send,
+    T: Send + Sync + 'static,
 {
     DelayStream {
         stream,
         duration,
-        pending: None,
+        in_flight: FuturesUnordered::new(),
+        upstream_done: false,
     }
 }
 
@@ -41,53 +44,58 @@ struct DelayStream<S: Stream> {
     #[pin]
     stream: S,
     duration: chrono::Duration,
-    pending: Option<(S::Item, Pin<Box<tokio::time::Sleep>>)>,
+    in_flight: FuturesUnordered<Pin<Box<dyn Future<Output = S::Item> + Send + Sync>>>,
+    upstream_done: bool,
 }
 
 impl<S, T> Stream for DelayStream<S>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: Send,
+    T: Send + Sync + 'static,
 {
     type Item = StreamItem<T>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.project();
+        let mut this = self.project();
 
-        // Check if we have a pending delayed item
-        if let Some((_item, sleep)) = this.pending {
-            match sleep.as_mut().poll(cx) {
-                Poll::Ready(_) => {
-                    // Delay completed, emit the item
-                    let result = this.pending.take().map(|(item, _)| item);
-                    return Poll::Ready(result);
-                }
-                Poll::Pending => {
-                    // Still waiting
-                    return Poll::Pending;
+        // 1. Poll upstream for new items if not done
+        if !*this.upstream_done {
+            loop {
+                match this.stream.as_mut().poll_next(cx) {
+                    Poll::Ready(Some(StreamItem::Value(value))) => {
+                        let std_duration = duration_to_std(this.duration);
+                        let future = Box::pin(async move {
+                            sleep(std_duration).await;
+                            StreamItem::Value(value)
+                        })
+                            as Pin<Box<dyn Future<Output = S::Item> + Send + Sync>>;
+                        this.in_flight.push(future);
+                    }
+                    Poll::Ready(Some(StreamItem::Error(err))) => {
+                        // Errors pass through immediately without delay
+                        return Poll::Ready(Some(StreamItem::Error(err)));
+                    }
+                    Poll::Ready(None) => {
+                        *this.upstream_done = true;
+                        break;
+                    }
+                    Poll::Pending => {
+                        break;
+                    }
                 }
             }
         }
 
-        // Poll the source stream for the next item
-        match this.stream.poll_next(cx) {
-            Poll::Ready(Some(StreamItem::Value(value))) => {
-                // Convert chrono::Duration to std::time::Duration
-                let std_duration = duration_to_std(this.duration);
-                let sleep = Box::pin(tokio::time::sleep(std_duration));
-
-                // Store the item and sleep future
-                *this.pending = Some((StreamItem::Value(value), sleep));
-
-                // Wake the task to poll the sleep future
-                cx.waker().wake_by_ref();
-                Poll::Pending
+        // 2. Poll in_flight for completed delays
+        match this.in_flight.poll_next_unpin(cx) {
+            Poll::Ready(Some(item)) => Poll::Ready(Some(item)),
+            Poll::Ready(None) => {
+                if *this.upstream_done {
+                    Poll::Ready(None)
+                } else {
+                    Poll::Pending
+                }
             }
-            Poll::Ready(Some(StreamItem::Error(err))) => {
-                // Errors pass through immediately without delay
-                Poll::Ready(Some(StreamItem::Error(err)))
-            }
-            Poll::Ready(None) => Poll::Ready(None),
             Poll::Pending => Poll::Pending,
         }
     }
