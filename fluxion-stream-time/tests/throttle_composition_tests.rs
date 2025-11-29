@@ -16,6 +16,7 @@ use tokio::{spawn, sync::mpsc::unbounded_channel};
 async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
     // Arrange
     pause();
+
     let (tx, stream) = test_channel::<ChronoTimestamped<i32>>();
     let throttle_duration = std::time::Duration::from_millis(100);
 
@@ -79,6 +80,49 @@ async fn test_throttle_chained_with_throttle() -> anyhow::Result<()> {
     advance(std::time::Duration::from_millis(50)).await;
     tx.send(ChronoTimestamped::now(4))?;
     assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap(), 4);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
+    // Arrange
+    pause();
+
+    let (tx, stream) = test_channel::<ChronoTimestamped<i32>>();
+    let (filter_tx, filter_stream) = test_channel::<ChronoTimestamped<bool>>();
+
+    let throttle_duration = std::time::Duration::from_millis(100);
+
+    let throttled = FluxionStream::new(stream)
+        .throttle(throttle_duration)
+        .take_while_with(filter_stream, |&condition| condition);
+
+    let (result_tx, mut result_rx) = unbounded_channel();
+
+    spawn(async move {
+        let mut stream = throttled.map(|item| item.map(|x| x.value));
+        while let Some(item) = stream.next().await {
+            result_tx.send(item.unwrap()).unwrap();
+        }
+    });
+
+    // Act & Assert
+    filter_tx.send(ChronoTimestamped::now(true))?;
+    tx.send(ChronoTimestamped::now(10))?;
+    assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap(), 10);
+
+    tx.send(ChronoTimestamped::now(20))?;
+    assert_no_recv(&mut result_rx, 50).await;
+
+    advance(std::time::Duration::from_millis(100)).await;
+    tx.send(ChronoTimestamped::now(30))?;
+    assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap(), 30);
+
+    filter_tx.send(ChronoTimestamped::now(false))?;
+    advance(std::time::Duration::from_millis(100)).await;
+    tx.send(ChronoTimestamped::now(40))?;
+    assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())
 }

@@ -18,6 +18,7 @@ use tokio::{spawn, sync::mpsc::unbounded_channel};
 async fn test_delay_with_chrono_timestamped() -> anyhow::Result<()> {
     // Arrange
     pause();
+    
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let delay_duration = std::time::Duration::from_secs(1);
     let mut delayed = FluxionStream::new(stream).delay(delay_duration);
