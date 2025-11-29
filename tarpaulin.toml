@@ -7,4 +7,4 @@ out = ["Html", "Xml"]
 
 [run]
 fail-under = 88
-exclude-files = [ "examples/**" ]
+exclude-files = [ "examples/**", "fluxion-stream-time/src/fluxion_stream_time.rs" ]

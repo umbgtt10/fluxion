@@ -21,7 +21,7 @@ Fluxion is 100% Rust-idiomatic reactive streams library in with temporal orderin
 
 ## Features
 
-- 🔄 **Rx-Style Operators**: Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, etc.)
+- 🔄 **Rx-Style Operators**: 22 implemented operators (32 planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, etc.)
 - ⏱️ **Temporal Ordering**: Guaranteed ordering semantics via `Timestamped` trait
 - ⚡ **Async Execution**: Efficient async processing with `subscribe_async` and `subscribe_latest_async`
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
@@ -254,8 +254,8 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
     );
     let payment_received1 = Sequenced::with_timestamp(
         Event::PaymentReceived {
-            user_id: 1,
-            amount: 100,
+            order_id: 100,
+            amount: 99.99,
         },
         4,
     );
@@ -549,6 +549,7 @@ async fn test_subscribe_latest_async_example() -> anyhow::Result<()> {
 
 - **[fluxion-rx](fluxion/README.md)** - Main convenience crate (re-exports all operators)
 - **[fluxion-stream](fluxion-stream/README.md)** - Stream operators and composition patterns
+- **[fluxion-stream-time](fluxion-stream-time/README.md)** - Time-based operators (delay, debounce, throttle, sample, timeout)
 - **[fluxion-exec](fluxion-exec/README.md)** - Async execution and subscription utilities
 - **[fluxion-core](fluxion-core/README.md)** - Core traits, types, and utilities
 - **[fluxion-ordered-merge](fluxion-ordered-merge/README.md)** - Generic ordered merging
@@ -627,6 +628,7 @@ This repository is organized as a Cargo workspace with the following crates:
 
 - **[fluxion-rx](fluxion/README.md)** - Main convenience crate (re-exports from other crates)
 - **[fluxion-stream](fluxion-stream/README.md)** - Stream operators and combinators
+- **[fluxion-stream-time](fluxion-stream-time/README.md)** - Time-based operators (delay, debounce, throttle, sample, timeout)
 - **[fluxion-exec](fluxion-exec/README.md)** - Execution utilities and subscriptions
 - **[fluxion-core](fluxion-core/README.md)** - Core traits, types, and utilities
 - **[fluxion-ordered-merge](fluxion-ordered-merge/README.md)** - Generic ordered merging implementation
@@ -642,7 +644,7 @@ See individual crate READMEs for detailed documentation.
 
 ## Project Status
 
-**Current Version:** 0.3.0
+**Current Version:** 0.4.0
 
 - ✅ Published to crates.io
 - ✅ Core functionality complete

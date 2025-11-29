@@ -2,6 +2,8 @@
 
 A comprehensive guide to all stream operators available in `fluxion-stream`.
 
+**Note:** For time-based operators (`delay`, `debounce`, `throttle`, `sample`, `timeout`), see the **[fluxion-stream-time](../fluxion-stream-time/README.md)** crate documentation.
+
 ## Quick Reference Table
 
 | Operator | Category | Purpose | Emissions Driven By |

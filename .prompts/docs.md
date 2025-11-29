@@ -7,5 +7,6 @@ And ensure:
  - absolute consistency
  - no broken links
  - no broken tables
-Provide a detailed report of the changes.
+ - all the operators (new and old) are correctly documented
+Provide a detailed report of the changes required to have a bullet-proof documentation.
 Do not change anything for now!

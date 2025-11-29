@@ -83,51 +83,144 @@ let distinct = stream.distinct_until_changed_by(|a, b| (a - b).abs() < 0.5);
 
 ---
 
-## High Priority (Version 0.4.0)
+## ✅ Implemented in Version 0.4.0
 
-### `scan` 🚀
+### `scan_ordered` ✅
 **Accumulate state across stream**
 
 ```rust
-let accumulated = stream.scan(initial_state, |acc, item| {
+let accumulated = stream.scan_ordered(initial_state, |acc, item| {
     *acc += item;
     *acc
 });
 ```
 
+**Status**: Implemented in v0.4.0
 **Use case**: Running totals, counters, state machines
 **Complexity**: Medium - requires mutable state management
+**Tests**: 26 comprehensive tests (functional + error + composition)
 **RxJS equivalent**: `scan`
 
 ---
 
-### `debounce` 🚀
+### `skip_items` / `take_items` ✅
+**Stream control operators**
+
+```rust
+let skipped = stream.skip_items(5);
+let limited = stream.take_items(10);
+```
+
+**Status**: Implemented in v0.4.0
+**Use case**: Pagination, limiting results, skipping warmup
+**Complexity**: Low - simple counter
+**RxJS equivalent**: `skip` / `take`
+
+---
+
+### `start_with` ✅
+**Prepend initial values**
+
+```rust
+let with_defaults = stream.start_with(vec![default_value]);
+```
+
+**Status**: Implemented in v0.4.0
+**Use case**: Default values, initialization
+**Complexity**: Low - emit before first stream item
+**RxJS equivalent**: `startWith`
+
+---
+
+### `distinct_until_changed` / `distinct_until_changed_by` ✅
+**Suppress consecutive duplicates**
+
+```rust
+let distinct = stream.distinct_until_changed();
+let custom = stream.distinct_until_changed_by(|a, b| a.id == b.id);
+```
+
+**Status**: Implemented in v0.4.0
+**Use case**: Change detection, noise reduction
+**Complexity**: Low - simple comparison
+**Tests**: 30 comprehensive tests
+**RxJS equivalent**: `distinctUntilChanged`
+
+---
+
+## ✅ Time-Based Operators (fluxion-stream-time v0.4.0)
+
+### `delay` ✅
+**Delay emissions by duration**
+
+```rust
+let delayed = stream.delay(Duration::from_millis(100));
+```
+
+**Status**: Implemented in fluxion-stream-time v0.4.0
+**Use case**: Artificial delays, scheduling
+**Complexity**: Medium - timing logic
+**RxJS equivalent**: `delay`
+
+---
+
+### `debounce` ✅
 **Emit only after a period of inactivity**
 
 ```rust
 let debounced = stream.debounce(Duration::from_millis(500));
 ```
 
+**Status**: Implemented in fluxion-stream-time v0.4.0
 **Use case**: Rate limiting, search input handling, button debouncing
 **Complexity**: High - requires timing and cancellation
 **RxJS equivalent**: `debounceTime`
 
 ---
 
-### `throttle` 🚀
+### `throttle` ✅
 **Limit emission rate**
 
 ```rust
 let throttled = stream.throttle(Duration::from_millis(100));
 ```
 
+**Status**: Implemented in fluxion-stream-time v0.4.0
 **Use case**: Rate limiting, API call throttling
 **Complexity**: Medium - requires timing logic
 **RxJS equivalent**: `throttleTime`
 
 ---
 
-## Medium Priority (Version 0.5.0)
+### `sample` ✅
+**Periodic sampling**
+
+```rust
+let sampled = stream.sample(Duration::from_millis(100));
+```
+
+**Status**: Implemented in fluxion-stream-time v0.4.0
+**Use case**: Downsampling high-frequency streams
+**Complexity**: Medium - periodic timing
+**RxJS equivalent**: `sample`
+
+---
+
+### `timeout` ✅
+**Error if no emission within duration**
+
+```rust
+let with_timeout = stream.timeout(Duration::from_secs(30));
+```
+
+**Status**: Implemented in fluxion-stream-time v0.4.0
+**Use case**: Watchdogs, health checks
+**Complexity**: Medium - timing and error handling
+**RxJS equivalent**: `timeout`
+
+---
+
+## Medium Priority (Version 0.6.0+)
 
 ### `buffer` 💭
 **Collect items into batches**
@@ -155,46 +248,7 @@ let windowed = stream.window(Duration::from_secs(5));
 
 ---
 
-### `skip` 💭
-**Skip first N items**
-
-```rust
-let skipped = stream.skip(10);
-```
-
-**Use case**: Ignoring initial values, warmup periods
-**Complexity**: Low - simple counter
-**RxJS equivalent**: `skip`
-
----
-
-### `take` 💭
-**Take only first N items**
-
-```rust
-let limited = stream.take(100);
-```
-
-**Use case**: Limiting results, sampling
-**Complexity**: Low - simple counter with completion
-**RxJS equivalent**: `take`
-
----
-
-### `start_with` 💭
-**Prepend initial value**
-
-```rust
-let with_default = stream.start_with(default_value);
-```
-
-**Use case**: Default values, initialization
-**Complexity**: Low - emit before first stream item
-**RxJS equivalent**: `startWith`
-
----
-
-## Lower Priority (Version 0.6.0)
+## Lower Priority (Version 0.7.0+)
 
 ### `retry` 📝
 **Retry failed operations**
@@ -206,45 +260,6 @@ let with_retry = stream.retry(3);
 **Use case**: Error recovery, resilience
 **Complexity**: High - requires error handling integration
 **RxJS equivalent**: `retry`
-
----
-
-### `timeout` 📝
-**Emit error if no item within duration**
-
-```rust
-let with_timeout = stream.timeout(Duration::from_secs(30));
-```
-
-**Use case**: Watchdogs, health checks
-**Complexity**: Medium - requires timing and error handling
-**RxJS equivalent**: `timeout`
-
----
-
-### `delay` 📝
-**Delay all emissions**
-
-```rust
-let delayed = stream.delay(Duration::from_secs(1));
-```
-
-**Use case**: Artificial delays, scheduling
-**Complexity**: Medium - requires timing logic
-**RxJS equivalent**: `delay`
-
----
-
-### `sample` ⏸️
-**Sample at regular intervals**
-
-```rust
-let sampled = stream.sample(Duration::from_millis(100));
-```
-
-**Use case**: Downsampling high-frequency streams
-**Complexity**: Medium - similar to `throttle`
-**RxJS equivalent**: `sample`
 
 ---
 
