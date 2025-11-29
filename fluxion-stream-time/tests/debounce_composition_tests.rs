@@ -21,9 +21,8 @@ async fn test_debounce_chaining_with_map_ordered() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let debounce_duration = std::time::Duration::from_millis(500);
 
-    // Chain debounce with map_ordered - transform the data
+    // Chain map_ordered then debounce - transform the data before debouncing
     let mut processed = FluxionStream::new(stream)
-        .debounce(debounce_duration)
         .map_ordered(|item: ChronoTimestamped<_>| {
             // Transform Alice to Bob
             let transformed = if item.value == person_alice() {
@@ -32,7 +31,8 @@ async fn test_debounce_chaining_with_map_ordered() -> anyhow::Result<()> {
                 item.value.clone()
             };
             ChronoTimestamped::new(transformed, item.timestamp)
-        });
+        })
+        .debounce(debounce_duration);
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
@@ -71,10 +71,10 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let debounce_duration = std::time::Duration::from_millis(500);
 
-    // Chain debounce with filter_ordered - keep only Alice and Charlie
+    // Chain filter_ordered then debounce - keep only Alice and Charlie
     let mut processed = FluxionStream::new(stream)
-        .debounce(debounce_duration)
-        .filter_ordered(|data: &_| *data == person_alice() || *data == person_charlie());
+        .filter_ordered(|data: &_| *data == person_alice() || *data == person_charlie())
+        .debounce(debounce_duration);
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
@@ -104,8 +104,11 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
     tx.send(ChronoTimestamped::now(person_bob()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    advance(std::time::Duration::from_millis(500)).await;
-    assert_no_element_emitted(&mut processed, 0).await;
+    advance(std::time::Duration::from_millis(300)).await;
+    assert_eq!(
+        unwrap_stream(&mut processed, 100).await.unwrap().value,
+        person_alice()
+    );
 
     tx.send(ChronoTimestamped::now(person_alice()))?;
     assert_no_element_emitted(&mut processed, 0).await;

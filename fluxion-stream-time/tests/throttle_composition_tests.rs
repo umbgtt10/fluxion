@@ -23,34 +23,33 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let throttle_duration = std::time::Duration::from_millis(100);
 
-    // Throttle then Map
-    let throttled = FluxionStream::new(stream).throttle(throttle_duration);
+    // Map then Throttle
+    let throttled = FluxionStream::new(stream)
+        .map_ordered(|x| {
+            let val = if let TestData::Person(p) = x.value {
+                TestData::Person(Person::new(p.name, p.age * 2))
+            } else {
+                x.value
+            };
+            ChronoTimestamped::new(val, x.timestamp)
+        })
+        .throttle(throttle_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
-        let mut stream = throttled.map(|item| {
-            item.map(|x| {
-                if let TestData::Person(p) = x.value {
-                    TestData::Person(Person::new(p.name, p.age * 2))
-                } else {
-                    x.value
-                }
-            })
-        });
+        let mut stream = throttled;
         while let Some(item) = stream.next().await {
-            result_tx.send(item.unwrap()).unwrap();
+            result_tx.send(item.unwrap().value).unwrap();
         }
     });
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    let result = recv_timeout(&mut result_rx, 1000).await.unwrap();
-    if let TestData::Person(p) = result {
-        assert_eq!(p.age, 50);
-    } else {
-        panic!("Expected Person");
-    }
+    assert_eq!(
+        recv_timeout(&mut result_rx, 1000).await.unwrap(),
+        TestData::Person(Person::new("Alice".to_string(), 50))
+    );
 
     tx.send(ChronoTimestamped::now(person_bob()))?;
     assert_no_recv(&mut result_rx, 100).await;
@@ -120,8 +119,8 @@ async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
     let throttle_duration = std::time::Duration::from_millis(100);
 
     let throttled = FluxionStream::new(stream)
-        .throttle(throttle_duration)
-        .take_while_with(filter_stream, |&condition| condition);
+        .take_while_with(filter_stream, |&condition| condition)
+        .throttle(throttle_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 

@@ -20,8 +20,8 @@ async fn test_timeout_chained_error_propagation() -> anyhow::Result<()> {
     let timeout_duration = std::time::Duration::from_millis(100);
 
     let pipeline = FluxionStream::new(stream)
-        .timeout(timeout_duration)
-        .map_ordered(|item| item.value);
+        .map_ordered(|item| ChronoTimestamped::new(item.value, item.timestamp))
+        .timeout(timeout_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 

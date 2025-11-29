@@ -20,9 +20,8 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let delay_duration = std::time::Duration::from_secs(1);
 
-    // Chain delay with map_ordered - transform the data
+    // Chain map_ordered then delay - transform the data before delaying
     let mut processed = FluxionStream::new(stream)
-        .delay(delay_duration)
         .map_ordered(|item: ChronoTimestamped<_>| {
             // Transform Alice to Bob
             let transformed = if item.value == person_alice() {
@@ -31,7 +30,8 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
                 item.value.clone()
             };
             ChronoTimestamped::new(transformed, item.timestamp)
-        });
+        })
+        .delay(delay_duration);
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
@@ -65,10 +65,10 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let delay_duration = std::time::Duration::from_secs(1);
 
-    // Chain delay with filter_ordered - keep only Alice and Charlie
+    // Chain filter_ordered then delay - keep only Alice and Charlie
     let mut processed = FluxionStream::new(stream)
-        .delay(delay_duration)
-        .filter_ordered(|data: &_| *data == person_alice() || *data == person_charlie());
+        .filter_ordered(|data: &_| *data == person_alice() || *data == person_charlie())
+        .delay(delay_duration);
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;

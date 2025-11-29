@@ -24,8 +24,8 @@ async fn test_sample_chained_with_map() -> anyhow::Result<()> {
     let sample_duration = std::time::Duration::from_millis(100);
 
     let pipeline = FluxionStream::new(stream)
-        .sample(sample_duration)
-        .map_ordered(|item| item.value);
+        .map_ordered(|item| ChronoTimestamped::new(item.value, item.timestamp))
+        .sample(sample_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -34,7 +34,7 @@ async fn test_sample_chained_with_map() -> anyhow::Result<()> {
         while let Some(item) = stream.next().await {
             // map returns StreamItem<T>, we want to unwrap it
             if let StreamItem::Value(val) = item {
-                result_tx.send(val).unwrap();
+                result_tx.send(val.value).unwrap();
             }
         }
     });

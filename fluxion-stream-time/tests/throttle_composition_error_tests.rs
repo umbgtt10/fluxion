@@ -21,16 +21,17 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let throttle_duration = std::time::Duration::from_millis(100);
 
-    // Throttle then Map
+    // Map then Throttle
     let throttled = FluxionStream::new(stream)
-        .throttle(throttle_duration)
         .map_ordered(|x| {
-            if let TestData::Person(p) = x.value {
+            let val = if let TestData::Person(p) = x.value {
                 TestData::Person(Person::new(p.name, p.age * 2))
             } else {
                 x.value
-            }
-        });
+            };
+            ChronoTimestamped::new(val, x.timestamp)
+        })
+        .throttle(throttle_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -61,7 +62,8 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
             .await
             .unwrap()
             .ok()
-            .expect("Expected Value"),
+            .expect("Expected Value")
+            .value,
         TestData::Person(Person::new("Alice".to_string(), 50))
     );
 

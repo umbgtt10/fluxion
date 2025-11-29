@@ -23,10 +23,10 @@ async fn test_timeout_chained_with_map() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let timeout_duration = std::time::Duration::from_millis(100);
 
-    // Chain: timeout -> map (extract value)
+    // Chain: map -> timeout
     let pipeline = FluxionStream::new(stream)
-        .timeout(timeout_duration)
-        .map_ordered(|item| item.value);
+        .map_ordered(|item| ChronoTimestamped::new(item.value, item.timestamp))
+        .timeout(timeout_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -34,7 +34,7 @@ async fn test_timeout_chained_with_map() -> anyhow::Result<()> {
         let mut stream = pipeline;
         while let Some(item) = stream.next().await {
             if let StreamItem::Value(val) = item {
-                result_tx.send(val).unwrap();
+                result_tx.send(val.value).unwrap();
             }
         }
     });
