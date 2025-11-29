@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use chrono::Duration;
 use fluxion_stream::FluxionStream;
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
 use fluxion_test_utils::{
@@ -18,7 +17,7 @@ async fn test_debounce_emits_after_quiet_period() -> anyhow::Result<()> {
     // Arrange
     pause();
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let debounce_duration = Duration::milliseconds(500);
+    let debounce_duration = std::time::Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
 
     // Act & Assert
@@ -45,7 +44,7 @@ async fn test_debounce_resets_on_new_value() -> anyhow::Result<()> {
     // Arrange
     pause();
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let debounce_duration = Duration::milliseconds(500);
+    let debounce_duration = std::time::Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
 
     // Act & Assert
@@ -73,7 +72,7 @@ async fn test_debounce_multiple_resets() -> anyhow::Result<()> {
     // Arrange
     pause();
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let debounce_duration = Duration::milliseconds(500);
+    let debounce_duration = std::time::Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
 
     // Act & Assert
@@ -101,7 +100,7 @@ async fn test_debounce_emits_pending_on_stream_end() -> anyhow::Result<()> {
     // Arrange
     pause();
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let debounce_duration = Duration::milliseconds(500);
+    let debounce_duration = std::time::Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
 
     // Act & Assert

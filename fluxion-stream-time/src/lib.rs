@@ -21,7 +21,7 @@
 //! use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
 //! use fluxion_core::StreamItem;
 //! use futures::stream;
-//! use chrono::Duration;
+//! use std::time::Duration;
 //!
 //! # async fn example() {
 //! let source = stream::iter(vec![
@@ -31,14 +31,14 @@
 //!
 //! // Delay all emissions by 100ms
 //! let delayed = FluxionStream::new(source)
-//!     .delay(Duration::milliseconds(100));
+//!     .delay(Duration::from_millis(100));
 //!
 //! // Or debounce to emit only after 100ms of quiet time
 //! # let source = stream::iter(vec![
 //! #     StreamItem::Value(ChronoTimestamped::now(42)),
 //! # ]);
 //! let debounced = FluxionStream::new(source)
-//!     .debounce(Duration::milliseconds(100));
+//!     .debounce(Duration::from_millis(100));
 //! # }
 //! ```
 //!
@@ -71,7 +71,7 @@ use futures::Stream;
 /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
 /// use fluxion_core::StreamItem;
 /// use futures::stream;
-/// use chrono::Duration;
+/// use std::time::Duration;
 ///
 /// # async fn example() {
 /// let source = stream::iter(vec![
@@ -79,7 +79,7 @@ use futures::Stream;
 /// ]);
 ///
 /// let delayed = FluxionStream::new(source)
-///     .delay(Duration::milliseconds(100));
+///     .delay(Duration::from_millis(100));
 /// # }
 /// ```
 pub trait ChronoStreamOps<S, T>
@@ -111,7 +111,7 @@ where
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
     /// use futures::stream;
-    /// use chrono::Duration;
+    /// use std::time::Duration;
     ///
     /// # async fn example() {
     /// let source = stream::iter(vec![
@@ -120,12 +120,12 @@ where
     /// ]);
     ///
     /// let delayed = FluxionStream::new(source)
-    ///     .delay(Duration::milliseconds(100));
+    ///     .delay(Duration::from_millis(100));
     /// # }
     /// ```
     fn delay(
         self,
-        duration: chrono::Duration,
+        duration: std::time::Duration,
     ) -> FluxionStream<
         impl Stream<Item = fluxion_core::StreamItem<ChronoTimestamped<T>>> + Send + Sync,
     >;
@@ -156,7 +156,7 @@ where
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
     /// use futures::stream;
-    /// use chrono::Duration;
+    /// use std::time::Duration;
     ///
     /// # async fn example() {
     /// let source = stream::iter(vec![
@@ -165,12 +165,12 @@ where
     /// ]);
     ///
     /// let debounced = FluxionStream::new(source)
-    ///     .debounce(Duration::milliseconds(100));
+    ///     .debounce(Duration::from_millis(100));
     /// # }
     /// ```
     fn debounce(
         self,
-        duration: chrono::Duration,
+        duration: std::time::Duration,
     ) -> FluxionStream<
         impl Stream<Item = fluxion_core::StreamItem<ChronoTimestamped<T>>> + Send + Sync,
     >;
@@ -201,7 +201,7 @@ where
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
     /// use futures::stream;
-    /// use chrono::Duration;
+    /// use std::time::Duration;
     ///
     /// # async fn example() {
     /// let source = stream::iter(vec![
@@ -210,12 +210,12 @@ where
     /// ]);
     ///
     /// let throttled = FluxionStream::new(source)
-    ///     .throttle(Duration::milliseconds(100));
+    ///     .throttle(Duration::from_millis(100));
     /// # }
     /// ```
     fn throttle(
         self,
-        duration: chrono::Duration,
+        duration: std::time::Duration,
     ) -> FluxionStream<
         impl Stream<Item = fluxion_core::StreamItem<ChronoTimestamped<T>>> + Send + Sync,
     >;
@@ -232,7 +232,7 @@ where
 {
     fn delay(
         self,
-        duration: chrono::Duration,
+        duration: std::time::Duration,
     ) -> FluxionStream<
         impl Stream<Item = fluxion_core::StreamItem<ChronoTimestamped<T>>> + Send + Sync,
     > {
@@ -242,7 +242,7 @@ where
 
     fn debounce(
         self,
-        duration: chrono::Duration,
+        duration: std::time::Duration,
     ) -> FluxionStream<
         impl Stream<Item = fluxion_core::StreamItem<ChronoTimestamped<T>>> + Send + Sync,
     > {
@@ -252,7 +252,7 @@ where
 
     fn throttle(
         self,
-        duration: chrono::Duration,
+        duration: std::time::Duration,
     ) -> FluxionStream<
         impl Stream<Item = fluxion_core::StreamItem<ChronoTimestamped<T>>> + Send + Sync,
     > {

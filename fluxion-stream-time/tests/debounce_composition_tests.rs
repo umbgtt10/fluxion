@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use chrono::Duration;
 use fluxion_core::HasTimestamp;
 use fluxion_stream::{CombineLatestExt, FluxionStream};
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
@@ -20,7 +19,7 @@ async fn test_debounce_chaining_with_map_ordered() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let debounce_duration = Duration::milliseconds(500);
+    let debounce_duration = std::time::Duration::from_millis(500);
 
     // Chain debounce with map_ordered - transform the data
     let mut processed = FluxionStream::new(stream)
@@ -70,7 +69,7 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let debounce_duration = Duration::milliseconds(500);
+    let debounce_duration = std::time::Duration::from_millis(500);
 
     // Chain debounce with filter_ordered - keep only Alice and Charlie
     let mut processed = FluxionStream::new(stream)
@@ -126,8 +125,8 @@ async fn test_debounce_then_delay() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let debounce_duration = Duration::milliseconds(300);
-    let delay_duration = Duration::milliseconds(200);
+    let debounce_duration = std::time::Duration::from_millis(300);
+    let delay_duration = std::time::Duration::from_millis(200);
 
     // Chain debounce then delay
     let mut processed = FluxionStream::new(stream)
@@ -163,8 +162,8 @@ async fn test_delay_then_debounce() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let delay_duration = Duration::milliseconds(200);
-    let debounce_duration = Duration::milliseconds(300);
+    let delay_duration = std::time::Duration::from_millis(200);
+    let debounce_duration = std::time::Duration::from_millis(300);
 
     // Chain delay then debounce
     let mut processed = FluxionStream::new(stream)
@@ -200,7 +199,7 @@ async fn test_combine_latest_then_debounce() -> anyhow::Result<()> {
 
     let (tx1, stream1) = test_channel::<ChronoTimestamped<TestData>>();
     let (tx2, stream2) = test_channel::<ChronoTimestamped<TestData>>();
-    let debounce_duration = Duration::milliseconds(500);
+    let debounce_duration = std::time::Duration::from_millis(500);
 
     // Chain combine_latest then debounce
     let mut processed = stream1

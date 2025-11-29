@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use chrono::Duration;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::EmitWhenExt;
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
@@ -21,7 +20,7 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
 
     let (tx_source, source) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let (tx_filter, filter) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let delay_duration = Duration::milliseconds(200);
+    let delay_duration = std::time::Duration::from_millis(200);
 
     // Chain emit_when then delay
     // emit_when gates source emissions based on filter state

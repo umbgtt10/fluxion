@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use chrono::Duration;
 use fluxion_stream::FluxionStream;
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
 use fluxion_test_utils::{
@@ -20,7 +19,7 @@ async fn test_delay_with_chrono_timestamped() -> anyhow::Result<()> {
     // Arrange
     pause();
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let delay_duration = Duration::seconds(1);
+    let delay_duration = std::time::Duration::from_secs(1);
     let mut delayed = FluxionStream::new(stream).delay(delay_duration);
 
     // Act & Assert
@@ -51,9 +50,9 @@ async fn test_delay_with_chrono_timestamped() -> anyhow::Result<()> {
 async fn test_delay_preserves_order() -> anyhow::Result<()> {
     // Arrange
     pause();
-    
+
     let (tx, stream) = test_channel::<ChronoTimestamped<i32>>();
-    let delay_duration = Duration::milliseconds(10);
+    let delay_duration = std::time::Duration::from_millis(10);
     let delayed = FluxionStream::new(stream).delay(delay_duration);
 
     let count = 1000;

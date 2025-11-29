@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use chrono::Duration;
 use fluxion_stream::{FluxionStream, MergedStream};
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
 use fluxion_test_utils::{
@@ -19,7 +18,7 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let delay_duration = Duration::seconds(1);
+    let delay_duration = std::time::Duration::from_secs(1);
 
     // Chain delay with map_ordered - transform the data
     let mut processed = FluxionStream::new(stream)
@@ -62,9 +61,9 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
 async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
     // Arrange
     pause();
-    
+
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let delay_duration = Duration::seconds(1);
+    let delay_duration = std::time::Duration::from_secs(1);
 
     // Chain delay with filter_ordered - keep only Alice and Charlie
     let mut processed = FluxionStream::new(stream)
@@ -104,7 +103,7 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
 
     let (tx1, stream1) = test_channel::<ChronoTimestamped<TestData>>();
     let (tx2, stream2) = test_channel::<ChronoTimestamped<TestData>>();
-    let delay_duration = Duration::milliseconds(200);
+    let delay_duration = std::time::Duration::from_millis(200);
 
     // Merge streams with state (count emissions)
     // We use MergedStream to merge two streams and then apply delay

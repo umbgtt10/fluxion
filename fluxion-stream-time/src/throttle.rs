@@ -29,14 +29,14 @@ use tokio::time::{sleep, Instant, Sleep};
 /// use fluxion_stream_time::throttle;
 /// use fluxion_core::StreamItem;
 /// use futures::stream;
-/// use chrono::Duration;
+/// use std::time::Duration;
 ///
 /// # async fn example() {
 /// let source = stream::iter(vec![StreamItem::Value(42)]);
-/// let throttled = throttle(source, Duration::milliseconds(100));
+/// let throttled = throttle(source, Duration::from_millis(100));
 /// # }
 /// ```
-pub fn throttle<S, T>(stream: S, duration: chrono::Duration) -> impl Stream<Item = StreamItem<T>>
+pub fn throttle<S, T>(stream: S, duration: std::time::Duration) -> impl Stream<Item = StreamItem<T>>
 where
     S: Stream<Item = StreamItem<T>>,
     T: Send,
@@ -53,7 +53,7 @@ where
 struct ThrottleStream<S: Stream> {
     #[pin]
     stream: S,
-    duration: chrono::Duration,
+    duration: std::time::Duration,
     sleep: Pin<Box<Sleep>>,
     throttling: bool,
 }
@@ -92,8 +92,7 @@ where
                 Poll::Ready(Some(StreamItem::Value(value))) => {
                     if !*this.throttling {
                         // Not throttling: Emit value, start timer
-                        let std_duration = duration_to_std(this.duration);
-                        let deadline = Instant::now() + std_duration;
+                        let deadline = Instant::now() + *this.duration;
                         this.sleep.as_mut().reset(deadline);
                         *this.throttling = true;
                         return Poll::Ready(Some(StreamItem::Value(value)));
@@ -117,15 +116,5 @@ where
                 }
             }
         }
-    }
-}
-
-/// Convert chrono::Duration to std::time::Duration
-fn duration_to_std(duration: &chrono::Duration) -> std::time::Duration {
-    let millis = duration.num_milliseconds();
-    if millis < 0 {
-        std::time::Duration::from_millis(0)
-    } else {
-        std::time::Duration::from_millis(millis as u64)
     }
 }

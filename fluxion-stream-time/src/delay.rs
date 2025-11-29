@@ -19,14 +19,14 @@ use tokio::time::{sleep, Sleep};
 /// use fluxion_stream_time::delay;
 /// use fluxion_core::StreamItem;
 /// use futures::stream;
-/// use chrono::Duration;
+/// use std::time::Duration;
 ///
 /// # async fn example() {
 /// let source = stream::iter(vec![StreamItem::Value(42)]);
-/// let delayed = delay(source, Duration::milliseconds(100));
+/// let delayed = delay(source, Duration::from_millis(100));
 /// # }
 /// ```
-pub fn delay<S, T>(stream: S, duration: chrono::Duration) -> impl Stream<Item = StreamItem<T>>
+pub fn delay<S, T>(stream: S, duration: std::time::Duration) -> impl Stream<Item = StreamItem<T>>
 where
     S: Stream<Item = StreamItem<T>>,
     T: Send,
@@ -68,7 +68,7 @@ impl<T> Future for DelayFuture<T> {
 struct DelayStream<S, T> {
     #[pin]
     stream: S,
-    duration: chrono::Duration,
+    duration: std::time::Duration,
     in_flight: FuturesOrdered<DelayFuture<T>>,
     upstream_done: bool,
 }
@@ -88,9 +88,8 @@ where
             loop {
                 match this.stream.as_mut().poll_next(cx) {
                     Poll::Ready(Some(StreamItem::Value(value))) => {
-                        let std_duration = duration_to_std(this.duration);
                         let future = DelayFuture {
-                            delay: sleep(std_duration),
+                            delay: sleep(*this.duration),
                             value: Some(value),
                         };
                         this.in_flight.push_back(future);
@@ -122,15 +121,5 @@ where
             }
             Poll::Pending => Poll::Pending,
         }
-    }
-}
-
-/// Convert chrono::Duration to std::time::Duration
-fn duration_to_std(duration: &chrono::Duration) -> std::time::Duration {
-    let millis = duration.num_milliseconds();
-    if millis < 0 {
-        std::time::Duration::from_millis(0)
-    } else {
-        std::time::Duration::from_millis(millis as u64)
     }
 }

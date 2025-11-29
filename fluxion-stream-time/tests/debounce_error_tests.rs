@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use chrono::Duration;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::FluxionStream;
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
@@ -19,7 +18,7 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
     // Arrange
     pause();
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let debounce_duration = Duration::milliseconds(500);
+    let debounce_duration = std::time::Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
 
     // Act & Assert
@@ -58,7 +57,7 @@ async fn test_debounce_error_discards_pending() -> anyhow::Result<()> {
     // Arrange
     pause();
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let debounce_duration = Duration::milliseconds(500);
+    let debounce_duration = std::time::Duration::from_millis(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
 
     // Act & Assert

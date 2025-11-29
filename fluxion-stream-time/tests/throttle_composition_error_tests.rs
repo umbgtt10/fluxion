@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use chrono::Duration;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::FluxionStream;
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
@@ -17,7 +16,7 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
     pause();
 
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
-    let throttle_duration = Duration::milliseconds(100);
+    let throttle_duration = std::time::Duration::from_millis(100);
 
     // Throttle then Map
     let throttled = FluxionStream::new(stream)

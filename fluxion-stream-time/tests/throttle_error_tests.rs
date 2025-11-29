@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use chrono::Duration;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::FluxionStream;
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
@@ -22,7 +21,7 @@ async fn test_throttle_propagates_errors_immediately() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let throttle_duration = Duration::seconds(1);
+    let throttle_duration = std::time::Duration::from_secs(1);
     let throttled = FluxionStream::new(stream).throttle(throttle_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
@@ -69,7 +68,7 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
     pause();
 
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
-    let throttle_duration = Duration::seconds(1);
+    let throttle_duration = std::time::Duration::from_secs(1);
     let throttled = FluxionStream::new(stream).throttle(throttle_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();

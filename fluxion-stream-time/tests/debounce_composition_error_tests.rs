@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use chrono::Duration;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::TakeLatestWhenExt;
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
@@ -18,10 +17,10 @@ use tokio::time::{advance, pause};
 async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()> {
     // Arrange
     pause();
-    
+
     let (tx_source, source) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let (tx_trigger, trigger) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let debounce_duration = Duration::milliseconds(500);
+    let debounce_duration = std::time::Duration::from_millis(500);
 
     // Chain take_latest_when then debounce
     // take_latest_when emits the latest source value when trigger emits

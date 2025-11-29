@@ -28,14 +28,14 @@ use tokio::time::{sleep, Instant, Sleep};
 /// use fluxion_stream_time::debounce;
 /// use fluxion_core::StreamItem;
 /// use futures::stream;
-/// use chrono::Duration;
+/// use std::time::Duration;
 ///
 /// # async fn example() {
 /// let source = stream::iter(vec![StreamItem::Value(42)]);
-/// let debounced = debounce(source, Duration::milliseconds(100));
+/// let debounced = debounce(source, Duration::from_millis(100));
 /// # }
 /// ```
-pub fn debounce<S, T>(stream: S, duration: chrono::Duration) -> impl Stream<Item = StreamItem<T>>
+pub fn debounce<S, T>(stream: S, duration: std::time::Duration) -> impl Stream<Item = StreamItem<T>>
 where
     S: Stream<Item = StreamItem<T>>,
     T: Send,
@@ -53,7 +53,7 @@ where
 struct DebounceStream<S: Stream> {
     #[pin]
     stream: S,
-    duration: chrono::Duration,
+    duration: std::time::Duration,
     sleep: Pin<Box<Sleep>>,
     pending_value: Option<S::Item>,
     stream_ended: bool,
@@ -96,8 +96,7 @@ where
             match this.stream.as_mut().poll_next(cx) {
                 Poll::Ready(Some(StreamItem::Value(value))) => {
                     // New value arrived - reset the debounce timer
-                    let std_duration = duration_to_std(this.duration);
-                    let deadline = Instant::now() + std_duration;
+                    let deadline = Instant::now() + *this.duration;
                     this.sleep.as_mut().reset(deadline);
 
                     // Replace any pending value with this new one
@@ -124,15 +123,5 @@ where
                 }
             }
         }
-    }
-}
-
-/// Convert chrono::Duration to std::time::Duration
-fn duration_to_std(duration: &chrono::Duration) -> std::time::Duration {
-    let millis = duration.num_milliseconds();
-    if millis < 0 {
-        std::time::Duration::from_millis(0)
-    } else {
-        std::time::Duration::from_millis(millis as u64)
     }
 }
