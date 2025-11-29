@@ -28,3 +28,9 @@ tracing = ["dep:tracing", "fluxion-core/tracing"]
 anyhow = { workspace = true }
 fluxion-test-utils = { workspace = true }
 tokio-stream = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
