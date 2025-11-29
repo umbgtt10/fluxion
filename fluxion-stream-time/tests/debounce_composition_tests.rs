@@ -3,7 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use chrono::Duration;
-use fluxion_stream::FluxionStream;
+use fluxion_core::HasTimestamp;
+use fluxion_stream::{CombineLatestExt, FluxionStream};
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
@@ -11,16 +12,13 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob, person_charlie},
     TestData,
 };
-use tokio::{
-    task::yield_now,
-    time::{advance, pause},
-};
+use tokio::time::{advance, pause};
 
 #[tokio::test]
 async fn test_debounce_chaining_with_map_ordered() -> anyhow::Result<()> {
-    pause(); // Mock time for instant test execution
-
     // Arrange
+    pause();
+
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let debounce_duration = Duration::milliseconds(500);
 
@@ -37,49 +35,40 @@ async fn test_debounce_chaining_with_map_ordered() -> anyhow::Result<()> {
             ChronoTimestamped::new(transformed, item.timestamp)
         });
 
-    // Act - Send Alice, then Charlie quickly (Alice gets debounced away)
+    // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    yield_now().await; // Let debounce poll
-    assert_no_element_emitted(&mut processed, 0).await; // Poll the stream to let debounce see the value
-
-    advance(std::time::Duration::from_millis(200)).await;
-    yield_now().await;
-
-    tx.send(ChronoTimestamped::now(person_charlie()))?;
-    yield_now().await; // Let debounce poll and reset
-    assert_no_element_emitted(&mut processed, 0).await; // Poll the stream to let debounce see the value
-
-    // Assert - Nothing should arrive yet
-    advance(std::time::Duration::from_millis(300)).await;
-    yield_now().await;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    // Assert - After full debounce from Charlie, should arrive unchanged (Charlie -> Charlie)
     advance(std::time::Duration::from_millis(200)).await;
-    yield_now().await;
-    let result = unwrap_stream(&mut processed, 100).await.unwrap();
-    assert_eq!(result.value, person_charlie()); // Not transformed, Charlie != Alice
+    tx.send(ChronoTimestamped::now(person_charlie()))?;
+    assert_no_element_emitted(&mut processed, 0).await;
 
-    // Act - Send Alice alone with full quiet period
+    advance(std::time::Duration::from_millis(300)).await;
+    assert_no_element_emitted(&mut processed, 0).await;
+
+    advance(std::time::Duration::from_millis(200)).await;
+    assert_eq!(
+        unwrap_stream(&mut processed, 100).await.unwrap().value,
+        person_charlie()
+    );
+
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    yield_now().await; // Let debounce poll
-    assert_no_element_emitted(&mut processed, 0).await; // Poll the stream to let debounce see the value
+    assert_no_element_emitted(&mut processed, 0).await;
 
     advance(std::time::Duration::from_millis(500)).await;
-    yield_now().await;
-
-    // Assert - Should arrive as Bob (transformed)
-    let result = unwrap_stream(&mut processed, 100).await.unwrap();
-    assert_eq!(result.value, person_bob()); // Transformed
+    assert_eq!(
+        unwrap_stream(&mut processed, 100).await.unwrap().value,
+        person_bob()
+    );
 
     Ok(())
 }
 
 #[tokio::test]
 async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
-    pause(); // Mock time for instant test execution
-
     // Arrange
+    pause();
+
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let debounce_duration = Duration::milliseconds(500);
 
@@ -88,74 +77,55 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
         .debounce(debounce_duration)
         .filter_ordered(|data: &_| *data == person_alice() || *data == person_charlie());
 
-    // Act - Send rapid-fire: Alice, Bob, Charlie
-    // Only Charlie should survive debounce, and it passes the filter
+    // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    yield_now().await; // Let debounce poll
-    assert_no_element_emitted(&mut processed, 0).await; // Poll the stream
+    assert_no_element_emitted(&mut processed, 0).await;
 
     advance(std::time::Duration::from_millis(100)).await;
-    yield_now().await;
-
     tx.send(ChronoTimestamped::now(person_bob()))?;
-    yield_now().await; // Let debounce poll and reset
-    assert_no_element_emitted(&mut processed, 0).await; // Poll the stream
+    assert_no_element_emitted(&mut processed, 0).await;
 
     advance(std::time::Duration::from_millis(100)).await;
-    yield_now().await;
-
     tx.send(ChronoTimestamped::now(person_charlie()))?;
-    yield_now().await; // Let debounce poll and reset
-    assert_no_element_emitted(&mut processed, 0).await; // Poll the stream
-
-    // Assert - Nothing arrives during debounce
-    advance(std::time::Duration::from_millis(300)).await;
-    yield_now().await;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    // Assert - Charlie arrives after debounce and passes filter
-    advance(std::time::Duration::from_millis(200)).await;
-    yield_now().await;
-    let result = unwrap_stream(&mut processed, 100).await.unwrap();
-    assert_eq!(result.value, person_charlie());
+    advance(std::time::Duration::from_millis(300)).await;
+    assert_no_element_emitted(&mut processed, 0).await;
 
-    // Act - Send rapid Alice then Bob (Bob survives debounce but gets filtered out)
+    advance(std::time::Duration::from_millis(200)).await;
+    assert_eq!(
+        unwrap_stream(&mut processed, 100).await.unwrap().value,
+        person_charlie()
+    );
+
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    yield_now().await; // Let debounce poll
-    assert_no_element_emitted(&mut processed, 0).await; // Poll the stream
+    assert_no_element_emitted(&mut processed, 0).await;
 
     advance(std::time::Duration::from_millis(200)).await;
-    yield_now().await;
 
     tx.send(ChronoTimestamped::now(person_bob()))?;
-    yield_now().await; // Let debounce poll and reset
-    assert_no_element_emitted(&mut processed, 0).await; // Poll the stream
-
-    // Assert - Bob gets debounced but filtered, so nothing arrives
-    advance(std::time::Duration::from_millis(500)).await;
-    yield_now().await;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    // Act - Send Alice alone
+    advance(std::time::Duration::from_millis(500)).await;
+    assert_no_element_emitted(&mut processed, 0).await;
+
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    yield_now().await; // Let debounce poll
-    assert_no_element_emitted(&mut processed, 0).await; // Poll the stream
+    assert_no_element_emitted(&mut processed, 0).await;
 
     advance(std::time::Duration::from_millis(500)).await;
-    yield_now().await;
-
-    // Assert - Alice arrives (passes filter)
-    let result = unwrap_stream(&mut processed, 100).await.unwrap();
-    assert_eq!(result.value, person_alice());
+    assert_eq!(
+        unwrap_stream(&mut processed, 100).await.unwrap().value,
+        person_alice()
+    );
 
     Ok(())
 }
 
 #[tokio::test]
 async fn test_debounce_then_delay() -> anyhow::Result<()> {
-    pause(); // Mock time for instant test execution
-
     // Arrange
+    pause();
+
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let debounce_duration = Duration::milliseconds(300);
     let delay_duration = Duration::milliseconds(200);
@@ -165,42 +135,34 @@ async fn test_debounce_then_delay() -> anyhow::Result<()> {
         .debounce(debounce_duration)
         .delay(delay_duration);
 
-    // Act - Send Alice, then Bob quickly
+    // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    yield_now().await; // Let debounce poll
-    assert_no_element_emitted(&mut processed, 0).await; // Poll the stream
+    assert_no_element_emitted(&mut processed, 0).await;
 
     advance(std::time::Duration::from_millis(100)).await;
-    yield_now().await;
-
     tx.send(ChronoTimestamped::now(person_bob()))?;
-    yield_now().await; // Let debounce poll and reset
-    assert_no_element_emitted(&mut processed, 0).await; // Poll the stream
-
-    // Assert - Nothing during debounce
-    advance(std::time::Duration::from_millis(200)).await;
-    yield_now().await;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    // After debounce (300ms from Bob), Bob enters delay
+    advance(std::time::Duration::from_millis(200)).await;
+    assert_no_element_emitted(&mut processed, 0).await;
+
     advance(std::time::Duration::from_millis(100)).await;
-    yield_now().await;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    // After delay (200ms), Bob finally arrives (500ms total from Bob)
     advance(std::time::Duration::from_millis(200)).await;
-    yield_now().await;
-    let result = unwrap_stream(&mut processed, 100).await.unwrap();
-    assert_eq!(result.value, person_bob());
+    assert_eq!(
+        unwrap_stream(&mut processed, 100).await.unwrap().value,
+        person_bob()
+    );
 
     Ok(())
 }
 
 #[tokio::test]
 async fn test_delay_then_debounce() -> anyhow::Result<()> {
-    pause(); // Mock time for instant test execution
-
     // Arrange
+    pause();
+
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let delay_duration = Duration::milliseconds(200);
     let debounce_duration = Duration::milliseconds(300);
@@ -210,28 +172,17 @@ async fn test_delay_then_debounce() -> anyhow::Result<()> {
         .delay(delay_duration)
         .debounce(debounce_duration);
 
-    // Act - Send Alice and Bob with small gap
+    // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-    yield_now().await; // Let delay poll
-    assert_no_element_emitted(&mut processed, 0).await; // Poll the stream
-
-    advance(std::time::Duration::from_millis(100)).await;
-    yield_now().await;
-
-    tx.send(ChronoTimestamped::now(person_bob()))?;
-    yield_now().await; // Let delay poll
-
-    // Both are delayed by 200ms, then debounce starts
-    // Alice arrives at delay at 200ms, starts debounce timer
-    // Bob arrives at delay at 300ms, resets debounce timer
-
-    advance(std::time::Duration::from_millis(200)).await;
-    yield_now().await;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    // At 300ms, Bob arrives at debounce, resets timer
     advance(std::time::Duration::from_millis(100)).await;
-    yield_now().await;
+    tx.send(ChronoTimestamped::now(person_bob()))?;
+
+    advance(std::time::Duration::from_millis(200)).await;
+    assert_no_element_emitted(&mut processed, 0).await;
+
+    advance(std::time::Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 0).await;
 
     // At 600ms (300ms after Bob's arrival), Alice is emitted
@@ -239,9 +190,59 @@ async fn test_delay_then_debounce() -> anyhow::Result<()> {
     // Alice's timer (which was set before Bob arrived) fires instead of being properly cancelled.
     // This is a known quirk of testing with mocked time and doesn't reflect real-world behavior.
     advance(std::time::Duration::from_millis(300)).await;
-    yield_now().await;
-    let result = unwrap_stream(&mut processed, 100).await.unwrap();
-    assert_eq!(result.value, person_alice());
+    assert_eq!(
+        unwrap_stream(&mut processed, 100).await.unwrap().value,
+        person_alice()
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_combine_latest_then_debounce() -> anyhow::Result<()> {
+    // Arrange
+    pause();
+
+    let (tx1, stream1) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx2, stream2) = test_channel::<ChronoTimestamped<TestData>>();
+    let debounce_duration = Duration::milliseconds(500);
+
+    // Chain combine_latest then debounce
+    let mut processed = stream1
+        .combine_latest(vec![stream2], |_| true)
+        .map_ordered(|state| {
+            let ts = state.timestamp();
+            ChronoTimestamped::new(state, ts)
+        })
+        .debounce(debounce_duration);
+
+    // Act & Assert
+    // Send initial values to both streams to trigger combine_latest
+    tx1.send(ChronoTimestamped::now(person_alice()))?;
+    tx2.send(ChronoTimestamped::now(person_bob()))?;
+
+    // Debounce should hold it
+    assert_no_element_emitted(&mut processed, 0).await;
+
+    // Advance 200ms
+    advance(std::time::Duration::from_millis(200)).await;
+
+    // Update stream1 (resets debounce)
+    tx1.send(ChronoTimestamped::now(person_charlie()))?;
+    assert_no_element_emitted(&mut processed, 0).await;
+
+    // Advance 300ms (total 500ms from first, but only 300ms from second)
+    advance(std::time::Duration::from_millis(300)).await;
+    assert_no_element_emitted(&mut processed, 0).await;
+
+    // Advance 200ms (total 500ms from second)
+    advance(std::time::Duration::from_millis(200)).await;
+
+    let item = unwrap_stream(&mut processed, 100).await.unwrap();
+    let values = item.value.values();
+    // stream1 is index 0, stream2 is index 1
+    assert_eq!(values[0], person_charlie());
+    assert_eq!(values[1], person_bob());
 
     Ok(())
 }

@@ -50,16 +50,6 @@ impl<T> From<(T, u64)> for Sequenced<T> {
     }
 }
 
-// Allow converting () into any Sequenced<T> for seed streams
-impl<T> From<()> for Sequenced<T>
-where
-    T: Default + Clone + Send + Sync + 'static,
-{
-    fn from(_: ()) -> Self {
-        Self::new(T::default())
-    }
-}
-
 impl<T> HasTimestamp for Sequenced<T>
 where
     T: Clone + Send + Sync + 'static,

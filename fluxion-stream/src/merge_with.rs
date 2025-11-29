@@ -38,9 +38,12 @@ where
     /// # use fluxion_test_utils::Sequenced;
     /// let stream = MergedStream::seed::<Sequenced<i32>>(0);
     /// ```
-    pub fn seed<OutWrapper>(initial_state: State) -> MergedStream<Empty<()>, State, OutWrapper>
+    pub fn seed<OutWrapper>(
+        initial_state: State,
+    ) -> MergedStream<Empty<OutWrapper>, State, OutWrapper>
     where
         State: Send + 'static,
+        OutWrapper: Send + Unpin + 'static,
     {
         MergedStream {
             inner: empty(),

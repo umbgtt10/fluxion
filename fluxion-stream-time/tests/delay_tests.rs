@@ -11,43 +11,37 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob},
     TestData,
 };
+use tokio::time::{advance, pause};
 
 #[tokio::test]
 async fn test_delay_with_chrono_timestamped() -> anyhow::Result<()> {
-    tokio::time::pause(); // Mock time for instant test execution
-
     // Arrange
+    pause();
+
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let delay_duration = Duration::seconds(1);
     let mut delayed = FluxionStream::new(stream).delay(delay_duration);
 
-    // Act - Send first value
+    // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
-
-    // Assert - Should NOT arrive immediately (advance 100ms)
-    tokio::time::advance(std::time::Duration::from_millis(100)).await;
-    tokio::task::yield_now().await; // Allow tasks to process
+    advance(std::time::Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
-    // Assert - Advance remaining time, should arrive
-    tokio::time::advance(std::time::Duration::from_millis(900)).await;
-    tokio::task::yield_now().await; // Allow tasks to process
-    let result = unwrap_stream(&mut delayed, 100).await.unwrap();
-    assert_eq!(result.value, person_alice());
+    advance(std::time::Duration::from_millis(900)).await;
+    assert_eq!(
+        unwrap_stream(&mut delayed, 100).await.unwrap().value,
+        person_alice()
+    );
 
-    // Act - Send second value
     tx.send(ChronoTimestamped::now(person_bob()))?;
-
-    // Assert - Should NOT arrive immediately (advance 100ms)
-    tokio::time::advance(std::time::Duration::from_millis(100)).await;
-    tokio::task::yield_now().await; // Allow tasks to process
+    advance(std::time::Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
-    // Assert - Advance remaining time, should arrive
-    tokio::time::advance(std::time::Duration::from_millis(900)).await;
-    tokio::task::yield_now().await; // Allow tasks to process
-    let result = unwrap_stream(&mut delayed, 100).await.unwrap();
-    assert_eq!(result.value, person_bob());
+    advance(std::time::Duration::from_millis(900)).await;
+    assert_eq!(
+        unwrap_stream(&mut delayed, 100).await.unwrap().value,
+        person_bob()
+    );
 
     Ok(())
 }

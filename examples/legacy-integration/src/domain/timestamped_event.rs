@@ -78,11 +78,3 @@ impl std::fmt::Display for TimestampedEvent {
         write!(f, "[{}] {}", self.timestamp, self.event)
     }
 }
-
-impl From<()> for TimestampedEvent {
-    fn from(_: ()) -> Self {
-        // This should never be called in normal operation
-        // It's required by the merge_with operator for type constraints
-        panic!("TimestampedEvent::from(()) should never be called")
-    }
-}
