@@ -1,0 +1,106 @@
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
+use chrono::Duration;
+use fluxion_core::{FluxionError, StreamItem};
+use fluxion_stream::FluxionStream;
+use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_test_utils::{
+    helpers::{assert_no_recv, recv_timeout},
+    test_channel_with_errors,
+    test_data::person_alice,
+    TestData,
+};
+use futures::StreamExt;
+use tokio::time::{advance, pause};
+use tokio::{spawn, sync::mpsc::unbounded_channel};
+
+#[tokio::test]
+async fn test_throttle_propagates_errors_immediately() -> anyhow::Result<()> {
+    // Arrange
+    pause();
+
+    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
+    let throttle_duration = Duration::seconds(1);
+    let throttled = FluxionStream::new(stream).throttle(throttle_duration);
+
+    let (result_tx, mut result_rx) = unbounded_channel();
+
+    // Spawn a task to drive the stream
+    spawn(async move {
+        let mut stream = throttled;
+        while let Some(item) = stream.next().await {
+            result_tx.send(item).unwrap();
+        }
+    });
+
+    // Act & Assert
+    let error = FluxionError::stream_error("test error");
+    tx.send(StreamItem::Error(error.clone()))?;
+    assert_eq!(
+        recv_timeout(&mut result_rx, 1000)
+            .await
+            .unwrap()
+            .err()
+            .expect("Expected Error")
+            .to_string(),
+        error.to_string()
+    );
+
+    tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
+
+    assert_eq!(
+        recv_timeout(&mut result_rx, 1000)
+            .await
+            .unwrap()
+            .ok()
+            .expect("Expected Value")
+            .value,
+        person_alice()
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()> {
+    // Arrange
+    pause();
+
+    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<i32>>();
+    let throttle_duration = Duration::seconds(1);
+    let throttled = FluxionStream::new(stream).throttle(throttle_duration);
+
+    let (result_tx, mut result_rx) = unbounded_channel();
+
+    spawn(async move {
+        let mut stream = throttled;
+        while let Some(item) = stream.next().await {
+            result_tx.send(item).unwrap();
+        }
+    });
+
+    // Act & Assert
+    tx.send(StreamItem::Value(ChronoTimestamped::now(1)))?;
+    let _ = recv_timeout(&mut result_rx, 1000).await; // Consume 1
+
+    let error = FluxionError::stream_error("error during throttle");
+    tx.send(StreamItem::Error(error.clone()))?;
+
+    assert_eq!(
+        recv_timeout(&mut result_rx, 1000)
+            .await
+            .unwrap()
+            .err()
+            .expect("Expected Error")
+            .to_string(),
+        error.to_string()
+    );
+
+    tx.send(StreamItem::Value(ChronoTimestamped::now(2)))?;
+    advance(std::time::Duration::from_millis(100)).await;
+    assert_no_recv(&mut result_rx, 100).await;
+
+    Ok(())
+}

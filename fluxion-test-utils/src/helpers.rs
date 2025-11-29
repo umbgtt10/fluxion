@@ -7,10 +7,33 @@ use futures::stream::StreamExt;
 use futures::Stream;
 use std::time::Duration;
 use tokio::select;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::sleep;
 use tokio::time::timeout;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+
+/// Receives a value from an UnboundedReceiver with a timeout.
+///
+/// # Panics
+/// Panics if no item is received within the timeout.
+pub async fn recv_timeout<T>(rx: &mut UnboundedReceiver<T>, timeout_ms: u64) -> Option<T> {
+    match timeout(Duration::from_millis(timeout_ms), rx.recv()).await {
+        Ok(item) => item,
+        Err(_) => panic!("Timeout: No item received within {} ms", timeout_ms),
+    }
+}
+
+/// Asserts that no item is received from an UnboundedReceiver within a timeout.
+///
+/// # Panics
+/// Panics if an item is received within the timeout.
+pub async fn assert_no_recv<T>(rx: &mut UnboundedReceiver<T>, timeout_ms: u64) {
+    match timeout(Duration::from_millis(timeout_ms), rx.recv()).await {
+        Ok(Some(_)) => panic!("Unexpected item received within {} ms", timeout_ms),
+        Ok(None) => {} // Stream ended, which is acceptable for "no item received"
+        Err(_) => {}   // Timeout occurred, which is success
+    }
+}
 
 /// Unwraps a `StreamItem::Value`, panicking if it's an error.
 ///

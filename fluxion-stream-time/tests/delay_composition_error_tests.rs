@@ -25,9 +25,7 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
 
     // Chain emit_when then delay
     // emit_when gates source emissions based on filter state
-    let mut processed = source
-        .emit_when(filter, |_| true) // Always emit if filter has value
-        .delay(delay_duration);
+    let mut processed = source.emit_when(filter, |_| true).delay(delay_duration);
 
     // Act & Assert
     tx_filter.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;

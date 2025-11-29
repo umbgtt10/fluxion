@@ -62,8 +62,7 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
 async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
     // Arrange
     pause();
-
-    // Arrange
+    
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let delay_duration = Duration::seconds(1);
 

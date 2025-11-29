@@ -18,7 +18,6 @@ use tokio::time::{advance, pause};
 async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
     // Arrange
     pause();
-
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let delay_duration = Duration::seconds(1);
     let mut delayed = FluxionStream::new(stream).delay(delay_duration);

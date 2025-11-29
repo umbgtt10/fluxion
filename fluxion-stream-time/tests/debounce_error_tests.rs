@@ -18,7 +18,6 @@ use tokio::time::{advance, pause};
 async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
     // Arrange
     pause();
-
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let debounce_duration = Duration::milliseconds(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);
@@ -58,7 +57,6 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
 async fn test_debounce_error_discards_pending() -> anyhow::Result<()> {
     // Arrange
     pause();
-
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let debounce_duration = Duration::milliseconds(500);
     let mut debounced = FluxionStream::new(stream).debounce(debounce_duration);

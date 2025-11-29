@@ -102,7 +102,6 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(std::time::Duration::from_millis(200)).await;
-
     tx.send(ChronoTimestamped::now(person_bob()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
@@ -185,10 +184,6 @@ async fn test_delay_then_debounce() -> anyhow::Result<()> {
     advance(std::time::Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    // At 600ms (300ms after Bob's arrival), Alice is emitted
-    // NOTE: Due to how tokio's mocked time interacts with timer cancellation,
-    // Alice's timer (which was set before Bob arrived) fires instead of being properly cancelled.
-    // This is a known quirk of testing with mocked time and doesn't reflect real-world behavior.
     advance(std::time::Duration::from_millis(300)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
@@ -217,25 +212,17 @@ async fn test_combine_latest_then_debounce() -> anyhow::Result<()> {
         .debounce(debounce_duration);
 
     // Act & Assert
-    // Send initial values to both streams to trigger combine_latest
     tx1.send(ChronoTimestamped::now(person_alice()))?;
     tx2.send(ChronoTimestamped::now(person_bob()))?;
-
-    // Debounce should hold it
     assert_no_element_emitted(&mut processed, 0).await;
 
-    // Advance 200ms
     advance(std::time::Duration::from_millis(200)).await;
-
-    // Update stream1 (resets debounce)
     tx1.send(ChronoTimestamped::now(person_charlie()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    // Advance 300ms (total 500ms from first, but only 300ms from second)
     advance(std::time::Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    // Advance 200ms (total 500ms from second)
     advance(std::time::Duration::from_millis(200)).await;
 
     let item = unwrap_stream(&mut processed, 100).await.unwrap();

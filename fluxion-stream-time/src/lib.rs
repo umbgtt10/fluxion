@@ -48,11 +48,13 @@ mod chrono_timestamped;
 mod debounce;
 mod delay;
 mod fluxion_stream_time;
+mod throttle;
 
 pub use chrono_timestamped::ChronoTimestamped;
 pub use debounce::debounce;
 pub use delay::delay;
 pub use fluxion_stream_time::FluxionStreamTimeOps;
+pub use throttle::throttle;
 
 use fluxion_stream::FluxionStream;
 use futures::Stream;
@@ -172,6 +174,51 @@ where
     ) -> FluxionStream<
         impl Stream<Item = fluxion_core::StreamItem<ChronoTimestamped<T>>> + Send + Sync,
     >;
+
+    /// Throttles the stream by the specified duration.
+    ///
+    /// The throttle operator emits the first value, then ignores subsequent values
+    /// for the specified duration. After the duration expires, it accepts the next
+    /// value and repeats the process.
+    ///
+    /// This implements **leading throttle** semantics: values are emitted immediately,
+    /// then a quiet period is enforced.
+    ///
+    /// Errors pass through immediately without throttling to ensure timely error propagation.
+    ///
+    /// # Arguments
+    ///
+    /// * `duration` - The duration to ignore values after an emission
+    ///
+    /// # Returns
+    ///
+    /// A new `FluxionStream` where values are throttled by the specified duration.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
+    /// use fluxion_core::StreamItem;
+    /// use futures::stream;
+    /// use chrono::Duration;
+    ///
+    /// # async fn example() {
+    /// let source = stream::iter(vec![
+    ///     StreamItem::Value(ChronoTimestamped::now(1)),
+    ///     StreamItem::Value(ChronoTimestamped::now(2)),
+    /// ]);
+    ///
+    /// let throttled = FluxionStream::new(source)
+    ///     .throttle(Duration::milliseconds(100));
+    /// # }
+    /// ```
+    fn throttle(
+        self,
+        duration: chrono::Duration,
+    ) -> FluxionStream<
+        impl Stream<Item = fluxion_core::StreamItem<ChronoTimestamped<T>>> + Send + Sync,
+    >;
 }
 
 impl<S, T> ChronoStreamOps<S, T> for FluxionStream<S>
@@ -201,5 +248,15 @@ where
     > {
         let inner = self.into_inner();
         FluxionStream::new(debounce::debounce(inner, duration))
+    }
+
+    fn throttle(
+        self,
+        duration: chrono::Duration,
+    ) -> FluxionStream<
+        impl Stream<Item = fluxion_core::StreamItem<ChronoTimestamped<T>>> + Send + Sync,
+    > {
+        let inner = self.into_inner();
+        FluxionStream::new(throttle::throttle(inner, duration))
     }
 }

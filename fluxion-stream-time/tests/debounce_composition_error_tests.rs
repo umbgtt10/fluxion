@@ -18,7 +18,7 @@ use tokio::time::{advance, pause};
 async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()> {
     // Arrange
     pause();
-
+    
     let (tx_source, source) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let (tx_trigger, trigger) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let debounce_duration = Duration::milliseconds(500);
@@ -33,6 +33,7 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
     tx_source.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
     let error = FluxionError::stream_error("trigger error");
     tx_trigger.send(StreamItem::Error(error.clone()))?;
+
     assert_eq!(
         unwrap_stream(&mut processed, 100)
             .await
