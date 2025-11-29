@@ -165,7 +165,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 **Goal:** Introduce time-based reactive operators through optional `fluxion-time` crate
 
 **Essential Features:**
-- [ ] `fluxion-time` crate - Optional time-based operators with chrono dependency
+- [ ] `fluxion-stream-time` crate - Optional time-based operators with chrono dependency
 - [ ] `debounce(duration)` operator - Emit only after silence period (essential for search inputs, API rate limiting)
 - [ ] `throttle(duration)` operator - Rate-limit emissions (critical for scroll/resize handlers)
 - [ ] `timeout(duration)` operator - Error if no emission within duration (network reliability)
@@ -228,6 +228,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - [ ] `wasm-bindgen-futures` integration for browser environments
 - [ ] Conditional compilation for different runtime backends
 - [ ] Time/scheduling abstraction compatible with WASM constraints
+- [ ] Implement `testing_time` module for simulating time in tests across runtimes
 
 **Documentation:**
 - [ ] Runtime selection guide (choosing between Tokio, async-std, etc.)
@@ -237,8 +238,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - [ ] Performance characteristics across runtimes
 
 **Quality Gates:**
-- [ ] All tests passing on Tokio runtime
-- [ ] All tests passing on async-std runtime
+- [ ] All time-related tests are parameterized over every possible runtime and pass
 - [ ] WASM example compiles and runs in browser
 - [ ] CI tests against multiple runtimes
 - [ ] Zero clippy warnings across all feature combinations
