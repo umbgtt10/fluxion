@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::FluxionStream;
+use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{FluxionItem, StreamItem};
 use futures::stream::StreamExt;
 use futures::Stream;
@@ -184,7 +185,8 @@ where
                     StreamItem::Value(value) => {
                         let current_inner = value.clone().into_inner();
 
-                        let mut last = last_value.lock().unwrap();
+                        let mut last =
+                            lock_or_recover(&last_value, "distinct_until_changed_by last_value");
 
                         // Check if this value is different from the last emitted value
                         let should_emit = match last.as_ref() {
