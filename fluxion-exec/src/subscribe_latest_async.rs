@@ -75,7 +75,6 @@ where
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
-    /// use std::time::Duration;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -86,15 +85,21 @@ where
     /// let processed_clone = processed.clone();
     ///
     /// // Gate to control when first item completes
-    /// let (gate_tx, gate_rx) = unbounded_channel::<()>();
+    /// let (gate_tx, mut gate_rx) = unbounded_channel::<()>();
     /// let gate_shared = Arc::new(Mutex::new(Some(gate_rx)));
+    ///
+    /// // Signal when processing starts
+    /// let (started_tx, mut started_rx) = unbounded_channel::<i32>();
+    /// let started_tx = Arc::new(started_tx);
     ///
     /// let handle = tokio::spawn(async move {
     ///     stream.subscribe_latest_async(
     ///         move |item, token| {
     ///             let processed = processed_clone.clone();
     ///             let gate = gate_shared.clone();
+    ///             let started = started_tx.clone();
     ///             async move {
+    ///                 started.send(item).unwrap();
     ///                 // First item waits at gate
     ///                 if let Some(mut rx) = gate.lock().await.take() {
     ///                     let _ = rx.recv().await;
@@ -110,17 +115,17 @@ where
     ///     ).await
     /// });
     ///
-    /// // Send multiple items rapidly
+    /// // Send first item
     /// tx.send(1).unwrap();
-    /// tokio::time::sleep(Duration::from_millis(10)).await;
-    /// tx.send(2).unwrap(); // Will be skipped
-    /// tx.send(3).unwrap(); // Will be skipped
-    /// tx.send(4).unwrap(); // Latest - will be processed
+    /// // Wait for it to start processing
+    /// assert_eq!(started_rx.recv().await, Some(1));
     ///
-    /// // Give time for items to be enqueued before releasing gate
-    /// tokio::time::sleep(Duration::from_millis(10)).await;
+    /// // Send subsequent items
+    /// tx.send(2).unwrap();
+    /// tx.send(3).unwrap();
+    /// tx.send(4).unwrap();
     ///
-    /// // Release the gate
+    /// // Release the gate to let item 1 finish
     /// gate_tx.send(()).unwrap();
     /// drop(tx);
     ///
@@ -144,7 +149,7 @@ where
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
-    /// use std::time::Duration;
+    /// use tokio_util::sync::CancellationToken;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -153,34 +158,55 @@ where
     ///
     /// let completed = Arc::new(Mutex::new(Vec::new()));
     /// let completed_clone = completed.clone();
+    /// let token = CancellationToken::new();
+    /// let token_clone = token.clone();
+    ///
+    /// // Signal start
+    /// let (started_tx, mut started_rx) = unbounded_channel::<i32>();
+    /// let started_tx = Arc::new(started_tx);
+    ///
+    /// // Gate
+    /// let (gate_tx, mut gate_rx) = unbounded_channel::<()>();
+    /// let gate_shared = Arc::new(Mutex::new(Some(gate_rx)));
     ///
     /// let handle = tokio::spawn(async move {
     ///     stream.subscribe_latest_async(
     ///         move |item, token| {
     ///             let completed = completed_clone.clone();
+    ///             let started = started_tx.clone();
+    ///             let gate = gate_shared.clone();
     ///             async move {
-    ///                 // Simulate long-running work with cancellation checks
-    ///                 for i in 0..10 {
-    ///                     if token.is_cancelled() {
-    ///                         return Ok(()); // Exit gracefully
+    ///                 started.send(item).unwrap();
+    ///
+    ///                 // Wait for gate or cancellation
+    ///                 if let Some(mut rx) = gate.lock().await.take() {
+    ///                     tokio::select! {
+    ///                         _ = rx.recv() => {},
+    ///                         _ = token.cancelled() => return Ok(()),
     ///                     }
-    ///                     tokio::time::sleep(Duration::from_millis(10)).await;
     ///                 }
+    ///
     ///                 completed.lock().await.push(item);
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
     ///         None::<fn(std::io::Error)>,
-    ///         None
+    ///         Some(token_clone)
     ///     ).await
     /// });
     ///
     /// tx.send(1).unwrap();
-    /// tokio::time::sleep(Duration::from_millis(50)).await;
-    /// tx.send(2).unwrap(); // This will cancel work on item 1 if still in progress
+    /// assert_eq!(started_rx.recv().await, Some(1));
+    ///
+    /// // Cancel global token and close stream
+    /// token.cancel();
     /// drop(tx);
     ///
+    /// // 1 should be cancelled
     /// handle.await.unwrap().unwrap();
+    ///
+    /// let result = completed.lock().await;
+    /// assert!(result.is_empty());
     /// # }
     /// ```
     ///
@@ -195,14 +221,14 @@ where
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
-    /// use std::time::Duration;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// async fn search_api(query: &str) -> Result<Vec<String>, std::io::Error> {
-    ///     tokio::time::sleep(Duration::from_millis(100)).await;
-    ///     Ok(vec![format!("result_for_{}", query)])
-    /// }
+    /// // Mock API with gate
+    /// let (gate_tx, mut gate_rx) = unbounded_channel::<()>();
+    /// let gate_shared = Arc::new(Mutex::new(Some(gate_rx)));
+    /// let (started_tx, mut started_rx) = unbounded_channel::<String>();
+    /// let started_tx = Arc::new(started_tx);
     ///
     /// let (tx, rx) = unbounded_channel();
     /// let stream = UnboundedReceiverStream::new(rx).map(|x: String| x);
@@ -214,10 +240,18 @@ where
     ///     stream.subscribe_latest_async(
     ///         move |query, token| {
     ///             let results = results_clone.clone();
+    ///             let gate = gate_shared.clone();
+    ///             let started = started_tx.clone();
     ///             async move {
-    ///                 let search_results = search_api(&query).await?;
+    ///                 started.send(query.clone()).unwrap();
+    ///
+    ///                 // First query waits at gate
+    ///                 if let Some(mut rx) = gate.lock().await.take() {
+    ///                     let _ = rx.recv().await;
+    ///                 }
+    ///
     ///                 if !token.is_cancelled() {
-    ///                     results.lock().await.extend(search_results);
+    ///                     results.lock().await.push(format!("result_for_{}", query));
     ///                 }
     ///                 Ok::<(), std::io::Error>(())
     ///             }
@@ -229,12 +263,23 @@ where
     ///
     /// // User types rapidly
     /// tx.send("r".to_string()).unwrap();
+    /// // Wait for "r" to start
+    /// assert_eq!(started_rx.recv().await, Some("r".to_string()));
+    ///
     /// tx.send("ru".to_string()).unwrap();
     /// tx.send("rus".to_string()).unwrap();
     /// tx.send("rust".to_string()).unwrap();
+    ///
+    /// // Release "r"
+    /// gate_tx.send(()).unwrap();
     /// drop(tx);
     ///
     /// handle.await.unwrap().unwrap();
+    ///
+    /// let results = results.lock().await;
+    /// assert!(results.contains(&"result_for_r".to_string()));
+    /// assert!(results.contains(&"result_for_rust".to_string()));
+    /// assert!(!results.contains(&"result_for_ru".to_string()));
     /// # }
     /// ```
     ///
@@ -249,7 +294,6 @@ where
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
-    /// use std::time::Duration;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -262,13 +306,28 @@ where
     /// let rendered = Arc::new(Mutex::new(Vec::new()));
     /// let rendered_clone = rendered.clone();
     ///
+    /// // Gate to control when renders complete (take pattern for first only)
+    /// let (gate_tx, gate_rx) = unbounded_channel::<()>();
+    /// let gate_rx_shared = Arc::new(Mutex::new(Some(gate_rx)));
+    ///
+    /// // Signal when processing starts
+    /// let (started_tx, mut started_rx) = unbounded_channel::<u32>();
+    /// let started_tx = Arc::new(started_tx);
+    ///
     /// let handle = tokio::spawn(async move {
     ///     stream.subscribe_latest_async(
     ///         move |state, token| {
     ///             let rendered = rendered_clone.clone();
+    ///             let gate_rx = gate_rx_shared.clone();
+    ///             let started = started_tx.clone();
     ///             async move {
-    ///                 // Simulate expensive rendering
-    ///                 tokio::time::sleep(Duration::from_millis(50)).await;
+    ///                 started.send(state.counter).unwrap();
+    ///
+    ///                 // First item waits at gate
+    ///                 if let Some(mut rx) = gate_rx.lock().await.take() {
+    ///                     let _ = rx.recv().await;
+    ///                 }
+    ///
     ///                 if !token.is_cancelled() {
     ///                     rendered.lock().await.push(state);
     ///                 }
@@ -280,18 +339,26 @@ where
     ///     ).await
     /// });
     ///
-    /// // Rapid state updates
-    /// for i in 0..10 {
+    /// // Send first state and wait for it to start
+    /// tx.send(AppState { counter: 0 }).unwrap();
+    /// assert_eq!(started_rx.recv().await, Some(0));
+    ///
+    /// // Rapid state updates (intermediate ones will be skipped)
+    /// for i in 1..10 {
     ///     tx.send(AppState { counter: i }).unwrap();
     /// }
     /// drop(tx);
     ///
+    /// // Release first render - this unblocks item 0, then 9 runs immediately
+    /// gate_tx.send(()).unwrap();
+    ///
     /// handle.await.unwrap().unwrap();
     ///
-    /// // Only latest states should be rendered (intermediate ones skipped)
-    /// tokio::time::sleep(Duration::from_millis(200)).await;
+    /// // Only first and latest states should be rendered (intermediate ones skipped)
     /// let rendered_states = rendered.lock().await;
-    /// assert!(rendered_states.len() < 10); // Some states were skipped
+    /// assert_eq!(rendered_states.len(), 2);
+    /// assert_eq!(rendered_states[0].counter, 0); // First state
+    /// assert_eq!(rendered_states[1].counter, 9); // Latest state
     /// # }
     /// ```
     ///

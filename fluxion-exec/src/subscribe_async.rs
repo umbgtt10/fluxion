@@ -73,11 +73,13 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// use futures::stream;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
+    /// use tokio::sync::mpsc::unbounded_channel;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// let results = Arc::new(Mutex::new(Vec::new()));
     /// let results_clone = results.clone();
+    /// let (notify_tx, mut notify_rx) = unbounded_channel();
     ///
     /// let stream = stream::iter(vec![1, 2, 3, 4, 5]);
     ///
@@ -85,8 +87,10 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// stream.subscribe_async(
     ///     move |item, _token| {
     ///         let results = results_clone.clone();
+    ///         let notify_tx = notify_tx.clone();
     ///         async move {
     ///             results.lock().await.push(item * 2);
+    ///             let _ = notify_tx.send(());
     ///             Ok::<(), std::io::Error>(())
     ///         }
     ///     },
@@ -94,8 +98,10 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///     None::<fn(std::io::Error)>  // No error callback
     /// ).await.unwrap();
     ///
-    /// // Wait a bit for spawned tasks to complete
-    /// tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    /// // Wait for all 5 items to be processed
+    /// for _ in 0..5 {
+    ///     notify_rx.recv().await.unwrap();
+    /// }
     ///
     /// let processed = results.lock().await;
     /// assert!(processed.contains(&2));
@@ -112,6 +118,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// use futures::stream;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
+    /// use tokio::sync::mpsc::unbounded_channel;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -126,15 +133,29 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///
     /// let error_count = Arc::new(Mutex::new(0));
     /// let error_count_clone = error_count.clone();
+    /// let (notify_tx, mut notify_rx) = unbounded_channel();
     ///
     /// let stream = stream::iter(vec![1, 2, 3, 4, 5]);
     ///
     /// stream.subscribe_async(
-    ///     |item, _token| async move {
-    ///         if item % 2 == 0 {
-    ///             Err(MyError(format!("Even number: {}", item)))
-    ///         } else {
-    ///             Ok(())
+    ///     move |item, _token| {
+    ///         let notify_tx = notify_tx.clone();
+    ///         async move {
+    ///             let res = if item % 2 == 0 {
+    ///                 Err(MyError(format!("Even number: {}", item)))
+    ///             } else {
+    ///                 Ok(())
+    ///             };
+    ///             // Signal completion regardless of success/failure
+    ///             // Note: In real code, you might signal in the error callback too
+    ///             // but here we just want to know the handler finished.
+    ///             // However, subscribe_async spawns the handler. If it errors,
+    ///             // the error callback is called.
+    ///             // We need to signal completion in both paths.
+    ///             // Since the handler returns the error, we can't signal *after* returning Err.
+    ///             // So we signal before returning.
+    ///             let _ = notify_tx.send(());
+    ///             res
     ///         }
     ///     },
     ///     None,
@@ -146,7 +167,16 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///     })
     /// ).await.unwrap();
     ///
-    /// tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    /// // Wait for 5 items
+    /// for _ in 0..5 {
+    ///     notify_rx.recv().await.unwrap();
+    /// }
+    ///
+    /// // Give a tiny bit of time for the error callback spawn to finish updating the count
+    /// // (Since the callback spawns another task)
+    /// // Alternatively, we could use a channel in the error callback too.
+    /// tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    ///
     /// assert_eq!(*error_count.lock().await, 2); // Items 2 and 4 errored
     /// # }
     /// ```
@@ -174,17 +204,19 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///
     /// let processed = Arc::new(Mutex::new(Vec::new()));
     /// let processed_clone = processed.clone();
+    /// let (notify_tx, mut notify_rx) = unbounded_channel();
     ///
     /// let handle = tokio::spawn(async move {
     ///     stream.subscribe_async(
     ///         move |item, token| {
     ///             let vec = processed_clone.clone();
+    ///             let notify_tx = notify_tx.clone();
     ///             async move {
     ///                 if token.is_cancelled() {
     ///                     return Ok(());
     ///                 }
-    ///                 tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
     ///                 vec.lock().await.push(item);
+    ///                 let _ = notify_tx.send(());
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
@@ -193,13 +225,15 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///     ).await
     /// });
     ///
-    /// // Send a few items
+    /// // Send items
     /// tx.send(1).unwrap();
     /// tx.send(2).unwrap();
     /// tx.send(3).unwrap();
     ///
-    /// // Wait a bit then cancel
-    /// tokio::time::sleep(tokio::time::Duration::from_millis(15)).await;
+    /// // Wait for first item to be processed
+    /// notify_rx.recv().await.unwrap();
+    ///
+    /// // Cancel now
     /// cancel_clone.cancel();
     /// drop(tx);
     ///
@@ -219,6 +253,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// use futures::stream;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
+    /// use tokio::sync::mpsc::unbounded_channel;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -228,6 +263,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// // Simulated database
     /// let db = Arc::new(Mutex::new(Vec::new()));
     /// let db_clone = db.clone();
+    /// let (notify_tx, mut notify_rx) = unbounded_channel();
     ///
     /// let events = vec![
     ///     Event { id: 1, data: "event1".to_string() },
@@ -239,10 +275,11 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// stream.subscribe_async(
     ///     move |event, _token| {
     ///         let db = db_clone.clone();
+    ///         let notify_tx = notify_tx.clone();
     ///         async move {
     ///             // Simulate database write
-    ///             tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
     ///             db.lock().await.push(event);
+    ///             let _ = notify_tx.send(());
     ///             Ok::<(), std::io::Error>(())
     ///         }
     ///     },
@@ -250,7 +287,10 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///     Some(|err| eprintln!("DB Error: {}", err))
     /// ).await.unwrap();
     ///
-    /// tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    /// // Wait for 2 events
+    /// notify_rx.recv().await.unwrap();
+    /// notify_rx.recv().await.unwrap();
+    ///
     /// assert_eq!(db.lock().await.len(), 2);
     /// # }
     /// ```

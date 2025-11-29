@@ -97,6 +97,8 @@ where
     /// let result = unwrap_value(Some(unwrap_stream(&mut combined, 500).await));
     /// let values = result.values();
     /// assert_eq!(values.len(), 2);
+    /// assert_eq!(values[0], 1);
+    /// assert_eq!(values[1], 2);
     /// # }
     /// ```
     ///
