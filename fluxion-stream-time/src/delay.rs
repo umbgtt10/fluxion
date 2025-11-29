@@ -2,10 +2,10 @@ use fluxion_core::StreamItem;
 use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt};
 use pin_project::pin_project;
-use tokio::time::sleep;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use tokio::time::{sleep, Sleep};
 
 /// Delays each emission from the source stream by the specified duration.
 ///
@@ -40,15 +40,40 @@ where
 }
 
 #[pin_project]
-struct DelayStream<S: Stream> {
+struct DelayFuture<T> {
+    #[pin]
+    delay: Sleep,
+    value: Option<T>,
+}
+
+impl<T> Future for DelayFuture<T> {
+    type Output = StreamItem<T>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        match this.delay.poll(cx) {
+            Poll::Ready(()) => {
+                let value = this
+                    .value
+                    .take()
+                    .expect("DelayFuture polled after completion");
+                Poll::Ready(StreamItem::Value(value))
+            }
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+#[pin_project]
+struct DelayStream<S, T> {
     #[pin]
     stream: S,
     duration: chrono::Duration,
-    in_flight: FuturesUnordered<Pin<Box<dyn Future<Output = S::Item> + Send + Sync>>>,
+    in_flight: FuturesUnordered<DelayFuture<T>>,
     upstream_done: bool,
 }
 
-impl<S, T> Stream for DelayStream<S>
+impl<S, T> Stream for DelayStream<S, T>
 where
     S: Stream<Item = StreamItem<T>>,
     T: Send + Sync + 'static,
@@ -64,11 +89,10 @@ where
                 match this.stream.as_mut().poll_next(cx) {
                     Poll::Ready(Some(StreamItem::Value(value))) => {
                         let std_duration = duration_to_std(this.duration);
-                        let future = Box::pin(async move {
-                            sleep(std_duration).await;
-                            StreamItem::Value(value)
-                        })
-                            as Pin<Box<dyn Future<Output = S::Item> + Send + Sync>>;
+                        let future = DelayFuture {
+                            delay: sleep(std_duration),
+                            value: Some(value),
+                        };
                         this.in_flight.push(future);
                     }
                     Poll::Ready(Some(StreamItem::Error(err))) => {

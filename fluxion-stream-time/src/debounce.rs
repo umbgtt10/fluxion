@@ -1,10 +1,10 @@
 use fluxion_core::StreamItem;
 use futures::Stream;
 use pin_project::pin_project;
-use tokio::time::{Sleep, sleep};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use tokio::time::{sleep, Instant, Sleep};
 
 /// Debounces values from the source stream by the specified duration.
 ///
@@ -43,7 +43,8 @@ where
     DebounceStream {
         stream,
         duration,
-        pending: None,
+        sleep: Box::pin(sleep(std::time::Duration::from_millis(0))), // Initial dummy sleep
+        pending_value: None,
         stream_ended: false,
     }
 }
@@ -53,7 +54,8 @@ struct DebounceStream<S: Stream> {
     #[pin]
     stream: S,
     duration: chrono::Duration,
-    pending: Option<(S::Item, Pin<Box<Sleep>>)>,
+    sleep: Pin<Box<Sleep>>,
+    pending_value: Option<S::Item>,
     stream_ended: bool,
 }
 
@@ -70,19 +72,19 @@ where
         loop {
             // If stream ended and we have a pending value, emit it immediately
             if *this.stream_ended {
-                if let Some((item, _)) = this.pending.take() {
+                if let Some(item) = this.pending_value.take() {
                     return Poll::Ready(Some(item));
                 }
                 return Poll::Ready(None);
             }
 
             // Check if we have a pending debounced value and its timer
-            if let Some((_, sleep)) = this.pending.as_mut() {
-                match sleep.as_mut().poll(cx) {
+            if this.pending_value.is_some() {
+                match this.sleep.as_mut().poll(cx) {
                     Poll::Ready(_) => {
                         // Timer expired, emit the pending value
-                        let result = this.pending.take().map(|(item, _)| item);
-                        return Poll::Ready(result);
+                        let item = this.pending_value.take();
+                        return Poll::Ready(item);
                     }
                     Poll::Pending => {
                         // Timer still running, check for new values
@@ -95,17 +97,18 @@ where
                 Poll::Ready(Some(StreamItem::Value(value))) => {
                     // New value arrived - reset the debounce timer
                     let std_duration = duration_to_std(this.duration);
-                    let sleep = Box::pin(sleep(std_duration));
+                    let deadline = Instant::now() + std_duration;
+                    this.sleep.as_mut().reset(deadline);
 
                     // Replace any pending value with this new one
-                    *this.pending = Some((StreamItem::Value(value), sleep));
+                    *this.pending_value = Some(StreamItem::Value(value));
 
-                    // Continue polling to check the timer
+                    // Continue polling to check the timer (it might be 0 duration)
                     continue;
                 }
                 Poll::Ready(Some(StreamItem::Error(err))) => {
                     // Errors pass through immediately, discarding any pending value
-                    *this.pending = None;
+                    *this.pending_value = None;
                     return Poll::Ready(Some(StreamItem::Error(err)));
                 }
                 Poll::Ready(None) => {
