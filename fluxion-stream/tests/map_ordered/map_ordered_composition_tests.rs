@@ -199,7 +199,7 @@ async fn test_ordered_merge_combine_with_previous_map_ordered() -> anyhow::Resul
     let animal_stream = animal_rx;
 
     let stream = FluxionStream::new(person_stream)
-        .ordered_merge(vec![FluxionStream::new(animal_stream)])
+        .ordered_merge(vec![animal_stream])
         .combine_with_previous()
         .map_ordered(|stream_item| {
             let item = stream_item;
@@ -240,7 +240,7 @@ async fn test_combine_latest_combine_with_previous_map_ordered() -> anyhow::Resu
     static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;
 
     let mut stream = FluxionStream::new(person_stream)
-        .combine_latest(vec![animal_stream], COMBINE_FILTER)
+        .combine_latest(vec![FluxionStream::new(animal_stream)], COMBINE_FILTER)
         .combine_with_previous()
         .map_ordered(|stream_item| {
             let item = stream_item;
@@ -467,7 +467,7 @@ async fn test_combine_latest_with_previous_map_ordered_type_count() -> anyhow::R
     let animal_stream = animal_rx;
 
     let mut stream = FluxionStream::new(person_stream)
-        .combine_latest(vec![animal_stream], COMBINE_FILTER)
+        .combine_latest(vec![FluxionStream::new(animal_stream)], COMBINE_FILTER)
         .combine_with_previous()
         .map_ordered(|stream_item| {
             let item = stream_item;

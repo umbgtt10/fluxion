@@ -11,6 +11,7 @@ use crate::take_latest_when::TakeLatestWhenExt;
 use crate::take_while_with::TakeWhileExt;
 use crate::types::{CombinedState, WithPrevious};
 use crate::with_latest_from::WithLatestFromExt;
+use fluxion_core::into_stream::IntoStream;
 use fluxion_core::ComparableUnpin;
 use fluxion_core::{FluxionError, StreamItem, Timestamped};
 use futures::future::ready;
@@ -836,17 +837,17 @@ where
     /// - [`combine_latest`](FluxionStream::combine_latest) - Merge with value combination
     /// - [`combine_with_previous`](FluxionStream::combine_with_previous) - Often chained after merge
     /// - **[stream-aggregation example](https://github.com/umbgtt10/fluxion/tree/main/examples/stream-aggregation)** - Production pattern
-    pub fn ordered_merge<S2>(
+    pub fn ordered_merge<IS>(
         self,
-        others: Vec<FluxionStream<S2>>,
+        others: Vec<IS>,
     ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
     where
         S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-        S2: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
+        IS: IntoStream<Item = StreamItem<T>>,
+        IS::Stream: Send + Sync + 'static,
     {
         let inner = self.into_inner();
-        let other_streams: Vec<S2> = others.into_iter().map(|fs| fs.into_inner()).collect();
-        FluxionStream::new(OrderedStreamExt::ordered_merge(inner, other_streams))
+        FluxionStream::new(OrderedStreamExt::ordered_merge(inner, others))
     }
 
     /// Handle errors in the stream with a handler function.
