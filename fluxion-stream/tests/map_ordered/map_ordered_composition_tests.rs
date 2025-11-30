@@ -3,13 +3,14 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_stream::FluxionStream;
+use fluxion_stream::{CombinedState, FluxionStream, WithPrevious};
 use fluxion_test_utils::{
-    helpers::unwrap_stream,
+    helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
-    test_data::{person_alice, person_bob, person_charlie, TestData},
+    test_data::{animal_dog, person_alice, person_bob, person_charlie, person_dave, TestData},
     unwrap_value, Sequenced,
 };
+use futures::StreamExt;
 
 #[tokio::test]
 async fn test_combine_with_previous_map_ordered() -> anyhow::Result<()> {
@@ -130,6 +131,228 @@ async fn test_combine_with_previous_map_ordered_to_struct() -> anyhow::Result<()
             age_increased: true,
         }
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_combine_with_previous_map_ordered_age_difference() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let mut stream = FluxionStream::new(stream)
+        .combine_with_previous()
+        .map_ordered(|stream_item| {
+            let item = stream_item;
+            let current_age = match &item.current.value {
+                TestData::Person(p) => p.age,
+                _ => 0,
+            };
+            let previous_age = item.previous.and_then(|prev| match &prev.value {
+                TestData::Person(p) => Some(p.age),
+                _ => None,
+            });
+
+            StreamItem::Value(match previous_age {
+                Some(prev) => current_age as i32 - prev as i32,
+                None => 0,
+            })
+        });
+
+    // Act & Assert
+    tx.send(Sequenced::new(person_alice()))?; // Age 25
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        0
+    ); // No previous
+
+    tx.send(Sequenced::new(person_bob()))?; // Age 30
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        5
+    ); // 30 - 25 = 5
+
+    tx.send(Sequenced::new(person_dave()))?; // Age 28
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        -2
+    ); // 28 - 30 = -2
+
+    tx.send(Sequenced::new(person_charlie()))?; // Age 35
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        7
+    ); // 35 - 28 = 7
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ordered_merge_combine_with_previous_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let (person_tx, person_rx) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_rx) = test_channel::<Sequenced<TestData>>();
+
+    let person_stream = person_rx;
+    let animal_stream = animal_rx;
+
+    let stream = FluxionStream::new(person_stream)
+        .ordered_merge(vec![FluxionStream::new(animal_stream)])
+        .combine_with_previous()
+        .map_ordered(|stream_item| {
+            let item = stream_item;
+            let curr_str = &item.current.value.to_string();
+            let prev_str = item.previous.map(|p| p.value.to_string());
+            StreamItem::Value(format!("Current: {}, Previous: {:?}", curr_str, prev_str))
+        });
+
+    // Act & Assert
+    person_tx.send(Sequenced::new(person_alice()))?;
+    let mut stream = Box::pin(stream);
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
+    assert!(result.contains("Alice"));
+    assert!(result.contains("Previous: None"));
+
+    animal_tx.send(Sequenced::new(animal_dog()))?;
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
+    assert!(result.contains("Dog"));
+    assert!(result.contains("Alice"));
+
+    person_tx.send(Sequenced::new(person_bob()))?;
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
+    assert!(result.contains("Bob"));
+    assert!(result.contains("Dog"));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_combine_latest_combine_with_previous_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let (person_tx, person_rx) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_rx) = test_channel::<Sequenced<TestData>>();
+
+    let person_stream = person_rx;
+    let animal_stream = animal_rx;
+
+    static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;
+
+    let mut stream = FluxionStream::new(person_stream)
+        .combine_latest(vec![animal_stream], COMBINE_FILTER)
+        .combine_with_previous()
+        .map_ordered(|stream_item| {
+            let item = stream_item;
+            let curr_state = item.current.values();
+            let count = curr_state.len();
+            StreamItem::Value(format!("Combined {} streams", count))
+        });
+
+    // Act & Assert
+    person_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.send(Sequenced::new(animal_dog()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        "Combined 2 streams"
+    );
+
+    person_tx.send(Sequenced::new(person_bob()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        "Combined 2 streams"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_combine_with_previous_map_ordered_filter_age_change() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let mut stream = FluxionStream::new(stream)
+        .combine_with_previous()
+        .map_ordered(|stream_item| {
+            let item = stream_item;
+            let current_age = match &item.current.value {
+                TestData::Person(p) => p.age,
+                _ => return StreamItem::Value(None),
+            };
+            let previous_age = item.previous.and_then(|prev| match &prev.value {
+                TestData::Person(p) => Some(p.age),
+                _ => None,
+            });
+
+            StreamItem::Value(match previous_age {
+                Some(prev) if current_age != prev => {
+                    Some(format!("Age changed from {} to {}", prev, current_age))
+                }
+                _ => None,
+            })
+        });
+
+    // Act & Assert
+    tx.send(Sequenced::new(person_alice()))?; // Age 25
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        None
+    ); // No previous
+
+    tx.send(Sequenced::new(person_bob()))?; // Age 30
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        Some(String::from("Age changed from 25 to 30"))
+    );
+
+    tx.send(Sequenced::new(person_charlie()))?; // Age 35
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        Some(String::from("Age changed from 30 to 35"))
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_combine_with_previous_emit_when_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let (source_tx, source_rx) = test_channel::<Sequenced<TestData>>();
+    let (threshold_tx, threshold_rx) = test_channel::<Sequenced<TestData>>();
+
+    let source_stream = source_rx;
+    let threshold_stream = threshold_rx;
+
+    let threshold_mapped =
+        threshold_stream.map(|seq| StreamItem::Value(WithPrevious::new(None, seq.unwrap())));
+
+    let filter_fn = |state: &CombinedState<TestData>| -> bool {
+        let values = state.values();
+        let current_age = match &values[0] {
+            TestData::Person(p) => p.age,
+            _ => return false,
+        };
+        let threshold_age = match &values[1] {
+            TestData::Person(p) => p.age,
+            _ => return false,
+        };
+        current_age >= threshold_age
+    };
+
+    let mut stream = FluxionStream::new(source_stream)
+        .combine_with_previous()
+        .emit_when(threshold_mapped, filter_fn)
+        .map_ordered(|stream_item| {
+            let item = stream_item;
+            StreamItem::Value(format!("Passed filter: {}", &item.current.value))
+        });
+
+    // Act & Assert
+    threshold_tx.send(Sequenced::new(person_bob()))?; // Threshold 30
+    source_tx.send(Sequenced::new(person_alice()))?; // 25 - below threshold
+    assert_no_element_emitted(&mut stream, 100).await;
+
+    source_tx.send(Sequenced::new(person_charlie()))?; // 35 - above threshold
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
+    assert!(result.contains("Charlie"));
+    assert!(result.contains("Passed filter"));
 
     Ok(())
 }
