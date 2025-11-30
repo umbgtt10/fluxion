@@ -97,6 +97,36 @@ async fn test_combine_latest_take_while_with() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn test_ordered_merge_filter_ordered_take_while_with() -> anyhow::Result<()> {
+    // Arrange
+    let (source_tx, source_rx) = test_channel::<Sequenced<TestData>>();
+    let (other_tx, other_rx) = test_channel::<Sequenced<TestData>>();
+    let (predicate_tx, predicate_rx) = test_channel::<Sequenced<TestData>>();
+
+    let source_stream = source_rx;
+    let other_stream = other_rx;
+    let predicate_stream = predicate_rx;
+
+    // Chain ordered operations, then take_while_with at the end
+    let mut stream = FluxionStream::new(source_stream)
+        .ordered_merge(vec![FluxionStream::new(other_stream)])
+        .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
+        .take_while_with(predicate_stream, |_| true);
+
+    // Act & Assert
+    predicate_tx.send(Sequenced::new(person_alice()))?;
+    source_tx.send(Sequenced::new(animal_dog()))?; // Filtered by filter_ordered
+    source_tx.send(Sequenced::new(person_bob()))?; // Kept
+    other_tx.send(Sequenced::new(person_charlie()))?; // Kept
+    let result1 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    let result2 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+
+    assert_eq!(&result1.value, &person_bob());
+    assert_eq!(&result2.value, &person_charlie());
+
+    Ok(())
+}
+#[tokio::test]
 async fn test_ordered_merge_take_while_with() -> anyhow::Result<()> {
     // Arrange
     let (person_tx, person_rx) = test_channel::<Sequenced<TestData>>();

@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{HasTimestamp, StreamItem, Timestamped};
-use fluxion_stream::{CombinedState, FluxionStream, WithPrevious};
+use fluxion_stream::{CombinedState, FluxionStream, MergedStream, WithPrevious};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -36,26 +36,22 @@ async fn test_combine_with_previous_map_ordered() -> anyhow::Result<()> {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
-
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(
-        result,
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
         "Previous: None, Current: Person[name=Alice, age=25]"
     );
 
     tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(
-        result,
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
         String::from(
             "Previous: Some(\"Person[name=Alice, age=25]\"), Current: Person[name=Bob, age=30]"
         )
     );
 
     tx.send(Sequenced::new(person_charlie()))?;
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
     assert_eq!(
-        result,
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
         String::from(
             "Previous: Some(\"Person[name=Bob, age=30]\"), Current: Person[name=Charlie, age=35]"
         )
@@ -395,11 +391,11 @@ async fn test_triple_ordered_merge_combine_with_previous_map_ordered() -> anyhow
     animal_tx.send(Sequenced::new(animal_dog()))?;
     plant_tx.send(Sequenced::new(plant_rose()))?;
 
-    let result1 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    let result2 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    let result3 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-
-    let results = [result1, result2, result3];
+    let results = [
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
+    ];
     assert!(results.contains(&StreamItem::Value(String::from("Person"))));
     assert!(results.contains(&StreamItem::Value(String::from("Animal"))));
     assert!(results.contains(&StreamItem::Value(String::from("Plant"))));
@@ -748,20 +744,116 @@ async fn test_with_latest_from_in_middle_of_chain_map_ordered() -> anyhow::Resul
     secondary_tx.send(Sequenced::new(person_alice()))?; // 25
     primary_tx.send(Sequenced::new(animal_dog()))?; // Filtered
     primary_tx.send(Sequenced::new(person_bob()))?; // 30
-
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await;
-    assert_eq!(result, StreamItem::Value("Combined age: 55".to_string())); // 30 + 25
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await,
+        StreamItem::Value("Combined age: 55".to_string())
+    ); // 30 + 25
 
     primary_tx.send(Sequenced::new(person_charlie()))?; // 35
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await;
-    assert_eq!(result, StreamItem::Value("Combined age: 60".to_string())); // 35 + 25
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await,
+        StreamItem::Value("Combined age: 60".to_string())
+    ); // 35 + 25
 
     // Update secondary
     secondary_tx.send(Sequenced::new(person_diane()))?; // 40
     primary_tx.send(Sequenced::new(person_dave()))?; // 28
 
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await;
-    assert_eq!(result, StreamItem::Value("Combined age: 68".to_string())); // 28 + 40
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await,
+        StreamItem::Value("Combined age: 68".to_string())
+    ); // 28 + 40
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_merge_with_chaining_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    // Act: Chain merge_with with map_ordered that doubles the counter
+    let mut result = MergedStream::seed::<Sequenced<usize>>(0)
+        .merge_with(stream, |_item: TestData, state| {
+            *state += 1;
+            *state
+        })
+        .into_fluxion_stream()
+        .map_ordered(|seq| {
+            let value = seq.into_inner();
+            Sequenced::new(value * 2)
+        });
+
+    // Send first value
+    tx.send(Sequenced::new(person_alice()))?;
+
+    // Assert first result: state=1, doubled=2
+    assert_eq!(
+        unwrap_stream(&mut result, 500).await.into_inner(),
+        2,
+        "First emission: (0+1)*2 = 2"
+    );
+
+    // Send second value
+    tx.send(Sequenced::new(person_bob()))?;
+
+    // Assert second result: state=2, doubled=4
+    assert_eq!(
+        unwrap_stream(&mut result, 500).await.into_inner(),
+        4,
+        "Second emission: (1+1)*2 = 4"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_merge_with_chaining_multiple_operators_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    // Act: Chain merge_with with map, filter, and another map
+    let mut result = MergedStream::seed::<Sequenced<usize>>(0)
+        .merge_with(stream, |_item: TestData, state| {
+            *state += 1;
+            *state
+        })
+        .into_fluxion_stream()
+        .map_ordered(|seq| {
+            let value = seq.into_inner();
+            Sequenced::new(value * 3)
+        })
+        .filter_ordered(|&value| value > 6)
+        .map_ordered(|seq| {
+            let value = seq.into_inner();
+            Sequenced::new(value + 10)
+        });
+
+    // Send first value - state: 1, *3=3 (filtered out: 3 <= 6)
+    tx.send(Sequenced::new(person_alice()))?;
+
+    // Send second value - state: 2, *3=6 (filtered out: 6 <= 6)
+    tx.send(Sequenced::new(person_bob()))?;
+
+    // Send third value - state: 3, *3=9, +10=19 (kept: 9 > 6)
+    tx.send(Sequenced::new(person_charlie()))?;
+
+    // Assert: first kept value
+    assert_eq!(
+        unwrap_stream(&mut result, 500).await.into_inner(),
+        19,
+        "Third emission: 3*3=9, 9+10=19"
+    );
+
+    // Send fourth value - state: 4, *3=12, +10=22 (kept: 12 > 6)
+    tx.send(Sequenced::new(person_dave()))?;
+
+    // Assert: second kept value
+    assert_eq!(
+        unwrap_stream(&mut result, 500).await.into_inner(),
+        22,
+        "Fourth emission: 4*3=12, 12+10=22"
+    );
 
     Ok(())
 }

@@ -2,16 +2,18 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::Timestamped;
-use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_core::{StreamItem, Timestamped};
+use fluxion_stream::{CombinedState, FluxionStream, MergedStream};
 use fluxion_test_utils::{
     helpers::unwrap_stream,
     test_channel,
     test_data::{
-        animal_dog, person_alice, person_bob, person_charlie, person_diane, plant_rose, TestData,
+        animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
+        plant_rose, TestData,
     },
     unwrap_value, Sequenced,
 };
+use tokio::sync::mpsc;
 
 static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;
 
@@ -82,6 +84,56 @@ async fn test_combine_latest_filter_ordered() -> anyhow::Result<()> {
     let inner = result.clone().into_inner();
     let state = inner.values();
     assert_eq!(&state[0], &person_diane());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_merge_with_chaining_filter_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+    let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
+
+    // Act: Chain merge_with with filter_ordered (only values > 2)
+    let mut result = MergedStream::seed::<Sequenced<usize>>(0)
+        .merge_with(stream, |_item: TestData, state| {
+            *state += 1;
+            *state
+        })
+        .into_fluxion_stream()
+        .filter_ordered(|&value| value > 2);
+
+    // Send first value - state will be 1 (filtered out)
+    tx.send(Sequenced::new(person_alice()))?;
+
+    // Send second value - state will be 2 (filtered out)
+    tx.send(Sequenced::new(person_bob()))?;
+
+    // Send third value - state will be 3 (kept)
+    tx.send(Sequenced::new(person_charlie()))?;
+
+    // Assert: only the third emission passes the filter
+    let StreamItem::Value(first_kept) = unwrap_stream(&mut result, 500).await else {
+        panic!("Expected Value");
+    };
+    assert_eq!(
+        first_kept.into_inner(),
+        3,
+        "Third emission passes filter: 3 > 2"
+    );
+
+    // Send fourth value - state will be 4 (kept)
+    tx.send(Sequenced::new(person_dave()))?;
+
+    // Assert: fourth emission also passes
+    let StreamItem::Value(second_kept) = unwrap_stream(&mut result, 500).await else {
+        panic!("Expected Value");
+    };
+    assert_eq!(
+        second_kept.into_inner(),
+        4,
+        "Fourth emission passes filter: 4 > 2"
+    );
 
     Ok(())
 }
