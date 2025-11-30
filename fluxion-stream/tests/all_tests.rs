@@ -7,6 +7,7 @@ pub mod filter_ordered;
 pub mod map_ordered;
 pub mod merge_with;
 pub mod on_error;
+pub mod ordered_merge;
 pub mod scan_ordered;
 pub mod skip_items;
 pub mod start_with;
