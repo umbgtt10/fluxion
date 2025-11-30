@@ -5,6 +5,7 @@
 use crate::fluxion_stream::FluxionStream;
 use fluxion_core::{FluxionItem, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
+use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
 /// Extension trait providing the `scan_ordered` operator for streams.
@@ -216,7 +217,8 @@ where
     ) -> FluxionStream<impl Stream<Item = StreamItem<Out>>>
     where
         Acc: Send + 'static,
-        Out: FluxionItem,
+        Out: fluxion_core::ComparableUnpin,
+        Out::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
         Out::Timestamp: From<T::Timestamp>,
         F: FnMut(&mut Acc, &T::Inner) -> Out::Inner + Send + 'static;
 }
@@ -233,7 +235,8 @@ where
     ) -> FluxionStream<impl Stream<Item = StreamItem<Out>>>
     where
         Acc: Send + 'static,
-        Out: FluxionItem,
+        Out: fluxion_core::ComparableUnpin,
+        Out::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
         Out::Timestamp: From<T::Timestamp>,
         F: FnMut(&mut Acc, &T::Inner) -> Out::Inner + Send + 'static,
     {

@@ -19,7 +19,7 @@ async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<(
     let mut result = FluxionStream::new(stream)
         .filter_ordered(|x| *x > 1) // Filter out first item
         .combine_with_previous()
-        .map_ordered(|x| x.current.value * 10);
+        .map_ordered(|x| Sequenced::new(x.current.value * 10));
 
     // Act & Assert Send value (filtered out)
     tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
@@ -28,7 +28,7 @@ async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<(
     tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(20)
+        StreamItem::Value(ref v) if v.value == 20
     ));
 
     // Send error
@@ -42,13 +42,13 @@ async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<(
     tx.send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(40)
+        StreamItem::Value(ref v) if v.value == 40
     ));
 
     tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(50)
+        StreamItem::Value(ref v) if v.value == 50
     ));
 
     drop(tx);
@@ -65,13 +65,13 @@ async fn test_error_in_long_operator_chain() -> anyhow::Result<()> {
     let mut result = FluxionStream::new(stream)
         .filter_ordered(|x| *x >= 10)
         .combine_with_previous()
-        .map_ordered(|x| x.current.value + 5);
+        .map_ordered(|x| Sequenced::new(x.current.value + 5));
 
     // Act & Assert Send value
     tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(15)
+        StreamItem::Value(ref v) if v.value == 15
     ));
 
     // Send error
@@ -85,13 +85,13 @@ async fn test_error_in_long_operator_chain() -> anyhow::Result<()> {
     tx.send(StreamItem::Value(Sequenced::with_timestamp(30, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(35)
+        StreamItem::Value(ref v) if v.value == 35
     ));
 
     tx.send(StreamItem::Value(Sequenced::with_timestamp(40, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(45)
+        StreamItem::Value(ref v) if v.value == 45
     ));
 
     drop(tx);
@@ -111,14 +111,14 @@ async fn test_multiple_errors_through_composition() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|x| {
             let state = &x.current;
-            format!("Combined: {:?}", state.values())
+            Sequenced::new(format!("Combined: {:?}", state.values()))
         });
 
     // Send initial values
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     tx2.send(StreamItem::Value(Sequenced::with_timestamp(10, 4)))?;
     assert!(
-        matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref s) if s.contains("Combined"))
+        matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref s) if s.value.contains("Combined"))
     );
 
     // Send error
@@ -131,7 +131,7 @@ async fn test_multiple_errors_through_composition() -> anyhow::Result<()> {
     // Continue
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     assert!(
-        matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref s) if s.contains("Combined"))
+        matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref s) if s.value.contains("Combined"))
     );
 
     drop(tx1);
@@ -150,7 +150,7 @@ async fn test_error_recovery_in_composed_streams() -> anyhow::Result<()> {
     let mut result = source_stream
         .take_latest_when(trigger_stream, |_| true)
         .combine_with_previous()
-        .map_ordered(|x| x.current.value);
+        .map_ordered(|x| Sequenced::new(x.current.value));
 
     // Send source values
     source_tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 1)))?;
@@ -167,7 +167,7 @@ async fn test_error_recovery_in_composed_streams() -> anyhow::Result<()> {
     trigger_tx.send(StreamItem::Value(Sequenced::with_timestamp(100, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(15)
+        StreamItem::Value(ref v) if v.value == 15
     ));
 
     drop(source_tx);
@@ -185,7 +185,7 @@ async fn test_error_with_emit_when_composition() -> anyhow::Result<()> {
     let mut result = source_stream
         .emit_when(filter_stream, |state| state.values()[0] > state.values()[1])
         .combine_with_previous()
-        .map_ordered(|x| x.current.value * 2);
+        .map_ordered(|x| Sequenced::new(x.current.value * 2));
 
     // Arrange & Act Send filter value first
     filter_tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
@@ -202,7 +202,7 @@ async fn test_error_with_emit_when_composition() -> anyhow::Result<()> {
     source_tx.send(StreamItem::Value(Sequenced::with_timestamp(25, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(50)
+        StreamItem::Value(ref v) if v.value == 50
     ));
 
     drop(source_tx);

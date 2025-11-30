@@ -182,7 +182,8 @@ where
     ) -> FluxionStream<impl Stream<Item = StreamItem<U>> + Send + Sync>
     where
         S: Send + Sync + Unpin + 'static,
-        U: Send + 'static,
+        U: ComparableUnpin,
+        U::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
         F: FnMut(T) -> U + Send + Sync + 'static,
     {
         let inner = self.into_inner();
@@ -339,7 +340,8 @@ where
     ) -> FluxionStream<impl Stream<Item = StreamItem<Out>>>
     where
         S: Send + Sync + 'static,
-        Out: fluxion_core::FluxionItem + 'static,
+        Out: ComparableUnpin,
+        Out::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
         Out::Timestamp: From<T::Timestamp>,
         Acc: Send + 'static,
         F: FnMut(&mut Acc, &T::Inner) -> Out::Inner + Send + 'static,
@@ -691,7 +693,9 @@ where
     where
         S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
         S2: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-        R: Timestamped<Timestamp = T::Timestamp> + Clone + Debug + Ord + Send + Sync + 'static,
+        R: ComparableUnpin,
+        R::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+        R::Timestamp: From<T::Timestamp>,
     {
         let inner = self.into_inner();
         FluxionStream::new(WithLatestFromExt::with_latest_from(

@@ -15,29 +15,29 @@ async fn test_map_ordered_basic_transformation() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.combine_with_previous().map_ordered(|stream_item| {
-        format!(
+        Sequenced::new(format!(
             "Previous: {:?}, Current: {}",
             stream_item.previous.map(|p| p.value.to_string()),
             &stream_item.current.value
-        )
+        ))
     });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Previous: None, Current: Person[name=Alice, age=25]"
     );
 
     tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Previous: Some(\"Person[name=Alice, age=25]\"), Current: Person[name=Bob, age=30]"
     );
 
     tx.send(Sequenced::new(person_charlie()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Previous: Some(\"Person[name=Bob, age=30]\"), Current: Person[name=Charlie, age=35]"
     );
 
@@ -47,7 +47,7 @@ async fn test_map_ordered_basic_transformation() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
     // Arrange
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Clone, Ord, PartialOrd, Eq)]
     struct AgeComparison {
         previous_age: Option<u32>,
         current_age: u32,
@@ -78,33 +78,29 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
                 TestData::Person(p) => Some(p.age),
                 _ => None,
             });
-        AgeComparison::new(previous_age, current_age)
+        Sequenced::new(AgeComparison::new(previous_age, current_age))
     });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         AgeComparison::new(None, 25)
     );
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         AgeComparison::new(Some(25), 30)
     );
 
     tx.send(Sequenced::new(person_alice()))?; // Age 25 again
-    assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
-        AgeComparison::new(Some(30), 25)
-    );
+    let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value;
+    assert_eq!(val, AgeComparison::new(Some(30), 25));
 
     tx.send(Sequenced::new(person_charlie()))?; // Age 35
-    assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
-        AgeComparison::new(Some(25), 35)
-    );
+    let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value;
+    assert_eq!(val, AgeComparison::new(Some(25), 35));
 
     Ok(())
 }
@@ -115,7 +111,7 @@ async fn test_map_ordered_extract_age_difference() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream
         .combine_with_previous()
-        .map_ordered(|stream_item| -> i32 {
+        .map_ordered(|stream_item| -> Sequenced<i32> {
             let current_age = match &stream_item.current.value {
                 TestData::Person(p) => p.age as i32,
                 _ => 0,
@@ -127,24 +123,33 @@ async fn test_map_ordered_extract_age_difference() -> anyhow::Result<()> {
                     TestData::Person(p) => Some(p.age as i32),
                     _ => None,
                 });
-            current_age - previous_age.unwrap_or(current_age)
+            Sequenced::new(current_age - previous_age.unwrap_or(current_age))
         });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 500).await)), 0); // No previous
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        0
+    ); // No previous
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 500).await)), 5); // 30 - 25 = 5
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        5
+    ); // 30 - 25 = 5
 
     tx.send(Sequenced::new(person_dave()))?; // Age 28
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         -2
     ); // 28 - 30 = -2
 
     tx.send(Sequenced::new(person_charlie()))?; // Age 35
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 500).await)), 7); // 35 - 28 = 7
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        7
+    ); // 35 - 28 = 7
 
     Ok(())
 }
@@ -155,12 +160,12 @@ async fn test_map_ordered_single_value() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream
         .combine_with_previous()
-        .map_ordered(|stream_item| stream_item.current.value.to_string());
+        .map_ordered(|stream_item| Sequenced::new(stream_item.current.value.to_string()));
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Person[name=Alice, age=25]"
     );
 
@@ -173,7 +178,7 @@ async fn test_map_ordered_empty_stream() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream
         .combine_with_previous()
-        .map_ordered(|stream_item| stream_item.current.value.to_string());
+        .map_ordered(|stream_item| Sequenced::new(stream_item.current.value.to_string()));
 
     // Act
     drop(tx); // Close the stream
@@ -190,10 +195,10 @@ async fn test_map_ordered_preserves_ordering() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.combine_with_previous().map_ordered(|stream_item| {
         // Extract name from current
-        match &stream_item.current.value {
+        Sequenced::new(match &stream_item.current.value {
             TestData::Person(p) => p.name.clone(),
             _ => String::from("Unknown"),
-        }
+        })
     });
 
     // Act
@@ -204,19 +209,19 @@ async fn test_map_ordered_preserves_ordering() -> anyhow::Result<()> {
 
     // Assert - order should be preserved
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Alice"
     );
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Bob"
     );
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Charlie"
     );
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Dave"
     );
 
@@ -229,28 +234,28 @@ async fn test_map_ordered_multiple_transformations() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.combine_with_previous().map_ordered(|stream_item| {
         // First transformation: extract age
-        match &stream_item.current.value {
+        Sequenced::new(match &stream_item.current.value {
             TestData::Person(p) => p.age,
             _ => 0,
-        }
+        })
     });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         25
     );
 
     tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         30
     );
 
     tx.send(Sequenced::new(person_charlie()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         35
     );
 
@@ -260,7 +265,7 @@ async fn test_map_ordered_multiple_transformations() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
     // Arrange
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Clone, Ord, PartialOrd, Eq)]
     struct PersonSummary {
         name: String,
         age_category: &'static str,
@@ -300,25 +305,29 @@ async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
             }
         });
 
-        PersonSummary::new(current.name.clone(), age_category, changed_from_previous)
+        Sequenced::new(PersonSummary::new(
+            current.name.clone(),
+            age_category,
+            changed_from_previous,
+        ))
     });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         PersonSummary::new(String::from("Alice"), "young adult", true)
     );
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         PersonSummary::new(String::from("Bob"), "adult", true)
     );
 
     tx.send(Sequenced::new(person_bob()))?; // Same person
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut result, 500).await)),
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         PersonSummary::new(String::from("Bob"), "adult", false)
     );
 
@@ -335,30 +344,30 @@ async fn test_map_ordered_boolean_logic() -> anyhow::Result<()> {
             TestData::Person(p) => p.age,
             _ => 0,
         };
-        stream_item.previous.as_ref().is_some_and(|prev| {
+        Sequenced::new(stream_item.previous.as_ref().is_some_and(|prev| {
             if let TestData::Person(p) = &prev.value {
                 current_age > p.age
             } else {
                 false
             }
-        })
+        }))
     });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
-    assert!(!unwrap_value(Some(unwrap_stream(&mut result, 500).await))); // No previous
+    assert!(!unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value); // No previous
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30
-    assert!(unwrap_value(Some(unwrap_stream(&mut result, 500).await))); // 30 > 25
+    assert!(unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value); // 30 > 25
 
     tx.send(Sequenced::new(person_charlie()))?; // Age 35
-    assert!(unwrap_value(Some(unwrap_stream(&mut result, 500).await))); // 35 > 30
+    assert!(unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value); // 35 > 30
 
     tx.send(Sequenced::new(person_dave()))?; // Age 28
-    assert!(!unwrap_value(Some(unwrap_stream(&mut result, 500).await))); // 28 < 35
+    assert!(!unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value); // 28 < 35
 
     tx.send(Sequenced::new(person_alice()))?; // Age 25
-    assert!(!unwrap_value(Some(unwrap_stream(&mut result, 500).await))); // 25 < 28
+    assert!(!unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value); // 25 < 28
 
     Ok(())
 }

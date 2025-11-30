@@ -11,7 +11,7 @@ use crate::ordered_merge::OrderedMergeExt;
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{ComparableInner, StreamItem, Timestamped};
+use fluxion_core::{ComparableInner, StreamItem};
 
 /// Extension trait providing the `with_latest_from` operator for timestamped streams.
 ///
@@ -112,7 +112,9 @@ where
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
-        R: Timestamped<Timestamp = T::Timestamp> + Clone + Debug + Send + Sync + 'static;
+        R: fluxion_core::ComparableUnpin,
+        R::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+        R::Timestamp: From<T::Timestamp>;
 }
 
 impl<T, S> WithLatestFromExt<T> for S
@@ -129,7 +131,9 @@ where
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
-        R: Timestamped<Timestamp = T::Timestamp> + Clone + Debug + Send + Sync + 'static,
+        R: fluxion_core::ComparableUnpin,
+        R::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+        R::Timestamp: From<T::Timestamp>,
     {
         type PinnedStream<T> =
             std::pin::Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;

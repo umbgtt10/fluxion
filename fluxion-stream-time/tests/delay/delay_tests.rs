@@ -63,9 +63,9 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
 
     // Spawn a task to drive the stream
     spawn(async move {
-        let mut stream = delayed.map_ordered(|item| item.value);
+        let mut stream = delayed;
         while let Some(item) = stream.next().await {
-            result_tx.send(item.unwrap()).unwrap();
+            result_tx.send(item.unwrap().value).unwrap();
         }
     });
 

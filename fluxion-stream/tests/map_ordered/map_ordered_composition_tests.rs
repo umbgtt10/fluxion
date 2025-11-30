@@ -28,7 +28,7 @@ async fn test_combine_with_previous_map_ordered() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|stream_item| {
             let item = stream_item;
-            StreamItem::Value(format!(
+            Sequenced::new(format!(
                 "Previous: {:?}, Current: {}",
                 item.previous.map(|p| p.value.to_string()),
                 &item.current.value
@@ -38,13 +38,13 @@ async fn test_combine_with_previous_map_ordered() -> anyhow::Result<()> {
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Previous: None, Current: Person[name=Alice, age=25]"
     );
 
     tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         String::from(
             "Previous: Some(\"Person[name=Alice, age=25]\"), Current: Person[name=Bob, age=30]"
         )
@@ -52,7 +52,7 @@ async fn test_combine_with_previous_map_ordered() -> anyhow::Result<()> {
 
     tx.send(Sequenced::new(person_charlie()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         String::from(
             "Previous: Some(\"Person[name=Bob, age=30]\"), Current: Person[name=Charlie, age=35]"
         )
@@ -64,7 +64,7 @@ async fn test_combine_with_previous_map_ordered() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_combine_with_previous_map_ordered_to_struct() -> anyhow::Result<()> {
     // Arrange
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Clone, Ord, PartialOrd, Eq)]
     struct AgeComparison {
         previous_age: Option<u32>,
         current_age: u32,
@@ -87,7 +87,7 @@ async fn test_combine_with_previous_map_ordered_to_struct() -> anyhow::Result<()
             });
             let age_increased = previous_age.is_some_and(|prev| current_age > prev);
 
-            StreamItem::Value(AgeComparison {
+            Sequenced::new(AgeComparison {
                 previous_age,
                 current_age,
                 age_increased,
@@ -97,7 +97,7 @@ async fn test_combine_with_previous_map_ordered_to_struct() -> anyhow::Result<()
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         AgeComparison {
             previous_age: None,
             current_age: 25,
@@ -107,7 +107,7 @@ async fn test_combine_with_previous_map_ordered_to_struct() -> anyhow::Result<()
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         AgeComparison {
             previous_age: Some(25),
             current_age: 30,
@@ -117,7 +117,7 @@ async fn test_combine_with_previous_map_ordered_to_struct() -> anyhow::Result<()
 
     tx.send(Sequenced::new(person_alice()))?; // Age 25 again
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         AgeComparison {
             previous_age: Some(30),
             current_age: 25,
@@ -127,7 +127,7 @@ async fn test_combine_with_previous_map_ordered_to_struct() -> anyhow::Result<()
 
     tx.send(Sequenced::new(person_charlie()))?; // Age 35
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         AgeComparison {
             previous_age: Some(25),
             current_age: 35,
@@ -156,7 +156,7 @@ async fn test_combine_with_previous_map_ordered_age_difference() -> anyhow::Resu
                 _ => None,
             });
 
-            StreamItem::Value(match previous_age {
+            Sequenced::new(match previous_age {
                 Some(prev) => current_age as i32 - prev as i32,
                 None => 0,
             })
@@ -165,25 +165,25 @@ async fn test_combine_with_previous_map_ordered_age_difference() -> anyhow::Resu
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         0
     ); // No previous
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         5
     ); // 30 - 25 = 5
 
     tx.send(Sequenced::new(person_dave()))?; // Age 28
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         -2
     ); // 28 - 30 = -2
 
     tx.send(Sequenced::new(person_charlie()))?; // Age 35
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         7
     ); // 35 - 28 = 7
     Ok(())
@@ -205,23 +205,23 @@ async fn test_ordered_merge_combine_with_previous_map_ordered() -> anyhow::Resul
             let item = stream_item;
             let curr_str = &item.current.value.to_string();
             let prev_str = item.previous.map(|p| p.value.to_string());
-            StreamItem::Value(format!("Current: {}, Previous: {:?}", curr_str, prev_str))
+            Sequenced::new(format!("Current: {}, Previous: {:?}", curr_str, prev_str))
         });
 
     // Act & Assert
     person_tx.send(Sequenced::new(person_alice()))?;
     let mut stream = Box::pin(stream);
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value;
     assert!(result.contains("Alice"));
     assert!(result.contains("Previous: None"));
 
     animal_tx.send(Sequenced::new(animal_dog()))?;
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value;
     assert!(result.contains("Dog"));
     assert!(result.contains("Alice"));
 
     person_tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value;
     assert!(result.contains("Bob"));
     assert!(result.contains("Dog"));
 
@@ -246,20 +246,20 @@ async fn test_combine_latest_combine_with_previous_map_ordered() -> anyhow::Resu
             let item = stream_item;
             let curr_state = item.current.values();
             let count = curr_state.len();
-            StreamItem::Value(format!("Combined {} streams", count))
+            Sequenced::new(format!("Combined {} streams", count))
         });
 
     // Act & Assert
     person_tx.send(Sequenced::new(person_alice()))?;
     animal_tx.send(Sequenced::new(animal_dog()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Combined 2 streams"
     );
 
     person_tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Combined 2 streams"
     );
 
@@ -277,14 +277,14 @@ async fn test_combine_with_previous_map_ordered_filter_age_change() -> anyhow::R
             let item = stream_item;
             let current_age = match &item.current.value {
                 TestData::Person(p) => p.age,
-                _ => return StreamItem::Value(None),
+                _ => return Sequenced::new(None),
             };
             let previous_age = item.previous.and_then(|prev| match &prev.value {
                 TestData::Person(p) => Some(p.age),
                 _ => None,
             });
 
-            StreamItem::Value(match previous_age {
+            Sequenced::new(match previous_age {
                 Some(prev) if current_age != prev => {
                     Some(format!("Age changed from {} to {}", prev, current_age))
                 }
@@ -295,19 +295,19 @@ async fn test_combine_with_previous_map_ordered_filter_age_change() -> anyhow::R
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         None
     ); // No previous
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         Some(String::from("Age changed from 25 to 30"))
     );
 
     tx.send(Sequenced::new(person_charlie()))?; // Age 35
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         Some(String::from("Age changed from 30 to 35"))
     );
 
@@ -344,7 +344,7 @@ async fn test_combine_with_previous_emit_when_map_ordered() -> anyhow::Result<()
         .emit_when(threshold_mapped, filter_fn)
         .map_ordered(|stream_item| {
             let item = stream_item;
-            StreamItem::Value(format!("Passed filter: {}", &item.current.value))
+            Sequenced::new(format!("Passed filter: {}", &item.current.value))
         });
 
     // Act & Assert
@@ -353,9 +353,9 @@ async fn test_combine_with_previous_emit_when_map_ordered() -> anyhow::Result<()
     assert_no_element_emitted(&mut stream, 100).await;
 
     source_tx.send(Sequenced::new(person_charlie()))?; // 35 - above threshold
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).unwrap();
-    assert!(result.contains("Charlie"));
-    assert!(result.contains("Passed filter"));
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    assert!(result.value.contains("Charlie"));
+    assert!(result.value.contains("Passed filter"));
 
     Ok(())
 }
@@ -384,7 +384,7 @@ async fn test_triple_ordered_merge_combine_with_previous_map_ordered() -> anyhow
                 TestData::Animal(_) => "Animal",
                 TestData::Plant(_) => "Plant",
             };
-            StreamItem::Value(variant.to_string())
+            Sequenced::new(variant.to_string())
         });
 
     // Act & Assert
@@ -397,9 +397,9 @@ async fn test_triple_ordered_merge_combine_with_previous_map_ordered() -> anyhow
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)),
     ];
-    assert!(results.contains(&StreamItem::Value(String::from("Person"))));
-    assert!(results.contains(&StreamItem::Value(String::from("Animal"))));
-    assert!(results.contains(&StreamItem::Value(String::from("Plant"))));
+    assert!(results.iter().any(|r| r.value == "Person"));
+    assert!(results.iter().any(|r| r.value == "Animal"));
+    assert!(results.iter().any(|r| r.value == "Plant"));
 
     Ok(())
 }
@@ -413,7 +413,7 @@ async fn test_ordered_merge_with_previous_and_map_ordered_name_change() -> anyho
     let mut stream = FluxionStream::new(s1_rx)
         .ordered_merge(vec![FluxionStream::new(s2_rx)])
         .combine_with_previous()
-        .map_ordered(|stream_item| async move {
+        .map_ordered(|stream_item| {
             let item = stream_item;
             let current_binding = item.current;
             let current_name = match &current_binding.value {
@@ -425,7 +425,7 @@ async fn test_ordered_merge_with_previous_and_map_ordered_name_change() -> anyho
                 _ => "Unknown".to_string(),
             });
 
-            StreamItem::Value(match prev_name {
+            Sequenced::new(match prev_name {
                 Some(prev) if prev != current_name => {
                     format!("Name changed from {} to {}", prev, current_name)
                 }
@@ -438,25 +438,19 @@ async fn test_ordered_merge_with_previous_and_map_ordered_name_change() -> anyho
     s1_tx.send(Sequenced::new(person_alice()))?;
 
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "First entry: Alice"
     );
 
     s2_tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Same name: Alice"
     );
 
     s1_tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Name changed from Alice to Bob"
     );
 
@@ -475,7 +469,7 @@ async fn test_combine_latest_with_previous_map_ordered_type_count() -> anyhow::R
     let mut stream = FluxionStream::new(person_stream)
         .combine_latest(vec![animal_stream], COMBINE_FILTER)
         .combine_with_previous()
-        .map_ordered(|stream_item| async move {
+        .map_ordered(|stream_item| {
             let item = stream_item;
             let state_binding = item.current;
             let inner = state_binding.clone().into_inner();
@@ -488,7 +482,7 @@ async fn test_combine_latest_with_previous_map_ordered_type_count() -> anyhow::R
                 .iter()
                 .filter(|d| matches!(d, TestData::Animal(_)))
                 .count();
-            StreamItem::Value(format!(
+            Sequenced::new(format!(
                 "Persons: {}, Animals: {}",
                 person_count, animal_count
             ))
@@ -499,17 +493,13 @@ async fn test_combine_latest_with_previous_map_ordered_type_count() -> anyhow::R
     animal_tx.send(Sequenced::new(animal_dog()))?;
 
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Persons: 1, Animals: 1"
     );
 
     person_tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Persons: 1, Animals: 1"
     );
 
@@ -528,7 +518,7 @@ async fn test_double_ordered_merge_map_ordered() -> anyhow::Result<()> {
     let mut stream = FluxionStream::new(s1_stream)
         .ordered_merge(vec![FluxionStream::new(s2_stream)])
         .combine_with_previous()
-        .map_ordered(|stream_item| async move {
+        .map_ordered(|stream_item| {
             let item = stream_item;
             let type_name = match &item.current.value {
                 TestData::Person(_) => "Person",
@@ -536,31 +526,25 @@ async fn test_double_ordered_merge_map_ordered() -> anyhow::Result<()> {
                 TestData::Plant(_) => "Plant",
             };
             let count = if item.previous.is_some() { 2 } else { 1 };
-            StreamItem::Value(format!("{} (item #{})", type_name, count))
+            Sequenced::new(format!("{} (item #{})", type_name, count))
         });
 
     // Act & Assert
     s1_tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Person (item #1)"
     );
 
     s2_tx.send(Sequenced::new(animal_dog()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Animal (item #2)"
     );
 
     s1_tx.send(Sequenced::new(plant_rose()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Plant (item #2)"
     );
 
@@ -579,9 +563,9 @@ async fn test_ordered_merge_map_ordered_data_extraction() -> anyhow::Result<()> 
     let mut stream = FluxionStream::new(s1_stream)
         .ordered_merge(vec![FluxionStream::new(s2_stream)])
         .combine_with_previous()
-        .map_ordered(|stream_item| async move {
+        .map_ordered(|stream_item| {
             let item = stream_item;
-            StreamItem::Value(match &item.current.value {
+            Sequenced::new(match &item.current.value {
                 TestData::Person(p) => format!("Person: {}, Age: {}", p.name, p.age),
                 TestData::Animal(a) => format!("Animal: {}, Legs: {}", a.name, a.legs),
                 TestData::Plant(p) => format!("Plant: {}, Height: {}", p.species, p.height),
@@ -591,25 +575,19 @@ async fn test_ordered_merge_map_ordered_data_extraction() -> anyhow::Result<()> 
     // Act & Assert
     s1_tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Person: Alice, Age: 25"
     );
 
     s2_tx.send(Sequenced::new(animal_dog()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Animal: Dog, Legs: 4"
     );
 
     s1_tx.send(Sequenced::new(plant_rose()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Plant: Rose, Height: 15"
     );
     Ok(())
@@ -622,9 +600,9 @@ async fn test_filter_ordered_map_ordered() -> anyhow::Result<()> {
 
     let mut stream = FluxionStream::new(stream)
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
-        .map_ordered(|stream_item| async move {
+        .map_ordered(|stream_item| {
             let item = stream_item;
-            StreamItem::Value(match &item.value {
+            Sequenced::new(match &item.value {
                 TestData::Person(p) => format!("Person: {}", p.name),
                 _ => unreachable!(),
             })
@@ -633,27 +611,21 @@ async fn test_filter_ordered_map_ordered() -> anyhow::Result<()> {
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Person: Alice"
     );
 
     tx.send(Sequenced::new(animal_dog()))?; // Filtered out
     tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Person: Bob"
     );
 
     tx.send(Sequenced::new(plant_rose()))?; // Filtered out
     tx.send(Sequenced::new(person_charlie()))?;
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Person: Charlie"
     );
 
@@ -671,7 +643,7 @@ async fn test_filter_ordered_map_ordered_combine_with_previous() -> anyhow::Resu
             _ => false,
         })
         .combine_with_previous()
-        .map_ordered(|stream_item| async move {
+        .map_ordered(|stream_item| {
             let item = stream_item;
             let current = match &item.current.value {
                 TestData::Person(p) => p.name.clone(),
@@ -681,7 +653,7 @@ async fn test_filter_ordered_map_ordered_combine_with_previous() -> anyhow::Resu
                 TestData::Person(p) => p.name.clone(),
                 _ => unreachable!(),
             });
-            StreamItem::Value(format!("Current: {}, Previous: {:?}", current, previous))
+            Sequenced::new(format!("Current: {}, Previous: {:?}", current, previous))
         });
 
     // Act & Assert
@@ -689,26 +661,20 @@ async fn test_filter_ordered_map_ordered_combine_with_previous() -> anyhow::Resu
     tx.send(Sequenced::new(person_bob()))?; // 30 - kept
 
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Current: Bob, Previous: None"
     );
 
     tx.send(Sequenced::new(person_charlie()))?; // 35 - kept
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Current: Charlie, Previous: Some(\"Bob\")"
     );
 
     tx.send(Sequenced::new(person_dave()))?; // 28 - filtered
     tx.send(Sequenced::new(person_diane()))?; // 40 - kept
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
-            .await
-            .unwrap(),
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Current: Diane, Previous: Some(\"Charlie\")"
     );
 
@@ -736,9 +702,9 @@ async fn test_with_latest_from_in_middle_of_chain_map_ordered() -> anyhow::Resul
     let mut stream = FluxionStream::new(primary_rx)
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
         .with_latest_from(FluxionStream::new(secondary_rx), age_combiner)
-        .map_ordered(|stream_item| async move {
+        .map_ordered(|stream_item| {
             let age_sum = stream_item.clone().into_inner();
-            StreamItem::Value(format!("Combined age: {}", age_sum))
+            Sequenced::new(format!("Combined age: {}", age_sum))
         });
 
     // Act & Assert
@@ -746,14 +712,14 @@ async fn test_with_latest_from_in_middle_of_chain_map_ordered() -> anyhow::Resul
     primary_tx.send(Sequenced::new(animal_dog()))?; // Filtered
     primary_tx.send(Sequenced::new(person_bob()))?; // 30
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await,
-        StreamItem::Value("Combined age: 55".to_string())
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        "Combined age: 55"
     ); // 30 + 25
 
     primary_tx.send(Sequenced::new(person_charlie()))?; // 35
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await,
-        StreamItem::Value("Combined age: 60".to_string())
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        "Combined age: 60"
     ); // 35 + 25
 
     // Update secondary
@@ -761,8 +727,8 @@ async fn test_with_latest_from_in_middle_of_chain_map_ordered() -> anyhow::Resul
     primary_tx.send(Sequenced::new(person_dave()))?; // 28
 
     assert_eq!(
-        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await,
-        StreamItem::Value("Combined age: 68".to_string())
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        "Combined age: 68"
     ); // 28 + 40
 
     Ok(())
@@ -904,7 +870,7 @@ async fn test_take_items_with_map_ordered() -> anyhow::Result<()> {
 
     let mut result = FluxionStream::new(stream)
         .take_items(3)
-        .map_ordered(|item| item.value * 2);
+        .map_ordered(|item| Sequenced::new(item.value * 2));
 
     // Act
     tx.send(Sequenced::new(10))?;
@@ -915,15 +881,15 @@ async fn test_take_items_with_map_ordered() -> anyhow::Result<()> {
     // Assert - First 3 values doubled
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(20)
+        StreamItem::Value(v) if v.value == 20
     ));
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(40)
+        StreamItem::Value(v) if v.value == 40
     ));
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(60)
+        StreamItem::Value(v) if v.value == 60
     ));
     assert_stream_ended(&mut result, 100).await;
 

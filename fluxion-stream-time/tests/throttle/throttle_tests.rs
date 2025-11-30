@@ -28,9 +28,9 @@ async fn test_throttle_with_chrono_timestamped() -> anyhow::Result<()> {
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
-        let mut stream = throttled.map_ordered(|item| item.value);
+        let mut stream = throttled;
         while let Some(item) = stream.next().await {
-            result_tx.send(item.unwrap()).unwrap();
+            result_tx.send(item.unwrap().value).unwrap();
         }
     });
 
@@ -69,9 +69,9 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
 
     // Spawn a task to drive the stream
     spawn(async move {
-        let mut stream = throttled.map_ordered(|item| item.value);
+        let mut stream = throttled;
         while let Some(item) = stream.next().await {
-            result_tx.send(item.unwrap()).unwrap();
+            result_tx.send(item.unwrap().value).unwrap();
         }
     });
 

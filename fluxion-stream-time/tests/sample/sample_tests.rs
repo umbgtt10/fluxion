@@ -27,9 +27,9 @@ async fn test_sample_emits_latest_in_window() -> anyhow::Result<()> {
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
-        let mut stream = sampled.map_ordered(|item| item.value);
+        let mut stream = sampled;
         while let Some(item) = stream.next().await {
-            result_tx.send(item.unwrap()).unwrap();
+            result_tx.send(item.unwrap().value).unwrap();
         }
     });
 
@@ -60,9 +60,9 @@ async fn test_sample_no_emission_if_no_value() -> anyhow::Result<()> {
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
-        let mut stream = sampled.map_ordered(|item| item.value);
+        let mut stream = sampled;
         while let Some(item) = stream.next().await {
-            result_tx.send(item.unwrap()).unwrap();
+            result_tx.send(item.unwrap().value).unwrap();
         }
     });
 
