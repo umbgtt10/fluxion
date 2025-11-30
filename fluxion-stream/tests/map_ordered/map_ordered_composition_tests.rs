@@ -516,3 +516,147 @@ async fn test_combine_latest_with_previous_map_ordered_type_count() -> anyhow::R
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_double_ordered_merge_map_ordered() -> anyhow::Result<()> {
+    // Arrange - merge two pairs of streams, then merge results
+    let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
+    let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
+
+    let s1_stream = s1_rx;
+    let s2_stream = s2_rx;
+
+    let mut stream = FluxionStream::new(s1_stream)
+        .ordered_merge(vec![FluxionStream::new(s2_stream)])
+        .combine_with_previous()
+        .map_ordered(|stream_item| async move {
+            let item = stream_item;
+            let type_name = match &item.current.value {
+                TestData::Person(_) => "Person",
+                TestData::Animal(_) => "Animal",
+                TestData::Plant(_) => "Plant",
+            };
+            let count = if item.previous.is_some() { 2 } else { 1 };
+            StreamItem::Value(format!("{} (item #{})", type_name, count))
+        });
+
+    // Act & Assert
+    s1_tx.send(Sequenced::new(person_alice()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
+        "Person (item #1)"
+    );
+
+    s2_tx.send(Sequenced::new(animal_dog()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
+        "Animal (item #2)"
+    );
+
+    s1_tx.send(Sequenced::new(plant_rose()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
+        "Plant (item #2)"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ordered_merge_map_ordered_data_extraction() -> anyhow::Result<()> {
+    // Arrange - extract specific fields from merged data
+    let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
+    let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
+
+    let s1_stream = s1_rx;
+    let s2_stream = s2_rx;
+
+    let mut stream = FluxionStream::new(s1_stream)
+        .ordered_merge(vec![FluxionStream::new(s2_stream)])
+        .combine_with_previous()
+        .map_ordered(|stream_item| async move {
+            let item = stream_item;
+            StreamItem::Value(match &item.current.value {
+                TestData::Person(p) => format!("Person: {}, Age: {}", p.name, p.age),
+                TestData::Animal(a) => format!("Animal: {}, Legs: {}", a.name, a.legs),
+                TestData::Plant(p) => format!("Plant: {}, Height: {}", p.species, p.height),
+            })
+        });
+
+    // Act & Assert
+    s1_tx.send(Sequenced::new(person_alice()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
+        "Person: Alice, Age: 25"
+    );
+
+    s2_tx.send(Sequenced::new(animal_dog()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
+        "Animal: Dog, Legs: 4"
+    );
+
+    s1_tx.send(Sequenced::new(plant_rose()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
+        "Plant: Rose, Height: 15"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_filter_ordered_map_ordered() -> anyhow::Result<()> {
+    // Arrange - filter for people only, then map to names
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let mut stream = FluxionStream::new(stream)
+        .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
+        .map_ordered(|stream_item| async move {
+            let item = stream_item;
+            StreamItem::Value(match &item.value {
+                TestData::Person(p) => format!("Person: {}", p.name),
+                _ => unreachable!(),
+            })
+        });
+
+    // Act & Assert
+    tx.send(Sequenced::new(person_alice()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
+        "Person: Alice"
+    );
+
+    tx.send(Sequenced::new(animal_dog()))?; // Filtered out
+    tx.send(Sequenced::new(person_bob()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
+        "Person: Bob"
+    );
+
+    tx.send(Sequenced::new(plant_rose()))?; // Filtered out
+    tx.send(Sequenced::new(person_charlie()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
+        "Person: Charlie"
+    );
+
+    Ok(())
+}

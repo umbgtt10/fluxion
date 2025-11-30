@@ -166,3 +166,35 @@ async fn test_complex_composition_ordered_merge_and_combine_with_previous() -> a
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_filter_ordered_combine_with_previous() -> anyhow::Result<()> {
+    // Arrange - filter for adults (age > 25), then track changes
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let mut stream = FluxionStream::new(stream)
+        .filter_ordered(|test_data| match test_data {
+            TestData::Person(p) => p.age > 25,
+            _ => false,
+        })
+        .combine_with_previous();
+
+    // Act & Assert
+    tx.send(Sequenced::new(person_alice()))?; // 25 - filtered
+    tx.send(Sequenced::new(person_bob()))?; // 30 - kept
+    let item = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    assert!(item.previous.is_none());
+    assert_eq!(&item.current.value, &person_bob());
+
+    tx.send(Sequenced::new(person_charlie()))?; // 35 - kept
+    let item = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    assert_eq!(&item.previous.unwrap().value, &person_bob());
+    assert_eq!(&item.current.value, &person_charlie());
+
+    tx.send(Sequenced::new(person_dave()))?; // 28 - kept
+    let item = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    assert_eq!(&item.previous.unwrap().value, &person_charlie());
+    assert_eq!(&item.current.value, &person_dave());
+
+    Ok(())
+}
