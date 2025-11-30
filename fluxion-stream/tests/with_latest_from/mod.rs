@@ -1,2 +1,4 @@
+pub mod with_latest_from_composition_error_tests;
+pub mod with_latest_from_composition_tests;
 pub mod with_latest_from_error_tests;
 pub mod with_latest_from_tests;

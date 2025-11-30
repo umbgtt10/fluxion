@@ -1,2 +1,4 @@
+pub mod distinct_until_changed_composition_error_tests;
+pub mod distinct_until_changed_composition_tests;
 pub mod distinct_until_changed_error_tests;
 pub mod distinct_until_changed_tests;
