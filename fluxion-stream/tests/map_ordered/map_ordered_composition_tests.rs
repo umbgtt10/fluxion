@@ -857,3 +857,35 @@ async fn test_merge_with_chaining_multiple_operators_map_ordered() -> anyhow::Re
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_scan_ordered_composed_with_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let accumulator = |count: &mut i32, _: &TestData| {
+        *count += 1;
+        *count
+    };
+
+    let mut result = FluxionStream::new(stream)
+        .scan_ordered(0, accumulator)
+        .map_ordered(|count: Sequenced<i32>| Sequenced::new(count.into_inner() * 10));
+
+    // Act & Assert
+    tx.send(Sequenced::new(person_alice()))?;
+    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    assert_eq!(value.value, 10);
+
+    tx.send(Sequenced::new(person_bob()))?;
+    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    assert_eq!(value.value, 20);
+
+    tx.send(Sequenced::new(person_charlie()))?;
+    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
+    assert_eq!(value.value, 30);
+
+    drop(tx);
+
+    Ok(())
+}
