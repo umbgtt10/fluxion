@@ -14,6 +14,7 @@ use fluxion_test_utils::{
 };
 
 static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;
+static FILTER: fn(&TestData) -> bool = |_| true;
 
 #[tokio::test]
 async fn test_combine_latest_take_latest_when() -> anyhow::Result<()> {
@@ -118,6 +119,41 @@ async fn test_ordered_merge_take_latest_when() -> anyhow::Result<()> {
     person_tx.send(Sequenced::new(person_charlie()))?;
     // After filter stream closes, no more emissions should occur
     assert_no_element_emitted(&mut composed, 100).await;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_filter_ordered_take_latest_when() -> anyhow::Result<()> {
+    // Arrange - filter source stream, then apply take_latest_when
+    let (source_tx, source_rx) = test_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = test_channel::<Sequenced<TestData>>();
+
+    let mut stream = FluxionStream::new(source_rx)
+        .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
+        .take_latest_when(FluxionStream::new(filter_rx), FILTER);
+
+    // Act & Assert
+    source_tx.send(Sequenced::new(person_alice()))?;
+    source_tx.send(Sequenced::new(animal_dog()))?; // Filtered
+    source_tx.send(Sequenced::new(person_bob()))?;
+
+    filter_tx.send(Sequenced::new(person_alice()))?; // Trigger emission
+
+    {
+        let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+
+        assert_eq!(&val.value, &person_bob());
+    }
+
+    source_tx.send(Sequenced::new(person_charlie()))?;
+    source_tx.send(Sequenced::new(plant_rose()))?; // Filtered
+
+    filter_tx.send(Sequenced::new(person_bob()))?; // Trigger emission
+    {
+        let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+        assert_eq!(&val.value, &person_charlie());
+    }
 
     Ok(())
 }

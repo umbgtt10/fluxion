@@ -2,14 +2,16 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::{StreamItem, Timestamped};
+use fluxion_core::{HasTimestamp, StreamItem, Timestamped};
 use fluxion_stream::{CombinedState, FluxionStream, WithPrevious};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
     test_data::{
-        animal_dog, person_alice, person_bob, person_charlie, person_dave, plant_rose, TestData,
+        animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
+        plant_rose, TestData,
     },
+    test_wrapper::TestWrapper,
     unwrap_value, Sequenced,
 };
 use futures::StreamExt;
@@ -657,6 +659,109 @@ async fn test_filter_ordered_map_ordered() -> anyhow::Result<()> {
             .unwrap(),
         "Person: Charlie"
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_filter_ordered_map_ordered_combine_with_previous() -> anyhow::Result<()> {
+    // Arrange - complex pipeline: filter -> map -> combine_with_previous
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let mut stream = FluxionStream::new(stream)
+        .filter_ordered(|data| match data {
+            TestData::Person(p) => p.age >= 30,
+            _ => false,
+        })
+        .combine_with_previous()
+        .map_ordered(|stream_item| async move {
+            let item = stream_item;
+            let current = match &item.current.value {
+                TestData::Person(p) => p.name.clone(),
+                _ => unreachable!(),
+            };
+            let previous = item.previous.map(|prev| match &prev.value {
+                TestData::Person(p) => p.name.clone(),
+                _ => unreachable!(),
+            });
+            StreamItem::Value(format!("Current: {}, Previous: {:?}", current, previous))
+        });
+
+    // Act & Assert
+    tx.send(Sequenced::new(person_alice()))?; // 25 - filtered
+    tx.send(Sequenced::new(person_bob()))?; // 30 - kept
+
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
+        "Current: Bob, Previous: None"
+    );
+
+    tx.send(Sequenced::new(person_charlie()))?; // 35 - kept
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
+        "Current: Charlie, Previous: Some(\"Bob\")"
+    );
+
+    tx.send(Sequenced::new(person_dave()))?; // 28 - filtered
+    tx.send(Sequenced::new(person_diane()))?; // 40 - kept
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await))
+            .await
+            .unwrap(),
+        "Current: Diane, Previous: Some(\"Charlie\")"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_with_latest_from_in_middle_of_chain_map_ordered() -> anyhow::Result<()> {
+    let (primary_tx, primary_rx) = test_channel::<Sequenced<TestData>>();
+    let (secondary_tx, secondary_rx) = test_channel::<Sequenced<TestData>>();
+
+    // Custom selector: combine ages
+    let age_combiner = |state: &CombinedState<TestData, u64>| -> TestWrapper<u32> {
+        let primary_age = match &state.values()[0] {
+            TestData::Person(p) => p.age,
+            _ => 0,
+        };
+        let secondary_age = match &state.values()[1] {
+            TestData::Person(p) => p.age,
+            _ => 0,
+        };
+        TestWrapper::new(primary_age + secondary_age, state.timestamp())
+    };
+
+    let mut stream = FluxionStream::new(primary_rx)
+        .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
+        .with_latest_from(FluxionStream::new(secondary_rx), age_combiner)
+        .map_ordered(|stream_item| async move {
+            let age_sum = stream_item.clone().into_inner();
+            StreamItem::Value(format!("Combined age: {}", age_sum))
+        });
+
+    // Act & Assert
+    secondary_tx.send(Sequenced::new(person_alice()))?; // 25
+    primary_tx.send(Sequenced::new(animal_dog()))?; // Filtered
+    primary_tx.send(Sequenced::new(person_bob()))?; // 30
+
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await;
+    assert_eq!(result, StreamItem::Value("Combined age: 55".to_string())); // 30 + 25
+
+    primary_tx.send(Sequenced::new(person_charlie()))?; // 35
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await;
+    assert_eq!(result, StreamItem::Value("Combined age: 60".to_string())); // 35 + 25
+
+    // Update secondary
+    secondary_tx.send(Sequenced::new(person_diane()))?; // 40
+    primary_tx.send(Sequenced::new(person_dave()))?; // 28
+
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).await;
+    assert_eq!(result, StreamItem::Value("Combined age: 68".to_string())); // 28 + 40
 
     Ok(())
 }

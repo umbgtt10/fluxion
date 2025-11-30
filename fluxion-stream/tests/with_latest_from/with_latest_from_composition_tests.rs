@@ -5,9 +5,12 @@
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::{CombinedState, FluxionStream};
 use fluxion_test_utils::{
-    helpers::unwrap_stream,
+    helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
-    test_data::{person_alice, person_bob, person_charlie, person_dave, person_diane, TestData},
+    test_data::{
+        animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
+        plant_rose, TestData,
+    },
     test_wrapper::TestWrapper,
     unwrap_value, Sequenced,
 };
@@ -59,6 +62,60 @@ async fn test_take_latest_when_with_latest_from_custom_selector() -> anyhow::Res
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.clone().into_inner(), "Age difference: -12"); // 28 - 40
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_filter_ordered_with_latest_from() -> anyhow::Result<()> {
+    // Arrange - filter primary stream, then combine with custom selector
+    let (primary_tx, primary_rx) = test_channel::<Sequenced<TestData>>();
+    let (secondary_tx, secondary_rx) = test_channel::<Sequenced<TestData>>();
+
+    // Custom selector: extract name from person and combine with secondary info
+    let name_combiner = |state: &CombinedState<TestData, u64>| -> TestWrapper<String> {
+        let person_name = match &state.values()[0] {
+            TestData::Person(p) => p.name.clone(),
+            _ => String::from("Unknown"),
+        };
+        let secondary_info = match &state.values()[1] {
+            TestData::Animal(a) => format!("with animal {} ({} legs)", a.name, a.legs),
+            TestData::Person(p) => format!("with person {} (age {})", p.name, p.age),
+            TestData::Plant(p) => format!("with plant {} (height {})", p.species, p.height),
+        };
+        TestWrapper::new(
+            format!("{} {}", person_name, secondary_info),
+            state.timestamp(),
+        )
+    };
+
+    let mut stream = FluxionStream::new(primary_rx)
+        .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
+        .with_latest_from(FluxionStream::new(secondary_rx), name_combiner);
+
+    // Act & Assert
+    secondary_tx.send(Sequenced::new(animal_dog()))?;
+    primary_tx.send(Sequenced::new(plant_rose()))?; // Filtered
+    primary_tx.send(Sequenced::new(person_alice()))?; // Kept
+
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    let combined_name = result.clone().into_inner();
+    assert_eq!(combined_name, "Alice with animal Dog (4 legs)");
+
+    // Update secondary to a person
+    secondary_tx.send(Sequenced::new(person_bob()))?;
+    primary_tx.send(Sequenced::new(person_charlie()))?;
+
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    let combined_name = result.clone().into_inner();
+    assert_eq!(combined_name, "Charlie with person Bob (age 30)");
+
+    // Send animal (filtered) and plant (filtered)
+    primary_tx.send(Sequenced::new(animal_dog()))?; // Filtered
+    primary_tx.send(Sequenced::new(plant_rose()))?; // Filtered
+
+    // Verify no emission yet by checking with a timeout
+    assert_no_element_emitted(&mut stream, 100).await;
 
     Ok(())
 }
