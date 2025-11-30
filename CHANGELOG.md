@@ -7,11 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Goal:** Expand operator library with time-based operators
+
 ### Added
+- **Time Operators**: Introduced new `fluxion-stream-time` crate with temporal operators
+  - `debounce` - Emits a value only after a specified stability period has elapsed
+  - `throttle` - Enforces a minimum time interval between emissions
+  - `sample` - Emits the most recent value at periodic intervals
+  - `delay` - Shifts the entire stream forward in time by a specified duration
+  - `timeout` - Errors if no value is emitted within a specified duration
+- **Benchmarks**: Added comprehensive benchmarks for all time operators
+  - `debounce_bench`
+  - `throttle_bench`
+  - `sample_bench`
+  - `delay_bench`
+  - `timeout_bench`
+- **CI/CD**: Updated CI pipeline to include time operator benchmarks
 
 ### Changed
+- **Core Trait Unification**: Introduced unified `Fluxion` trait replacing fragmented trait hierarchy
+  - Replaced `ComparableInner`, `ComparableSync`, `ComparableTimestamped`, `ComparableUnpin`, `ComparableUnpinTimestamped`, and `OrderedFluxionItem`
+  - New `Fluxion` trait enforces `Timestamped + Clone + Send + Sync + Unpin + 'static + Debug + Ord`
+  - Simplified type bounds across all stream operators
+  - Reduced boilerplate and improved type inference
+- **Documentation**: Updated `FLUXION_OPERATOR_SUMMARY.md`
+  - Corrected API reference from `.order()` to `.timestamp()`
+  - Added missing operators to summary table: `distinct_until_changed`, `take_items`, `skip_items`, `on_error`, `start_with`
 
-### Fixed
+### Removed
+- **Legacy Traits**: Deleted obsolete trait files in `fluxion-core`
+  - `comparable_inner.rs`
+  - `comparable_sync.rs`
+  - `comparable_timestamped.rs`
+  - `comparable_unpin.rs`
+  - `comparable_unpin_timestamped.rs`
+  - `ordered_fluxion_item.rs`
 
 ## [0.4.0] - 2025-11-28
 
@@ -417,7 +447,8 @@ See [Error Handling Guide](docs/ERROR-HANDLING.md) for comprehensive patterns.
 
 ---
 
-[Unreleased]: https://github.com/umbgtt10/fluxion/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/umbgtt10/fluxion/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/umbgtt10/fluxion/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/umbgtt10/fluxion/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/umbgtt10/fluxion/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/umbgtt10/fluxion/compare/v0.2.1...v0.2.2

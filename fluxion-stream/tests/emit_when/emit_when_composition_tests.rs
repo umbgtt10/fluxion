@@ -109,3 +109,45 @@ async fn test_ordered_merge_combine_with_previous_emit_when() -> anyhow::Result<
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_combine_with_previous_emit_when_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let (source_tx, source_rx) = test_channel::<Sequenced<TestData>>();
+    let (threshold_tx, threshold_rx) = test_channel::<Sequenced<TestData>>();
+
+    let source_stream = source_rx;
+    let threshold_stream = threshold_rx;
+
+    let filter_fn = |state: &CombinedState<TestData, u64>| -> bool {
+        let values = state.values();
+        let current_age = match &values[0] {
+            TestData::Person(p) => p.age,
+            _ => return false,
+        };
+        let threshold_age = match &values[1] {
+            TestData::Person(p) => p.age,
+            _ => return false,
+        };
+        current_age >= threshold_age
+    };
+
+    // Chain: combine_with_previous -> map_ordered (extract current) -> emit_when
+    let mut stream = FluxionStream::new(source_stream)
+        .combine_with_previous()
+        .map_ordered(|wp| wp.current)
+        .emit_when(FluxionStream::new(threshold_stream), filter_fn);
+
+    // Act & Assert
+    threshold_tx.send(Sequenced::new(person_bob()))?; // Threshold 30
+    source_tx.send(Sequenced::new(person_alice()))?; // 25 - below threshold
+    assert_no_element_emitted(&mut stream, 100).await;
+
+    source_tx.send(Sequenced::new(person_charlie()))?; // 35 - above threshold
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+
+    // Result is TestData (Charlie)
+    assert_eq!(result.value, person_charlie());
+
+    Ok(())
+}

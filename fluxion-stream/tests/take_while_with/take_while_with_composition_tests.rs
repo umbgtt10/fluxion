@@ -7,7 +7,10 @@ use fluxion_stream::{CombinedState, FluxionStream};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
-    test_data::{animal_dog, person_alice, person_bob, person_charlie, plant_rose, TestData},
+    test_data::{
+        animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
+        plant_rose, TestData,
+    },
     unwrap_value, Sequenced,
 };
 
@@ -164,6 +167,123 @@ async fn test_ordered_merge_take_while_with() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(false))?;
     person_tx.send(Sequenced::new(person_charlie()))?;
     assert_no_element_emitted(&mut composed, 100).await;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_filter_ordered_map_ordered_combine_with_previous_take_while_with(
+) -> anyhow::Result<()> {
+    // Arrange - complex pipeline: filter -> combine_with_previous -> map -> take_while_with
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (predicate_tx, predicate_rx) = test_channel::<Sequenced<bool>>();
+
+    let mut stream = FluxionStream::new(stream)
+        .filter_ordered(|data| match data {
+            TestData::Person(p) => p.age >= 30,
+            _ => false,
+        })
+        .combine_with_previous()
+        .map_ordered(|stream_item| {
+            let item = stream_item;
+            let current = match &item.current.value {
+                TestData::Person(p) => p.name.clone(),
+                _ => unreachable!(),
+            };
+            let previous = item.previous.map(|prev| match &prev.value {
+                TestData::Person(p) => p.name.clone(),
+                _ => unreachable!(),
+            });
+            Sequenced::new(format!("Current: {}, Previous: {:?}", current, previous))
+        })
+        .take_while_with(predicate_rx, |p| *p);
+
+    // Act & Assert
+    predicate_tx.send(Sequenced::new(true))?;
+
+    tx.send(Sequenced::new(person_alice()))?; // 25 - filtered
+    tx.send(Sequenced::new(person_bob()))?; // 30 - kept
+
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        "Current: Bob, Previous: None"
+    );
+
+    tx.send(Sequenced::new(person_charlie()))?; // 35 - kept
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        "Current: Charlie, Previous: Some(\"Bob\")"
+    );
+
+    tx.send(Sequenced::new(person_dave()))?; // 28 - filtered
+    tx.send(Sequenced::new(person_diane()))?; // 40 - kept
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        "Current: Diane, Previous: Some(\"Charlie\")"
+    );
+
+    // Now test take_while_with stopping the stream
+    predicate_tx.send(Sequenced::new(false))?;
+
+    // Send another valid person
+    tx.send(Sequenced::new(person_bob()))?; // 30 - kept by filter, but should be stopped by take_while_with
+
+    assert_no_element_emitted(&mut stream, 100).await;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_combine_with_previous_map_ordered_take_while_with_age_difference(
+) -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (predicate_tx, predicate_rx) = test_channel::<Sequenced<bool>>();
+
+    let mut stream = FluxionStream::new(stream)
+        .combine_with_previous()
+        .map_ordered(|stream_item| {
+            let item = stream_item;
+            let current_age = match &item.current.value {
+                TestData::Person(p) => p.age,
+                _ => 0,
+            };
+            let previous_age = item.previous.and_then(|prev| match &prev.value {
+                TestData::Person(p) => Some(p.age),
+                _ => None,
+            });
+
+            Sequenced::new(match previous_age {
+                Some(prev) => current_age as i32 - prev as i32,
+                None => 0,
+            })
+        })
+        .take_while_with(predicate_rx, |p| *p);
+
+    // Act & Assert
+    predicate_tx.send(Sequenced::new(true))?;
+
+    tx.send(Sequenced::new(person_alice()))?; // Age 25
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        0
+    ); // No previous
+
+    tx.send(Sequenced::new(person_bob()))?; // Age 30
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        5
+    ); // 30 - 25 = 5
+
+    tx.send(Sequenced::new(person_dave()))?; // Age 28
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        -2
+    ); // 28 - 30 = -2
+
+    predicate_tx.send(Sequenced::new(false))?;
+    tx.send(Sequenced::new(person_charlie()))?; // Age 35
+    assert_no_element_emitted(&mut stream, 100).await;
 
     Ok(())
 }
