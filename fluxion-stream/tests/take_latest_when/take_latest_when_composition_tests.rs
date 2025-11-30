@@ -74,3 +74,50 @@ async fn test_combine_latest_take_latest_when() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_ordered_merge_take_latest_when() -> anyhow::Result<()> {
+    // Arrange
+    let (person_tx, person_rx) = test_channel::<Sequenced<TestData>>();
+    let (animal_tx, animal_rx) = test_channel::<Sequenced<TestData>>();
+    let (filter_tx, filter_rx) = test_channel::<Sequenced<TestData>>();
+
+    let person_stream = person_rx;
+    let animal_stream = animal_rx;
+    let filter_stream = filter_rx;
+
+    static LATEST_FILTER: fn(&TestData) -> bool = |_| true;
+
+    let mut composed = FluxionStream::new(person_stream)
+        .ordered_merge(vec![FluxionStream::new(animal_stream)])
+        .take_latest_when(FluxionStream::new(filter_stream), LATEST_FILTER);
+
+    // Act & Assert
+    person_tx.send(Sequenced::new(person_alice()))?;
+    filter_tx.send(Sequenced::new(person_alice()))?;
+    {
+        let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
+        assert_eq!(&val.value, &person_alice());
+    }
+
+    animal_tx.send(Sequenced::new(animal_dog()))?;
+    filter_tx.send(Sequenced::new(person_alice()))?;
+    {
+        let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
+        assert_eq!(&val.value, &animal_dog());
+    }
+
+    person_tx.send(Sequenced::new(person_bob()))?;
+    filter_tx.send(Sequenced::new(person_alice()))?;
+    {
+        let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
+        assert_eq!(&val.value, &person_bob());
+    }
+
+    drop(filter_tx);
+    person_tx.send(Sequenced::new(person_charlie()))?;
+    // After filter stream closes, no more emissions should occur
+    assert_no_element_emitted(&mut composed, 100).await;
+
+    Ok(())
+}
