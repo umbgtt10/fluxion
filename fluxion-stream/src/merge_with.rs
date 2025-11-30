@@ -2,11 +2,12 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::{HasTimestamp, Timestamped};
+use fluxion_core::{Fluxion, HasTimestamp, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::{empty, Empty, Stream, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -57,7 +58,9 @@ impl<S, State, Item> MergedStream<S, State, Item>
 where
     S: Stream + Send + Sync + 'static,
     State: Send + Sync + 'static,
-    Item: Send + Ord + Unpin + 'static,
+    Item: Fluxion,
+    <Item as Timestamped>::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    <Item as HasTimestamp>::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
     /// Merges a new Timestamped stream into the existing merged stream.
     ///
@@ -78,9 +81,10 @@ where
     where
         S::Item: Into<Item>,
         NewStream: Stream + Send + Sync + 'static,
-        NewStream::Item: Timestamped + Send + Sync + Ord + Unpin + 'static,
-        <NewStream::Item as Timestamped>::Inner: Clone + Send + Sync + 'static,
-        <NewStream::Item as HasTimestamp>::Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug,
+        NewStream::Item: Fluxion,
+        <NewStream::Item as Timestamped>::Inner:
+            Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+        <NewStream::Item as HasTimestamp>::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
         F: FnMut(
                 <NewStream::Item as Timestamped>::Inner,
                 &mut State,
@@ -89,10 +93,11 @@ where
             + Sync
             + Clone
             + 'static,
-        Item: Timestamped + Send + Sync + Ord + Unpin + 'static,
-        Item::Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug,
-        Item::Inner: Clone + Send + Sync + 'static,
-        <NewStream::Item as HasTimestamp>::Timestamp: Into<Item::Timestamp> + Copy,
+        Item: Fluxion,
+        <Item as Timestamped>::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+        <Item as HasTimestamp>::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
+        <NewStream::Item as HasTimestamp>::Timestamp:
+            Into<<Item as HasTimestamp>::Timestamp> + Copy,
     {
         let shared_state = Arc::clone(&self.state);
         let new_stream_mapped = new_stream.then(move |timestamped_item| {

@@ -2,58 +2,32 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Base trait bounds for all Fluxion operators.
-//!
-//! This module defines [`FluxionItem`], which consolidates the minimal set
-//! of trait bounds required by all Fluxion operators.
-
 use crate::Timestamped;
+use std::fmt::Debug;
 
-/// Base requirements for all Fluxion operators.
+/// The standard trait for items flowing through Fluxion streams.
 ///
-/// This trait represents the minimal set of bounds required by Fluxion operators.
-/// It combines timestamping, cloning, thread safety, and static lifetime requirements.
+/// This trait aggregates all the necessary bounds for a type to be used
+/// with Fluxion operators. It ensures the type is:
+/// - Timestamped (for ordering)
+/// - Thread-safe (Send + Sync)
+/// - Movable (Unpin)
+/// - Debuggable
+/// - Orderable
+/// - 'static (owned data)
 ///
 /// # Automatic Implementation
 ///
-/// This trait is automatically implemented for any type that satisfies the bounds:
-///
-/// ```
-/// # use fluxion_core::{FluxionItem, Timestamped, HasTimestamp};
-/// # #[derive(Clone)]
-/// # struct MyType;
-/// # impl HasTimestamp for MyType {
-/// #     type Timestamp = u64;
-/// #     fn timestamp(&self) -> u64 { 0 }
-/// # }
-/// # impl Timestamped for MyType {
-/// #     type Inner = MyType;
-/// #     fn with_timestamp(value: Self::Inner, _: u64) -> Self { value }
-/// #     fn with_fresh_timestamp(value: Self::Inner) -> Self { value }
-/// #     fn into_inner(self) -> Self::Inner { self }
-/// # }
-/// // MyType automatically implements FluxionItem if it meets the bounds
-/// fn assert_fluxion_item<T: FluxionItem>() {}
-/// fn example() {
-///     assert_fluxion_item::<MyType>();
-/// }
-/// ```
-///
-/// # Usage
-///
-/// Use this trait bound for operators that only require basic functionality:
-///
-/// ```
-/// # use fluxion_core::{FluxionItem, StreamItem};
-/// # use futures::Stream;
-/// pub trait MyOperatorExt<T>: Stream<Item = StreamItem<T>>
-/// where
-///     T: FluxionItem,
-/// {
-///     // operator implementation
-/// }
-/// ```
-pub trait FluxionItem: Timestamped + Clone + Send + Sync + 'static {}
+/// This trait is automatically implemented for any type that satisfies the bounds.
+pub trait Fluxion: Timestamped + Clone + Send + Sync + Unpin + 'static + Debug + Ord
+where
+    Self::Inner: Clone + Send + Sync + Unpin + 'static + Debug + Ord,
+{
+}
 
-/// Blanket implementation for all types that satisfy the base requirements.
-impl<T> FluxionItem for T where T: Timestamped + Clone + Send + Sync + 'static {}
+impl<T> Fluxion for T
+where
+    T: Timestamped + Clone + Send + Sync + Unpin + 'static + Debug + Ord,
+    T::Inner: Clone + Send + Sync + Unpin + 'static + Debug + Ord,
+{
+}

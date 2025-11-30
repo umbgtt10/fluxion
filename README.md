@@ -254,8 +254,8 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
     );
     let payment_received1 = Sequenced::with_timestamp(
         Event::PaymentReceived {
-            order_id: 100,
-            amount: 99.99,
+            user_id: 1,
+            amount: 100,
         },
         4,
     );

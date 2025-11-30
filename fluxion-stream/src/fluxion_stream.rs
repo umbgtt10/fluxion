@@ -12,7 +12,7 @@ use crate::take_while_with::TakeWhileExt;
 use crate::types::{CombinedState, WithPrevious};
 use crate::with_latest_from::WithLatestFromExt;
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::ComparableUnpin;
+use fluxion_core::Fluxion;
 use fluxion_core::{FluxionError, StreamItem, Timestamped};
 use futures::future::ready;
 use futures::Stream;
@@ -105,8 +105,9 @@ where
 impl<S, T> FluxionStream<S>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: ComparableUnpin,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
     /// Maps each item to a new value while preserving temporal ordering.
     ///
@@ -141,11 +142,11 @@ where
     /// let mut mapped = stream
     ///     .combine_with_previous()
     ///     .map_ordered(|with_previous| {
-    ///         format!("Value: {}", with_previous.current.value)
+    ///         Sequenced::new(format!("Value: {}", with_previous.current.value))
     ///     });
     ///
     /// tx.send(Sequenced::new(42)).unwrap();
-    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut mapped, 500).await)), "Value: 42");
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut mapped, 500).await)).value, "Value: 42");
     /// # }
     /// ```
     ///
@@ -183,8 +184,9 @@ where
     ) -> FluxionStream<impl Stream<Item = StreamItem<U>> + Send + Sync>
     where
         S: Send + Sync + Unpin + 'static,
-        U: ComparableUnpin,
+        U: Fluxion,
         U::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+        U::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
         F: FnMut(T) -> U + Send + Sync + 'static,
     {
         let inner = self.into_inner();
@@ -286,7 +288,7 @@ where
     ///
     /// # Type Parameters
     ///
-    /// - `Out`: The output item type (must implement `FluxionItem`)
+    /// - `Out`: The output item type (must implement `Fluxion`)
     /// - `Acc`: The accumulator type (internal state)
     /// - `F`: The accumulator function type
     ///
@@ -341,9 +343,9 @@ where
     ) -> FluxionStream<impl Stream<Item = StreamItem<Out>>>
     where
         S: Send + Sync + 'static,
-        Out: ComparableUnpin,
+        Out: Fluxion,
         Out::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-        Out::Timestamp: From<T::Timestamp>,
+        Out::Timestamp: From<T::Timestamp> + Debug + Ord + Send + Sync + Copy + 'static,
         Acc: Send + 'static,
         F: FnMut(&mut Acc, &T::Inner) -> Out::Inner + Send + 'static,
     {
@@ -694,9 +696,9 @@ where
     where
         S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
         S2: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-        R: ComparableUnpin,
+        R: Fluxion,
         R::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-        R::Timestamp: From<T::Timestamp>,
+        R::Timestamp: From<T::Timestamp> + Debug + Ord + Send + Sync + Copy + 'static,
     {
         let inner = self.into_inner();
         FluxionStream::new(WithLatestFromExt::with_latest_from(

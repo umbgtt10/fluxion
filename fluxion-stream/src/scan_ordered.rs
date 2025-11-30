@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::fluxion_stream::FluxionStream;
-use fluxion_core::{FluxionItem, StreamItem};
+use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
@@ -22,7 +22,9 @@ use std::sync::{Arc, Mutex};
 /// - **Error preserving**: Errors propagate without resetting state
 pub trait ScanOrderedExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: FluxionItem,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
     /// Accumulates state across stream items, emitting intermediate results.
     ///
@@ -33,7 +35,7 @@ where
     /// # Type Parameters
     ///
     /// - `Acc`: The accumulator type (internal state)
-    /// - `Out`: The output item type (must implement `FluxionItem`)
+    /// - `Out`: The output item type (must implement `Fluxion`)
     /// - `F`: The accumulator function
     ///
     /// # Behavior
@@ -154,10 +156,10 @@ where
     /// use fluxion_stream::{FluxionStream, ScanOrderedExt};
     /// use fluxion_test_utils::{Sequenced, test_channel, unwrap_stream};
     ///
-    /// #[derive(Debug, Clone, PartialEq)]
+    /// #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     /// enum Event { Login, Logout, Action(String) }
     ///
-    /// #[derive(Debug, Clone, PartialEq)]
+    /// #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     /// struct SessionState {
     ///     logged_in: bool,
     ///     action_count: usize,
@@ -217,16 +219,18 @@ where
     ) -> FluxionStream<impl Stream<Item = StreamItem<Out>>>
     where
         Acc: Send + 'static,
-        Out: fluxion_core::ComparableUnpin,
+        Out: Fluxion,
         Out::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-        Out::Timestamp: From<T::Timestamp>,
+        Out::Timestamp: From<T::Timestamp> + Debug + Ord + Send + Sync + Copy + 'static,
         F: FnMut(&mut Acc, &T::Inner) -> Out::Inner + Send + 'static;
 }
 
 impl<T, S> ScanOrderedExt<T> for S
 where
     S: Stream<Item = StreamItem<T>> + Send + Sized + 'static,
-    T: FluxionItem,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
     fn scan_ordered<Out, Acc, F>(
         self,
@@ -235,9 +239,9 @@ where
     ) -> FluxionStream<impl Stream<Item = StreamItem<Out>>>
     where
         Acc: Send + 'static,
-        Out: fluxion_core::ComparableUnpin,
+        Out: Fluxion,
         Out::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-        Out::Timestamp: From<T::Timestamp>,
+        Out::Timestamp: From<T::Timestamp> + Debug + Ord + Send + Sync + Copy + 'static,
         F: FnMut(&mut Acc, &T::Inner) -> Out::Inner + Send + 'static,
     {
         let state = Arc::new(Mutex::new((initial, accumulator)));

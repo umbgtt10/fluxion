@@ -4,7 +4,7 @@
 
 use crate::FluxionStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{ComparableUnpinTimestamped, FluxionError, HasTimestamp, StreamItem};
+use fluxion_core::{Fluxion, FluxionError, HasTimestamp, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::StreamExt;
 use futures::Stream;
@@ -22,9 +22,10 @@ type PinnedItemStream<TItem, TFilter> =
 /// becomes false.
 pub trait TakeWhileExt<TItem, TFilter, S>: Stream<Item = StreamItem<TItem>> + Sized
 where
-    TItem: ComparableUnpinTimestamped,
+    TItem: Fluxion,
     TItem::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    TFilter: ComparableUnpinTimestamped<Timestamp = TItem::Timestamp>,
+    TItem::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
+    TFilter: Fluxion<Timestamp = TItem::Timestamp>,
     TFilter::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = StreamItem<TFilter>> + Send + Sync + 'static,
 {
@@ -115,9 +116,10 @@ where
 impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
 where
     P: Stream<Item = StreamItem<TItem>> + Send + Sync + Unpin + 'static,
-    TItem: ComparableUnpinTimestamped,
+    TItem: Fluxion,
     TItem::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    TFilter: ComparableUnpinTimestamped<Timestamp = TItem::Timestamp>,
+    TItem::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
+    TFilter: Fluxion<Timestamp = TItem::Timestamp>,
     TFilter::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     S: Stream<Item = StreamItem<TFilter>> + Send + Sync + 'static,
 {

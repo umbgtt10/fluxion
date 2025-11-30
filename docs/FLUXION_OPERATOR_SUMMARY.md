@@ -25,6 +25,8 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`take_latest_when`](#take_latest_when) | Sampling | Sample on trigger | Trigger |
 | [`emit_when`](#emit_when) | Gating | Gate with combined state | Source (filtered) |
 | [`on_error`](#on_error) | Error Handling | Selectively consume or propagate errors | Source |
+| [`subscribe_async`](#subscribe_async) ⚡ | Execution | Process every item sequentially | Source |
+| [`subscribe_latest_async`](#subscribe_latest_async) ⚡ | Execution | Process latest item, cancel outdated | Source |
 | `debounce` ⏱️ | Time | Emit after silence | Source (debounced) |
 | `throttle` ⏱️ | Time | Rate limiting | Source (throttled) |
 | `delay` ⏱️ | Time | Delay emissions | Source (delayed) |
@@ -32,6 +34,7 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | `timeout` ⏱️ | Time | Timeout detection | Source or timeout |
 
 **⏱️** = Available in [fluxion-stream-time](../fluxion-stream-time/README.md) crate
+**⚡** = Available in [fluxion-exec](../fluxion-exec/README.md) crate
 
 ## Operators by Category
 
@@ -63,6 +66,10 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 
 ### 🛡️ Error Handling
 - [`on_error`](#on_error) - Selectively consume or propagate errors
+
+### ⚡ Execution (fluxion-exec)
+- [`subscribe_async`](#subscribe_async) - Sequential processing of all items
+- [`subscribe_latest_async`](#subscribe_latest_async) - Latest-value processing with cancellation
 
 ### ⏱️ Time-Based Operators (fluxion-stream-time)
 - `debounce` - Emit only after silence period
@@ -436,35 +443,41 @@ The `Sequenced<T>` wrapper (from `fluxion-test-utils`) provides this automatical
 
 ---
 
-## Order Attribute Semantics
+## Timestamp Semantics
 
-Every item in a Fluxion stream has an `order` attribute (accessed via `.order()`) that represents its temporal position in the event sequence. Understanding which order is preserved in emitted values is crucial for correct stream processing.
+Every item in a Fluxion stream has a `timestamp` attribute (accessed via `.timestamp()`) that represents its temporal position in the event sequence. Understanding which timestamp is preserved in emitted values is crucial for correct stream processing.
 
 ### Rules by Operator
 
-| Operator | Order of Emitted Values | Rationale |
+| Operator | Timestamp of Emitted Values | Rationale |
 |----------|-------------------------|-----------|
-| `ordered_merge` | Original source order | Pass-through operator |
-| `merge_with` | Original source order | Stateful transformation preserves source timing |
-| `scan_ordered` | Original source order | Stateful transformation preserves source timing |
-| `map_ordered` | Original source order | Transformation preserves timing |
-| `filter_ordered` | Original source order | Filtering preserves timing |
-| `combine_with_previous` | Current value's order | Window driven by current item |
-| `combine_latest` | Triggering stream's order | Event occurred when any stream updated |
-| `with_latest_from` | **Primary stream's order** | Emission driven by primary |
-| `take_latest_when` | **Trigger stream's order** | Emission driven by trigger |
-| `emit_when` | **Source stream's order** | Source value emitted, not filter |
-| `take_while_with` | Source stream's order | Source-driven with filter check |
+| `ordered_merge` | Original source timestamp | Pass-through operator |
+| `merge_with` | Original source timestamp | Stateful transformation preserves source timing |
+| `scan_ordered` | Original source timestamp | Stateful transformation preserves source timing |
+| `map_ordered` | Original source timestamp | Transformation preserves timing |
+| `filter_ordered` | Original source timestamp | Filtering preserves timing |
+| `distinct_until_changed` | Original source timestamp | Filtering preserves timing |
+| `distinct_until_changed_by` | Original source timestamp | Filtering preserves timing |
+| `take_items` | Original source timestamp | Limiting preserves timing |
+| `skip_items` | Original source timestamp | Limiting preserves timing |
+| `on_error` | Original source timestamp | Error handling preserves timing |
+| `start_with` | User-provided timestamp | Initial values have their own timestamps |
+| `combine_with_previous` | Current value's timestamp | Window driven by current item |
+| `combine_latest` | Triggering stream's timestamp | Event occurred when any stream updated |
+| `with_latest_from` | **Primary stream's timestamp** | Emission driven by primary |
+| `take_latest_when` | **Trigger stream's timestamp** | Emission driven by trigger |
+| `emit_when` | **Source stream's timestamp** | Source value emitted, not filter |
+| `take_while_with` | Source stream's timestamp | Source-driven with filter check |
 
 ### Event-Driven Semantics
 
-For operators that combine multiple streams, the order represents **when the emission event occurred**, not when the underlying data was originally created.
+For operators that combine multiple streams, the timestamp represents **when the emission event occurred**, not when the underlying data was originally created.
 
 #### ✅ Correct: `take_latest_when` and `with_latest_from`
 
-These operators use the **triggering stream's order** because:
+These operators use the **triggering stream's timestamp** because:
 
-1. **Event-driven semantics**: The order represents when the emission *event* occurred
+1. **Event-driven semantics**: The timestamp represents when the emission *event* occurred
 2. **Causal accuracy**: The trigger caused the emission at that moment
 3. **Ordering guarantees**: Prevents violations in downstream operators
 4. **Consistency**: Matches the "sampling" semantic model
@@ -472,16 +485,16 @@ These operators use the **triggering stream's order** because:
 **Example:**
 ```rust
 // Sensor readings sampled by timer ticks
-let sensor_stream = ...;  // order = when reading was taken (e.g., seq 1, 2, 3)
-let timer_stream = ...;   // order = when tick occurred (e.g., seq 4, 5, 6)
+let sensor_stream = ...;  // timestamp = when reading was taken (e.g., seq 1, 2, 3)
+let timer_stream = ...;   // timestamp = when tick occurred (e.g., seq 4, 5, 6)
 let sampled = sensor_stream.take_latest_when(timer_stream, |_| true);
-// First emission: sensor value from seq 3, but order = 4 (when tick occurred)
-// This is correct - order represents "when we sampled", not "when data was created"
+// First emission: sensor value from seq 3, but timestamp = 4 (when tick occurred)
+// This is correct - timestamp represents "when we sampled", not "when data was created"
 ```
 
-#### ✅ Also Correct: `emit_when` uses source order
+#### ✅ Also Correct: `emit_when` uses source timestamp
 
-While `emit_when` also involves a filter stream, it uses the **source stream's order** because:
+While `emit_when` also involves a filter stream, it uses the **source stream's timestamp** because:
 
 1. **Source-driven**: The source value itself is being emitted (just conditionally)
 2. **Filter is a gate**: The filter doesn't trigger emission, it just allows/blocks it
@@ -490,29 +503,29 @@ While `emit_when` also involves a filter stream, it uses the **source stream's o
 **Example:**
 ```rust
 // Emit data only when it exceeds a threshold
-let data_stream = ...;     // order = when data arrived
-let threshold_stream = ...; // order = when threshold changed
+let data_stream = ...;     // timestamp = when data arrived
+let threshold_stream = ...; // timestamp = when threshold changed
 let filtered = data_stream.emit_when(threshold_stream, |state| {
     state.values()[0] > state.values()[1]
 });
-// Emissions use data_stream's order - the data's original timestamp
+// Emissions use data_stream's timestamp - the data's original timestamp
 ```
 
 ### Why This Matters
 
-**Downstream ordering**: Operators downstream expect monotonically increasing orders. Using the source's order when the trigger is newer could cause:
+**Downstream ordering**: Operators downstream expect monotonically increasing timestamps. Using the source's timestamp when the trigger is newer could cause:
 ```rust
-// ❌ HYPOTHETICAL PROBLEM (if we used source order in take_latest_when):
-sensor.take_latest_when(timer, |_| true)  // Emits sensor order
-    .combine_with_previous()  // Expects monotonic order
+// ❌ HYPOTHETICAL PROBLEM (if we used source timestamp in take_latest_when):
+sensor.take_latest_when(timer, |_| true)  // Emits sensor timestamp
+    .combine_with_previous()  // Expects monotonic timestamp
 // Could emit: seq 10 (timer), then seq 3 (old sensor) → ordering violation!
 ```
 
 **Correct behavior** (current implementation):
 ```rust
 // ✅ CURRENT BEHAVIOR:
-sensor.take_latest_when(timer, |_| true)  // Emits timer order
-    .combine_with_previous()  // Receives monotonic order
+sensor.take_latest_when(timer, |_| true)  // Emits timer timestamp
+    .combine_with_previous()  // Receives monotonic timestamp
 // Emits: seq 10, seq 11, seq 12... → correct ordering!
 ```
 
@@ -522,7 +535,7 @@ If you need to preserve the original timestamp of source data for provenance:
 
 1. **Include timestamp in data**: Embed the original timestamp as part of your value type
 2. **Use metadata**: Carry original timing information in your data structure
-3. **Document semantics**: Clearly document that `order` represents emission time, not data time
+3. **Document semantics**: Clearly document that `timestamp` represents emission time, not data time
 
 ```rust
 // Pattern: Preserve original timestamp in data
@@ -533,7 +546,7 @@ struct TimestampedData {
 }
 
 let sampled = stream.take_latest_when(timer, |_| true);
-// Emission order = timer's order (when we sampled)
+// Emission timestamp = timer's timestamp (when we sampled)
 // But original_timestamp preserved in data (when data was created)
 ```
 
@@ -677,6 +690,53 @@ stream
 - [FluxionError types](../fluxion-core/src/error.rs) for error enum details
 
 [Full documentation](../fluxion-stream/src/fluxion_stream.rs#L780-L866) | [Tests](../fluxion-stream/tests/on_error_tests.rs)
+
+---
+
+### ⚡ Execution (fluxion-exec)
+
+These operators are available in the `fluxion-exec` crate and provide control over async execution.
+
+#### `subscribe_async`
+**Sequential processing where every item is processed to completion**
+
+```rust
+use fluxion_exec::subscribe_async::SubscribeAsyncExt;
+
+stream.subscribe_async(
+    |item, _| async move {
+        process(item).await
+    },
+    None,
+    None
+).await?;
+```
+
+- Guarantees every item is processed
+- Sequential execution (one at a time)
+- See [fluxion-exec documentation](../fluxion-exec/README.md) for details
+
+---
+
+#### `subscribe_latest_async`
+**Latest-value processing with automatic cancellation**
+
+```rust
+use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
+
+stream.subscribe_latest_async(
+    |item, token| async move {
+        // Long running task
+    },
+    None,
+    None
+).await?;
+```
+
+- Processes only the latest value
+- Automatically cancels outdated work
+- Ideal for UI updates and search-as-you-type
+- See [fluxion-exec documentation](../fluxion-exec/README.md) for details
 
 ---
 

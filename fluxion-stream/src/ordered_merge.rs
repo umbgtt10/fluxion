@@ -3,10 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::FluxionStream;
+use fluxion_core::{into_stream::IntoStream, Fluxion, StreamItem};
 use futures::Stream;
 use std::pin::Pin;
-
-use fluxion_core::{into_stream::IntoStream, OrderedFluxionItem, StreamItem};
 
 // Re-export low-level types from fluxion-ordered-merge
 pub use fluxion_ordered_merge::{OrderedMerge, OrderedMergeExt};
@@ -18,7 +17,9 @@ pub use fluxion_ordered_merge::{OrderedMerge, OrderedMergeExt};
 /// from every stream (not just when all have emitted).
 pub trait OrderedStreamExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: OrderedFluxionItem,
+    T: Fluxion,
+    T::Inner: std::fmt::Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: std::fmt::Debug + Ord + Send + Sync + Copy + 'static,
 {
     /// Merges multiple timestamped streams, emitting all values in temporal order.
     ///
@@ -106,7 +107,9 @@ where
 
 impl<T, S> OrderedStreamExt<T> for S
 where
-    T: OrderedFluxionItem,
+    T: Fluxion,
+    T::Inner: std::fmt::Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: std::fmt::Debug + Ord + Send + Sync + Copy + 'static,
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
 {
     fn ordered_merge<IS>(

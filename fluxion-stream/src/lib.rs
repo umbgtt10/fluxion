@@ -415,13 +415,13 @@
 //! // Chain: filter positives, map to string
 //! let mut composed = FluxionStream::new(stream)
 //!     .filter_ordered(|&n| n > 0)  // filter_ordered receives &T::Inner
-//!     .map_ordered(|seq| format!("Value: {}", seq.value));  // map_ordered receives T
+//!     .map_ordered(|seq| Sequenced::new(format!("Value: {}", seq.value)));  // map_ordered receives T
 //!
 //! tx.send(Sequenced::new(-1)).unwrap();
 //! tx.send(Sequenced::new(5)).unwrap();
 //!
 //! let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-//! assert_eq!(result, "Value: 5");
+//! assert_eq!(result.value, "Value: 5");
 //! }
 //! ```
 //!

@@ -4,9 +4,10 @@
 
 use crate::FluxionStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{FluxionItem, StreamItem};
+use fluxion_core::{Fluxion, StreamItem};
 use futures::stream::StreamExt;
 use futures::Stream;
+use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
 /// Extension trait providing the `distinct_until_changed` operator for streams.
@@ -15,8 +16,9 @@ use std::sync::{Arc, Mutex};
 /// the value changes from the previous emission.
 pub trait DistinctUntilChangedExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: FluxionItem,
-    T::Inner: Clone + PartialEq + Send + Sync + 'static,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
     /// Emits values only when they differ from the previous emitted value.
     ///
@@ -155,8 +157,9 @@ where
 impl<T, S> DistinctUntilChangedExt<T> for S
 where
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-    T: FluxionItem,
-    T::Inner: Clone + PartialEq + Send + Sync + 'static,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
     fn distinct_until_changed(
         self,

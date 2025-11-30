@@ -2,16 +2,15 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use crate::ordered_merge::OrderedMergeExt;
+use crate::types::CombinedState;
 use crate::FluxionStream;
+use fluxion_core::into_stream::IntoStream;
+use fluxion_core::lock_utilities::lock_or_recover;
+use fluxion_core::{Fluxion, StreamItem};
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
-
-use crate::ordered_merge::OrderedMergeExt;
-use crate::types::CombinedState;
-use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{ComparableInner, StreamItem};
 
 /// Extension trait providing the `with_latest_from` operator for timestamped streams.
 ///
@@ -19,8 +18,9 @@ use fluxion_core::{ComparableInner, StreamItem};
 /// when the primary stream emits, using the latest value from the secondary stream.
 pub trait WithLatestFromExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: ComparableInner,
-    T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
     /// Combines elements from the primary stream (self) with the latest element from the secondary stream (other).
     ///
@@ -112,15 +112,16 @@ where
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
-        R: fluxion_core::ComparableUnpin,
+        R: Fluxion,
         R::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-        R::Timestamp: From<T::Timestamp>;
+        R::Timestamp: From<T::Timestamp> + Debug + Ord + Send + Sync + Copy + 'static;
 }
 
 impl<T, S> WithLatestFromExt<T> for S
 where
-    T: ComparableInner,
-    T::Inner: Clone + Debug + Ord + Send + Sync + 'static,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
     S: Stream<Item = StreamItem<T>> + Sized + Unpin + Send + Sync + 'static,
 {
     fn with_latest_from<IS, R>(
@@ -131,9 +132,9 @@ where
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
-        R: fluxion_core::ComparableUnpin,
+        R: Fluxion,
         R::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-        R::Timestamp: From<T::Timestamp>,
+        R::Timestamp: From<T::Timestamp> + Debug + Ord + Send + Sync + Copy + 'static,
     {
         type PinnedStream<T> =
             std::pin::Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;

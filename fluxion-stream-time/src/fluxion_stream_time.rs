@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::{chrono_timestamped::ChronoTimestamped, debounce, delay, sample, throttle, timeout};
-use fluxion_core::{ComparableUnpin, StreamItem};
+use fluxion_core::StreamItem;
 use fluxion_stream::FluxionStream;
 use futures::Stream;
 use std::fmt::Debug;
@@ -17,8 +17,7 @@ use std::time::Duration;
 pub trait FluxionStreamTimeOps<S, T>
 where
     S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync + Unpin + 'static,
-    T: ComparableUnpin + Send + 'static,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin,
+    T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     /// Delays each emission by the specified duration while preserving temporal ordering.
     ///
@@ -264,8 +263,7 @@ where
 impl<S, T> FluxionStreamTimeOps<S, T> for FluxionStream<S>
 where
     S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send + Sync + Unpin + 'static,
-    T: ComparableUnpin + Send + 'static,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin,
+    T: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
     fn delay(
         self,

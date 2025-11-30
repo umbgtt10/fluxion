@@ -99,7 +99,7 @@ where
         + Unpin
         + 'static,
     T: Clone + std::fmt::Debug + Ord + Send + Sync + Unpin + 'static,
-    ChronoTimestamped<T>: fluxion_core::ComparableUnpin + fluxion_core::Timestamped<Inner = T>,
+    ChronoTimestamped<T>: fluxion_core::Fluxion + fluxion_core::Timestamped<Inner = T>,
 {
     /// Delays each emission by the specified duration while preserving temporal ordering.
     ///
@@ -359,7 +359,7 @@ where
         + Unpin
         + 'static,
     T: Clone + std::fmt::Debug + Ord + Send + Sync + Unpin + 'static,
-    ChronoTimestamped<T>: fluxion_core::ComparableUnpin + fluxion_core::Timestamped<Inner = T>,
+    ChronoTimestamped<T>: fluxion_core::Fluxion + fluxion_core::Timestamped<Inner = T>,
 {
     fn delay(
         self,

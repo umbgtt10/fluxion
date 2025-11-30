@@ -4,9 +4,10 @@
 
 use crate::FluxionStream;
 use fluxion_core::lock_utilities::lock_or_recover;
-use fluxion_core::{FluxionItem, StreamItem};
+use fluxion_core::{Fluxion, StreamItem};
 use futures::stream::StreamExt;
 use futures::Stream;
+use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
 /// Extension trait providing the `distinct_until_changed_by` operator for streams.
@@ -16,8 +17,9 @@ use std::sync::{Arc, Mutex};
 /// to the provided comparer.
 pub trait DistinctUntilChangedByExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: FluxionItem,
-    T::Inner: Clone + Send + Sync + 'static,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
     /// Emits values only when they differ from the previous emitted value according
     /// to a custom comparison function.
@@ -55,7 +57,7 @@ where
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///
-    /// #[derive(Clone)]
+    /// #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct User {
     ///     id: u32,
     ///     name: String,
@@ -112,25 +114,38 @@ where
     /// use fluxion_stream::{DistinctUntilChangedByExt, FluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
+    /// use std::cmp::Ordering;
+    ///
+    /// // Wrapper to implement Ord for f64 (for testing purposes)
+    /// #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+    /// struct OrderedF64(f64);
+    ///
+    /// impl Eq for OrderedF64 {}
+    ///
+    /// impl Ord for OrderedF64 {
+    ///     fn cmp(&self, other: &Self) -> Ordering {
+    ///         self.0.partial_cmp(&other.0).unwrap_or(Ordering::Equal)
+    ///     }
+    /// }
     ///
     /// # async fn example() {
     /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     /// let stream = FluxionStream::from_unbounded_receiver(rx);
     ///
     /// // Only emit if difference is >= 0.1
-    /// let mut distinct = stream.distinct_until_changed_by(|a: &f64, b: &f64| {
-    ///     (a - b).abs() < 0.1
+    /// let mut distinct = stream.distinct_until_changed_by(|a: &OrderedF64, b: &OrderedF64| {
+    ///     (a.0 - b.0).abs() < 0.1
     /// });
     ///
-    /// tx.send(Sequenced::new(1.0)).unwrap();
-    /// tx.send(Sequenced::new(1.05)).unwrap();  // Filtered (diff < 0.1)
-    /// tx.send(Sequenced::new(1.15)).unwrap();  // Emitted (diff >= 0.1)
-    /// tx.send(Sequenced::new(1.18)).unwrap();  // Filtered
-    /// tx.send(Sequenced::new(1.30)).unwrap();  // Emitted
+    /// tx.send(Sequenced::new(OrderedF64(1.0))).unwrap();
+    /// tx.send(Sequenced::new(OrderedF64(1.05))).unwrap();  // Filtered (diff < 0.1)
+    /// tx.send(Sequenced::new(OrderedF64(1.15))).unwrap();  // Emitted (diff >= 0.1)
+    /// tx.send(Sequenced::new(OrderedF64(1.18))).unwrap();  // Filtered
+    /// tx.send(Sequenced::new(OrderedF64(1.30))).unwrap();  // Emitted
     ///
-    /// assert_eq!(distinct.next().await.unwrap().unwrap().into_inner(), 1.0);
-    /// assert_eq!(distinct.next().await.unwrap().unwrap().into_inner(), 1.15);
-    /// assert_eq!(distinct.next().await.unwrap().unwrap().into_inner(), 1.30);
+    /// assert_eq!(distinct.next().await.unwrap().unwrap().into_inner().0, 1.0);
+    /// assert_eq!(distinct.next().await.unwrap().unwrap().into_inner().0, 1.15);
+    /// assert_eq!(distinct.next().await.unwrap().unwrap().into_inner().0, 1.30);
     /// # }
     /// ```
     ///
@@ -163,8 +178,9 @@ where
 impl<T, S> DistinctUntilChangedByExt<T> for S
 where
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-    T: FluxionItem,
-    T::Inner: Clone + Send + Sync + 'static,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
     fn distinct_until_changed_by<F>(
         self,
