@@ -133,3 +133,36 @@ async fn test_combine_latest_combine_with_previous() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_complex_composition_ordered_merge_and_combine_with_previous() -> anyhow::Result<()> {
+    // Arrange: ordered_merge -> combine_with_previous
+    let (person1_tx, person1_rx) = test_channel::<Sequenced<TestData>>();
+    let (person2_tx, person2_rx) = test_channel::<Sequenced<TestData>>();
+
+    let person1_stream = person1_rx;
+    let person2_stream = person2_rx;
+
+    let mut stream = FluxionStream::new(person1_stream)
+        .ordered_merge(vec![FluxionStream::new(person2_stream)])
+        .combine_with_previous();
+
+    // Act & Assert
+    person1_tx.send(Sequenced::new(person_alice()))?; // 25
+
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    assert!(result.previous.is_none());
+    assert_eq!(&result.current.value, &person_alice());
+
+    person2_tx.send(Sequenced::new(person_bob()))?; // 30
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    assert_eq!(&result.previous.unwrap().value, &person_alice());
+    assert_eq!(&result.current.value, &person_bob());
+
+    person1_tx.send(Sequenced::new(person_charlie()))?; // 35
+    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    assert_eq!(&result.previous.unwrap().value, &person_bob());
+    assert_eq!(&result.current.value, &person_charlie());
+
+    Ok(())
+}
