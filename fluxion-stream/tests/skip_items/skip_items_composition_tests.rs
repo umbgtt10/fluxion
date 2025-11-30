@@ -7,7 +7,7 @@ use fluxion_test_utils::helpers::unwrap_stream;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_dave, person_diane, TestData,
 };
-           use fluxion_test_utils::{test_channel, Sequenced, unwrap_value};
+use fluxion_test_utils::{test_channel, unwrap_value, Sequenced};
 
 #[tokio::test]
 async fn test_map_ordered_skip_items() -> anyhow::Result<()> {

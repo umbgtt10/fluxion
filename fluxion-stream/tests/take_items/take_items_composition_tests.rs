@@ -1,16 +1,14 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-            use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_stream::{CombinedState, FluxionStream};
 use fluxion_test_utils::test_data::TestData;
 use fluxion_test_utils::{
     helpers::{assert_stream_ended, unwrap_stream},
     test_channel,
-    test_data::{
-        animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
-    },
+    test_data::{animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane},
     unwrap_value, Sequenced,
 };
 

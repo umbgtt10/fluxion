@@ -8,7 +8,7 @@ use fluxion_test_utils::helpers::unwrap_stream;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_dave, TestData,
 };
-                            use fluxion_test_utils::{test_channel, Sequenced, unwrap_value};
+use fluxion_test_utils::{test_channel, unwrap_value, Sequenced};
 
 #[tokio::test]
 async fn test_combine_with_previous_start_with() -> anyhow::Result<()> {

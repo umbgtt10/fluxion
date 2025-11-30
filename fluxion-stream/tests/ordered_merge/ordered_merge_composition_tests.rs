@@ -7,7 +7,7 @@ use fluxion_stream::FluxionStream;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
-    test_data::{animal_dog, person_alice, person_bob, person_charlie,        TestData},
+    test_data::{animal_dog, person_alice, person_bob, person_charlie, TestData},
     unwrap_value, Sequenced,
 };
 
@@ -44,7 +44,7 @@ async fn test_take_latest_when_ordered_merge() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(person_bob()))?;
     let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert_eq!(&result.value, &person_bob());
-                   
+
     drop(filter_tx);
     source_tx.send(Sequenced::new(person_charlie()))?;
     assert_no_element_emitted(&mut composed, 100).await;
