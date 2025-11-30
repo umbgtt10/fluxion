@@ -168,3 +168,61 @@ async fn test_with_latest_from_composition_end_of_chain() -> anyhow::Result<()> 
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_ordered_merge_into_with_latest_from() -> anyhow::Result<()> {
+    // Arrange
+    let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
+    let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
+    let (s3_tx, s3_rx) = test_channel::<Sequenced<TestData>>();
+
+    // Merge s1 and s2, then combine with s3
+    let mut stream = FluxionStream::new(s1_rx)
+        .ordered_merge(vec![s2_rx])
+        .with_latest_from(
+            FluxionStream::new(s3_rx),
+            |state: &CombinedState<TestData, u64>| -> Sequenced<String> {
+                let values = state.values();
+                let primary_name = match &values[0] {
+                    TestData::Person(p) => p.name.clone(),
+                    TestData::Animal(a) => a.name.clone(),
+                    _ => "Unknown".to_string(),
+                };
+                let secondary_name = match &values[1] {
+                    TestData::Person(p) => p.name.clone(),
+                    _ => "Unknown".to_string(),
+                };
+                Sequenced::new(format!("{} with {}", primary_name, secondary_name))
+            },
+        );
+
+    // Act & Assert
+    // 1. Set secondary value
+    s3_tx.send(Sequenced::new(person_alice()))?;
+
+    // 2. Send to Stream 1 (Primary)
+    s1_tx.send(Sequenced::new(person_bob()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        "Bob with Alice"
+    );
+
+    // 3. Send to Stream 2 (Primary)
+    s2_tx.send(Sequenced::new(animal_dog()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        "Dog with Alice"
+    );
+
+    // 4. Update secondary
+    s3_tx.send(Sequenced::new(person_charlie()))?;
+
+    // 5. Send to Stream 1
+    s1_tx.send(Sequenced::new(person_dave()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        "Dave with Charlie"
+    );
+
+    Ok(())
+}

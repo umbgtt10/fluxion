@@ -3,13 +3,15 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_stream::FluxionStream;
+            use fluxion_stream::{CombinedState, FluxionStream};
 use fluxion_test_utils::test_data::TestData;
 use fluxion_test_utils::{
     helpers::{assert_stream_ended, unwrap_stream},
     test_channel,
-    test_data::{person_alice, person_bob, person_charlie, person_dave, person_diane},
-    Sequenced,
+    test_data::{
+        animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
+    },
+    unwrap_value, Sequenced,
 };
 
 #[tokio::test]
@@ -155,6 +157,55 @@ async fn test_map_ordered_then_take_items() -> anyhow::Result<()> {
         "Charlie"
     );
     assert_stream_ended(&mut result, 100).await;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_with_latest_from_then_take_items() -> anyhow::Result<()> {
+    // Arrange
+    let (primary_tx, primary_rx) = test_channel::<Sequenced<TestData>>();
+    let (secondary_tx, secondary_rx) = test_channel::<Sequenced<TestData>>();
+
+    // Combine then take 2 items
+    let mut stream = FluxionStream::new(primary_rx)
+        .with_latest_from(
+            FluxionStream::new(secondary_rx),
+            |state: &CombinedState<TestData, u64>| -> Sequenced<String> {
+                let values = state.values();
+                let p_name = match &values[0] {
+                    TestData::Person(p) => p.name.clone(),
+                    _ => "Unknown".to_string(),
+                };
+                let s_name = match &values[1] {
+                    TestData::Animal(a) => a.name.clone(),
+                    _ => "Unknown".to_string(),
+                };
+                Sequenced::new(format!("{} with {}", p_name, s_name))
+            },
+        )
+        .take_items(2);
+
+    // Act & Assert
+    secondary_tx.send(Sequenced::new(animal_dog()))?;
+
+    // 1. First emission
+    primary_tx.send(Sequenced::new(person_alice()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        "Alice with Dog"
+    );
+
+    // 2. Second emission
+    primary_tx.send(Sequenced::new(person_bob()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        "Bob with Dog"
+    );
+
+    // 3. Third emission (Should be ignored/stream ended)
+    primary_tx.send(Sequenced::new(person_charlie()))?;
+    assert_stream_ended(&mut stream, 100).await;
 
     Ok(())
 }

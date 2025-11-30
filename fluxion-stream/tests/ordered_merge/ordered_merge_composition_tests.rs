@@ -2,11 +2,12 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::StreamItem;
 use fluxion_stream::FluxionStream;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
-    test_data::{animal_dog, person_alice, person_bob, person_charlie, TestData},
+    test_data::{animal_dog, person_alice, person_bob, person_charlie,        TestData},
     unwrap_value, Sequenced,
 };
 
@@ -43,7 +44,7 @@ async fn test_take_latest_when_ordered_merge() -> anyhow::Result<()> {
     filter_tx.send(Sequenced::new(person_bob()))?;
     let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     assert_eq!(&result.value, &person_bob());
-
+                   
     drop(filter_tx);
     source_tx.send(Sequenced::new(person_charlie()))?;
     assert_no_element_emitted(&mut composed, 100).await;
@@ -156,6 +157,50 @@ async fn test_filter_ordered_map_ordered_merge() -> anyhow::Result<()> {
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut merged, 500).await)).value,
         "Person: Charlie"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_start_with_and_skip_items_into_ordered_merge() -> anyhow::Result<()> {
+    // Arrange
+    let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
+    let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
+
+    let initial = vec![StreamItem::Value(Sequenced::new(person_alice()))];
+
+    // Stream 1: Start with Alice
+    let stream1 = FluxionStream::new(s1_rx).start_with(initial);
+
+    // Stream 2: Skip 1 item
+    let stream2 = FluxionStream::new(s2_rx).skip_items(1);
+
+    // Merge
+    let mut merged = stream1.ordered_merge(vec![stream2]);
+
+    // Act & Assert
+    // 1. Initial value from Stream 1
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut merged, 500).await)).value,
+        person_alice()
+    );
+
+    // 2. Send to Stream 2 (Skipped)
+    s2_tx.send(Sequenced::new(person_bob()))?;
+
+    // 3. Send to Stream 1
+    s1_tx.send(Sequenced::new(person_charlie()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut merged, 500).await)).value,
+        person_charlie()
+    );
+
+    // 4. Send to Stream 2 (Should be emitted now)
+    s2_tx.send(Sequenced::new(person_bob()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut merged, 500).await)).value,
+        person_bob()
     );
 
     Ok(())

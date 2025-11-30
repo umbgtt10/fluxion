@@ -8,7 +8,7 @@ use fluxion_test_utils::helpers::unwrap_stream;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_dave, TestData,
 };
-use fluxion_test_utils::{test_channel, Sequenced};
+                            use fluxion_test_utils::{test_channel, Sequenced, unwrap_value};
 
 #[tokio::test]
 async fn test_combine_with_previous_start_with() -> anyhow::Result<()> {
@@ -50,6 +50,50 @@ async fn test_combine_with_previous_start_with() -> anyhow::Result<()> {
     assert!(
         item4.previous.clone().map(|p| p.into_inner()) == Some(person_charlie())
             && item4.current.into_inner() == person_dave()
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ordered_merge_then_start_with() -> anyhow::Result<()> {
+    // Arrange
+    let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
+    let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
+
+    let initial_values = vec![
+        StreamItem::Value(Sequenced::new(person_alice())),
+        StreamItem::Value(Sequenced::new(person_bob())),
+    ];
+
+    // Merge streams then prepend values
+    let mut stream = FluxionStream::new(s1_rx)
+        .ordered_merge(vec![s2_rx])
+        .start_with(initial_values);
+
+    // Act & Assert
+    // 1. Should receive initial values immediately
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        person_alice()
+    );
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        person_bob()
+    );
+
+    // 2. Send to stream 1
+    s1_tx.send(Sequenced::new(person_charlie()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        person_charlie()
+    );
+
+    // 3. Send to stream 2
+    s2_tx.send(Sequenced::new(person_dave()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        person_dave()
     );
 
     Ok(())
