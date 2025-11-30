@@ -12,10 +12,13 @@ use fluxion_test_utils::{
     unwrap_value, Sequenced,
 };
 
+static FILTER: fn(&TestData) -> bool = |_| true;
+
 #[tokio::test]
-async fn test_with_latest_from_custom_selector() -> anyhow::Result<()> {
-    // Arrange
-    let (primary_tx, primary_rx) = test_channel::<Sequenced<TestData>>();
+async fn test_take_latest_when_with_latest_from_custom_selector() -> anyhow::Result<()> {
+    // Arrange - take_latest_when -> with_latest_from composition
+    let (source_tx, source_rx) = test_channel::<Sequenced<TestData>>();
+    let (trigger_tx, trigger_rx) = test_channel::<Sequenced<TestData>>();
     let (secondary_tx, secondary_rx) = test_channel::<Sequenced<TestData>>();
 
     // Custom selector: compute age difference between two people
@@ -32,23 +35,27 @@ async fn test_with_latest_from_custom_selector() -> anyhow::Result<()> {
         TestWrapper::new(format!("Age difference: {}", diff), state.timestamp())
     };
 
-    let mut stream =
-        FluxionStream::new(primary_rx).with_latest_from(secondary_rx, age_difference_selector);
+    let mut stream = FluxionStream::new(source_rx)
+        .take_latest_when(trigger_rx, FILTER)
+        .with_latest_from(secondary_rx, age_difference_selector);
 
     // Act & Assert
     secondary_tx.send(Sequenced::new(person_alice()))?; // 25
-    primary_tx.send(Sequenced::new(person_bob()))?; // 30
+    source_tx.send(Sequenced::new(person_bob()))?; // 30
+    trigger_tx.send(Sequenced::new(person_alice()))?; // trigger emission
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.clone().into_inner(), "Age difference: 5"); // 30 - 25
 
-    primary_tx.send(Sequenced::new(person_charlie()))?; // 35
+    source_tx.send(Sequenced::new(person_charlie()))?; // 35
+    trigger_tx.send(Sequenced::new(person_bob()))?; // trigger emission
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.clone().into_inner(), "Age difference: 10"); // 35 - 25
 
     // Update secondary
     secondary_tx.send(Sequenced::new(person_diane()))?; // 40
-    primary_tx.send(Sequenced::new(person_dave()))?; // 28
+    source_tx.send(Sequenced::new(person_dave()))?; // 28
+    trigger_tx.send(Sequenced::new(person_charlie()))?; // trigger emission
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.clone().into_inner(), "Age difference: -12"); // 28 - 40
