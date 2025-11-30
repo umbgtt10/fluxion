@@ -231,7 +231,13 @@ where
     /// let started_tx = Arc::new(started_tx);
     ///
     /// let (tx, rx) = unbounded_channel();
-    /// let stream = UnboundedReceiverStream::new(rx).map(|x: String| x);
+    /// let (sync_tx, mut sync_rx) = unbounded_channel();
+    /// let stream = UnboundedReceiverStream::new(rx).map(move |x: String| {
+    ///     if x == "rust" {
+    ///         let _ = sync_tx.send(());
+    ///     }
+    ///     x
+    /// });
     ///
     /// let results = Arc::new(Mutex::new(Vec::new()));
     /// let results_clone = results.clone();
@@ -269,6 +275,9 @@ where
     /// tx.send("ru".to_string()).unwrap();
     /// tx.send("rus".to_string()).unwrap();
     /// tx.send("rust".to_string()).unwrap();
+    ///
+    /// // Wait for "rust" to be processed by the stream
+    /// sync_rx.recv().await.unwrap();
     ///
     /// // Release "r"
     /// gate_tx.send(()).unwrap();
