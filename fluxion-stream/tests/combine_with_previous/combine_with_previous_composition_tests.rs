@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::Timestamped;
-use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_stream::{CombinedState, DistinctUntilChangedExt, FluxionStream};
 use fluxion_test_utils::{
     helpers::unwrap_stream,
     test_channel,
@@ -195,6 +195,66 @@ async fn test_filter_ordered_combine_with_previous() -> anyhow::Result<()> {
     let item = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&item.previous.unwrap().value, &person_charlie());
     assert_eq!(&item.current.value, &person_dave());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow::Result<()> {
+    // Arrange
+    let (stream1_tx, stream1) = test_channel::<Sequenced<TestData>>();
+    let (stream2_tx, stream2) = test_channel::<Sequenced<TestData>>();
+
+    // Composition: combine_latest -> map to combined age -> distinct_until_changed -> combine_with_previous
+    let mut result = FluxionStream::new(stream1)
+        .combine_latest(vec![stream2], |_| true)
+        .map_ordered(|state| {
+            let age1 = match &state.values()[0] {
+                TestData::Person(p) => p.age,
+                _ => 0,
+            };
+            let age2 = match &state.values()[1] {
+                TestData::Person(p) => p.age,
+                _ => 0,
+            };
+            let sum = age1 + age2;
+            Sequenced::new(sum)
+        })
+        .distinct_until_changed()
+        .combine_with_previous();
+
+    // Act & Assert
+    // Initial values: Alice (25) + Bob (30) = 55
+    stream1_tx.send(Sequenced::new(person_alice()))?;
+    stream2_tx.send(Sequenced::new(person_bob()))?;
+    let combined = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(combined.current.value, 55);
+    assert_eq!(combined.previous, None);
+
+    // Update stream1: Bob (30) + Bob (30) = 60 (different, should emit)
+    stream1_tx.send(Sequenced::new(person_bob()))?;
+    let combined = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(combined.current.value, 60);
+    assert_eq!(combined.previous.as_ref().unwrap().value, 55);
+
+    // Update stream2: Bob (30) + Charlie (35) = 65 (different, should emit)
+    stream2_tx.send(Sequenced::new(person_charlie()))?;
+    let combined = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(combined.current.value, 65);
+    assert_eq!(combined.previous.as_ref().unwrap().value, 60);
+
+    // Update stream1: Bob (30) + Charlie (35) = 65 (same, filtered by distinct)
+    stream1_tx.send(Sequenced::new(person_bob()))?;
+    // No emission expected
+
+    // Update stream2: Bob (30) + Dave (28) = 58 (different, should emit)
+    stream2_tx.send(Sequenced::new(person_dave()))?;
+    let combined = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
+    assert_eq!(combined.current.value, 58);
+    assert_eq!(combined.previous.as_ref().unwrap().value, 65);
+
+    drop(stream1_tx);
+    drop(stream2_tx);
 
     Ok(())
 }
