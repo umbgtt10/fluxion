@@ -137,3 +137,43 @@ async fn test_merge_with_chaining_filter_ordered() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_scan_ordered_composed_with_filter() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let accumulator = |count: &mut i32, _: &TestData| {
+        *count += 1;
+        *count
+    };
+
+    let mut result = FluxionStream::new(stream)
+        .scan_ordered(0, accumulator)
+        .filter_ordered(|count| count % 2 == 0); // Only even counts
+
+    // Act & Assert
+    tx.send(Sequenced::new(person_alice()))?; // count=1, filtered out
+    tx.send(Sequenced::new(person_bob()))?; // count=2, emitted
+    assert_eq!(
+        unwrap_value(Some(
+            unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
+        ))
+        .value,
+        2
+    );
+
+    tx.send(Sequenced::new(person_charlie()))?; // count=3, filtered out
+    tx.send(Sequenced::new(person_dave()))?; // count=4, emitted
+    assert_eq!(
+        unwrap_value(Some(
+            unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
+        ))
+        .value,
+        4
+    );
+
+    drop(tx);
+
+    Ok(())
+}

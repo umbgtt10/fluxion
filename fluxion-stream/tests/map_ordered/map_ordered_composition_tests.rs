@@ -5,6 +5,7 @@
 use fluxion_core::{HasTimestamp, StreamItem, Timestamped};
 use fluxion_stream::{CombinedState, FluxionStream, MergedStream, WithPrevious};
 use fluxion_test_utils::{
+    assert_stream_ended,
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
     test_data::{
@@ -874,18 +875,57 @@ async fn test_scan_ordered_composed_with_map_ordered() -> anyhow::Result<()> {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
-    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(value.value, 10);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        10
+    );
 
     tx.send(Sequenced::new(person_bob()))?;
-    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(value.value, 20);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        20
+    );
 
     tx.send(Sequenced::new(person_charlie()))?;
-    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(value.value, 30);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        30
+    );
 
     drop(tx);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_take_items_with_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<i32>>();
+
+    let mut result = FluxionStream::new(stream)
+        .take_items(3)
+        .map_ordered(|item| item.value * 2);
+
+    // Act
+    tx.send(Sequenced::new(10))?;
+    tx.send(Sequenced::new(20))?;
+    tx.send(Sequenced::new(30))?;
+    tx.send(Sequenced::new(40))?; // Should not be emitted
+
+    // Assert - First 3 values doubled
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(20)
+    ));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(40)
+    ));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(60)
+    ));
+    assert_stream_ended(&mut result, 100).await;
 
     Ok(())
 }

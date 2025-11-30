@@ -22,15 +22,24 @@ async fn test_filter_ordered_distinct_until_changed() -> anyhow::Result<()> {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value, person_alice());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
+        person_alice()
+    );
 
     tx.send(Sequenced::new(person_alice()))?; // Duplicate, filtered by distinct
     tx.send(Sequenced::new(person_bob()))?;
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value, person_bob());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
+        person_bob()
+    );
 
     tx.send(Sequenced::new(person_bob()))?; // Duplicate, filtered by distinct
     tx.send(Sequenced::new(person_charlie()))?;
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value, person_charlie());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
+        person_charlie()
+    );
 
     drop(tx);
 
@@ -55,16 +64,25 @@ async fn test_distinct_until_changed_with_map_composition() -> anyhow::Result<()
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value, 25);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
+        25
+    );
 
     tx.send(Sequenced::new(person_alice()))?; // Age 25 - same
     tx.send(Sequenced::new(person_bob()))?; // Age 30 - different
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value, 30);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
+        30
+    );
 
     tx.send(Sequenced::new(person_bob()))?; // Age 30 - same
     tx.send(Sequenced::new(person_bob()))?; // Age 30 - same
     tx.send(Sequenced::new(person_charlie()))?; // Age 35 - different
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value, 35);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
+        35
+    );
 
     drop(tx);
 
@@ -133,19 +151,31 @@ async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow
     // Initial values: Alice (25) + Bob (30) = 55
     stream1_tx.send(Sequenced::new(person_alice()))?;
     stream2_tx.send(Sequenced::new(person_bob()))?;
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value, 55);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
+        55
+    );
 
     // Update stream1: Bob (30) + Bob (30) = 60 (different, should emit)
     stream1_tx.send(Sequenced::new(person_bob()))?;
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value, 60);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
+        60
+    );
 
     // Update stream2: Bob (30) + Charlie (35) = 65 (different, should emit)
     stream2_tx.send(Sequenced::new(person_charlie()))?;
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value, 65);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
+        65
+    );
 
     // Update stream1: Charlie (35) + Charlie (35) = 70 (different, should emit)
     stream1_tx.send(Sequenced::new(person_charlie()))?;
-    assert_eq!(unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value, 70);
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
+        70
+    );
 
     // Update stream1: Charlie (35) + Charlie (35) = 70 (same! should NOT emit)
     stream1_tx.send(Sequenced::new(person_charlie()))?;
