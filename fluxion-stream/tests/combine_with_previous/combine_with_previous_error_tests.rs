@@ -15,28 +15,25 @@ async fn test_combine_with_previous_propagates_errors() -> anyhow::Result<()> {
 
     let mut result = stream.combine_with_previous();
 
-    // Act: First item - no previous
+    // Act & Assert
     tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
-    // Second item - has previous
     tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
-    // Third item - error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Fourth item - continues after error
     tx.send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -54,16 +51,14 @@ async fn test_combine_with_previous_error_at_first_item() -> anyhow::Result<()> 
 
     let mut result = stream.combine_with_previous();
 
-    // Error immediately
+    // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error("First error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ),);
 
-    // Continue with value
     tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
-
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(_)),
         "Should continue"
@@ -81,35 +76,31 @@ async fn test_combine_with_previous_multiple_errors() -> anyhow::Result<()> {
 
     let mut result = stream.combine_with_previous();
 
-    // Act & Assert: First value
+    // Act & Assert
     tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
-    // First error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Value
     tx.send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
-    // Second error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Value
     tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -128,21 +119,19 @@ async fn test_combine_with_previous_preserves_pairing_after_error() -> anyhow::R
 
     let mut result = stream.combine_with_previous();
 
-    // Act && Assert: First value
+    // Act & Assert
     tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
-    // Error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // More values - pairing should still work
     tx.send(StreamItem::Value(Sequenced::with_timestamp(30, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -167,10 +156,8 @@ async fn test_combine_with_previous_single_item_stream_with_error() -> anyhow::R
 
     let mut result = stream.combine_with_previous();
 
-    // Act: Error first
+    // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-
-    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

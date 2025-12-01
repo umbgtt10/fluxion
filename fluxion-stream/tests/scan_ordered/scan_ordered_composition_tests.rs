@@ -127,7 +127,6 @@ async fn test_ordered_merge_scan_ordered_name_change() -> anyhow::Result<()> {
 
     // Act & Assert
     s1_tx.send(Sequenced::new(person_alice()))?;
-
     assert_eq!(
         unwrap_value::<Sequenced<String>>(Some(unwrap_stream(&mut stream, 500).await)).value,
         "First entry: Alice"
@@ -180,22 +179,18 @@ async fn test_combine_latest_scan_ordered_total_age() -> anyhow::Result<()> {
     // Act & Assert
     person_tx.send(Sequenced::new(person_alice()))?; // 25
     animal_tx.send(Sequenced::new(animal_dog()))?; // 0 (animal)
-                                                   // Combined: [Alice(25), Dog(0)]. Sum = 25. Total = 25.
-
     assert_eq!(
         unwrap_value::<Sequenced<u32>>(Some(unwrap_stream(&mut stream, 500).await)).value,
         25
     );
 
     person_tx.send(Sequenced::new(person_bob()))?; // 30
-                                                   // Combined: [Bob(30), Dog(0)]. Sum = 30. Total = 25 + 30 = 55.
     assert_eq!(
         unwrap_value::<Sequenced<u32>>(Some(unwrap_stream(&mut stream, 500).await)).value,
         55
     );
 
     person_tx.send(Sequenced::new(person_charlie()))?; // 35
-                                                       // Combined: [Charlie(35), Dog(0)]. Sum = 35. Total = 55 + 35 = 90.
     assert_eq!(
         unwrap_value::<Sequenced<u32>>(Some(unwrap_stream(&mut stream, 500).await)).value,
         90

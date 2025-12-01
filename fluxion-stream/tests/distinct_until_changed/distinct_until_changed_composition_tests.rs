@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::StreamItem;
 use fluxion_stream::{DistinctUntilChangedExt, FluxionStream};
 use fluxion_test_utils::{
     helpers::unwrap_stream,
@@ -102,22 +103,25 @@ async fn test_distinct_until_changed_with_combine_with_previous_composition() ->
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
-    let combined = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
-    assert_eq!(combined.current.value, person_alice());
-    assert_eq!(combined.previous, None);
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(val) if val.current.value == person_alice() && val.previous.is_none()
+    ));
 
     tx.send(Sequenced::new(person_alice()))?; // Duplicate, filtered by distinct
     tx.send(Sequenced::new(person_bob()))?;
-    let combined = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
-    assert_eq!(combined.current.value, person_bob());
-    assert_eq!(combined.previous.as_ref().unwrap().value, person_alice());
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(val) if val.current.value == person_bob() && matches!(&val.previous, Some(prev) if prev.value == person_alice())
+    ));
 
     tx.send(Sequenced::new(person_bob()))?; // Duplicate, filtered by distinct
     tx.send(Sequenced::new(person_bob()))?; // Duplicate, filtered by distinct
     tx.send(Sequenced::new(person_charlie()))?;
-    let combined = unwrap_value(Some(unwrap_stream(&mut result, 100).await));
-    assert_eq!(combined.current.value, person_charlie());
-    assert_eq!(combined.previous.as_ref().unwrap().value, person_bob());
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(val) if val.current.value == person_charlie() && matches!(&val.previous, Some(prev) if prev.value == person_bob())
+    ));
 
     drop(tx);
 

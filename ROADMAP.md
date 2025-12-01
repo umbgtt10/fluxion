@@ -172,6 +172,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - ✅ `delay(duration)` operator - Shift emissions forward in time
 - ✅ `sample(duration)` operator - Periodic sampling at fixed intervals
 - ✅ `ChronoStreamOps` extension trait for chrono-based `ChronoTimestamped` types
+- [ ] Ensure merge_with can handle errors
 
 **Documentation:**
 - ✅ Time-based operators guide with real-world examples

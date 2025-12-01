@@ -5,13 +5,14 @@
 use fluxion_core::{StreamItem, Timestamped};
 use fluxion_stream::{CombinedState, FluxionStream, MergedStream};
 use fluxion_test_utils::{
+    assert_no_element_emitted,
     helpers::unwrap_stream,
     test_channel,
     test_data::{
         animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
         plant_rose, TestData,
     },
-    unwrap_value, Sequenced,
+    Sequenced,
 };
 use tokio::sync::mpsc;
 
@@ -29,23 +30,23 @@ async fn test_ordered_merge_filter_ordered() -> anyhow::Result<()> {
 
     // Act & Assert
     s1_tx.send(Sequenced::new(person_alice()))?;
-    {
-        let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-        assert_eq!(&val.value, &person_alice());
-    }
+    assert!(matches!(
+        unwrap_stream(&mut stream, 500).await,
+        StreamItem::Value(val) if val.value == person_alice()
+    ));
 
     s2_tx.send(Sequenced::new(animal_dog()))?; // Filtered out
     s1_tx.send(Sequenced::new(plant_rose()))?;
-    {
-        let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-        assert_eq!(&val.value, &plant_rose());
-    }
+    assert!(matches!(
+        unwrap_stream(&mut stream, 500).await,
+        StreamItem::Value(val) if val.value == plant_rose()
+    ));
 
     s2_tx.send(Sequenced::new(person_bob()))?;
-    {
-        let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-        assert_eq!(&val.value, &person_bob());
-    }
+    assert!(matches!(
+        unwrap_stream(&mut stream, 500).await,
+        StreamItem::Value(val) if val.value == person_bob()
+    ));
 
     Ok(())
 }
@@ -73,17 +74,22 @@ async fn test_combine_latest_filter_ordered() -> anyhow::Result<()> {
     // Combined but filtered out (age <= 30)
 
     p_tx.send(Sequenced::new(person_charlie()))?; // 35
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    let inner = result.clone().into_inner();
-    let state = inner.values();
-    assert_eq!(&state[0], &person_charlie());
-    assert_eq!(&state[1], &animal_dog());
+    assert!(matches!(
+        unwrap_stream(&mut stream, 500).await,
+        StreamItem::Value(val) if {
+            let state = val.values();
+            state[0] == person_charlie() && state[1] == animal_dog()
+        }
+    ));
 
     p_tx.send(Sequenced::new(person_diane()))?; // 40
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    let inner = result.clone().into_inner();
-    let state = inner.values();
-    assert_eq!(&state[0], &person_diane());
+    assert!(matches!(
+        unwrap_stream(&mut stream, 500).await,
+        StreamItem::Value(val) if {
+            let state = val.values();
+            state[0] == person_diane()
+        }
+    ));
 
     Ok(())
 }
@@ -105,35 +111,27 @@ async fn test_merge_with_chaining_filter_ordered() -> anyhow::Result<()> {
 
     // Send first value - state will be 1 (filtered out)
     tx.send(Sequenced::new(person_alice()))?;
+    assert_no_element_emitted(&mut result, 500).await;
 
     // Send second value - state will be 2 (filtered out)
     tx.send(Sequenced::new(person_bob()))?;
+    assert_no_element_emitted(&mut result, 500).await;
 
     // Send third value - state will be 3 (kept)
     tx.send(Sequenced::new(person_charlie()))?;
-
-    // Assert: only the third emission passes the filter
-    let StreamItem::Value(first_kept) = unwrap_stream(&mut result, 500).await else {
-        panic!("Expected Value");
-    };
-    assert_eq!(
-        first_kept.into_inner(),
-        3,
-        "Third emission passes filter: 3 > 2"
-    );
+    assert!(matches!(
+        unwrap_stream(&mut result, 500).await,
+        StreamItem::Value(val) if val.value == 3
+    ));
 
     // Send fourth value - state will be 4 (kept)
     tx.send(Sequenced::new(person_dave()))?;
 
     // Assert: fourth emission also passes
-    let StreamItem::Value(second_kept) = unwrap_stream(&mut result, 500).await else {
-        panic!("Expected Value");
-    };
-    assert_eq!(
-        second_kept.into_inner(),
-        4,
-        "Fourth emission passes filter: 4 > 2"
-    );
+    assert!(matches!(
+        unwrap_stream(&mut result, 500).await,
+        StreamItem::Value(val) if val.value == 4
+    ));
 
     Ok(())
 }
@@ -154,24 +152,22 @@ async fn test_scan_ordered_composed_with_filter() -> anyhow::Result<()> {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // count=1, filtered out
+    assert_no_element_emitted(&mut result, 500).await;
+
     tx.send(Sequenced::new(person_bob()))?; // count=2, emitted
-    assert_eq!(
-        unwrap_value(Some(
-            unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
-        ))
-        .value,
-        2
-    );
+    assert!(matches!(
+        unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
+        StreamItem::Value(val) if val.value == 2
+    ));
 
     tx.send(Sequenced::new(person_charlie()))?; // count=3, filtered out
+    assert_no_element_emitted(&mut result, 500).await;
+
     tx.send(Sequenced::new(person_dave()))?; // count=4, emitted
-    assert_eq!(
-        unwrap_value(Some(
-            unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
-        ))
-        .value,
-        4
-    );
+    assert!(matches!(
+        unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
+        StreamItem::Value(val) if val.value == 4
+    ));
 
     drop(tx);
 
