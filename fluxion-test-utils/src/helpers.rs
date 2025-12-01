@@ -178,11 +178,13 @@ pub fn test_channel_with_errors<T: Send + 'static>() -> (
 pub async fn assert_no_element_emitted<S, T>(stream: &mut S, timeout_ms: u64)
 where
     S: Stream<Item = T> + Unpin,
+    T: std::fmt::Debug,
 {
     select! {
-        _state = stream.next() => {
+        state = stream.next() => {
             panic!(
-                "Unexpected combination emitted, expected no output."
+                "Unexpected combination emitted {:?}, expected no output.",
+                state
             );
         }
         () = sleep(Duration::from_millis(timeout_ms)) => {

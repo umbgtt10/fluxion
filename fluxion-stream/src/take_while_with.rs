@@ -135,6 +135,7 @@ where
             StreamItem::Value(value) => Item::<TItem, TFilter>::Source(value),
             StreamItem::Error(e) => Item::<TItem, TFilter>::Error(e),
         });
+
         let filter_stream = filter_stream.map(|item| match item {
             StreamItem::Value(value) => Item::<TItem, TFilter>::Filter(value),
             StreamItem::Error(e) => Item::<TItem, TFilter>::Error(e),
@@ -190,7 +191,10 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub enum Item<TItem, TFilter> {
+pub enum Item<TItem, TFilter>
+where
+    TItem: HasTimestamp,
+{
     Source(TItem),
     Filter(TFilter),
     Error(FluxionError),
@@ -207,10 +211,12 @@ where
         match self {
             Self::Source(s) => s.timestamp(),
             Self::Filter(f) => f.timestamp(),
-            Self::Error(_) => panic!("Error items cannot provide timestamps"),
+            Self::Error(_) => panic!("Item::Error has no timestamp"),
         }
     }
 }
+
+impl<TItem, TFilter> Unpin for Item<TItem, TFilter> where TItem: HasTimestamp {}
 
 impl<TItem, TFilter> PartialEq for Item<TItem, TFilter>
 where
@@ -218,7 +224,12 @@ where
     TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.timestamp() == other.timestamp()
+        match (self, other) {
+            (Self::Error(_), Self::Error(_)) => true,
+            (Self::Error(_), _) => false,
+            (_, Self::Error(_)) => false,
+            (a, b) => a.timestamp() == b.timestamp(),
+        }
     }
 }
 
@@ -245,6 +256,11 @@ where
     TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.timestamp().cmp(&other.timestamp())
+        match (self, other) {
+            (Self::Error(_), Self::Error(_)) => std::cmp::Ordering::Equal,
+            (Self::Error(_), _) => std::cmp::Ordering::Less,
+            (_, Self::Error(_)) => std::cmp::Ordering::Greater,
+            (a, b) => a.timestamp().cmp(&b.timestamp()),
+        }
     }
 }
