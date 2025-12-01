@@ -35,11 +35,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Run all fluxion-stream benchmarks
-        run: cargo bench --package fluxion-stream
-
-      - name: Run all fluxion-stream-time benchmarks
-        run: cargo bench --package fluxion-stream-time
+      - name: Run all benchmarks (both packages)
+        run: cargo bench -p fluxion-stream -p fluxion-stream-time
 
       # --------------------------------------------------------------
       # 1. ALWAYS create/update baseline from this run (before comparison)
@@ -127,19 +124,20 @@ jobs:
           fi
 
       # --------------------------------------------------------------
-      # 4. Deploy to GitHub Pages (on main only)
+      # 4. Deploy to GitHub Pages (on main only) — FULL ROOT DEPLOY
       # --------------------------------------------------------------
       - name: Deploy benchmarks to GitHub Pages
         if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Deploy the ENTIRE target/criterion/ to /benchmarks/ — preserves structure
-          publish_dir: ./target/criterion
-          destination_dir: benchmarks  # Still scopes to /benchmarks/, but now with full hierarchy
+          publish_dir: ./target/criterion  # ENTIRE criterion/ dir to root (index.html + all subs)
+          # NO destination_dir — deploys to site root (/)
           keep_files: false
-          # Optional: Clean up old deploys to avoid bloat
-          force_orphan: true
+          force_orphan: true  # Wipes old gh-pages contents for a clean slate
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'Deploy Fluxion benchmarks to gh-pages'
 
       # --------------------------------------------------------------
       # 5. Upload report artifact (for PRs and debugging)
