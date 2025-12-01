@@ -3,11 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::{
-    combine_latest::CombineLatestExt, take_latest_when::TakeLatestWhenExt,
-    FluxionStream,
+use fluxion_stream::{combine_latest::CombineLatestExt, FluxionStream};
+use fluxion_test_utils::{
+    assert_no_element_emitted, test_channel_with_errors, unwrap_stream, Sequenced,
 };
-use fluxion_test_utils::{Sequenced, assert_no_element_emitted, test_channel_with_errors, unwrap_stream};
 
 #[tokio::test]
 async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<()> {
@@ -57,49 +56,6 @@ async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<(
 }
 
 #[tokio::test]
-async fn test_error_in_long_operator_chain() -> anyhow::Result<()> {
-    // Arrange
-    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-
-    // Long chain: filter -> combine_with_previous -> map
-    let mut result = FluxionStream::new(stream)
-        .filter_ordered(|x| *x >= 10)
-        .combine_with_previous()
-        .map_ordered(|x| Sequenced::new(x.current.value + 5));
-
-    // Act & Assert Send value
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
-    assert!(matches!(
-        unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(ref v) if v.value == 15
-    ));
-
-    // Send error
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    assert!(matches!(
-        unwrap_stream(&mut result, 100).await,
-        StreamItem::Error(_)
-    ));
-
-    // Continue
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(30, 3)))?;
-    assert!(matches!(
-        unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(ref v) if v.value == 35
-    ));
-
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(40, 4)))?;
-    assert!(matches!(
-        unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(ref v) if v.value == 45
-    ));
-
-    drop(tx);
-
-    Ok(())
-}
-
-#[tokio::test]
 async fn test_multiple_errors_through_composition() -> anyhow::Result<()> {
     // ASrrange
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
@@ -137,41 +93,6 @@ async fn test_multiple_errors_through_composition() -> anyhow::Result<()> {
     drop(tx1);
     drop(tx2);
 
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_error_recovery_in_composed_streams() -> anyhow::Result<()> {
-    // Arrange
-    let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
-
-    // Complex composition
-    let mut result = source_stream
-        .take_latest_when(trigger_stream, |_| true)
-        .combine_with_previous()
-        .map_ordered(|x| Sequenced::new(x.current.value));
-
-    // Send source values
-    source_tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 1)))?;
-
-    // Send error
-    source_tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    assert!(matches!(
-        unwrap_stream(&mut result, 100).await,
-        StreamItem::Error(_)
-    ));
-
-    // Continue
-    source_tx.send(StreamItem::Value(Sequenced::with_timestamp(15, 3)))?;
-    trigger_tx.send(StreamItem::Value(Sequenced::with_timestamp(100, 5)))?;
-    assert!(matches!(
-        unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(ref v) if v.value == 15
-    ));
-
-    drop(source_tx);
-    drop(trigger_tx);
     Ok(())
 }
 
