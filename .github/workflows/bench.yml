@@ -127,17 +127,20 @@ jobs:
           fi
 
       # --------------------------------------------------------------
-      # 4. Deploy to GitHub Pages (on main only)
+      # 4. Deploy to GitHub Pages (on main only) — FULL ROOT DEPLOY
       # --------------------------------------------------------------
       - name: Deploy benchmarks to GitHub Pages
         if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./target/criterion  # Deploy the FULL criterion dir (index + all subs)
-          destination_dir: benchmarks     # Still scopes to /benchmarks/
+          publish_dir: ./target/criterion  # ENTIRE criterion/ dir to root (index.html + all subs)
+          # NO destination_dir — deploys to site root (/)
           keep_files: false
-          force_orphan: true              # Optional: Cleans old files for a fresh start
+          force_orphan: true  # Wipes old gh-pages contents for a clean slate
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'Deploy Fluxion benchmarks to gh-pages'
 
       # --------------------------------------------------------------
       # 5. Upload report artifact (for PRs and debugging)
