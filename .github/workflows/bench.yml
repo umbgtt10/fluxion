@@ -123,6 +123,12 @@ jobs:
             echo "✅ All benchmarks stable or improved"
           fi
 
+      - name: Debug - List criterion report contents
+        run: |
+          echo "=== Contents of target/criterion/report ==="
+          ls -laR target/criterion/report/
+          echo "=== End of listing ==="
+
       # --------------------------------------------------------------
       # 4. Deploy to GitHub Pages (on main only) — FULL ROOT DEPLOY
       # --------------------------------------------------------------

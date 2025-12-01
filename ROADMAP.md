@@ -172,14 +172,11 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - ✅ `delay(duration)` operator - Shift emissions forward in time
 - ✅ `sample(duration)` operator - Periodic sampling at fixed intervals
 - ✅ `ChronoStreamOps` extension trait for chrono-based `ChronoTimestamped` types
-- [ ] Ensure merge_with can handle errors
 
 **Documentation:**
 - ✅ Time-based operators guide with real-world examples
 - ✅ Chrono integration patterns (ChronoTimestamped wrapper)
 - ✅ Performance characteristics of temporal operators (comprehensive test suite)
-- ✅ Migration guide for users needing time-based features
-- ✅ Comparison with counter-based timestamps in core
 
 **Quality Gates:**
 - ✅ All tests passing with both counter and chrono timestamps
@@ -201,6 +198,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - [ ] `sample_ratio(fraction)` operator - Probabilistic downsampling (0.0 to 1.0)
 - [ ] `window_by_count(n)` operator - Count-based batching into Vec<T>
 - [ ] `partition(predicate)` operator - Split stream into two based on condition
+- [ ] `merge_with` can handle errors
 
 **Documentation:**
 - [ ] Stream sharing patterns and examples
