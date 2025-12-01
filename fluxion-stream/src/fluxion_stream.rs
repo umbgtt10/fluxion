@@ -21,7 +21,6 @@ use pin_project::pin_project;
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// A concrete wrapper type that provides all fluxion stream extensions.
 ///
@@ -30,7 +29,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 ///
 /// `FluxionStream` is designed for **pure, functional stream operations** with no
 /// mutation. For testing scenarios where you need to push values into a stream,
-/// use `tokio::sync::mpsc::unbounded_channel` with `from_unbounded_receiver`.
+/// use `tokio::sync::mpsc::unbounded_channel` with the `IntoFluxionStream` trait.
 ///
 /// # Design Philosophy
 ///
@@ -55,35 +54,6 @@ impl<S> FluxionStream<S> {
     /// Unwrap to get the inner stream
     pub fn into_inner(self) -> S {
         self.inner
-    }
-}
-
-// Separate impl for the constructor that changes the type parameter
-impl FluxionStream<()> {
-    /// Creates a `FluxionStream` from a tokio unbounded receiver.
-    ///
-    /// This is the most common constructor for production code that receives
-    /// values from other async tasks or components.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use fluxion_stream::FluxionStream;
-    /// use tokio::sync::mpsc;
-    ///
-    /// let (tx, rx) = mpsc::unbounded_channel::<i32>();
-    /// let stream = FluxionStream::from_unbounded_receiver(rx);
-    /// ```
-    pub fn from_unbounded_receiver<T>(
-        receiver: tokio::sync::mpsc::UnboundedReceiver<T>,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<T>>> {
-        FluxionStream::new(UnboundedReceiverStream::new(receiver).map(StreamItem::Value))
-    }
-}
-
-impl<T> From<UnboundedReceiverStream<T>> for FluxionStream<UnboundedReceiverStream<T>> {
-    fn from(stream: UnboundedReceiverStream<T>) -> Self {
-        FluxionStream::new(stream)
     }
 }
 

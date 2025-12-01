@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::Timestamped;
-use fluxion_rx::FluxionStream;
+use fluxion_rx::ReceiverStreamExt;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -20,8 +20,8 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
     let (tx_int, rx_int) = unbounded_channel::<Sequenced<Value>>();
     let (tx_str, rx_str) = unbounded_channel::<Sequenced<Value>>();
 
-    let int_stream = FluxionStream::from_unbounded_receiver(rx_int);
-    let str_stream = FluxionStream::from_unbounded_receiver(rx_str);
+    let int_stream = rx_int.to_fluxion_stream();
+    let str_stream = rx_str.to_fluxion_stream();
 
     // Chain: combine_latest -> filter
     let mut pipeline = int_stream

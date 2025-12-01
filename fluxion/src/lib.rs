@@ -95,6 +95,9 @@ pub use fluxion_core::{HasTimestamp, Timestamped};
 // Re-export the main FluxionStream type
 pub use fluxion_stream::FluxionStream;
 
+// Re-export the ReceiverStreamExt extension trait for simple channel conversion
+pub use fluxion_stream::ReceiverStreamExt;
+
 // Re-export commonly used types
 pub use fluxion_stream::{CombinedState, WithPrevious};
 
@@ -122,6 +125,7 @@ pub use channel_ext::UnboundedReceiverExt;
 /// This is the recommended way to use Fluxion in most applications.
 pub mod prelude {
     pub use crate::FluxionStream;
+    pub use crate::ReceiverStreamExt;
     pub use crate::UnboundedReceiverExt;
     pub use fluxion_core::into_stream::IntoStream;
     pub use fluxion_core::{HasTimestamp, Timestamped};

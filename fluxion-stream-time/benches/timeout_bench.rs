@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use criterion::{BenchmarkId, Criterion, Throughput};
-use fluxion_stream::FluxionStream;
+use fluxion_stream::ReceiverStreamExt;
 use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
 use futures::stream::StreamExt;
 use std::hint::black_box;
@@ -36,7 +36,7 @@ pub fn bench_timeout(c: &mut Criterion) {
                     rt.block_on(async {
                         // 2. Create stream and operator
                         let (tx, rx) = mpsc::unbounded_channel();
-                        let stream = FluxionStream::from_unbounded_receiver(rx).timeout(duration);
+                        let stream = rx.to_fluxion_stream().timeout(duration);
                         let mut stream = Box::pin(stream);
 
                         // 3. Emit value BEFORE timeout
