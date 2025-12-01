@@ -187,14 +187,14 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_stream::{FluxionStream, IntoFluxionStream};
     /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value};
     /// use fluxion_core::Timestamped as TimestampedTrait;
     /// use tokio::sync::mpsc;
     ///
     /// # async fn example() {
     /// let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let stream = FluxionStream::from_unbounded_receiver(rx);
+    /// let stream = rx.into_fluxion_stream();
     ///
     /// // Filter for even numbers
     /// let mut evens = stream.filter_ordered(|&n| n % 2 == 0);

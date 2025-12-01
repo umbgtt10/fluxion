@@ -3,9 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::{
-    distinct_until_changed::DistinctUntilChangedExt, FluxionStream,
-};
+use fluxion_stream::{distinct_until_changed::DistinctUntilChangedExt, FluxionStream};
 use fluxion_test_utils::{
     assert_no_element_emitted, test_channel_with_errors,
     test_data::{person_alice, person_bob, TestData},

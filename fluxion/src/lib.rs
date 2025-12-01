@@ -84,9 +84,7 @@
 //! - [`fluxion_core`] - Core traits and utilities
 //! - [`fluxion_stream`] - Stream operators and combinators
 //! - `fluxion_exec` - Async execution and subscription utilities
-//! - `fluxion_error` - Error types and handling
-
-mod channel_ext;
+// fluxion_error - Error types and handling
 
 // Re-export core types
 pub use fluxion_core::into_stream::IntoStream;
@@ -95,17 +93,14 @@ pub use fluxion_core::{HasTimestamp, Timestamped};
 // Re-export the main FluxionStream type
 pub use fluxion_stream::FluxionStream;
 
-// Re-export the ReceiverStreamExt extension trait for simple channel conversion
-pub use fluxion_stream::ReceiverStreamExt;
+// Re-export the IntoFluxionStream extension trait for simple channel conversion
+pub use fluxion_stream::IntoFluxionStream;
 
 // Re-export commonly used types
 pub use fluxion_stream::{CombinedState, WithPrevious};
 
 // Re-export exec utilities
 pub use fluxion_exec;
-
-// Re-export convenience extensions
-pub use channel_ext::UnboundedReceiverExt;
 
 /// Prelude module for convenient imports.
 ///
@@ -119,14 +114,13 @@ pub use channel_ext::UnboundedReceiverExt;
 /// // - Timestamped trait
 /// // - IntoStream trait
 /// // - CombinedState, WithPrevious
-/// // - UnboundedReceiverExt
+/// // - IntoFluxionStream
 /// ```
 ///
 /// This is the recommended way to use Fluxion in most applications.
 pub mod prelude {
     pub use crate::FluxionStream;
-    pub use crate::ReceiverStreamExt;
-    pub use crate::UnboundedReceiverExt;
+    pub use crate::IntoFluxionStream;
     pub use fluxion_core::into_stream::IntoStream;
     pub use fluxion_core::{HasTimestamp, Timestamped};
     pub use fluxion_stream::{CombinedState, WithPrevious};

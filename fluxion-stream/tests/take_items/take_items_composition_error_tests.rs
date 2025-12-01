@@ -5,7 +5,7 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::FluxionStream;
 use fluxion_test_utils::{
-    assert_no_element_emitted, test_channel_with_errors,
+    assert_stream_ended, test_channel_with_errors,
     test_data::{person_alice, TestData},
     unwrap_stream, Sequenced,
 };
@@ -36,7 +36,7 @@ async fn test_map_ordered_then_take_items_propagates_error() -> anyhow::Result<(
 
     // 3. Send another value -> Should NOT be emitted (limit reached)
     tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
-    assert_no_element_emitted(&mut result, 100).await;
+    assert_stream_ended(&mut result, 100).await;
 
     Ok(())
 }
