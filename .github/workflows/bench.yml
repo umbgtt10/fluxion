@@ -134,12 +134,10 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Deploy the ENTIRE target/criterion/ to /benchmarks/ — preserves structure
-          publish_dir: ./target/criterion
-          destination_dir: benchmarks  # Still scopes to /benchmarks/, but now with full hierarchy
+          publish_dir: ./target/criterion  # Deploy the FULL criterion dir (index + all subs)
+          destination_dir: benchmarks     # Still scopes to /benchmarks/
           keep_files: false
-          # Optional: Clean up old deploys to avoid bloat
-          force_orphan: true
+          force_orphan: true              # Optional: Cleans old files for a fresh start
 
       # --------------------------------------------------------------
       # 5. Upload report artifact (for PRs and debugging)
