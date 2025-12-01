@@ -35,19 +35,25 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Run all benchmarks (both packages)
-        run: cargo bench -p fluxion-stream -p fluxion-stream-time
+      - name: Run all benchmarks (all packages)
+        run: cargo bench -p fluxion-stream -p fluxion-stream-time -p fluxion-ordered-merge
 
       # --------------------------------------------------------------
       # 1. ALWAYS create/update baseline from this run (before comparison)
       # --------------------------------------------------------------
       - name: Create/update baseline JSON
         run: |
-          mkdir -p benches/baseline/benchmarks
+          mkdir -p benches/baseline
 
-          # The actual path where criterion outputs
-          if [ -d "target/criterion/benchmarks" ] && [ "$(ls -A target/criterion/benchmarks 2>/dev/null)" ]; then
-            cp -r target/criterion/benchmarks/* benches/baseline/benchmarks/
+          # Criterion outputs to target/criterion/<bench_name>/ (e.g., combine_latest/, ordered_merge/)
+          # Copy all benchmark directories except 'report'
+          if [ -d "target/criterion" ]; then
+            for dir in target/criterion/*/; do
+              dirname=$(basename "$dir")
+              if [ "$dirname" != "report" ]; then
+                cp -r "$dir" benches/baseline/
+              fi
+            done
             echo "Baseline updated from this run"
             git add -A benches/baseline
           else
@@ -80,21 +86,25 @@ jobs:
           set -euo pipefail
 
           # Skip if baseline doesn't exist yet (first run)
-          if [ ! -d "benches/baseline/benchmarks" ] || [ ! -d "target/criterion/benchmarks" ]; then
+          # Check for any benchmark directories in baseline (excluding report)
+          baseline_count=$(find benches/baseline -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
+          criterion_count=$(find target/criterion -mindepth 1 -maxdepth 1 -type d -not -name report 2>/dev/null | wc -l)
+
+          if [ "$baseline_count" -eq 0 ] || [ "$criterion_count" -eq 0 ]; then
             echo "Skipping regression check – baseline not ready"
             echo "First run - baseline will be established" > benches/comparison.txt
             exit 0
           fi
 
           # Check if there are any actual benchmark results to compare
-          if [ ! "$(find benches/baseline/benchmarks -name '*.json' 2>/dev/null)" ]; then
+          if [ ! "$(find benches/baseline -name '*.json' 2>/dev/null)" ]; then
             echo "No baseline data files found yet"
             echo "Baseline is being established" > benches/comparison.txt
             exit 0
           fi
 
           echo "Running comparison..."
-          critcmp benches/baseline/benchmarks target/criterion/benchmarks --threshold 10 > benches/comparison.txt 2>&1 || {
+          critcmp benches/baseline target/criterion --threshold 10 > benches/comparison.txt 2>&1 || {
             # Handle "no comparisons" gracefully
             if grep -qi "no benchmark comparisons\|no benchmarks found" benches/comparison.txt; then
               echo "No changes detected (identical to baseline) – all good!"
@@ -132,14 +142,23 @@ jobs:
       # --------------------------------------------------------------
       # 4. Deploy to GitHub Pages (on main only) — FULL ROOT DEPLOY
       # --------------------------------------------------------------
+      - name: Prepare benchmark report for deployment
+        if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+        run: |
+          mkdir -p deploy/benchmarks
+          cp -r target/criterion/* deploy/benchmarks/
+          # Move report/index.html to benchmarks/index.html for cleaner URL
+          if [ -f deploy/benchmarks/report/index.html ]; then
+            cp deploy/benchmarks/report/index.html deploy/benchmarks/index.html
+          fi
+
       - name: Deploy benchmarks to GitHub Pages
         if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./target/criterion/report # benchmark accessible at: https://umbgtt10.github.io/fluxion/
-          keep_files: false
-          force_orphan: true
+          publish_dir: ./deploy
+          keep_files: true  # Preserve other content on gh-pages
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           commit_message: 'Deploy Fluxion benchmarks to gh-pages'

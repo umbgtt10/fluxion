@@ -1,3 +1,6 @@
+[env]
+CRITERION_HOME = { value = "target/criterion", relative = true }
+
 [alias]
 # Run `cargo clippy-allow` to run Clippy while allowing a couple of noisy
 # workspace-level lints. We avoid using the name `clippy` here because an alias

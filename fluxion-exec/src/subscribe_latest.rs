@@ -218,46 +218,26 @@ where
     /// use fluxion_exec::SubscribeLatestAsyncExt;
     /// use tokio::sync::mpsc::unbounded_channel;
     /// use tokio_stream::wrappers::UnboundedReceiverStream;
-    /// use futures::{Stream, StreamExt};
+    /// use futures::StreamExt;
     /// use std::sync::Arc;
-    /// use std::sync::atomic::{AtomicUsize, Ordering};
-    /// use tokio::sync::{Mutex, Notify};
-    /// use std::pin::Pin;
-    /// use std::task::{Context, Poll};
-    ///
-    /// // Helper stream that notifies when all items have been consumed
-    /// struct NotifyOnPendingStream<S> {
-    ///     stream: S,
-    ///     notify: Arc<Notify>,
-    /// }
-    ///
-    /// impl<S: Stream + Unpin> Stream for NotifyOnPendingStream<S> {
-    ///     type Item = S::Item;
-    ///     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-    ///         let poll = Pin::new(&mut self.stream).poll_next(cx);
-    ///         if poll.is_pending() {
-    ///             self.notify.notify_waiters();
-    ///         }
-    ///         poll
-    ///     }
-    /// }
+    /// use tokio::sync::Mutex;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// // Mock API with gate
+    /// // Gate to control when first item completes
     /// let (gate_tx, mut gate_rx) = unbounded_channel::<()>();
     /// let gate_shared = Arc::new(Mutex::new(Some(gate_rx)));
+    ///
+    /// // Signal when processing starts
     /// let (started_tx, mut started_rx) = unbounded_channel::<String>();
     /// let started_tx = Arc::new(started_tx);
     ///
-    /// let (tx, rx) = unbounded_channel();
-    /// let pending_notify = Arc::new(Notify::new());
-    /// let pending_notify_clone = pending_notify.clone();
+    /// // Signal when processing completes
+    /// let (done_tx, mut done_rx) = unbounded_channel::<String>();
+    /// let done_tx = Arc::new(done_tx);
     ///
-    /// let stream = NotifyOnPendingStream {
-    ///     stream: UnboundedReceiverStream::new(rx),
-    ///     notify: pending_notify_clone,
-    /// };
+    /// let (tx, rx) = unbounded_channel();
+    /// let stream = UnboundedReceiverStream::new(rx);
     ///
     /// let results = Arc::new(Mutex::new(Vec::new()));
     /// let results_clone = results.clone();
@@ -268,6 +248,7 @@ where
     ///             let results = results_clone.clone();
     ///             let gate = gate_shared.clone();
     ///             let started = started_tx.clone();
+    ///             let done = done_tx.clone();
     ///             async move {
     ///                 started.send(query.clone()).unwrap();
     ///
@@ -279,6 +260,7 @@ where
     ///                 if !token.is_cancelled() {
     ///                     results.lock().await.push(format!("result_for_{}", query));
     ///                 }
+    ///                 done.send(query).unwrap();
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
@@ -287,28 +269,35 @@ where
     ///     ).await
     /// });
     ///
-    /// // User types rapidly
+    /// // Send first item and wait for it to start processing
     /// tx.send("r".to_string()).unwrap();
-    /// // Wait for "r" to start
     /// assert_eq!(started_rx.recv().await, Some("r".to_string()));
     ///
+    /// // While "r" is blocked, send more items rapidly
     /// tx.send("ru".to_string()).unwrap();
     /// tx.send("rus".to_string()).unwrap();
     /// tx.send("rust".to_string()).unwrap();
     ///
-    /// // Wait until all items have been consumed by the subscriber
-    /// pending_notify.notified().await;
-    ///
-    /// // Release "r"
-    /// gate_tx.send(()).unwrap();
+    /// // Close the stream to ensure all items are delivered
     /// drop(tx);
+    ///
+    /// // Release "r" - this allows processing to continue
+    /// gate_tx.send(()).unwrap();
+    ///
+    /// // Wait for "r" to complete
+    /// assert_eq!(done_rx.recv().await, Some("r".to_string()));
+    ///
+    /// // Wait for "rust" (the latest) to complete
+    /// assert_eq!(done_rx.recv().await, Some("rust".to_string()));
     ///
     /// handle.await.unwrap().unwrap();
     ///
     /// let results = results.lock().await;
     /// assert!(results.contains(&"result_for_r".to_string()));
     /// assert!(results.contains(&"result_for_rust".to_string()));
+    /// // Intermediate items were skipped
     /// assert!(!results.contains(&"result_for_ru".to_string()));
+    /// assert!(!results.contains(&"result_for_rus".to_string()));
     /// # }
     /// ```
     ///
