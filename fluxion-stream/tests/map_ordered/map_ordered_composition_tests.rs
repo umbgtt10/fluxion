@@ -4,6 +4,7 @@
 
 use fluxion_stream::{CombinedState, FluxionStream};
 use fluxion_test_utils::{
+    assert_no_element_emitted,
     helpers::unwrap_stream,
     test_channel,
     test_data::{animal_dog, person_alice, person_bob, person_charlie, plant_rose, TestData},
@@ -152,18 +153,15 @@ async fn test_ordered_merge_combine_with_previous_map_ordered() -> anyhow::Resul
     person_tx.send(Sequenced::new(person_alice()))?;
     let mut stream = Box::pin(stream);
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value;
-    assert!(result.contains("Alice"));
-    assert!(result.contains("Previous: None"));
+    assert!(result.contains("Alice") && result.contains("Previous: None"));
 
     animal_tx.send(Sequenced::new(animal_dog()))?;
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value;
-    assert!(result.contains("Dog"));
-    assert!(result.contains("Alice"));
+    assert!(result.contains("Dog") && result.contains("Alice"));
 
     person_tx.send(Sequenced::new(person_bob()))?;
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value;
-    assert!(result.contains("Bob"));
-    assert!(result.contains("Dog"));
+    assert!(result.contains("Bob") && result.contains("Dog"));
 
     Ok(())
 }
@@ -317,14 +315,18 @@ async fn test_filter_ordered_map_ordered() -> anyhow::Result<()> {
         "Person: Alice"
     );
 
-    tx.send(Sequenced::new(animal_dog()))?; // Filtered out
+    tx.send(Sequenced::new(animal_dog()))?;
+    assert_no_element_emitted(&mut stream, 500).await;
+
     tx.send(Sequenced::new(person_bob()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Person: Bob"
     );
 
-    tx.send(Sequenced::new(plant_rose()))?; // Filtered out
+    tx.send(Sequenced::new(plant_rose()))?;
+    assert_no_element_emitted(&mut stream, 500).await;
+
     tx.send(Sequenced::new(person_charlie()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,

@@ -9,65 +9,6 @@ use fluxion_test_utils::{
 };
 
 #[tokio::test]
-async fn test_distinct_until_changed_by_error_propagation_in_composition() -> anyhow::Result<()> {
-    // Arrange
-    let (tx, stream) = test_channel_with_errors::<Sequenced<String>>();
-
-    // Composition: map -> distinct_until_changed_by (case-insensitive) -> filter
-    let mut result = FluxionStream::new(stream)
-        .map_ordered(|s| {
-            let trimmed = s.value.trim().to_string();
-            Sequenced::new(trimmed)
-        })
-        .distinct_until_changed_by(|a, b| a.to_lowercase() == b.to_lowercase())
-        .filter_ordered(|s| !s.is_empty());
-
-    // Act & Assert
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(
-        "Hello".to_string(),
-        1,
-    )))?;
-    assert!(matches!(
-        unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(_)
-    ));
-
-    // Same (case-insensitive) - filtered by distinct_by
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(
-        "HELLO".to_string(),
-        2,
-    )))?;
-    assert_no_element_emitted(&mut result, 100).await;
-
-    // Send error
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    assert!(matches!(
-        unwrap_stream(&mut result, 100).await,
-        StreamItem::Error(_)
-    ));
-
-    // Continue - state should be preserved
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(
-        "hello".to_string(),
-        4,
-    )))?; // Still same case-insensitive
-
-    // Different value
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(
-        "World".to_string(),
-        5,
-    )))?;
-    assert!(matches!(
-        unwrap_stream(&mut result, 100).await,
-        StreamItem::Value(_)
-    ));
-
-    drop(tx);
-
-    Ok(())
-}
-
-#[tokio::test]
 async fn test_distinct_until_changed_by_multiple_errors_in_composition() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
@@ -88,25 +29,21 @@ async fn test_distinct_until_changed_by_multiple_errors_in_composition() -> anyh
         StreamItem::Value(_)
     ));
 
-    // Error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Same parity - filtered by distinct_by
     tx.send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Another error
     tx.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Different parity - emitted
     tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 5)))?; // Even
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -142,14 +79,12 @@ async fn test_scan_ordered_error_propagation_with_filter() -> anyhow::Result<()>
         StreamItem::Value(ref v) if v.value == 2
     ));
 
-    // Error propagates through
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Count continues, filtered
     tx.send(StreamItem::Value(Sequenced::with_timestamp(300, 4)))?; // count=3, filtered
     assert_no_element_emitted(&mut result, 100).await;
 

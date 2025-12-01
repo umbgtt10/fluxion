@@ -119,8 +119,6 @@ async fn test_merge_with_chaining_filter_ordered() -> anyhow::Result<()> {
 
     // Send third value - state will be 3 (kept)
     tx.send(Sequenced::new(person_charlie()))?;
-
-    // Assert: only the third emission passes the filter
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Value(val) if val.value == 3

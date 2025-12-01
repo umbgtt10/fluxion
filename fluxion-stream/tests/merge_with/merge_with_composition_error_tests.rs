@@ -4,7 +4,7 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::MergedStream;
-use fluxion_test_utils::{person::Person, test_channel_with_errors, unwrap_stream, Sequenced};
+use fluxion_test_utils::{Sequenced, assert_no_element_emitted, person::Person, test_channel_with_errors, unwrap_stream};
 use futures::StreamExt;
 
 #[tokio::test]
@@ -40,7 +40,6 @@ async fn test_merge_with_multiple_streams_error() -> anyhow::Result<()> {
         );
 
     // Act & Assert
-    // 1. Stream1: Person(10). State -> 10.
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Alice".to_string(), 10),
         1,
@@ -50,13 +49,12 @@ async fn test_merge_with_multiple_streams_error() -> anyhow::Result<()> {
         StreamItem::Value(ref v) if v.value.age == 10
     ));
 
-    // 2. Stream2: Error. Filtered out.
     tx2.send(StreamItem::Error(FluxionError::stream_error("Error2")))?;
+    assert_no_element_emitted(&mut result, 100).await;
 
-    // 3. Stream1: Error. Filtered out.
     tx1.send(StreamItem::Error(FluxionError::stream_error("Error1")))?;
+    assert_no_element_emitted(&mut result, 100).await;
 
-    // 4. Stream2: Person(20). State -> 10+20=30.
     tx2.send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Bob".to_string(), 20),
         4,
