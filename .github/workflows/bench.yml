@@ -131,10 +131,9 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./target/criterion  # ENTIRE criterion/ dir to root (index.html + all subs)
-          # NO destination_dir — deploys to site root (/)
+          publish_dir: ./target/criterion/report # benchmark accessible at: https://umbgtt10.github.io/fluxion/
           keep_files: false
-          force_orphan: true  # Wipes old gh-pages contents for a clean slate
+          force_orphan: true
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           commit_message: 'Deploy Fluxion benchmarks to gh-pages'

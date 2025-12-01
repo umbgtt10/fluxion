@@ -218,9 +218,29 @@ where
     /// use fluxion_exec::SubscribeLatestAsyncExt;
     /// use tokio::sync::mpsc::unbounded_channel;
     /// use tokio_stream::wrappers::UnboundedReceiverStream;
-    /// use futures::StreamExt;
+    /// use futures::{Stream, StreamExt};
     /// use std::sync::Arc;
-    /// use tokio::sync::Mutex;
+    /// use std::sync::atomic::{AtomicUsize, Ordering};
+    /// use tokio::sync::{Mutex, Notify};
+    /// use std::pin::Pin;
+    /// use std::task::{Context, Poll};
+    ///
+    /// // Helper stream that notifies when all items have been consumed
+    /// struct NotifyOnPendingStream<S> {
+    ///     stream: S,
+    ///     notify: Arc<Notify>,
+    /// }
+    ///
+    /// impl<S: Stream + Unpin> Stream for NotifyOnPendingStream<S> {
+    ///     type Item = S::Item;
+    ///     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    ///         let poll = Pin::new(&mut self.stream).poll_next(cx);
+    ///         if poll.is_pending() {
+    ///             self.notify.notify_waiters();
+    ///         }
+    ///         poll
+    ///     }
+    /// }
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -231,20 +251,20 @@ where
     /// let started_tx = Arc::new(started_tx);
     ///
     /// let (tx, rx) = unbounded_channel();
-    /// let (sync_tx, mut sync_rx) = unbounded_channel();
-    /// let stream = UnboundedReceiverStream::new(rx).map(move |x: String| {
-    ///     if x == "rust" {
-    ///         let _ = sync_tx.send(());
-    ///     }
-    ///     x
-    /// });
+    /// let pending_notify = Arc::new(Notify::new());
+    /// let pending_notify_clone = pending_notify.clone();
+    ///
+    /// let stream = NotifyOnPendingStream {
+    ///     stream: UnboundedReceiverStream::new(rx),
+    ///     notify: pending_notify_clone,
+    /// };
     ///
     /// let results = Arc::new(Mutex::new(Vec::new()));
     /// let results_clone = results.clone();
     ///
     /// let handle = tokio::spawn(async move {
     ///     stream.subscribe_latest_async(
-    ///         move |query, token| {
+    ///         move |query: String, token| {
     ///             let results = results_clone.clone();
     ///             let gate = gate_shared.clone();
     ///             let started = started_tx.clone();
@@ -276,8 +296,8 @@ where
     /// tx.send("rus".to_string()).unwrap();
     /// tx.send("rust".to_string()).unwrap();
     ///
-    /// // Wait for "rust" to be processed by the stream
-    /// sync_rx.recv().await.unwrap();
+    /// // Wait until all items have been consumed by the subscriber
+    /// pending_notify.notified().await;
     ///
     /// // Release "r"
     /// gate_tx.send(()).unwrap();
