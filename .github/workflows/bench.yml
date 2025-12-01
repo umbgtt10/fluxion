@@ -35,11 +35,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Run all fluxion-stream benchmarks
-        run: cargo bench --package fluxion-stream
-
-      - name: Run all fluxion-stream-time benchmarks
-        run: cargo bench --package fluxion-stream-time
+      - name: Run all benchmarks (both packages)
+        run: cargo bench -p fluxion-stream -p fluxion-stream-time
 
       # --------------------------------------------------------------
       # 1. ALWAYS create/update baseline from this run (before comparison)
