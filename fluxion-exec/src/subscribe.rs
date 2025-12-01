@@ -60,7 +60,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///
     /// # See Also
     ///
-    /// - [`subscribe_latest_async`](crate::SubscribeLatestAsyncExt::subscribe_latest_async) - Cancels old work for new items
+    /// - [`subscribe_latest`](crate::SubscribeLatestAsyncExt::subscribe_latest) - Cancels old work for new items
     ///
     /// # Examples
     ///
@@ -84,7 +84,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// let stream = stream::iter(vec![1, 2, 3, 4, 5]);
     ///
     /// // Subscribe and process each item
-    /// stream.subscribe_async(
+    /// stream.subscribe(
     ///     move |item, _token| {
     ///         let results = results_clone.clone();
     ///         let notify_tx = notify_tx.clone();
@@ -137,7 +137,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///
     /// let stream = stream::iter(vec![1, 2, 3, 4, 5]);
     ///
-    /// stream.subscribe_async(
+    /// stream.subscribe(
     ///     move |item, _token| {
     ///         let notify_tx = notify_tx.clone();
     ///         async move {
@@ -149,7 +149,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///             // Signal completion regardless of success/failure
     ///             // Note: In real code, you might signal in the error callback too
     ///             // but here we just want to know the handler finished.
-    ///             // However, subscribe_async spawns the handler. If it errors,
+    ///             // However, subscribe spawns the handler. If it errors,
     ///             // the error callback is called.
     ///             // We need to signal completion in both paths.
     ///             // Since the handler returns the error, we can't signal *after* returning Err.
@@ -207,7 +207,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// let (notify_tx, mut notify_rx) = unbounded_channel();
     ///
     /// let handle = tokio::spawn(async move {
-    ///     stream.subscribe_async(
+    ///     stream.subscribe(
     ///         move |item, token| {
     ///             let vec = processed_clone.clone();
     ///             let notify_tx = notify_tx.clone();
@@ -272,7 +272,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///
     /// let stream = stream::iter(events);
     ///
-    /// stream.subscribe_async(
+    /// stream.subscribe(
     ///     move |event, _token| {
     ///         let db = db_clone.clone();
     ///         let notify_tx = notify_tx.clone();
@@ -299,7 +299,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///
     /// All spawned tasks run on the tokio runtime. The subscription completes
     /// when the stream ends, not when all spawned tasks complete.
-    async fn subscribe_async<F, Fut, E, OnError>(
+    async fn subscribe<F, Fut, E, OnError>(
         self,
         on_next_func: F,
         cancellation_token: Option<CancellationToken>,
@@ -319,7 +319,7 @@ where
     S: Stream<Item = T> + Send + Unpin + 'static,
     T: Send + 'static,
 {
-    async fn subscribe_async<F, Fut, E, OnError>(
+    async fn subscribe<F, Fut, E, OnError>(
         mut self,
         on_next_func: F,
         cancellation_token: Option<CancellationToken>,

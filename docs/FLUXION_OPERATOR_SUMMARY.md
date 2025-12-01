@@ -25,8 +25,8 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`take_latest_when`](#take_latest_when) | Sampling | Sample on trigger | Trigger |
 | [`emit_when`](#emit_when) | Gating | Gate with combined state | Source (filtered) |
 | [`on_error`](#on_error) | Error Handling | Selectively consume or propagate errors | Source |
-| [`subscribe_async`](#subscribe_async) ⚡ | Execution | Process every item sequentially | Source |
-| [`subscribe_latest_async`](#subscribe_latest_async) ⚡ | Execution | Process latest item, cancel outdated | Source |
+| [`subscribe`](#subscribe) ⚡ | Execution | Process every item sequentially | Source |
+| [`subscribe_latest`](#subscribe_latest) ⚡ | Execution | Process latest item, cancel outdated | Source |
 | `debounce` ⏱️ | Time | Emit after silence | Source (debounced) |
 | `throttle` ⏱️ | Time | Rate limiting | Source (throttled) |
 | `delay` ⏱️ | Time | Delay emissions | Source (delayed) |
@@ -68,8 +68,8 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 - [`on_error`](#on_error) - Selectively consume or propagate errors
 
 ### ⚡ Execution (fluxion-exec)
-- [`subscribe_async`](#subscribe_async) - Sequential processing of all items
-- [`subscribe_latest_async`](#subscribe_latest_async) - Latest-value processing with cancellation
+- [`subscribe`](#subscribe) - Sequential processing of all items
+- [`subscribe_latest`](#subscribe_latest) - Latest-value processing with cancellation
 
 ### ⏱️ Time-Based Operators (fluxion-stream-time)
 - `debounce` - Emit only after silence period
@@ -697,13 +697,13 @@ stream
 
 These operators are available in the `fluxion-exec` crate and provide control over async execution.
 
-#### `subscribe_async`
+#### `subscribe`
 **Sequential processing where every item is processed to completion**
 
 ```rust
-use fluxion_exec::subscribe_async::SubscribeAsyncExt;
+use fluxion_exec::subscribe::SubscribeAsyncExt;
 
-stream.subscribe_async(
+stream.subscribe(
     |item, _| async move {
         process(item).await
     },
@@ -718,13 +718,13 @@ stream.subscribe_async(
 
 ---
 
-#### `subscribe_latest_async`
+#### `subscribe_latest`
 **Latest-value processing with automatic cancellation**
 
 ```rust
-use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
+use fluxion_exec::subscribe_latest::SubscribeLatestAsyncExt;
 
-stream.subscribe_latest_async(
+stream.subscribe_latest(
     |item, token| async move {
         // Long running task
     },

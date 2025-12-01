@@ -177,7 +177,7 @@ Lines 134, 138, 142, 153, 162 - `.unwrap()` calls in `#[cfg(test)]` test functio
 
 Many `.unwrap()` calls appear in **rustdoc examples** (denoted by `///` comment blocks). This is **standard Rust practice**:
 
-- `fluxion-exec/src/subscribe_latest_async.rs` - 26 unwraps in doc examples
+- `fluxion-exec/src/subscribe_latest.rs` - 26 unwraps in doc examples
 - `fluxion-stream/src/fluxion_stream.rs` - 14+ unwraps in doc examples
 - `fluxion-stream-time/src/lib.rs` - 16+ unwraps in doc examples
 - Various operator trait documentation showing usage patterns

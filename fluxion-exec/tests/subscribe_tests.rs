@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::FluxionError;
-use fluxion_exec::subscribe_async::SubscribeAsyncExt;
+use fluxion_exec::subscribe::SubscribeAsyncExt;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
     TestData,
@@ -37,7 +37,7 @@ enum ProcessingError {
 }
 
 #[tokio::test]
-async fn test_subscribe_async_processes_items_when_waiting_per_item() -> anyhow::Result<()> {
+async fn test_subscribe_processes_items_when_waiting_per_item() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -68,9 +68,9 @@ async fn test_subscribe_async_processes_items_when_waiting_per_item() -> anyhow:
     let task_handle = spawn({
         async move {
             stream
-                .subscribe_async(func, None, Some(error_callback))
+                .subscribe(func, None, Some(error_callback))
                 .await
-                .expect("subscribe_async should succeed");
+                .expect("subscribe should succeed");
         }
     });
 
@@ -123,8 +123,7 @@ async fn test_subscribe_async_processes_items_when_waiting_per_item() -> anyhow:
 }
 
 #[tokio::test]
-async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() -> anyhow::Result<()>
-{
+async fn test_subscribe_reports_errors_for_animals_and_collects_people() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -164,9 +163,9 @@ async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() -
     let task_handle = spawn({
         async move {
             stream
-                .subscribe_async(func, None, Some(error_callback))
+                .subscribe(func, None, Some(error_callback))
                 .await
-                .expect("subscribe_async should succeed");
+                .expect("subscribe should succeed");
         }
     });
 
@@ -201,7 +200,7 @@ async fn test_subscribe_async_reports_errors_for_animals_and_collects_people() -
 }
 
 #[tokio::test]
-async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() -> anyhow::Result<()> {
+async fn test_subscribe_cancels_midstream_no_post_cancel_processing() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -240,9 +239,9 @@ async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() -> a
     let task_handle = spawn({
         async move {
             stream
-                .subscribe_async(func, Some(cancellation_token), Some(error_callback))
+                .subscribe(func, Some(cancellation_token), Some(error_callback))
                 .await
-                .expect("subscribe_async should succeed");
+                .expect("subscribe should succeed");
         }
     });
 
@@ -270,8 +269,7 @@ async fn test_subscribe_async_cancels_midstream_no_post_cancel_processing() -> a
 }
 
 #[tokio::test]
-async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing(
-) -> anyhow::Result<()> {
+async fn test_subscribe_errors_then_cancellation_no_post_cancel_processing() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -323,9 +321,9 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
     let task_handle = spawn({
         async move {
             stream
-                .subscribe_async(func, Some(cancellation_token), Some(error_callback))
+                .subscribe(func, Some(cancellation_token), Some(error_callback))
                 .await
-                .expect("subscribe_async should succeed");
+                .expect("subscribe should succeed");
         }
     });
 
@@ -378,7 +376,7 @@ async fn test_subscribe_async_errors_then_cancellation_no_post_cancel_processing
 }
 
 #[tokio::test]
-async fn test_subscribe_async_empty_stream_completes_without_items() -> anyhow::Result<()> {
+async fn test_subscribe_empty_stream_completes_without_items() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -405,9 +403,9 @@ async fn test_subscribe_async_empty_stream_completes_without_items() -> anyhow::
     let task_handle = spawn({
         async move {
             stream
-                .subscribe_async(func, None, Some(error_callback))
+                .subscribe(func, None, Some(error_callback))
                 .await
-                .expect("subscribe_async should succeed");
+                .expect("subscribe should succeed");
         }
     });
 
@@ -424,7 +422,7 @@ async fn test_subscribe_async_empty_stream_completes_without_items() -> anyhow::
 }
 
 #[tokio::test]
-async fn test_subscribe_async_parallelism_max_active_ge_2() -> anyhow::Result<()> {
+async fn test_subscribe_parallelism_max_active_ge_2() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -482,9 +480,9 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() -> anyhow::Result<()
     let task_handle = spawn({
         async move {
             stream
-                .subscribe_async(func, None, Some(error_callback))
+                .subscribe(func, None, Some(error_callback))
                 .await
-                .expect("subscribe_async should succeed");
+                .expect("subscribe should succeed");
         }
     });
 
@@ -526,7 +524,7 @@ async fn test_subscribe_async_parallelism_max_active_ge_2() -> anyhow::Result<()
 }
 
 #[tokio::test]
-async fn test_subscribe_async_high_volume_processes_all() -> anyhow::Result<()> {
+async fn test_subscribe_high_volume_processes_all() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -557,9 +555,9 @@ async fn test_subscribe_async_high_volume_processes_all() -> anyhow::Result<()> 
     let task_handle = spawn({
         async move {
             stream
-                .subscribe_async(func, None, Some(error_callback))
+                .subscribe(func, None, Some(error_callback))
                 .await
-                .expect("subscribe_async should succeed");
+                .expect("subscribe should succeed");
         }
     });
 
@@ -588,7 +586,7 @@ async fn test_subscribe_async_high_volume_processes_all() -> anyhow::Result<()> 
 }
 
 #[tokio::test]
-async fn test_subscribe_async_precancelled_token_processes_nothing() -> anyhow::Result<()> {
+async fn test_subscribe_precancelled_token_processes_nothing() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -619,9 +617,9 @@ async fn test_subscribe_async_precancelled_token_processes_nothing() -> anyhow::
     spawn({
         async move {
             stream
-                .subscribe_async(func, Some(cancellation_token), Some(error_callback))
+                .subscribe(func, Some(cancellation_token), Some(error_callback))
                 .await
-                .expect("subscribe_async should succeed");
+                .expect("subscribe should succeed");
         }
     });
 
@@ -640,7 +638,7 @@ async fn test_subscribe_async_precancelled_token_processes_nothing() -> anyhow::
 }
 
 #[tokio::test]
-async fn test_subscribe_async_error_aggregation_without_callback() -> anyhow::Result<()> {
+async fn test_subscribe_error_aggregation_without_callback() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -665,7 +663,7 @@ async fn test_subscribe_async_error_aggregation_without_callback() -> anyhow::Re
     let task_handle = spawn({
         async move {
             stream
-                .subscribe_async(func, None, Option::<fn(TestError)>::None) // No error callback
+                .subscribe(func, None, Option::<fn(TestError)>::None) // No error callback
                 .await
         }
     });

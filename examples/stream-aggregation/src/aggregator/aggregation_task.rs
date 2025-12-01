@@ -135,7 +135,7 @@ impl Aggregator {
                 // Only process reasonable temperatures (150-300 represents 15.0-30.0°C)
                 agg.temperature.is_some_and(|t| (150..=300).contains(&t))
             })
-            .subscribe_latest_async(
+            .subscribe_latest(
                 move |stream_item, _token| {
                     let agg = stream_item.unwrap();
                     let tx = output_tx.clone();

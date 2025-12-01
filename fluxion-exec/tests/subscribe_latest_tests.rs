@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::FluxionError;
-use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
+use fluxion_exec::subscribe_latest::SubscribeLatestAsyncExt;
 use fluxion_test_utils::test_data::{
     animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
     person_dave, person_diane, plant_rose, TestData,
@@ -34,7 +34,7 @@ impl TestError {
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() -> anyhow::Result<()> {
+async fn test_subscribe_latest_no_skipping_no_error_no_cancellation() -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -65,9 +65,9 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() -> a
     spawn({
         async move {
             stream
-                .subscribe_latest_async(func, Some(error_callback), None)
+                .subscribe_latest(func, Some(error_callback), None)
                 .await
-                .expect("subscribe_latest_async should succeed");
+                .expect("subscribe_latest should succeed");
         }
     });
 
@@ -124,8 +124,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation() -> a
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() -> anyhow::Result<()>
-{
+async fn test_subscribe_latest_with_skipping_no_error_no_cancellation() -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -180,9 +179,9 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() ->
     spawn({
         async move {
             stream
-                .subscribe_latest_async(func, Some(error_callback), None)
+                .subscribe_latest(func, Some(error_callback), None)
                 .await
-                .expect("subscribe_latest_async should succeed");
+                .expect("subscribe_latest should succeed");
         }
     });
 
@@ -225,8 +224,7 @@ async fn test_subscribe_latest_async_with_skipping_no_error_no_cancellation() ->
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() -> anyhow::Result<()>
-{
+async fn test_subscribe_latest_no_skipping_with_error_no_cancellation() -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -263,9 +261,9 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() ->
     spawn({
         async move {
             stream
-                .subscribe_latest_async(func, Some(error_callback), None)
+                .subscribe_latest(func, Some(error_callback), None)
                 .await
-                .expect("subscribe_latest_async should succeed");
+                .expect("subscribe_latest should succeed");
         }
     });
 
@@ -301,8 +299,7 @@ async fn test_subscribe_latest_async_no_skipping_with_error_no_cancellation() ->
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() -> anyhow::Result<()>
-{
+async fn test_subscribe_latest_no_skipping_no_errors_with_cancellation() -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -341,9 +338,9 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() -
 
         async move {
             stream
-                .subscribe_latest_async(func, Some(error_callback), Some(cancellation_token))
+                .subscribe_latest(func, Some(error_callback), Some(cancellation_token))
                 .await
-                .expect("subscribe_latest_async should succeed");
+                .expect("subscribe_latest should succeed");
         }
     });
 
@@ -379,8 +376,7 @@ async fn test_subscribe_latest_async_no_skipping_no_errors_with_cancellation() -
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() -> anyhow::Result<()>
-{
+async fn test_subscribe_latest_no_skipping_with_cancellation_and_errors() -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -421,9 +417,9 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
 
         async move {
             stream
-                .subscribe_latest_async(func, Some(error_callback), Some(cancellation_token))
+                .subscribe_latest(func, Some(error_callback), Some(cancellation_token))
                 .await
-                .expect("subscribe_latest_async should succeed");
+                .expect("subscribe_latest should succeed");
         }
     });
 
@@ -458,7 +454,7 @@ async fn test_subscribe_latest_async_no_skipping_with_cancellation_and_errors() 
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_concurrent_processing(
+async fn test_subscribe_latest_no_skipping_no_error_no_cancellation_no_concurrent_processing(
 ) -> anyhow::Result<()> {
     // Arrange
     let active_count = Arc::new(AtomicUsize::new(0));
@@ -517,9 +513,9 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
     spawn({
         async move {
             stream
-                .subscribe_latest_async(func, Some(error_callback), None)
+                .subscribe_latest(func, Some(error_callback), None)
                 .await
-                .expect("subscribe_latest_async should succeed");
+                .expect("subscribe_latest should succeed");
         }
     });
 
@@ -556,7 +552,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_no_con
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_empty_stream(
+async fn test_subscribe_latest_no_skipping_no_error_no_cancellation_token_empty_stream(
 ) -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::<TestData>::new()));
@@ -581,9 +577,9 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_
     let task_handle = tokio::spawn({
         async move {
             stream
-                .subscribe_latest_async(func, Some(error_callback), None)
+                .subscribe_latest(func, Some(error_callback), None)
                 .await
-                .expect("subscribe_latest_async should succeed");
+                .expect("subscribe_latest should succeed");
         }
     });
 
@@ -598,7 +594,7 @@ async fn test_subscribe_latest_async_no_skipping_no_error_no_cancellation_token_
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_high_volume() -> anyhow::Result<()> {
+async fn test_subscribe_latest_high_volume() -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -659,9 +655,9 @@ async fn test_subscribe_latest_async_high_volume() -> anyhow::Result<()> {
     spawn({
         async move {
             stream
-                .subscribe_latest_async(func, Some(error_callback), None)
+                .subscribe_latest(func, Some(error_callback), None)
                 .await
-                .expect("subscribe_latest_async should succeed");
+                .expect("subscribe_latest should succeed");
         }
     });
 
@@ -704,7 +700,7 @@ async fn test_subscribe_latest_async_high_volume() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_single_item() -> anyhow::Result<()> {
+async fn test_subscribe_latest_single_item() -> anyhow::Result<()> {
     // Arrange
     let collected_items = Arc::new(Mutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
@@ -736,9 +732,9 @@ async fn test_subscribe_latest_async_single_item() -> anyhow::Result<()> {
     let task_handle = tokio::spawn({
         async move {
             stream
-                .subscribe_latest_async(func, Some(error_callback), None)
+                .subscribe_latest(func, Some(error_callback), None)
                 .await
-                .expect("subscribe_latest_async should succeed");
+                .expect("subscribe_latest should succeed");
         }
     });
 
@@ -764,7 +760,7 @@ async fn test_subscribe_latest_async_single_item() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_async_error_aggregation_without_callback() -> anyhow::Result<()> {
+async fn test_subscribe_latest_error_aggregation_without_callback() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -789,7 +785,7 @@ async fn test_subscribe_latest_async_error_aggregation_without_callback() -> any
     let task_handle = tokio::spawn({
         async move {
             stream
-                .subscribe_latest_async(func, Option::<fn(TestError)>::None, None) // No error callback
+                .subscribe_latest(func, Option::<fn(TestError)>::None, None) // No error callback
                 .await
         }
     });

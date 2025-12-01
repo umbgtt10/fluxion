@@ -60,7 +60,7 @@ where
     ///
     /// # See Also
     ///
-    /// - [`subscribe_async`](crate::SubscribeAsyncExt::subscribe_async) - Sequential processing of all items
+    /// - [`subscribe`](crate::SubscribeAsyncExt::subscribe) - Sequential processing of all items
     ///
     /// # Examples
     ///
@@ -93,7 +93,7 @@ where
     /// let started_tx = Arc::new(started_tx);
     ///
     /// let handle = tokio::spawn(async move {
-    ///     stream.subscribe_latest_async(
+    ///     stream.subscribe_latest(
     ///         move |item, token| {
     ///             let processed = processed_clone.clone();
     ///             let gate = gate_shared.clone();
@@ -170,7 +170,7 @@ where
     /// let gate_shared = Arc::new(Mutex::new(Some(gate_rx)));
     ///
     /// let handle = tokio::spawn(async move {
-    ///     stream.subscribe_latest_async(
+    ///     stream.subscribe_latest(
     ///         move |item, token| {
     ///             let completed = completed_clone.clone();
     ///             let started = started_tx.clone();
@@ -263,7 +263,7 @@ where
     /// let results_clone = results.clone();
     ///
     /// let handle = tokio::spawn(async move {
-    ///     stream.subscribe_latest_async(
+    ///     stream.subscribe_latest(
     ///         move |query: String, token| {
     ///             let results = results_clone.clone();
     ///             let gate = gate_shared.clone();
@@ -344,7 +344,7 @@ where
     /// let started_tx = Arc::new(started_tx);
     ///
     /// let handle = tokio::spawn(async move {
-    ///     stream.subscribe_latest_async(
+    ///     stream.subscribe_latest(
     ///         move |state, token| {
     ///             let rendered = rendered_clone.clone();
     ///             let gate_rx = gate_rx_shared.clone();
@@ -398,16 +398,16 @@ where
     /// - Real-time data processing where stale data is irrelevant
     /// - API calls that should be cancelled when parameters change
     ///
-    /// # Comparison with `subscribe_async`
+    /// # Comparison with `subscribe`
     ///
-    /// - `subscribe_async`: Processes every item, all handlers run to completion
-    /// - `subscribe_latest_async`: Processes only latest, abandons outdated work
+    /// - `subscribe`: Processes every item, all handlers run to completion
+    /// - `subscribe_latest`: Processes only latest, abandons outdated work
     ///
     /// # Thread Safety
     ///
     /// Uses tokio's async mutex for state coordination. Only one processing task
     /// is active at a time, but task spawning is non-blocking.
-    async fn subscribe_latest_async<F, Fut, E, OnError>(
+    async fn subscribe_latest<F, Fut, E, OnError>(
         self,
         on_next_func: F,
         on_error_callback: Option<OnError>,
@@ -427,7 +427,7 @@ where
     S: futures::Stream<Item = T> + Send + Unpin + 'static,
     T: Clone + Send + Sync + 'static,
 {
-    async fn subscribe_latest_async<F, Fut, E, OnError>(
+    async fn subscribe_latest<F, Fut, E, OnError>(
         self,
         on_next_func: F,
         on_error_callback: Option<OnError>,
@@ -546,9 +546,7 @@ impl<T> Context<T> {
         state.item.take().map_or_else(
             || {
                 // Defensive: log invalid state and mark as not processing to avoid deadlock
-                error!(
-                    "subscribe_latest_async: get_item called with no current item; marking idle"
-                );
+                error!("subscribe_latest: get_item called with no current item; marking idle");
                 state.is_processing = false;
                 None
             },

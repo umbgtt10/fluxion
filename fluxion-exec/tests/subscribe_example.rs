@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_exec::subscribe_async::SubscribeAsyncExt;
+use fluxion_exec::subscribe::SubscribeAsyncExt;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
@@ -10,9 +10,9 @@ use tokio::sync::Mutex as TokioMutex;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::sync::CancellationToken;
 
-/// Example test demonstrating subscribe_async usage
+/// Example test demonstrating subscribe usage
 #[tokio::test]
-async fn test_subscribe_async_example() -> anyhow::Result<()> {
+async fn test_subscribe_example() -> anyhow::Result<()> {
     // Define a simple data type
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct Item {
@@ -51,9 +51,9 @@ async fn test_subscribe_async_example() -> anyhow::Result<()> {
     // Step 4: Subscribe to the stream
     let task = spawn(async move {
         stream
-            .subscribe_async(process_func, None, None::<fn(TestError)>)
+            .subscribe(process_func, None, None::<fn(TestError)>)
             .await
-            .expect("subscribe_async should succeed");
+            .expect("subscribe should succeed");
     });
 
     // Step 5: Publish items and assert results

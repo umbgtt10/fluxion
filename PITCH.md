@@ -193,8 +193,8 @@ Fluxion's temporal ordering guarantees are valuable for:
    - Documented patterns for common scenarios
 
 4. **Async Execution Utilities**
-   - `subscribe_async` - Process all items
-   - `subscribe_latest_async` - Sample latest only
+   - `subscribe` - Process all items
+   - `subscribe_latest` - Sample latest only
    - Error aggregation with detailed reporting
 
 ### 📈 CURRENT STATUS

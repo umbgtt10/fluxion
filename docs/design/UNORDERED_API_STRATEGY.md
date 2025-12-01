@@ -622,7 +622,7 @@ The only way to switch modes is explicit re-ingestion:
 // Want unordered from ordered? Extract values through a channel
 let (tx, rx) = unbounded_channel();
 
-ordered_stream.subscribe_async(move |item| {
+ordered_stream.subscribe(move |item| {
     tx.send(item.into_inner());  // Extract value, discard timestamp
 });
 

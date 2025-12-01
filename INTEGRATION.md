@@ -313,7 +313,7 @@ See the **[legacy-integration](examples/legacy-integration/)** example for a com
 - **Adapter pattern**: Shows how to add timestamps at system boundaries for legacy sources
 - **Three legacy sources**: Database (JSON), Message Queue (XML), File Watcher (CSV) - none have intrinsic timestamps
 - **Stateful aggregation**: Uses `merge_with` to build a unified repository from heterogeneous event streams
-- **Real-time processing**: Demonstrates `subscribe_async` for sequential event processing with analytics
+- **Real-time processing**: Demonstrates `subscribe` for sequential event processing with analytics
 - **Lifecycle management**: Ctrl+C handling, auto-timeout, and graceful shutdown of all adapters
 
 Run it: `cargo run --bin legacy-integration`

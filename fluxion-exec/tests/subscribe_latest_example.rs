@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
+use fluxion_exec::subscribe_latest::SubscribeLatestAsyncExt;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
@@ -10,9 +10,9 @@ use tokio::sync::Mutex as TokioMutex;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::sync::CancellationToken;
 
-/// Example demonstrating subscribe_latest_async with automatic substitution
+/// Example demonstrating subscribe_latest with automatic substitution
 #[tokio::test]
-async fn test_subscribe_latest_async_example() -> anyhow::Result<()> {
+async fn test_subscribe_latest_example() -> anyhow::Result<()> {
     #[derive(Debug, thiserror::Error)]
     #[error("Error")]
     struct Err;
@@ -50,7 +50,7 @@ async fn test_subscribe_latest_async_example() -> anyhow::Result<()> {
 
     spawn(async move {
         UnboundedReceiverStream::new(rx)
-            .subscribe_latest_async(process, None::<fn(Err)>, None)
+            .subscribe_latest(process, None::<fn(Err)>, None)
             .await
             .unwrap();
     });

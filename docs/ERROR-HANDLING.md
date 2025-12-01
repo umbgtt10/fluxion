@@ -46,7 +46,7 @@ pub enum FluxionError {
 - **`LockError`**: Lock acquisition failed (poisoned mutex). Usually transient and recoverable.
 - **`StreamProcessingError`**: Internal stream processing error. Usually permanent, indicates serious issue.
 - **`UserError`**: User-provided callback or operation failed. Wrap your domain errors here.
-- **`MultipleErrors`**: Multiple errors occurred (e.g., in `subscribe_async`). Check the `errors` vector for details.
+- **`MultipleErrors`**: Multiple errors occurred (e.g., in `subscribe`). Check the `errors` vector for details.
 
 See the [FluxionError API documentation](https://docs.rs/fluxion-core) for detailed descriptions of each variant.
 
@@ -181,7 +181,7 @@ Errors from user-provided closures are wrapped and propagated:
 use fluxion_exec::SubscribeAsyncExt;
 
 let result = stream
-    .subscribe_async(
+    .subscribe(
         |item| async move {
             // User code that might fail
             process_item(item).await?;
@@ -353,7 +353,7 @@ while let Some(item) = stream.next().await {
 
 **Recommendation:** These typically have transient errors; consider retry logic
 
-### subscribe_async / subscribe_latest_async
+### subscribe / subscribe_latest
 
 **Can fail when:**
 - User callback returns an error

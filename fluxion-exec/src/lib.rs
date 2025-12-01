@@ -24,7 +24,7 @@
 //!
 //! This crate provides two execution patterns:
 //!
-//! ## [`subscribe_async`] - Sequential Processing
+//! ## [`subscribe`] - Sequential Processing
 //!
 //! Process each item sequentially with an async handler. Every item is processed
 //! to completion before the next item is handled.
@@ -41,7 +41,7 @@
 //! - Processing every transaction
 //! - Logging all events
 //!
-//! ## [`subscribe_latest_async`] - Latest-Value Processing
+//! ## [`subscribe_latest`] - Latest-Value Processing
 //!
 //! Process only the latest item, automatically canceling work for outdated items.
 //! When a new item arrives while processing, the current work is canceled and the
@@ -73,8 +73,8 @@
 //! let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
 //! let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
 //!
-//! // Any Stream can use subscribe_async
-//! stream.subscribe_async(|value| async move {
+//! // Any Stream can use subscribe
+//! stream.subscribe(|value| async move {
 //!     println!("Processing: {}", value);
 //!     Ok::<_, Box<dyn std::error::Error>>(())
 //! }).await;
@@ -85,8 +85,8 @@
 //!
 //! Both patterns spawn tokio tasks internally:
 //!
-//! - **[`subscribe_async`]**: Spawns one task per stream item (sequential)
-//! - **[`subscribe_latest_async`]**: Spawns tasks and cancels obsolete ones
+//! - **[`subscribe`]**: Spawns one task per stream item (sequential)
+//! - **[`subscribe_latest`]**: Spawns tasks and cancels obsolete ones
 //!
 //! This means:
 //! - Handlers must be `Send + 'static`
@@ -95,7 +95,7 @@
 //!
 //! # Performance Characteristics
 //!
-//! ## Sequential Processing (`subscribe_async`)
+//! ## Sequential Processing (`subscribe`)
 //!
 //! - **Latency**: Items wait for previous items to complete
 //! - **Throughput**: Limited by handler execution time
@@ -104,7 +104,7 @@
 //!
 //! **Best for**: Correctness over throughput
 //!
-//! ## Latest-Value Processing (`subscribe_latest_async`)
+//! ## Latest-Value Processing (`subscribe_latest`)
 //!
 //! - **Latency**: Immediate start on new items (cancels old work)
 //! - **Throughput**: Skips intermediate values for efficiency
@@ -123,8 +123,8 @@
 //!     process(item).await;
 //! }).await;
 //!
-//! // subscribe_async - returns immediately, spawns background task
-//! stream.subscribe_async(process).await;
+//! // subscribe - returns immediately, spawns background task
+//! stream.subscribe(process).await;
 //! ```
 //!
 //! ## vs `buffer_unordered` (futures)
@@ -133,8 +133,8 @@
 //! // futures - processes N items concurrently
 //! stream.map(process).buffer_unordered(10).collect().await;
 //!
-//! // subscribe_async - strictly sequential
-//! stream.subscribe_async(process).await;
+//! // subscribe - strictly sequential
+//! stream.subscribe(process).await;
 //! ```
 //!
 //! ## vs Manual Task Spawning
@@ -145,8 +145,8 @@
 //!     tokio::spawn(async move { process(item).await });
 //! }
 //!
-//! // subscribe_latest_async - automatic cancellation
-//! stream.subscribe_latest_async(process).await;
+//! // subscribe_latest - automatic cancellation
+//! stream.subscribe_latest(process).await;
 //! ```
 //!
 //! # Common Patterns
@@ -162,7 +162,7 @@
 //! # async fn example() {
 //! # let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
 //! # let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
-//! stream.subscribe_async(|event| async move {
+//! stream.subscribe(|event| async move {
 //!     // Save to database
 //!     // database.insert(event).await?;
 //!     Ok::<_, Box<dyn std::error::Error>>(())
@@ -181,7 +181,7 @@
 //! # async fn example() {
 //! # let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
 //! # let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
-//! stream.subscribe_latest_async(|state| async move {
+//! stream.subscribe_latest(|state| async move {
 //!     // Render UI with latest state
 //!     // update_ui(state).await?;
 //!     Ok::<_, Box<dyn std::error::Error>>(())
@@ -202,7 +202,7 @@
 //! # let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
 //! stream
 //!     .chunks(100)  // Batch 100 items
-//!     .subscribe_async(|batch| async move {
+//!     .subscribe(|batch| async move {
 //!         // Process batch
 //!         // database.insert_batch(batch).await?;
 //!         Ok::<_, Box<dyn std::error::Error>>(())
@@ -222,7 +222,7 @@
 //! # async fn example() {
 //! # let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
 //! # let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
-//! stream.subscribe_async(|item| async move {
+//! stream.subscribe(|item| async move {
 //!     match process_item(item).await {
 //!         Ok(result) => Ok(()),
 //!         Err(e) => {
@@ -238,20 +238,20 @@
 //!
 //! # Anti-Patterns
 //!
-//! ## ❌ Don't: Use `subscribe_latest_async` for Critical Work
+//! ## ❌ Don't: Use `subscribe_latest` for Critical Work
 //!
 //! ```text
 //! // BAD: Payment processing might be skipped!
-//! payment_stream.subscribe_latest_async(|payment| async move {
+//! payment_stream.subscribe_latest(|payment| async move {
 //!     process_payment(payment).await  // Could be canceled!
 //! }).await;
 //! ```
 //!
-//! Use `subscribe_async` for work that must complete:
+//! Use `subscribe` for work that must complete:
 //!
 //! ```text
 //! // GOOD: Every payment is processed
-//! payment_stream.subscribe_async(|payment| async move {
+//! payment_stream.subscribe(|payment| async move {
 //!     process_payment(payment).await
 //! }).await;
 //! ```
@@ -260,7 +260,7 @@
 //!
 //! ```text
 //! // BAD: Blocking operations stall the executor
-//! stream.subscribe_async(|item| async move {
+//! stream.subscribe(|item| async move {
 //!     std::thread::sleep(Duration::from_secs(1));  // Blocks!
 //!     Ok(())
 //! }).await;
@@ -270,7 +270,7 @@
 //!
 //! ```text
 //! // GOOD: Async sleep doesn't block
-//! stream.subscribe_async(|item| async move {
+//! stream.subscribe(|item| async move {
 //!     tokio::time::sleep(Duration::from_secs(1)).await;
 //!     Ok(())
 //! }).await;
@@ -280,7 +280,7 @@
 //!
 //! ```text
 //! // BAD: CPU-intensive work on async runtime
-//! stream.subscribe_async(|data| async move {
+//! stream.subscribe(|data| async move {
 //!     expensive_computation(data);  // Blocks executor!
 //!     Ok(())
 //! }).await;
@@ -290,7 +290,7 @@
 //!
 //! ```text
 //! // GOOD: CPU work on dedicated threads
-//! stream.subscribe_async(|data| async move {
+//! stream.subscribe(|data| async move {
 //!     tokio::task::spawn_blocking(move || {
 //!         expensive_computation(data)
 //!     }).await?;
@@ -324,15 +324,15 @@
 //! - [`SubscribeAsyncExt`] for sequential processing
 //! - [`SubscribeLatestAsyncExt`] for latest-value processing
 //!
-//! [`subscribe_async`]: SubscribeAsyncExt::subscribe_async
-//! [`subscribe_latest_async`]: SubscribeLatestAsyncExt::subscribe_latest_async
+//! [`subscribe`]: SubscribeAsyncExt::subscribe
+//! [`subscribe_latest`]: SubscribeLatestAsyncExt::subscribe_latest
 
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 #[macro_use]
 mod logging;
-pub mod subscribe_async;
-pub mod subscribe_latest_async;
+pub mod subscribe;
+pub mod subscribe_latest;
 
 // Re-export commonly used types
-pub use subscribe_async::SubscribeAsyncExt;
-pub use subscribe_latest_async::SubscribeLatestAsyncExt;
+pub use subscribe::SubscribeAsyncExt;
+pub use subscribe_latest::SubscribeLatestAsyncExt;

@@ -84,7 +84,7 @@ fluxion (workspace)
 ├── fluxion-core         # Core traits & types: HasTimestamp, StreamItem, FluxionError
 ├── fluxion-stream       # Core Rx-style operators over FluxionStream
 ├── fluxion-stream-time  # Time-based operators (delay/debounce/throttle/sample/timeout)
-├── fluxion-exec         # Execution/subscription utilities (subscribe_async, etc.)
+├── fluxion-exec         # Execution/subscription utilities (subscribe, etc.)
 ├── fluxion-ordered-merge# Low-level ordered merging primitive
 └── fluxion-test-utils   # Sequenced<T>, fixtures, helpers for tests
 ```
@@ -157,7 +157,7 @@ Highlights:
 ### 4.2 Concurrency
 
 - Uses standard async Rust patterns (`tokio`, `futures::Stream`).
-- `subscribe_async` and `subscribe_latest_async` encapsulate lifetime and cancellation semantics via `CancellationToken`.
+- `subscribe` and `subscribe_latest` encapsulate lifetime and cancellation semantics via `CancellationToken`.
 - Ordering-sensitive operations rely on a dedicated ordered merge primitive instead of ad-hoc select-style logic.
 
 ### 4.3 Performance
@@ -397,7 +397,7 @@ Most `unwrap`/`expect` in source live in well-audited helpers (e.g., lock utilit
   - Uses `Timestamped` and `StreamItem` to embed ordering and error semantics.
 
 - `fluxion-exec`
-  - Execution layer: `subscribe_async`, `subscribe_latest_async`.
+  - Execution layer: `subscribe`, `subscribe_latest`.
   - Encapsulates cancellation, latest-value semantics, and async orchestration.
 
 - `fluxion-rx`
@@ -466,7 +466,7 @@ Given the context and test density, this level of `unwrap`/`expect` is acceptabl
   - Operator semantics (success paths + edge cases).
   - Error propagation and aggregation (`MultipleErrors`).
   - Temporal ordering invariants.
-  - Subscription/async behavior (`subscribe_async`, `subscribe_latest_async`).
+  - Subscription/async behavior (`subscribe`, `subscribe_latest`).
 
 ### 5.2 Test Utilities
 

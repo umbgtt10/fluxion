@@ -11,8 +11,8 @@ Async stream execution utilities that enable processing streams with async handl
 
 `fluxion-exec` provides two powerful execution patterns for consuming async streams:
 
-- **`subscribe_async`** - Sequential processing where every item is processed to completion
-- **`subscribe_latest_async`** - Latest-value processing with automatic cancellation of outdated work
+- **`subscribe`** - Sequential processing where every item is processed to completion
+- **`subscribe_latest`** - Latest-value processing with automatic cancellation of outdated work
 
 These utilities solve the common problem of how to process stream items with async functions while controlling concurrency, managing cancellation, and handling errors gracefully.
 
@@ -23,8 +23,8 @@ These utilities solve the common problem of how to process stream items with asy
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
 - [Execution Patterns](#execution-patterns)
-  - [subscribe_async - Sequential Processing](#subscribe_async---sequential-processing)
-  - [subscribe_latest_async - Latest-Value Processing](#subscribe_latest_async---latest-value-processing)
+  - [subscribe - Sequential Processing](#subscribe---sequential-processing)
+  - [subscribe_latest - Latest-Value Processing](#subscribe_latest---latest-value-processing)
 - [Detailed Examples](#detailed-examples)
 - [Use Cases](#use-cases)
 - [Performance Characteristics](#performance-characteristics)
@@ -55,7 +55,7 @@ These utilities solve the common problem of how to process stream items with asy
 
 ⚡ **Cancellation Support**
 - Built-in `CancellationToken` integration
-- Automatic cancellation of outdated work (in `subscribe_latest_async`)
+- Automatic cancellation of outdated work (in `subscribe_latest`)
 - Graceful shutdown support
 
 🔧 **Extension Trait Pattern**
@@ -79,8 +79,8 @@ futures = "0.3"
 
 The following sections contain a wide range of examples and suggestions. These are indicative and should not be expected to compile as they are.
 Check the following files for genuine runnable examples that can be used as they are:
- - [subscribe_async](./tests/subscribe_async_tests.rs)
- - [subscribe_latest_async](./tests/subscribe_latest_async_tests.rs)
+ - [subscribe](./tests/subscribe_tests.rs)
+ - [subscribe_latest](./tests/subscribe_latest_tests.rs)
 
 ### Sequential Processing
 
@@ -94,7 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Spawn processor
     tokio::spawn(async move {
         stream
-            .subscribe_async(
+            .subscribe(
                 |item, _ctx| async move {
                     println!("Processing: {}", item);
                     // Simulate async work
@@ -127,7 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tokio::spawn(async move {
         stream
-            .subscribe_latest_async(
+            .subscribe_latest(
                 |item, token| async move {
                     // Check cancellation periodically
                     for i in 0..10 {
@@ -164,14 +164,14 @@ A subscription attaches an async handler to a stream and processes items until t
 
 ### Sequential Execution
 
-With `subscribe_async`, items are processed one at a time. Each item's handler must complete before the next item is processed. This guarantees:
+With `subscribe`, items are processed one at a time. Each item's handler must complete before the next item is processed. This guarantees:
 - Every item is processed
 - Processing order is maintained
 - No concurrent execution of handlers
 
 ### Latest-Value Processing
 
-With `subscribe_latest_async`, only the most recent value is processed. When new items arrive during processing:
+With `subscribe_latest`, only the most recent value is processed. When new items arrive during processing:
 - Current processing continues
 - Latest item is queued
 - Intermediate items are discarded
@@ -184,13 +184,13 @@ This is ideal for scenarios where:
 
 ## Execution Patterns
 
-### subscribe_async - Sequential Processing
+### subscribe - Sequential Processing
 
 **Process every item in order with async handlers.**
 
 ```rust
 
-stream.subscribe_async(
+stream.subscribe(
     |item, cancellation_token| async move {
         // Your async processing logic
         process_item(item).await?;
@@ -213,13 +213,13 @@ stream.subscribe_async(
 - Sending notifications
 - Persisting events to database
 
-### subscribe_latest_async - Latest-Value Processing
+### subscribe_latest - Latest-Value Processing
 
 **Process only the latest value, canceling work for outdated items.**
 
 ```rust
 
-stream.subscribe_latest_async(
+stream.subscribe_latest(
     |item, cancellation_token| async move {
         // Check cancellation periodically in long-running tasks
         for chunk in work_chunks {
@@ -275,7 +275,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let handle = tokio::spawn(async move {
         stream
-            .subscribe_async(
+            .subscribe(
                 |event, _| async move {
                     save_to_db(&event).await?;
                     Ok::<_, Box<dyn std::error::Error>>(())
@@ -316,7 +316,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let handle = tokio::spawn(async move {
         stream
-            .subscribe_latest_async(
+            .subscribe_latest(
                 |query: String, token| async move {
                     if token.is_cancelled() {
                         println!("Query '{}' cancelled", query);
@@ -372,7 +372,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let handle = tokio::spawn(async move {
         stream
-            .subscribe_async(
+            .subscribe(
                 |item: i32, _| async move {
                     if item % 3 == 0 {
                         return Err(ProcessingError(format!("Cannot process {}", item)));
@@ -423,7 +423,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let handle = tokio::spawn(async move {
         stream
-            .subscribe_async(
+            .subscribe(
                 |item: i32, token| async move {
                     if token.is_cancelled() {
                         println!("Processing cancelled for item {}", item);
@@ -454,7 +454,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Use Cases
 
-### Sequential Processing (`subscribe_async`)
+### Sequential Processing (`subscribe`)
 
 | Use Case | Description |
 |----------|-------------|
@@ -466,7 +466,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | **Notification Service** | Send every notification |
 | **File Processing** | Process every file in a directory |
 
-### Latest-Value Processing (`subscribe_latest_async`)
+### Latest-Value Processing (`subscribe_latest`)
 
 | Use Case | Description |
 |----------|-------------|
@@ -480,7 +480,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Performance Characteristics
 
-### Sequential Processing (`subscribe_async`)
+### Sequential Processing (`subscribe`)
 
 - **Latency**: $O(n \times t)$ where $n$ is number of items, $t$ is processing time
 - **Throughput**: Limited by handler execution time
@@ -490,7 +490,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 **Best for**: Correctness and completeness over speed
 
-### Latest-Value Processing (`subscribe_latest_async`)
+### Latest-Value Processing (`subscribe_latest`)
 
 - **Latency**: $O(t)$ for latest item (intermediate items skipped)
 - **Throughput**: Higher than sequential (skips work)
@@ -507,7 +507,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 Errors are passed to the callback, processing continues:
 
 ```rust
-stream.subscribe_async(
+stream.subscribe(
     |item, _| async move {
         risky_operation(item).await?;
         Ok::<_, MyError>(())
@@ -527,7 +527,7 @@ stream.subscribe_async(
 Errors are collected and returned as `MultipleErrors`:
 
 ```rust
-match stream.subscribe_async(handler, None, None).await {
+match stream.subscribe(handler, None, None).await {
     Ok(()) => println!("All items processed successfully"),
     Err(FluxionError::MultipleErrors(errors)) => {
         eprintln!("Failed to process {} items", errors.len());
@@ -544,7 +544,7 @@ match stream.subscribe_async(handler, None, None).await {
 Return error immediately to stop processing:
 
 ```rust
-stream.subscribe_async(
+stream.subscribe(
     |item, _| async move {
         critical_operation(item).await?;
         Ok::<_, CriticalError>(())
@@ -565,7 +565,7 @@ let cancel_clone = cancel_token.clone();
 
 // Start processing
 let handle = tokio::spawn(async move {
-    stream.subscribe_async(
+    stream.subscribe(
         |item, token| async move {
             if token.is_cancelled() {
                 return Ok(()); // Exit early
@@ -584,12 +584,12 @@ tokio::spawn(async move {
 });
 ```
 
-### Automatic Cancellation in `subscribe_latest_async`
+### Automatic Cancellation in `subscribe_latest`
 
 The cancellation token passed to handlers is automatically cancelled when newer items arrive:
 
 ```rust
-stream.subscribe_latest_async(
+stream.subscribe_latest(
     |item, token| async move {
         for i in 0..100 {
             if token.is_cancelled() {
@@ -611,7 +611,7 @@ stream.subscribe_latest_async(
 
 ```rust
 
-stream.subscribe_async(
+stream.subscribe(
     |item, _| async move {
         let mut attempts = 0;
         loop {
@@ -637,7 +637,7 @@ stream.subscribe_async(
 
 let last_process = Arc::new(Mutex::new(Instant::now()));
 
-stream.subscribe_async(
+stream.subscribe(
     move |item, _| {
         let last = last_process.clone();
         async move {
@@ -663,7 +663,7 @@ stream.subscribe_async(
 
 stream
     .chunks(100)  // Batch 100 items
-    .subscribe_async(
+    .subscribe(
         |batch, _| async move {
             process_batch(&batch).await?;
             Ok::<_, MyError>(())
@@ -679,7 +679,7 @@ stream
 ```rust
 stream
     .filter(|item| futures::future::ready(item.is_important()))
-    .subscribe_async(
+    .subscribe(
         |item, _| async move {
             process_important(item).await
         },
@@ -691,11 +691,11 @@ stream
 
 ## Anti-Patterns
 
-### ❌ Don't: Use `subscribe_latest_async` for Critical Work
+### ❌ Don't: Use `subscribe_latest` for Critical Work
 
 ```rust
 // BAD: Payment processing might be skipped!
-payment_stream.subscribe_latest_async(
+payment_stream.subscribe_latest(
     |payment, _| async move {
         process_payment(payment).await  // Could be cancelled!
     },
@@ -704,10 +704,10 @@ payment_stream.subscribe_latest_async(
 ).await?;
 ```
 
-✅ **Good**: Use `subscribe_async` for work that must complete:
+✅ **Good**: Use `subscribe` for work that must complete:
 
 ```rust
-payment_stream.subscribe_async(
+payment_stream.subscribe(
     |payment, _| async move {
         process_payment(payment).await  // Every payment processed
     },
@@ -720,7 +720,7 @@ payment_stream.subscribe_async(
 
 ```rust
 // BAD: Blocking operations stall the executor
-stream.subscribe_async(
+stream.subscribe(
     |item, _| async move {
         std::thread::sleep(Duration::from_secs(1));  // Blocks executor!
         Ok(())
@@ -733,7 +733,7 @@ stream.subscribe_async(
 ✅ **Good**: Use async operations:
 
 ```rust
-stream.subscribe_async(
+stream.subscribe(
     |item, _| async move {
         tokio::time::sleep(Duration::from_secs(1)).await;  // Non-blocking
         Ok(())
@@ -747,7 +747,7 @@ stream.subscribe_async(
 
 ```rust
 // BAD: CPU work blocks async tasks
-stream.subscribe_async(
+stream.subscribe(
     |data, _| async move {
         expensive_computation(data);  // Blocks!
         Ok(())
@@ -760,7 +760,7 @@ stream.subscribe_async(
 ✅ **Good**: Use `spawn_blocking` for CPU work:
 
 ```rust
-stream.subscribe_async(
+stream.subscribe(
     |data, _| async move {
         tokio::task::spawn_blocking(move || {
             expensive_computation(data)
@@ -776,7 +776,7 @@ stream.subscribe_async(
 
 ```rust
 // BAD: Long-running work that can't be cancelled
-stream.subscribe_latest_async(
+stream.subscribe_latest(
     |item, _token| async move {  // Token ignored!
         for i in 0..1000000 {
             expensive_step(i).await;
@@ -791,7 +791,7 @@ stream.subscribe_latest_async(
 ✅ **Good**: Check cancellation periodically:
 
 ```rust
-stream.subscribe_latest_async(
+stream.subscribe_latest(
     |item, token| async move {
         for i in 0..1000000 {
             if token.is_cancelled() {
@@ -810,7 +810,7 @@ stream.subscribe_latest_async(
 
 ### vs `futures::StreamExt::for_each`
 
-| Feature | `subscribe_async` | `for_each` |
+| Feature | `subscribe` | `for_each` |
 |---------|-------------------|------------|
 | **Execution** | Spawns tasks | Inline execution |
 | **Cancellation** | Built-in token support | Manual |
@@ -819,7 +819,7 @@ stream.subscribe_latest_async(
 
 ### vs `futures::StreamExt::buffer_unordered`
 
-| Feature | `subscribe_async` | `buffer_unordered` |
+| Feature | `subscribe` | `buffer_unordered` |
 |---------|-------------------|--------------------|
 | **Ordering** | Sequential | Unordered |
 | **Concurrency** | One at a time | N concurrent |
@@ -828,7 +828,7 @@ stream.subscribe_latest_async(
 
 ### vs Manual Task Spawning
 
-| Feature | `subscribe_latest_async` | Manual spawning |
+| Feature | `subscribe_latest` | Manual spawning |
 |---------|-------------------------|------------------|
 | **Cancellation** | Automatic | Manual |
 | **Latest-value** | Built-in | Manual tracking |
@@ -853,7 +853,7 @@ use tokio::time::{timeout, Duration};
 
 let result = timeout(
     Duration::from_secs(30),
-    stream.subscribe_async(handler, None, None)
+    stream.subscribe(handler, None, None)
 ).await??;
 
 // Use cancellation token
@@ -878,11 +878,11 @@ tokio::spawn(async move {
 // Add backpressure with bounded channels
 let (tx, rx) = tokio::sync::mpsc::channel(100); // Bounded
 
-// Use subscribe_latest_async to skip items
-stream.subscribe_latest_async(handler, None, None).await?;
+// Use subscribe_latest to skip items
+stream.subscribe_latest(handler, None, None).await?;
 
 // Process in batches and clear
-stream.chunks(100).subscribe_async(
+stream.chunks(100).subscribe(
     |mut batch, _| async move {
         process(&batch).await?;
         batch.clear(); // Free memory
@@ -904,7 +904,7 @@ stream.chunks(100).subscribe_async(
 let errors = Arc::new(Mutex::new(Vec::new()));
 let errors_clone = errors.clone();
 
-stream.subscribe_async(
+stream.subscribe(
     handler,
     None,
     Some(move |err| {
@@ -928,7 +928,7 @@ if !all_errors.is_empty() {
 
 **Cause**: Using concurrent processing patterns
 
-**Solution**: Use `subscribe_async` (strictly sequential) instead of `buffer_unordered` or parallel patterns
+**Solution**: Use `subscribe` (strictly sequential) instead of `buffer_unordered` or parallel patterns
 
 ## API Reference
 

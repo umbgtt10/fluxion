@@ -23,7 +23,7 @@ Fluxion is 100% Rust-idiomatic reactive streams library in with temporal orderin
 
 - 🔄 **Rx-Style Operators**: 22 implemented operators (32 planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, etc.)
 - ⏱️ **Temporal Ordering**: Guaranteed ordering semantics via `Timestamped` trait
-- ⚡ **Async Execution**: Efficient async processing with `subscribe_async` and `subscribe_latest_async`
+- ⚡ **Async Execution**: Efficient async processing with `subscribe` and `subscribe_latest`
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
 - ✅ **Well Tested**: 641 tests with comprehensive coverage
@@ -365,7 +365,7 @@ tokio-util = "0.7.17"
 
 **Example:**
 ```rust
-use fluxion_exec::subscribe_async::SubscribeAsyncExt;
+use fluxion_exec::subscribe::SubscribeAsyncExt;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
@@ -373,9 +373,9 @@ use tokio::sync::Mutex as TokioMutex;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::sync::CancellationToken;
 
-/// Example test demonstrating subscribe_async usage
+/// Example test demonstrating subscribe usage
 #[tokio::test]
-async fn test_subscribe_async_example() -> anyhow::Result<()> {
+async fn test_subscribe_example() -> anyhow::Result<()> {
     // Define a simple data type
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct Item {
@@ -414,9 +414,9 @@ async fn test_subscribe_async_example() -> anyhow::Result<()> {
     // Step 4: Subscribe to the stream
     let task = spawn(async move {
         stream
-            .subscribe_async(process_func, None, None::<fn(TestError)>)
+            .subscribe(process_func, None, None::<fn(TestError)>)
             .await
-            .expect("subscribe_async should succeed");
+            .expect("subscribe should succeed");
     });
 
     // Step 5: Publish items and assert results
@@ -468,7 +468,7 @@ tokio-util = "0.7.17"
 
 **Example:**
 ```rust
-use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
+use fluxion_exec::subscribe_latest::SubscribeLatestAsyncExt;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
@@ -476,9 +476,9 @@ use tokio::sync::Mutex as TokioMutex;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::sync::CancellationToken;
 
-/// Example demonstrating subscribe_latest_async with automatic substitution
+/// Example demonstrating subscribe_latest with automatic substitution
 #[tokio::test]
-async fn test_subscribe_latest_async_example() -> anyhow::Result<()> {
+async fn test_subscribe_latest_example() -> anyhow::Result<()> {
     #[derive(Debug, thiserror::Error)]
     #[error("Error")]
     struct Err;
@@ -516,7 +516,7 @@ async fn test_subscribe_latest_async_example() -> anyhow::Result<()> {
 
     spawn(async move {
         UnboundedReceiverStream::new(rx)
-            .subscribe_latest_async(process, None::<fn(Err)>, None)
+            .subscribe_latest(process, None::<fn(Err)>, None)
             .await
             .unwrap();
     });
@@ -590,7 +590,7 @@ The **[legacy-integration](examples/legacy-integration/)** example demonstrates 
 - Shows how to integrate legacy systems that lack intrinsic timestamps
 - Demonstrates the adapter pattern for adding temporal ordering at boundaries
 - Uses `merge_with` to build stateful repository aggregation
-- Illustrates processing events with `subscribe_async` and cancellation tokens
+- Illustrates processing events with `subscribe` and cancellation tokens
 
 Run it with: `cargo run --bin legacy-integration`
 

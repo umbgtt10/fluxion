@@ -7,41 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-**Goal:** Expand operator library with time-based operators
+**Goal:** Time-based operators, API consolidation, and test organization
 
 ### Added
-- **Time Operators**: Introduced new `fluxion-stream-time` crate with temporal operators
-  - `debounce` - Emits a value only after a specified stability period has elapsed
-  - `throttle` - Enforces a minimum time interval between emissions
-  - `sample` - Emits the most recent value at periodic intervals
-  - `delay` - Shifts the entire stream forward in time by a specified duration
-  - `timeout` - Errors if no value is emitted within a specified duration
-- **Benchmarks**: Added comprehensive benchmarks for all time operators
-  - `debounce_bench`
-  - `throttle_bench`
-  - `sample_bench`
-  - `delay_bench`
-  - `timeout_bench`
-- **CI/CD**: Updated CI pipeline to include time operator benchmarks
+- **Time Operators**: New `fluxion-stream-time` crate with temporal operators
+  - `delay` - Shifts stream emissions forward by a specified duration
+  - `debounce` - Emits only after a quiet period (no new values)
+  - `throttle` - Enforces minimum interval between emissions
+  - `sample` - Emits most recent value at periodic intervals
+  - `timeout` - Errors if no emission within specified duration
+  - All operators support `std::time::Duration` and `chrono::Duration`
+  - Heap allocation minimized in debounce and delay implementations
+- **Benchmarks**: Comprehensive benchmarks for all time operators
+  - `delay_bench`, `debounce_bench`, `throttle_bench`, `sample_bench`, `timeout_bench`
+  - Integrated into CI pipeline
+- **Composition Error Tests**: Added error propagation tests for all operators
+  - Tests verify errors flow correctly through operator chains
+  - Coverage for: `combine_with_previous`, `distinct_until_changed`, `emit_when`, `filter_ordered`, `map_ordered`, `merge_with`, `ordered_merge`, `scan_ordered`, `take_latest_when`, `take_while_with`, `with_latest_from`
+- **Design Documentation**: Added architectural decision documents
+  - `docs/design/UNORDERED_API_STRATEGY.md` - Strategy for ordered vs unordered APIs
 
 ### Changed
+- **BREAKING**: Renamed execution methods for cleaner API
+  - `subscribe_async` → `subscribe`
+  - `subscribe_latest_async` → `subscribe_latest`
+  - Module names updated: `subscribe_async.rs` → `subscribe.rs`, `subscribe_latest_async.rs` → `subscribe_latest.rs`
+  - Trait names unchanged: `SubscribeAsyncExt`, `SubscribeLatestAsyncExt`
 - **Core Trait Unification**: Introduced unified `Fluxion` trait replacing fragmented trait hierarchy
   - Replaced `ComparableInner`, `ComparableSync`, `ComparableTimestamped`, `ComparableUnpin`, `ComparableUnpinTimestamped`, and `OrderedFluxionItem`
   - New `Fluxion` trait enforces `Timestamped + Clone + Send + Sync + Unpin + 'static + Debug + Ord`
   - Simplified type bounds across all stream operators
-  - Reduced boilerplate and improved type inference
+- **Test Organization**: Major restructuring of test files
+  - All operator tests now organized in dedicated folders (e.g., `tests/combine_latest/`, `tests/emit_when/`)
+  - Each operator folder contains: `mod.rs`, `*_tests.rs`, `*_error_tests.rs`, `*_composition_tests.rs`, `*_composition_error_tests.rs`
+  - Removed monolithic test files from `fluxion/tests/`
+  - Tests refactored to use standard test data helpers
+  - Eliminated use of `sleep()` in tests - replaced with deterministic synchronization
 - **Documentation**: Updated `FLUXION_OPERATOR_SUMMARY.md`
   - Corrected API reference from `.order()` to `.timestamp()`
-  - Added missing operators to summary table: `distinct_until_changed`, `take_items`, `skip_items`, `on_error`, `start_with`
+  - Added missing operators to summary table
+- **Doc Tests**: Stabilized flaky doc tests in `subscribe` and `subscribe_latest`
+  - Replaced race-prone synchronization with `NotifyOnPendingStream` pattern
+  - No more `yield_now()` or `sleep()` in doc tests
+
+### Fixed
+- **Bug**: Error propagation issue in `take_while_with` operator
+  - Errors now correctly propagate through the operator chain
+- **Bug**: Lock handling issues in several operators
+  - Improved lock recovery and error handling
 
 ### Removed
 - **Legacy Traits**: Deleted obsolete trait files in `fluxion-core`
-  - `comparable_inner.rs`
-  - `comparable_sync.rs`
-  - `comparable_timestamped.rs`
-  - `comparable_unpin.rs`
-  - `comparable_unpin_timestamped.rs`
-  - `ordered_fluxion_item.rs`
+  - `comparable_inner.rs`, `comparable_sync.rs`, `comparable_timestamped.rs`
+  - `comparable_unpin.rs`, `comparable_unpin_timestamped.rs`, `ordered_fluxion_item.rs`
+- **Monolithic Test Files**: Removed large test files from `fluxion/tests/`
+  - `composition_error_tests.rs` (545 lines) - tests distributed to operator folders
+  - `composition_tests.rs` (2730 lines) - tests distributed to operator folders
+
+### Migration Guide
+
+**Method rename:**
+```rust
+// Before (v0.4.x)
+stream.subscribe_async(handler, token, error_callback).await;
+stream.subscribe_latest_async(handler, error_callback, token).await;
+
+// After (v0.5.0)
+stream.subscribe(handler, token, error_callback).await;
+stream.subscribe_latest(handler, error_callback, token).await;
+```
+
+**Import changes:**
+```rust
+// Before
+use fluxion_exec::subscribe_async::SubscribeAsyncExt;
+use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
+
+// After
+use fluxion_exec::subscribe::SubscribeAsyncExt;
+use fluxion_exec::subscribe_latest::SubscribeLatestAsyncExt;
+```
 
 ## [0.4.0] - 2025-11-28
 

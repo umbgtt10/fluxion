@@ -147,7 +147,7 @@ For comprehensive operator documentation, see:
 
 ## Async Execution
 
-For async processing patterns like `subscribe_async` and `subscribe_latest_async`, see the [`fluxion-exec` README](../fluxion-exec/README.md).
+For async processing patterns like `subscribe` and `subscribe_latest`, see the [`fluxion-exec` README](../fluxion-exec/README.md).
 
 ## Complete Example
 

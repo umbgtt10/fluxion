@@ -8,7 +8,7 @@ use crate::domain::{events::UnifiedEvent, repository::OrderAnalytics, Timestampe
 use crate::processing::event_handler::{print_final_analytics, process_event};
 use anyhow::Result;
 use fluxion_core::stream_item::StreamItem;
-use fluxion_exec::subscribe_async::SubscribeAsyncExt;
+use fluxion_exec::subscribe::SubscribeAsyncExt;
 use futures::Stream;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
@@ -37,7 +37,7 @@ impl EventProcessor {
         Self { task_handle }
     }
 
-    /// Internal event processing loop using subscribe_async
+    /// Internal event processing loop using subscribe
     async fn process_events(
         stream: impl Stream<Item = StreamItem<TimestampedEvent>> + Unpin + Send + 'static,
         cancel: CancellationToken,
@@ -46,7 +46,7 @@ impl EventProcessor {
         let analytics = Arc::new(Mutex::new(OrderAnalytics::default()));
 
         let result = stream
-            .subscribe_async(
+            .subscribe(
                 {
                     let event_count = event_count.clone();
                     let analytics = analytics.clone();
