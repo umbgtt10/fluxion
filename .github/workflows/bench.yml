@@ -145,12 +145,24 @@ jobs:
       - name: Prepare benchmark report for deployment
         if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
         run: |
-          mkdir -p deploy/benchmarks
-          cp -r target/criterion/* deploy/benchmarks/
-          # Move report/index.html to benchmarks/index.html for cleaner URL
-          if [ -f deploy/benchmarks/report/index.html ]; then
-            cp deploy/benchmarks/report/index.html deploy/benchmarks/index.html
+          mkdir -p deploy
+          # Copy all criterion output directly (not into a subfolder)
+          # This way the relative links in report/index.html will work correctly
+          cp -r target/criterion/* deploy/
+
+          # The report/index.html has links like "../benchmark_name/..." which work
+          # from the report/ subfolder. We want to use it as the main index.html
+          # at the benchmarks root, so we need to fix the relative paths.
+          # Change "../" to "./" in the copied index.html
+          if [ -f deploy/report/index.html ]; then
+            sed 's|href="\.\./|href="./|g' deploy/report/index.html > deploy/index.html
+            echo "Created deploy/index.html with fixed relative paths"
           fi
+
+          echo "Contents of deploy:"
+          ls -la deploy/
+          echo "Sample links in index.html:"
+          head -100 deploy/index.html | grep -o 'href="[^"]*"' | head -10 || true
 
       - name: Deploy benchmarks to GitHub Pages
         if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
@@ -158,6 +170,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./deploy
+          destination_dir: benchmarks
           keep_files: true  # Preserve other content on gh-pages
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
