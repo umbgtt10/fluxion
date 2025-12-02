@@ -41,12 +41,12 @@ Perfect for unit tests, integration tests, and CI environments.
 
 ```rust
 use fluxion_test_utils::Sequenced;
-use fluxion_stream::FluxionStream;
+use fluxion_stream::{FluxionStream, IntoFluxionStream};
 
 #[tokio::test]
 async fn example() {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    let stream = FluxionStream::from_unbounded_receiver(rx);
+    let stream = rx.into_fluxion_stream();
 
     // Auto-assigned sequence numbers (0, 1, 2, ...)
     tx.send(Sequenced::new(42)).unwrap();

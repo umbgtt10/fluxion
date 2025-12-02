@@ -21,7 +21,7 @@ Split an already-chained stream into multiple branches:
 
 ```rust
 // Chain operators first
-let stream = FluxionStream::from_unbounded_receiver(rx)
+let stream = rx.into_fluxion_stream()
     .map(|x| x * 2)
     .filter(|x| x > 10);
 
@@ -63,8 +63,8 @@ where
         });
 
         (
-            FluxionStream::from_unbounded_receiver(rx1),
-            FluxionStream::from_unbounded_receiver(rx2),
+            rx1.into_fluxion_stream(),
+            rx2.into_fluxion_stream(),
         )
     }
 
@@ -88,8 +88,8 @@ where
         });
 
         (
-            FluxionStream::from_unbounded_receiver(rx1),
-            FluxionStream::from_unbounded_receiver(rx2),
+            rx1.into_fluxion_stream(),
+            rx2.into_fluxion_stream(),
             handle,
         )
     }

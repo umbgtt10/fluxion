@@ -14,7 +14,7 @@ A Subject is a hybrid primitive that acts as both:
 
 **Current Fluxion Architecture:**
 - `FluxionStream` - wraps any `Stream<Item = StreamItem<T>>`
-- Channel-based construction (`from_unbounded_receiver`, `from_bounded_receiver`)
+- Channel-based construction (`IntoFluxionStream` trait)
 - Temporal ordering via `HasTimestamp` trait
 
 **Subject Requirements:**
@@ -397,8 +397,10 @@ impl<T> FluxionSubject<T> {
 
 **Current Pattern:**
 ```rust
+use fluxion_stream::IntoFluxionStream;
+
 let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-let stream = FluxionStream::from_unbounded_receiver(rx);
+let stream = rx.into_fluxion_stream();
 tx.send(Sequenced::new(value)).unwrap();
 ```
 

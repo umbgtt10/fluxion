@@ -76,8 +76,8 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
     let (tx_int, rx_int) = unbounded_channel::<Sequenced<Value>>();
     let (tx_trigger, rx_trigger) = unbounded_channel::<Sequenced<Value>>();
 
-    let int_stream = FluxionStream::from_unbounded_receiver(rx_int);
-    let trigger_stream = FluxionStream::from_unbounded_receiver(rx_trigger);
+    let int_stream = rx_int.into_fluxion_stream();
+    let trigger_stream = rx_trigger.into_fluxion_stream();
 
     let mut pipeline = int_stream.take_latest_when(trigger_stream, |_| true);
 
@@ -148,8 +148,8 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
     let (tx_int, rx_int) = unbounded_channel::<Sequenced<Value>>();
     let (tx_str, rx_str) = unbounded_channel::<Sequenced<Value>>();
 
-    let int_stream = FluxionStream::from_unbounded_receiver(rx_int);
-    let str_stream = FluxionStream::from_unbounded_receiver(rx_str);
+    let int_stream = rx_int.into_fluxion_stream();
+    let str_stream = rx_str.into_fluxion_stream();
 
     // Chain: combine_latest -> filter
     let mut pipeline = int_stream

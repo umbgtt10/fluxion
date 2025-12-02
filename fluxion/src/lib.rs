@@ -26,14 +26,14 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use fluxion_rx::FluxionStream;
+//! use fluxion_rx::prelude::*;
 //! use futures::StreamExt;
 //!
 //! #[tokio::main]
 //! async fn main() {
 //!     // Create a stream from a tokio channel
 //!     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
-//!     let stream = FluxionStream::from_unbounded_receiver(rx);
+//!     let stream = rx.into_fluxion_stream();
 //!
 //!     // Send some values
 //!     tx.send(1).unwrap();

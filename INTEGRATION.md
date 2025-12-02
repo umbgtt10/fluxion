@@ -69,7 +69,7 @@ async fn main() {
     let (tx, rx) = mpsc::unbounded_channel::<SensorReading>();
 
     // Events are already ordered by their timestamp
-    let stream = FluxionStream::from_unbounded_receiver(rx)
+    let stream = rx.into_fluxion_stream()
         .filter_ordered(|reading| &*reading.temperature > 25.0);
 
     // Stream processing respects the intrinsic timestamp ordering
@@ -127,7 +127,7 @@ struct Event {
 async fn test_ordered_filtering() {
     let (tx, rx) = mpsc::unbounded_channel();
 
-    let mut stream = FluxionStream::from_unbounded_receiver(rx)
+    let mut stream = rx.into_fluxion_stream()
         .filter_ordered(|e| &*e.data.starts_with('f'));
 
     // Push events in arbitrary order
@@ -234,7 +234,7 @@ async fn main() {
     let (tx, rx) = mpsc::unbounded_channel();
 
     // Process timestamped events
-    let stream = FluxionStream::from_unbounded_receiver(rx)
+    let stream = rx.into_fluxion_stream()
         .map_ordered(|e| e.clone().into_inner().event);
 
     // Now you have stream of ThirdPartyEvent with temporal ordering
