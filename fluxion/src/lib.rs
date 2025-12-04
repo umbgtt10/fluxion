@@ -26,14 +26,14 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use fluxion_rx::FluxionStream;
+//! use fluxion_rx::prelude::*;
 //! use futures::StreamExt;
 //!
 //! #[tokio::main]
 //! async fn main() {
 //!     // Create a stream from a tokio channel
 //!     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
-//!     let stream = FluxionStream::from_unbounded_receiver(rx);
+//!     let stream = rx.into_fluxion_stream();
 //!
 //!     // Send some values
 //!     tx.send(1).unwrap();
@@ -84,9 +84,7 @@
 //! - [`fluxion_core`] - Core traits and utilities
 //! - [`fluxion_stream`] - Stream operators and combinators
 //! - `fluxion_exec` - Async execution and subscription utilities
-//! - `fluxion_error` - Error types and handling
-
-mod channel_ext;
+// fluxion_error - Error types and handling
 
 // Re-export core types
 pub use fluxion_core::into_stream::IntoStream;
@@ -95,14 +93,14 @@ pub use fluxion_core::{HasTimestamp, Timestamped};
 // Re-export the main FluxionStream type
 pub use fluxion_stream::FluxionStream;
 
+// Re-export the IntoFluxionStream extension trait for simple channel conversion
+pub use fluxion_stream::IntoFluxionStream;
+
 // Re-export commonly used types
 pub use fluxion_stream::{CombinedState, WithPrevious};
 
 // Re-export exec utilities
 pub use fluxion_exec;
-
-// Re-export convenience extensions
-pub use channel_ext::UnboundedReceiverExt;
 
 /// Prelude module for convenient imports.
 ///
@@ -116,13 +114,13 @@ pub use channel_ext::UnboundedReceiverExt;
 /// // - Timestamped trait
 /// // - IntoStream trait
 /// // - CombinedState, WithPrevious
-/// // - UnboundedReceiverExt
+/// // - IntoFluxionStream
 /// ```
 ///
 /// This is the recommended way to use Fluxion in most applications.
 pub mod prelude {
     pub use crate::FluxionStream;
-    pub use crate::UnboundedReceiverExt;
+    pub use crate::IntoFluxionStream;
     pub use fluxion_core::into_stream::IntoStream;
     pub use fluxion_core::{HasTimestamp, Timestamped};
     pub use fluxion_stream::{CombinedState, WithPrevious};

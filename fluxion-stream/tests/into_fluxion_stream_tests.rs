@@ -1,12 +1,11 @@
 // Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
-#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 use fluxion_core::HasTimestamp;
 use fluxion_core::StreamItem;
 use fluxion_core::Timestamped;
-use fluxion_rx::prelude::*;
+use fluxion_stream::IntoFluxionStream;
 use fluxion_test_utils::{assert_no_element_emitted, assert_stream_ended, helpers::unwrap_stream};
 use std::time::Duration;
 use tokio::{spawn, sync::mpsc::unbounded_channel, time::sleep};
@@ -142,6 +141,29 @@ mod no_coverage_helpers {
 pub use no_coverage_helpers::{CombinedEvent, SensorReading, StatusUpdate};
 
 #[tokio::test]
+async fn test_into_fluxion_stream_no_map() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, rx) = unbounded_channel::<SensorReading>();
+    let mut stream = rx.into_fluxion_stream();
+
+    let reading = SensorReading {
+        timestamp: 100,
+        temperature: 20,
+    };
+
+    // Act
+    tx.send(reading.clone())?;
+
+    // Assert
+    let item = unwrap_stream(&mut stream, 500).await;
+    match item {
+        StreamItem::Value(v) => assert_eq!(v, reading),
+        _ => panic!("Expected Value"),
+    }
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_into_fluxion_stream_basic_transformation() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<SensorReading>();
@@ -155,7 +177,7 @@ async fn test_into_fluxion_stream_basic_transformation() -> anyhow::Result<()> {
         temperature: 25,
     };
 
-    let mut stream = rx.into_fluxion_stream(|s| CombinedEvent::Sensor(s.clone()));
+    let mut stream = rx.into_fluxion_stream_map(|s| CombinedEvent::Sensor(s.clone()));
 
     // Act
     tx.send(reading1.clone())?;
@@ -183,7 +205,7 @@ async fn test_into_fluxion_stream_empty_channel() -> anyhow::Result<()> {
     // Arrange
     let (_tx, rx) = unbounded_channel::<SensorReading>();
 
-    let mut stream = rx.into_fluxion_stream(|s| CombinedEvent::Sensor(s.clone()));
+    let mut stream = rx.into_fluxion_stream_map(|s| CombinedEvent::Sensor(s.clone()));
 
     // Act
     drop(_tx);
@@ -207,7 +229,7 @@ async fn test_into_fluxion_stream_preserves_order() -> anyhow::Result<()> {
         .collect();
 
     // Act
-    let mut stream = rx.into_fluxion_stream(|s| CombinedEvent::Sensor(s.clone()));
+    let mut stream = rx.into_fluxion_stream_map(|s| CombinedEvent::Sensor(s.clone()));
 
     for reading in &readings {
         tx.send(reading.clone())?;
@@ -232,7 +254,7 @@ async fn test_into_fluxion_stream_multiple_items() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<SensorReading>();
 
-    let mut stream = rx.into_fluxion_stream(|s| CombinedEvent::Sensor(s.clone()));
+    let mut stream = rx.into_fluxion_stream_map(|s| CombinedEvent::Sensor(s.clone()));
 
     // Act
     for i in 0..5 {
@@ -269,7 +291,7 @@ async fn test_into_fluxion_stream_transformation_logic() -> anyhow::Result<()> {
         temperature: 20,
     };
 
-    let mut stream = rx.into_fluxion_stream(|s| {
+    let mut stream = rx.into_fluxion_stream_map(|s| {
         let mut reading = s.clone();
         reading.timestamp *= 2;
         CombinedEvent::Sensor(reading)
@@ -299,8 +321,8 @@ async fn test_into_fluxion_stream_can_combine_with_other_streams() -> anyhow::Re
     let (tx1, rx1) = unbounded_channel::<SensorReading>();
     let (tx2, rx2) = unbounded_channel::<SensorReading>();
 
-    let stream1 = rx1.into_fluxion_stream(|s| CombinedEvent::Sensor(s.clone()));
-    let stream2 = rx2.into_fluxion_stream(|s| CombinedEvent::Sensor(s.clone()));
+    let stream1 = rx1.into_fluxion_stream_map(|s| CombinedEvent::Sensor(s.clone()));
+    let stream2 = rx2.into_fluxion_stream_map(|s| CombinedEvent::Sensor(s.clone()));
 
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
@@ -329,7 +351,7 @@ async fn test_into_fluxion_stream_late_sends() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<SensorReading>();
 
-    let mut stream = rx.into_fluxion_stream(|s| CombinedEvent::Sensor(s.clone()));
+    let mut stream = rx.into_fluxion_stream_map(|s| CombinedEvent::Sensor(s.clone()));
 
     // Act - send items after creating stream with delays
     spawn(async move {
@@ -360,7 +382,7 @@ async fn test_into_fluxion_stream_high_volume() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = unbounded_channel::<SensorReading>();
 
-    let mut stream = rx.into_fluxion_stream(|s| CombinedEvent::Sensor(s.clone()));
+    let mut stream = rx.into_fluxion_stream_map(|s| CombinedEvent::Sensor(s.clone()));
 
     const COUNT: usize = 1000;
 
@@ -389,8 +411,8 @@ async fn test_two_heterogeneous_streams_packed_into_enum() -> anyhow::Result<()>
     let (tx2, rx2) = unbounded_channel::<StatusUpdate>();
 
     // Map each channel into a fluxion stream producing the shared enum
-    let stream1 = rx1.into_fluxion_stream(|s| CombinedEvent::Sensor(s.clone()));
-    let stream2 = rx2.into_fluxion_stream(|s| CombinedEvent::Status(s.clone()));
+    let stream1 = rx1.into_fluxion_stream_map(|s| CombinedEvent::Sensor(s.clone()));
+    let stream2 = rx2.into_fluxion_stream_map(|s| CombinedEvent::Status(s.clone()));
 
     let mut merged = stream1.ordered_merge(vec![stream2]);
 

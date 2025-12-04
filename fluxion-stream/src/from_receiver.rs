@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Extension methods for tokio UnboundedReceiver to create FluxionStreams.
+//! Convenience constructors for creating `FluxionStream` from tokio channels.
 
 use crate::FluxionStream;
 use fluxion_core::{StreamItem, Timestamped};
@@ -12,9 +12,29 @@ use std::pin::Pin;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-/// Extension trait for `UnboundedReceiver` to create FluxionStreams.
-pub trait UnboundedReceiverExt<T> {
-    /// Converts an `UnboundedReceiver<T>` into a `FluxionStream<U>` by applying a transformation.
+/// Extension trait to convert tokio channels into `FluxionStream`.
+///
+/// This trait provides a simple way to wrap a tokio `UnboundedReceiver` into
+/// a `FluxionStream` that emits `StreamItem::Value` for each received item.
+pub trait IntoFluxionStream<T> {
+    /// Converts this receiver into a `FluxionStream`.
+    ///
+    /// Each item received from the channel is wrapped in `StreamItem::Value`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fluxion_stream::IntoFluxionStream;
+    /// use tokio::sync::mpsc;
+    ///
+    /// let (tx, rx) = mpsc::unbounded_channel::<i32>();
+    /// let stream = rx.into_fluxion_stream();
+    /// ```
+    fn into_fluxion_stream(
+        self,
+    ) -> FluxionStream<Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>>;
+
+    /// Converts this receiver into a `FluxionStream` by applying a transformation.
     ///
     /// This method transforms items from type `T` to type `U` and returns a boxed stream.
     /// The boxed return type allows streams with different source types to be combined easily,
@@ -31,7 +51,8 @@ pub trait UnboundedReceiverExt<T> {
     /// # Examples
     ///
     /// ```
-    /// use fluxion_rx::prelude::*;
+    /// use fluxion_stream::IntoFluxionStream;
+    /// use fluxion_core::{HasTimestamp, Timestamped};
     /// use tokio::sync::mpsc;
     ///
     /// #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -78,13 +99,13 @@ pub trait UnboundedReceiverExt<T> {
     /// let (tx, rx) = mpsc::unbounded_channel::<SensorReading>();
     ///
     /// // Transform SensorReading to DataEvent
-    /// let stream = rx.into_fluxion_stream(|s| DataEvent::Sensor(s.clone()));
+    /// let stream = rx.into_fluxion_stream_map(|s| DataEvent::Sensor(s.clone()));
     ///
     /// // stream is FluxionStream with boxed inner stream
     /// # drop(stream);
     /// # }
     /// ```
-    fn into_fluxion_stream<U, F>(
+    fn into_fluxion_stream_map<U, F>(
         self,
         mapper: F,
     ) -> FluxionStream<Pin<Box<dyn Stream<Item = StreamItem<U>> + Send + Sync>>>
@@ -93,11 +114,16 @@ pub trait UnboundedReceiverExt<T> {
         U: Timestamped<Inner = U> + Clone + Debug + Ord + Send + Sync + Unpin + 'static;
 }
 
-impl<T> UnboundedReceiverExt<T> for UnboundedReceiver<T>
-where
-    T: Timestamped<Inner = T> + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn into_fluxion_stream<U, F>(
+impl<T: Send + 'static> IntoFluxionStream<T> for UnboundedReceiver<T> {
+    fn into_fluxion_stream(
+        self,
+    ) -> FluxionStream<Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>> {
+        FluxionStream::new(Box::pin(
+            UnboundedReceiverStream::new(self).map(StreamItem::Value),
+        ))
+    }
+
+    fn into_fluxion_stream_map<U, F>(
         self,
         mut mapper: F,
     ) -> FluxionStream<Pin<Box<dyn Stream<Item = StreamItem<U>> + Send + Sync>>>

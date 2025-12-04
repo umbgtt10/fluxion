@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::{DistinctUntilChangedByExt, FluxionStream};
+use fluxion_stream::FluxionStream;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,

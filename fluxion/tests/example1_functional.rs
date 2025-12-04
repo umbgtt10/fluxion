@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::HasTimestamp;
-use fluxion_rx::FluxionStream;
+use fluxion_rx::IntoFluxionStream;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -20,8 +20,8 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
     let (tx_int, rx_int) = unbounded_channel::<Sequenced<Value>>();
     let (tx_trigger, rx_trigger) = unbounded_channel::<Sequenced<Value>>();
 
-    let int_stream = FluxionStream::from_unbounded_receiver(rx_int);
-    let trigger_stream = FluxionStream::from_unbounded_receiver(rx_trigger);
+    let int_stream = rx_int.into_fluxion_stream();
+    let trigger_stream = rx_trigger.into_fluxion_stream();
 
     let mut pipeline = int_stream.take_latest_when(trigger_stream, |_| true);
 

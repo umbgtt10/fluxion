@@ -488,8 +488,8 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-stream = "0.4"
-fluxion-core = "0.4"
+fluxion-stream = "0.5"
+fluxion-core = "0.5"
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 ```
@@ -508,8 +508,8 @@ async fn main() {
     let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel();
 
     // Create streams
-    let stream1 = FluxionStream::from_unbounded_receiver(rx1);
-    let stream2 = FluxionStream::from_unbounded_receiver(rx2);
+    let stream1 = rx1.into_fluxion_stream();
+    let stream2 = rx2.into_fluxion_stream();
 
     // Merge in temporal order
     let mut merged = stream1.ordered_merge(vec![stream2]);
@@ -538,8 +538,8 @@ async fn main() -> anyhow::Result<()> {
     let (cpu_tx, cpu_rx) = tokio::sync::mpsc::unbounded_channel();
     let (mem_tx, mem_rx) = tokio::sync::mpsc::unbounded_channel();
 
-    let cpu_stream = FluxionStream::from_unbounded_receiver(cpu_rx);
-    let mem_stream = FluxionStream::from_unbounded_receiver(mem_rx);
+    let cpu_stream = cpu_rx.into_fluxion_stream();
+    let mem_stream = mem_rx.into_fluxion_stream();
 
     let mut dashboard = cpu_stream.combine_latest(
         vec![mem_stream],
@@ -573,8 +573,8 @@ async fn main() -> anyhow::Result<()> {
     let (data_tx, data_rx) = tokio::sync::mpsc::unbounded_channel();
     let (gate_tx, gate_rx) = tokio::sync::mpsc::unbounded_channel();
 
-    let data = FluxionStream::from_unbounded_receiver(data_rx);
-    let gate = FluxionStream::from_unbounded_receiver(gate_rx);
+    let data = data_rx.into_fluxion_stream();
+    let gate = gate_rx.into_fluxion_stream();
 
     let mut gated = data.emit_when(gate, |open| *open);
 
@@ -604,7 +604,7 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    let stream = FluxionStream::from_unbounded_receiver(rx);
+    let stream = rx.into_fluxion_stream();
 
     // Calculate running sum
     let mut running_sum = stream.scan_ordered::<Sequenced<i32>, _, _>(0, |acc, val| {
@@ -642,7 +642,7 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    let stream = FluxionStream::from_unbounded_receiver(rx);
+    let stream = rx.into_fluxion_stream();
 
     let mut pairs = stream.combine_with_previous();
 

@@ -49,17 +49,16 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.4.0"
-fluxion-test-utils = "0.4.0"
+fluxion-rx = "0.5.0"
+fluxion-test-utils = "0.5.0"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
 
 ### Basic Usage
 
-```rust
-use fluxion_core::HasTimestamp;
-use fluxion_rx::FluxionStream;
+```rustuse fluxion_core::HasTimestamp;
+use fluxion_rx::IntoFluxionStream;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -76,8 +75,8 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
     let (tx_int, rx_int) = unbounded_channel::<Sequenced<Value>>();
     let (tx_trigger, rx_trigger) = unbounded_channel::<Sequenced<Value>>();
 
-    let int_stream = FluxionStream::from_unbounded_receiver(rx_int);
-    let trigger_stream = FluxionStream::from_unbounded_receiver(rx_trigger);
+    let int_stream = rx_int.into_fluxion_stream();
+    let trigger_stream = rx_trigger.into_fluxion_stream();
 
     let mut pipeline = int_stream.take_latest_when(trigger_stream, |_| true);
 
@@ -121,17 +120,16 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.4.0"
-fluxion-test-utils = "0.4.0"
+fluxion-rx = "0.5.0"
+fluxion-test-utils = "0.5.0"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rust
-use fluxion_core::Timestamped;
-use fluxion_rx::FluxionStream;
+```rustuse fluxion_core::Timestamped;
+use fluxion_rx::IntoFluxionStream;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -148,8 +146,8 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
     let (tx_int, rx_int) = unbounded_channel::<Sequenced<Value>>();
     let (tx_str, rx_str) = unbounded_channel::<Sequenced<Value>>();
 
-    let int_stream = FluxionStream::from_unbounded_receiver(rx_int);
-    let str_stream = FluxionStream::from_unbounded_receiver(rx_str);
+    let int_stream = rx_int.into_fluxion_stream();
+    let str_stream = rx_str.into_fluxion_stream();
 
     // Chain: combine_latest -> filter
     let mut pipeline = int_stream
@@ -196,16 +194,15 @@ The `merge_with` operator enables elegant stateful stream processing by merging 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.4.0"
-fluxion-test-utils = "0.4.0"
+fluxion-rx = "0.5.0"
+fluxion-test-utils = "0.5.0"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
 
 **Example: Event Sourcing with Repository Pattern**
 
-```rust
-use fluxion_stream::MergedStream;
+```rustuse fluxion_stream::MergedStream;
 use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
 
 #[tokio::test]
@@ -355,17 +352,15 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Sequential Processing:**
 
 **Dependencies:**
-```toml
-[dependencies]
-fluxion-exec = "0.4.0"
+```toml[dependencies]
+fluxion-exec = "0.5.0"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = "0.7.17"
 ```
 
 **Example:**
-```rust
-use fluxion_exec::subscribe::SubscribeAsyncExt;
+```rustuse fluxion_exec::subscribe::SubscribeExt;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
@@ -458,17 +453,15 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 **Latest-Value Processing (with auto-cancellation):**
 
 **Dependencies:**
-```toml
-[dependencies]
-fluxion-exec = "0.4.0"
+```toml[dependencies]
+fluxion-exec = "0.5.0"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = "0.7.17"
 ```
 
 **Example:**
-```rust
-use fluxion_exec::subscribe_latest::SubscribeLatestAsyncExt;
+```rustuse fluxion_exec::subscribe_latest::SubscribeLatestExt;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
@@ -644,7 +637,7 @@ See individual crate READMEs for detailed documentation.
 
 ## Project Status
 
-**Current Version:** 0.4.0
+**Current Version:** 0.5.0
 
 - ✅ Published to crates.io
 - ✅ Core functionality complete

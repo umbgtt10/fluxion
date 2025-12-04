@@ -701,7 +701,7 @@ These operators are available in the `fluxion-exec` crate and provide control ov
 **Sequential processing where every item is processed to completion**
 
 ```rust
-use fluxion_exec::subscribe::SubscribeAsyncExt;
+use fluxion_exec::subscribe::SubscribeExt;
 
 stream.subscribe(
     |item, _| async move {
@@ -722,7 +722,7 @@ stream.subscribe(
 **Latest-value processing with automatic cancellation**
 
 ```rust
-use fluxion_exec::subscribe_latest::SubscribeLatestAsyncExt;
+use fluxion_exec::subscribe_latest::SubscribeLatestExt;
 
 stream.subscribe_latest(
     |item, token| async move {

@@ -44,13 +44,13 @@ where
     /// ## Basic Deduplication
     ///
     /// ```rust
-    /// use fluxion_stream::{DistinctUntilChangedExt, FluxionStream};
+    /// use fluxion_stream::{DistinctUntilChangedExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    /// let stream = FluxionStream::from_unbounded_receiver(rx);
+    /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut distinct = stream.distinct_until_changed();
     ///
@@ -76,13 +76,13 @@ where
     /// Detect when a boolean state changes:
     ///
     /// ```rust
-    /// use fluxion_stream::{DistinctUntilChangedExt, FluxionStream};
+    /// use fluxion_stream::{DistinctUntilChangedExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    /// let stream = FluxionStream::from_unbounded_receiver(rx);
+    /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut changes = stream.distinct_until_changed();
     ///
@@ -105,14 +105,14 @@ where
     /// Timestamps are preserved from the original incoming values:
     ///
     /// ```rust
-    /// use fluxion_stream::{DistinctUntilChangedExt, FluxionStream};
+    /// use fluxion_stream::{DistinctUntilChangedExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use fluxion_core::HasTimestamp;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    /// let stream = FluxionStream::from_unbounded_receiver(rx);
+    /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut distinct = stream.distinct_until_changed();
     ///

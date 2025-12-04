@@ -143,20 +143,20 @@ Write-Host "  - example1_functional.rs → ### Basic Usage" -ForegroundColor Gra
 Write-Host "  - example2_composition.rs → ### Chaining Multiple Operators" -ForegroundColor Gray
 Write-Host "  - example3_merge_with.rs → ### Stateful Stream Merging" -ForegroundColor Gray
 
-# Sync fluxion-exec README subscribe_async example
+# Sync fluxion-exec subscribe example
 Write-Host "
-Syncing fluxion-exec subscribe_async example..." -ForegroundColor Cyan
+Syncing fluxion-exec subscribe example..." -ForegroundColor Cyan
 
-$subscribeAsyncExamplePath = "fluxion-exec/tests/subscribe_async_example.rs"
+$subscribeExamplePath = "fluxion-exec/tests/subscribe_example.rs"
 
-if (Test-Path $subscribeAsyncExamplePath) {
-    $subscribeAsyncContent = Get-Content $subscribeAsyncExamplePath -Raw
-    $subscribeAsyncLines = $subscribeAsyncContent -split "`r?`n"
-    $subscribeAsyncCode = (($subscribeAsyncLines | Select-Object -Skip 4) -join "`n") + "`n"
+if (Test-Path $subscribeExamplePath) {
+    $subscribeContent = Get-Content $subscribeExamplePath -Raw
+    $subscribeLines = $subscribeContent -split "`r?`n"
+    $subscribeCode = (($subscribeLines | Select-Object -Skip 4) -join "`n") + "`n"
 
     # Extract dependencies from the example file's use statements
     $usedExecCrates = @{}
-    $exampleUseStatements = $subscribeAsyncLines | Where-Object { $_ -match '^use ' }
+    $exampleUseStatements = $subscribeLines | Where-Object { $_ -match '^use ' }
 
     # Always include fluxion-exec
     $usedExecCrates['fluxion-exec'] = $workspaceVersion
@@ -213,31 +213,31 @@ if (Test-Path $subscribeAsyncExamplePath) {
             $newMainReadme = $mainReadme.Substring(0, $depsStart + 8) # Up to ```toml`n
             $newMainReadme += $execDepsSection + "`n"
             $newMainReadme += $mainReadme.Substring($depsEnd, $exampleStart - $depsEnd + 8) # From ```` to ```rust`n
-            $newMainReadme += $subscribeAsyncCode
+            $newMainReadme += $subscribeCode
             $newMainReadme += $mainReadme.Substring($exampleEnd) # From ```` to end
 
             Set-Content $readmePath $newMainReadme -NoNewline
-            Write-Host "   Updated subscribe_async dependencies and example in main README" -ForegroundColor Green
+            Write-Host "   Updated subscribe dependencies and example in main README" -ForegroundColor Green
         }
     }
 } else {
-    Write-Host "   Warning: subscribe_async_example.rs not found" -ForegroundColor Yellow
+    Write-Host "   Warning: subscribe_example.rs not found" -ForegroundColor Yellow
 }
 
-# Sync subscribe_latest_async example
+# Sync fluxion-exec subscribe_latest example
 Write-Host "
-Syncing fluxion-exec subscribe_latest_async example..." -ForegroundColor Cyan
+Syncing fluxion-exec subscribe_latest example..." -ForegroundColor Cyan
 
-$subscribeLatestAsyncExamplePath = "fluxion-exec/tests/subscribe_latest_async_example.rs"
+$subscribeLatestExamplePath = "fluxion-exec/tests/subscribe_latest_example.rs"
 
-if (Test-Path $subscribeLatestAsyncExamplePath) {
-    $subscribeLatestAsyncContent = Get-Content $subscribeLatestAsyncExamplePath -Raw
-    $subscribeLatestAsyncLines = $subscribeLatestAsyncContent -split "`r?`n"
-    $subscribeLatestAsyncCode = (($subscribeLatestAsyncLines | Select-Object -Skip 4) -join "`n") + "`n"
+if (Test-Path $subscribeLatestExamplePath) {
+    $subscribeLatestContent = Get-Content $subscribeLatestExamplePath -Raw
+    $subscribeLatestLines = $subscribeLatestContent -split "`r?`n"
+    $subscribeLatestCode = (($subscribeLatestLines | Select-Object -Skip 4) -join "`n") + "`n"
 
     # Extract dependencies from the example file's use statements
     $usedLatestCrates = @{}
-    $latestExampleUseStatements = $subscribeLatestAsyncLines | Where-Object { $_ -match '^use ' }
+    $latestExampleUseStatements = $subscribeLatestLines | Where-Object { $_ -match '^use ' }
 
     # Always include fluxion-exec
     $usedLatestCrates['fluxion-exec'] = $workspaceVersion
@@ -294,13 +294,13 @@ if (Test-Path $subscribeLatestAsyncExamplePath) {
             $newMainReadme = $mainReadme.Substring(0, $latestDepsStart + 8) # Up to ```toml`n
             $newMainReadme += $latestDepsSection + "`n"
             $newMainReadme += $mainReadme.Substring($latestDepsEnd, $latestExampleStart - $latestDepsEnd + 8) # From ```` to ```rust`n
-            $newMainReadme += $subscribeLatestAsyncCode
+            $newMainReadme += $subscribeLatestCode
             $newMainReadme += $mainReadme.Substring($latestExampleEnd) # From ```` to end
 
             Set-Content $readmePath $newMainReadme -NoNewline
-            Write-Host "   Updated subscribe_latest_async dependencies and example in main README" -ForegroundColor Green
+            Write-Host "   Updated subscribe_latest dependencies and example in main README" -ForegroundColor Green
         }
     }
 } else {
-    Write-Host "   Warning: subscribe_latest_async_example.rs not found" -ForegroundColor Yellow
+    Write-Host "   Warning: subscribe_latest_example.rs not found" -ForegroundColor Yellow
 }

@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::FluxionError;
-use fluxion_exec::subscribe::SubscribeAsyncExt;
+use fluxion_exec::subscribe::SubscribeExt;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
     TestData,

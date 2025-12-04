@@ -36,7 +36,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_stream::{FluxionStream, IntoFluxionStream};
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::person_alice;
@@ -47,7 +47,7 @@ where
     /// # #[tokio::main]
     /// # async fn main() {
     /// let (tx, rx) = mpsc::unbounded_channel();
-    /// let mut stream = FluxionStream::from_unbounded_receiver(rx)
+    /// let mut stream = rx.into_fluxion_stream()
     ///     .delay(Duration::from_millis(10));
     ///
     /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
@@ -83,7 +83,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_stream::{FluxionStream, IntoFluxionStream};
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
@@ -94,7 +94,7 @@ where
     /// # #[tokio::main]
     /// # async fn main() {
     /// let (tx, rx) = mpsc::unbounded_channel();
-    /// let mut stream = FluxionStream::from_unbounded_receiver(rx)
+    /// let mut stream = rx.into_fluxion_stream()
     ///     .debounce(Duration::from_millis(100));
     ///
     /// // Alice and Bob emitted immediately. Alice should be debounced (dropped).
@@ -133,7 +133,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_stream::{FluxionStream, IntoFluxionStream};
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
@@ -144,7 +144,7 @@ where
     /// # #[tokio::main]
     /// # async fn main() {
     /// let (tx, rx) = mpsc::unbounded_channel();
-    /// let mut stream = FluxionStream::from_unbounded_receiver(rx)
+    /// let mut stream = rx.into_fluxion_stream()
     ///     .throttle(Duration::from_millis(100));
     ///
     /// // Alice and Bob emitted immediately. Bob should be throttled (dropped).
@@ -181,7 +181,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_stream::{FluxionStream, IntoFluxionStream};
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
@@ -193,7 +193,7 @@ where
     /// # async fn main() {
     /// // Use a channel to control emission timing relative to the sample interval
     /// let (tx, rx) = mpsc::unbounded_channel();
-    /// let mut stream = FluxionStream::from_unbounded_receiver(rx)
+    /// let mut stream = rx.into_fluxion_stream()
     ///     .sample(Duration::from_millis(10));
     ///
     /// // Emit Alice and Bob immediately
@@ -234,7 +234,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_stream::{FluxionStream, IntoFluxionStream};
     /// use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::person_alice;
@@ -245,7 +245,7 @@ where
     /// # #[tokio::main]
     /// # async fn main() {
     /// let (tx, rx) = mpsc::unbounded_channel();
-    /// let mut stream = FluxionStream::from_unbounded_receiver(rx)
+    /// let mut stream = rx.into_fluxion_stream()
     ///     .timeout(Duration::from_millis(100));
     ///
     /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();

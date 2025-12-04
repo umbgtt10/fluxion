@@ -160,7 +160,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 
 ## 🚀 Version 0.5.0 - Time-Based Operators
 
-**Status:** Not Published
+**Status:** Published to crates.io
 
 **Goal:** Introduce time-based reactive operators through optional `fluxion-stream-time` crate
 
@@ -427,4 +427,4 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - Breaking changes are only introduced in major versions (post-1.0)
 - Security fixes may be backported to previous minor versions
 
-**Last Updated:** November 28, 2025
+**Last Updated:** December 4, 2025

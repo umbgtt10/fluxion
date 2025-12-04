@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{StreamItem, Timestamped};
-use fluxion_stream::{CombinedState, DistinctUntilChangedExt, FluxionStream};
+use fluxion_stream::{CombinedState, FluxionStream};
 use fluxion_test_utils::{
     assert_no_element_emitted,
     helpers::unwrap_stream,

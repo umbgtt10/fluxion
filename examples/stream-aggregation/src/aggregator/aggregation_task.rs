@@ -4,19 +4,18 @@
 
 //! Aggregator task - combines three data sources using FluxionStream
 
+use super::event_aggregation::create_aggregated_event;
 use crate::consumer::FinalConsumer;
 use crate::domain::{AggregatedEvent, DataEvent, MetricData, SensorReading, SystemEvent};
 use crate::events_producer::EventsProducer;
 use crate::metrics_producer::MetricsProducer;
 use crate::sensor_producer::SensorProducer;
-use fluxion_exec::SubscribeLatestAsyncExt;
+use fluxion_exec::SubscribeLatestExt;
 use fluxion_rx::prelude::*;
 use std::convert::Infallible;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
-
-use super::event_aggregation::create_aggregated_event;
 
 pub struct Aggregator {
     cancel_token: CancellationToken,
@@ -123,9 +122,10 @@ impl Aggregator {
         println!("🔄 Aggregator started\n");
 
         // Transform domain events to DataEvent (boxing happens inside into_fluxion_stream)
-        let sensor_stream = sensor_rx.into_fluxion_stream(|s| DataEvent::Sensor(s.clone()));
-        let metrics_stream = metrics_rx.into_fluxion_stream(|m| DataEvent::Metric(m.clone()));
-        let events_stream = events_rx.into_fluxion_stream(|e| DataEvent::SystemEvent(e.clone()));
+        let sensor_stream = sensor_rx.into_fluxion_stream_map(|s| DataEvent::Sensor(s.clone()));
+        let metrics_stream = metrics_rx.into_fluxion_stream_map(|m| DataEvent::Metric(m.clone()));
+        let events_stream =
+            events_rx.into_fluxion_stream_map(|e| DataEvent::SystemEvent(e.clone()));
 
         // Combine the unified DataEvent streams
         let _ = sensor_stream

@@ -66,7 +66,7 @@
 //! Both utilities are provided as extension traits on `Stream`:
 //!
 //! ```text
-//! use fluxion_exec::SubscribeAsyncExt;
+//! use fluxion_exec::SubscribeExt;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
@@ -156,7 +156,7 @@
 //! Every item must be persisted:
 //!
 //! ```text
-//! use fluxion_exec::SubscribeAsyncExt;
+//! use fluxion_exec::SubscribeExt;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
@@ -175,7 +175,7 @@
 //! Only latest state matters:
 //!
 //! ```text
-//! use fluxion_exec::SubscribeLatestAsyncExt;
+//! use fluxion_exec::SubscribeLatestExt;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
@@ -194,7 +194,7 @@
 //! Combine with `chunks` for batch operations:
 //!
 //! ```text
-//! use fluxion_exec::SubscribeAsyncExt;
+//! use fluxion_exec::SubscribeExt;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
@@ -216,7 +216,7 @@
 //! Handle errors without stopping the stream:
 //!
 //! ```text
-//! use fluxion_exec::SubscribeAsyncExt;
+//! use fluxion_exec::SubscribeExt;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
@@ -321,11 +321,11 @@
 //! ```
 //!
 //! See individual trait documentation for detailed examples:
-//! - [`SubscribeAsyncExt`] for sequential processing
-//! - [`SubscribeLatestAsyncExt`] for latest-value processing
+//! - [`SubscribeExt`] for sequential processing
+//! - [`SubscribeLatestExt`] for latest-value processing
 //!
-//! [`subscribe`]: SubscribeAsyncExt::subscribe
-//! [`subscribe_latest`]: SubscribeLatestAsyncExt::subscribe_latest
+//! [`subscribe`]: SubscribeExt::subscribe
+//! [`subscribe_latest`]: SubscribeLatestExt::subscribe_latest
 
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 #[macro_use]
@@ -334,5 +334,5 @@ pub mod subscribe;
 pub mod subscribe_latest;
 
 // Re-export commonly used types
-pub use subscribe::SubscribeAsyncExt;
-pub use subscribe_latest::SubscribeLatestAsyncExt;
+pub use subscribe::SubscribeExt;
+pub use subscribe_latest::SubscribeLatestExt;

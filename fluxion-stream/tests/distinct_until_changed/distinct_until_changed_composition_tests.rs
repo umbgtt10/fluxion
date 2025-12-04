@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_stream::{DistinctUntilChangedExt, FluxionStream};
+use fluxion_stream::FluxionStream;
 use fluxion_test_utils::{
     helpers::unwrap_stream,
     test_channel,

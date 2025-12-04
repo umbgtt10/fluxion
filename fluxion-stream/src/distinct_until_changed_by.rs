@@ -53,7 +53,7 @@ where
     /// ## Custom Equality by Field
     ///
     /// ```rust
-    /// use fluxion_stream::{DistinctUntilChangedByExt, FluxionStream};
+    /// use fluxion_stream::{DistinctUntilChangedByExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///
@@ -65,7 +65,7 @@ where
     ///
     /// # async fn example() {
     /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    /// let stream = FluxionStream::from_unbounded_receiver(rx);
+    /// let stream = rx.into_fluxion_stream();
     ///
     /// // Only care about changes to user ID, ignore name changes
     /// let mut distinct = stream.distinct_until_changed_by(|a: &User, b: &User| a.id == b.id);
@@ -85,13 +85,13 @@ where
     /// ## Case-Insensitive String Comparison
     ///
     /// ```rust
-    /// use fluxion_stream::{DistinctUntilChangedByExt, FluxionStream};
+    /// use fluxion_stream::{DistinctUntilChangedByExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
     /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    /// let stream = FluxionStream::from_unbounded_receiver(rx);
+    /// let stream = rx.into_fluxion_stream();
     ///
     /// // Case-insensitive comparison
     /// let mut distinct = stream.distinct_until_changed_by(|a: &String, b: &String| {
@@ -111,7 +111,7 @@ where
     /// ## Approximate Numerical Comparison
     ///
     /// ```rust
-    /// use fluxion_stream::{DistinctUntilChangedByExt, FluxionStream};
+    /// use fluxion_stream::{DistinctUntilChangedByExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     /// use std::cmp::Ordering;
@@ -130,7 +130,7 @@ where
     ///
     /// # async fn example() {
     /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    /// let stream = FluxionStream::from_unbounded_receiver(rx);
+    /// let stream = rx.into_fluxion_stream();
     ///
     /// // Only emit if difference is >= 0.1
     /// let mut distinct = stream.distinct_until_changed_by(|a: &OrderedF64, b: &OrderedF64| {

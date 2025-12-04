@@ -110,10 +110,10 @@ See [on_error operator specification](FLUXION_OPERATOR_SUMMARY.md#on_error) for 
 Match on each stream item to handle values and errors separately:
 
 ```rust
-use fluxion_stream::FluxionStream;
+use fluxion_stream::{FluxionStream, IntoFluxionStream};
 use futures::StreamExt;
 
-let stream = FluxionStream::from_unbounded_receiver(rx);
+let stream = rx.into_fluxion_stream();
 let mut combined = stream.combine_latest(vec![other_stream], |_| true);
 
 while let Some(item) = combined.next().await {
@@ -138,10 +138,10 @@ while let Some(item) = combined.next().await {
 Stream operators use internal locks for shared state. If a lock becomes poisoned (thread panicked while holding it), a `LockError` is emitted. Use pattern matching or `on_error` to handle these:
 
 ```rust
-use fluxion_stream::FluxionStream;
+use fluxion_stream::{FluxionStream, IntoFluxionStream};
 use futures::StreamExt;
 
-let stream = FluxionStream::from_unbounded_receiver(rx);
+let stream = rx.into_fluxion_stream();
 let mut combined = stream.combine_latest(vec![other_stream], |_| true);
 
 while let Some(item) = combined.next().await {
@@ -167,7 +167,7 @@ When channels close unexpectedly or send operations fail, stream processing cont
 use fluxion_rx::prelude::*;
 
 let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-let stream = FluxionStream::from_unbounded_receiver(rx);
+let stream = rx.into_fluxion_stream();
 
 // If tx is dropped, stream will end gracefully
 // Channel errors are handled internally by the stream
@@ -178,7 +178,7 @@ let stream = FluxionStream::from_unbounded_receiver(rx);
 Errors from user-provided closures are wrapped and propagated:
 
 ```rust
-use fluxion_exec::SubscribeAsyncExt;
+use fluxion_exec::SubscribeExt;
 
 let result = stream
     .subscribe(
@@ -370,7 +370,7 @@ When writing tests, explicitly test error conditions:
 async fn test_handles_lock_error() {
     // Setup: Create scenario that might cause lock error
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    let stream = FluxionStream::from_unbounded_receiver(rx);
+    let stream = rx.into_fluxion_stream();
 
     // Act: Trigger potential error
     let mut combined = stream.combine_latest(vec![other_stream], |_| true);

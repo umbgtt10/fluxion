@@ -8,7 +8,7 @@ use crate::domain::{events::UnifiedEvent, repository::OrderAnalytics, Timestampe
 use crate::processing::event_handler::{print_final_analytics, process_event};
 use anyhow::Result;
 use fluxion_core::stream_item::StreamItem;
-use fluxion_exec::subscribe::SubscribeAsyncExt;
+use fluxion_exec::subscribe::SubscribeExt;
 use futures::Stream;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;

@@ -20,7 +20,7 @@ use tokio::time::{sleep_until, Instant, Sleep};
 ///
 /// ```rust
 /// use fluxion_stream_time::sample;
-/// use fluxion_stream::FluxionStream;
+/// use fluxion_stream::{FluxionStream, IntoFluxionStream};
 /// use fluxion_core::StreamItem;
 /// use fluxion_test_utils::test_data::{person_alice, person_bob};
 /// use futures::stream::StreamExt;
@@ -31,7 +31,7 @@ use tokio::time::{sleep_until, Instant, Sleep};
 /// # async fn main() {
 /// // Use a channel to control emission timing relative to the sample interval
 /// let (tx, rx) = mpsc::unbounded_channel();
-/// let source = FluxionStream::from_unbounded_receiver(rx);
+/// let source = rx.into_fluxion_stream();
 /// let mut sampled = sample(source, Duration::from_millis(10));
 ///
 /// // Emit Alice and Bob immediately

@@ -21,7 +21,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.4.0"
+fluxion-rx = "0.5.0"
 tokio = { version = "1.48.0", features = ["full"] }
 ```
 
@@ -51,7 +51,7 @@ async fn main() {
     let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
 
     // Convert channel receiver to a stream
-    let stream = FluxionStream::from_unbounded_receiver(rx);
+    let stream = rx.into_fluxion_stream();
 
     // Now you can use stream operators
     let doubled = stream.map_ordered(|x| x * 2);
@@ -163,8 +163,8 @@ async fn main() {
     let (tx_trigger, rx_trigger) = mpsc::unbounded_channel::<bool>();
 
     // Convert to streams
-    let data_stream = FluxionStream::from_unbounded_receiver(rx_data);
-    let trigger_stream = FluxionStream::from_unbounded_receiver(rx_trigger);
+    let data_stream = rx_data.into_fluxion_stream();
+    let trigger_stream = rx_trigger.into_fluxion_stream();
 
     // Compose operators
     let mut pipeline = data_stream
