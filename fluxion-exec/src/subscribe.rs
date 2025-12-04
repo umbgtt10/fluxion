@@ -17,7 +17,7 @@ use fluxion_core::{FluxionError, Result};
 ///
 /// This trait enables processing stream items with async handlers in a sequential manner.
 #[async_trait]
-pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
+pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// Subscribes to the stream with an async handler, processing items sequentially.
     ///
     /// This method consumes the stream and spawns async tasks to process each item.
@@ -60,7 +60,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     ///
     /// # See Also
     ///
-    /// - [`subscribe_latest`](crate::SubscribeLatestAsyncExt::subscribe_latest) - Cancels old work for new items
+    /// - [`subscribe_latest`](crate::SubscribeLatestExt::subscribe_latest) - Cancels old work for new items
     ///
     /// # Examples
     ///
@@ -69,7 +69,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// Process all items sequentially:
     ///
     /// ```
-    /// use fluxion_exec::SubscribeAsyncExt;
+    /// use fluxion_exec::SubscribeExt;
     /// use futures::stream;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
@@ -114,7 +114,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// Use an error callback to handle errors without stopping the stream:
     ///
     /// ```
-    /// use fluxion_exec::SubscribeAsyncExt;
+    /// use fluxion_exec::SubscribeExt;
     /// use futures::stream;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
@@ -186,7 +186,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// Use a cancellation token to stop processing:
     ///
     /// ```
-    /// use fluxion_exec::SubscribeAsyncExt;
+    /// use fluxion_exec::SubscribeExt;
     /// use tokio::sync::mpsc::unbounded_channel;
     /// use tokio_stream::wrappers::UnboundedReceiverStream;
     /// use futures::StreamExt;
@@ -249,7 +249,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
     /// Process events and persist to a database:
     ///
     /// ```
-    /// use fluxion_exec::SubscribeAsyncExt;
+    /// use fluxion_exec::SubscribeExt;
     /// use futures::stream;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
@@ -314,7 +314,7 @@ pub trait SubscribeAsyncExt<T>: Stream<Item = T> + Sized {
 }
 
 #[async_trait]
-impl<S, T> SubscribeAsyncExt<T> for S
+impl<S, T> SubscribeExt<T> for S
 where
     S: Stream<Item = T> + Send + Unpin + 'static,
     T: Send + 'static,

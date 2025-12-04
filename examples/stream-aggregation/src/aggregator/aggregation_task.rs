@@ -10,7 +10,7 @@ use crate::domain::{AggregatedEvent, DataEvent, MetricData, SensorReading, Syste
 use crate::events_producer::EventsProducer;
 use crate::metrics_producer::MetricsProducer;
 use crate::sensor_producer::SensorProducer;
-use fluxion_exec::SubscribeLatestAsyncExt;
+use fluxion_exec::SubscribeLatestExt;
 use fluxion_rx::prelude::*;
 use std::convert::Infallible;
 use tokio::sync::mpsc;

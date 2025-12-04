@@ -69,7 +69,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-exec = "0.4"
+fluxion-exec = "0.5"
 tokio = { version = "1.48", features = ["rt", "sync", "macros"] }
 tokio-stream = "0.1"
 futures = "0.3"
@@ -936,8 +936,8 @@ See the [full API documentation](https://docs.rs/fluxion-exec) for detailed type
 
 ### Core Traits
 
-- [`SubscribeAsyncExt`](https://docs.rs/fluxion-exec/latest/fluxion_exec/trait.SubscribeAsyncExt.html) - Sequential processing
-- [`SubscribeLatestAsyncExt`](https://docs.rs/fluxion-exec/latest/fluxion_exec/trait.SubscribeLatestAsyncExt.html) - Latest-value processing
+- [`SubscribeExt`](https://docs.rs/fluxion-exec/latest/fluxion_exec/trait.SubscribeExt.html) - Sequential processing
+- [`SubscribeLatestExt`](https://docs.rs/fluxion-exec/latest/fluxion_exec/trait.SubscribeLatestExt.html) - Latest-value processing
 
 ### Related Crates
 

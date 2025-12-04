@@ -488,8 +488,8 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-stream = "0.4"
-fluxion-core = "0.4"
+fluxion-stream = "0.5"
+fluxion-core = "0.5"
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 ```

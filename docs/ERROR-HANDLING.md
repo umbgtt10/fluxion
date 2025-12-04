@@ -178,7 +178,7 @@ let stream = rx.into_fluxion_stream();
 Errors from user-provided closures are wrapped and propagated:
 
 ```rust
-use fluxion_exec::SubscribeAsyncExt;
+use fluxion_exec::SubscribeExt;
 
 let result = stream
     .subscribe(

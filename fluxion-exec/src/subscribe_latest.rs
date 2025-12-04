@@ -17,7 +17,7 @@ use tokio_util::sync::CancellationToken;
 /// This trait enables processing stream items where newer items automatically cancel
 /// processing of older items, ensuring only the latest value is being processed.
 #[async_trait]
-pub trait SubscribeLatestAsyncExt<T>: Stream<Item = T> + Send + 'static
+pub trait SubscribeLatestExt<T>: Stream<Item = T> + Send + 'static
 where
     T: Send + 'static,
 {
@@ -60,7 +60,7 @@ where
     ///
     /// # See Also
     ///
-    /// - [`subscribe`](crate::SubscribeAsyncExt::subscribe) - Sequential processing of all items
+    /// - [`subscribe`](crate::SubscribeExt::subscribe) - Sequential processing of all items
     ///
     /// # Examples
     ///
@@ -69,7 +69,7 @@ where
     /// Only the first and latest items are processed:
     ///
     /// ```
-    /// use fluxion_exec::SubscribeLatestAsyncExt;
+    /// use fluxion_exec::SubscribeLatestExt;
     /// use tokio::sync::mpsc::unbounded_channel;
     /// use tokio_stream::wrappers::UnboundedReceiverStream;
     /// use futures::StreamExt;
@@ -143,7 +143,7 @@ where
     /// Handlers should check the token periodically for responsive cancellation:
     ///
     /// ```
-    /// use fluxion_exec::SubscribeLatestAsyncExt;
+    /// use fluxion_exec::SubscribeLatestExt;
     /// use tokio::sync::mpsc::unbounded_channel;
     /// use tokio_stream::wrappers::UnboundedReceiverStream;
     /// use futures::StreamExt;
@@ -215,7 +215,7 @@ where
     /// Only search for the latest query:
     ///
     /// ```
-    /// use fluxion_exec::SubscribeLatestAsyncExt;
+    /// use fluxion_exec::SubscribeLatestExt;
     /// use tokio::sync::mpsc::unbounded_channel;
     /// use tokio_stream::wrappers::UnboundedReceiverStream;
     /// use futures::StreamExt;
@@ -306,7 +306,7 @@ where
     /// Render only the latest application state:
     ///
     /// ```
-    /// use fluxion_exec::SubscribeLatestAsyncExt;
+    /// use fluxion_exec::SubscribeLatestExt;
     /// use tokio::sync::mpsc::unbounded_channel;
     /// use tokio_stream::wrappers::UnboundedReceiverStream;
     /// use futures::StreamExt;
@@ -411,7 +411,7 @@ where
 }
 
 #[async_trait]
-impl<S, T> SubscribeLatestAsyncExt<T> for S
+impl<S, T> SubscribeLatestExt<T> for S
 where
     S: futures::Stream<Item = T> + Send + Unpin + 'static,
     T: Clone + Send + Sync + 'static,

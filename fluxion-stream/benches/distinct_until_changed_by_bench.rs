@@ -4,7 +4,7 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_core::StreamItem;
-use fluxion_stream::{DistinctUntilChangedByExt, FluxionStream};
+use fluxion_stream::FluxionStream;
 use fluxion_test_utils::Sequenced;
 use futures::stream::{self, StreamExt};
 use std::hint::black_box;

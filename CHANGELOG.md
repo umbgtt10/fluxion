@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+## [0.5.0] - 2025-12-04
+
 **Goal:** Time-based operators, API consolidation, and test organization
 
 ### Added
@@ -32,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `subscribe_async` → `subscribe`
   - `subscribe_latest_async` → `subscribe_latest`
   - Module names updated: `subscribe_async.rs` → `subscribe.rs`, `subscribe_latest_async.rs` → `subscribe_latest.rs`
-  - Trait names unchanged: `SubscribeAsyncExt`, `SubscribeLatestAsyncExt`
+  - Trait names updated: `SubscribeAsyncExt` → `SubscribeExt`, `SubscribeLatestAsyncExt` → `SubscribeLatestExt`
 - **Core Trait Unification**: Introduced unified `Fluxion` trait replacing fragmented trait hierarchy
   - Replaced `ComparableInner`, `ComparableSync`, `ComparableTimestamped`, `ComparableUnpin`, `ComparableUnpinTimestamped`, and `OrderedFluxionItem`
   - New `Fluxion` trait enforces `Timestamped + Clone + Send + Sync + Unpin + 'static + Debug + Ord`
@@ -84,8 +88,8 @@ use fluxion_exec::subscribe_async::SubscribeAsyncExt;
 use fluxion_exec::subscribe_latest_async::SubscribeLatestAsyncExt;
 
 // After
-use fluxion_exec::subscribe::SubscribeAsyncExt;
-use fluxion_exec::subscribe_latest::SubscribeLatestAsyncExt;
+use fluxion_exec::subscribe::SubscribeExt;
+use fluxion_exec::subscribe_latest::SubscribeLatestExt;
 ```
 
 ## [0.4.0] - 2025-11-28

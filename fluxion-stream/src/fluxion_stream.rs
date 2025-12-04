@@ -4,6 +4,8 @@
 
 use crate::combine_latest::CombineLatestExt;
 use crate::combine_with_previous::CombineWithPreviousExt;
+use crate::distinct_until_changed::DistinctUntilChangedExt;
+use crate::distinct_until_changed_by::DistinctUntilChangedByExt;
 use crate::emit_when::EmitWhenExt;
 use crate::ordered_merge::OrderedStreamExt;
 use crate::scan_ordered::ScanOrderedExt;
@@ -248,6 +250,86 @@ where
                 StreamItem::Error(e) => Some(StreamItem::Error(e)),
             })
         }))
+    }
+
+    /// Suppresses consecutive duplicate items.
+    ///
+    /// This operator filters out items that are equal to the previous item.
+    /// The first item is always emitted.
+    ///
+    /// # Requirements
+    ///
+    /// The inner type `T::Inner` must implement `PartialEq`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
+    ///
+    /// # async fn example() {
+    /// let (tx, stream) = test_channel::<Sequenced<i32>>();
+    /// let mut distinct = FluxionStream::new(stream).distinct_until_changed();
+    ///
+    /// tx.send(Sequenced::new(1)).unwrap();
+    /// tx.send(Sequenced::new(1)).unwrap(); // Duplicate, skipped
+    /// tx.send(Sequenced::new(2)).unwrap();
+    ///
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut distinct, 500).await)).value, 1);
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut distinct, 500).await)).value, 2);
+    /// # }
+    /// ```
+    pub fn distinct_until_changed(
+        self,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
+    where
+        S: Send + Sync + Unpin + 'static,
+        T::Inner: PartialEq,
+    {
+        let inner = self.into_inner();
+        FluxionStream::new(DistinctUntilChangedExt::distinct_until_changed(inner))
+    }
+
+    /// Suppresses consecutive duplicate items using a custom comparison function.
+    ///
+    /// This operator filters out items where the provided function returns `true`
+    /// when comparing the current item with the previous item.
+    ///
+    /// # Arguments
+    ///
+    /// * `compare` - A function that takes two items (previous, current) and returns `true` if they are considered equal.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fluxion_stream::FluxionStream;
+    /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
+    ///
+    /// # async fn example() {
+    /// let (tx, stream) = test_channel::<Sequenced<i32>>();
+    /// // Filter if difference is less than 2
+    /// let mut distinct = FluxionStream::new(stream).distinct_until_changed_by(|prev, curr| (curr - prev).abs() < 2);
+    ///
+    /// tx.send(Sequenced::new(10)).unwrap();
+    /// tx.send(Sequenced::new(11)).unwrap(); // Diff is 1, skipped
+    /// tx.send(Sequenced::new(13)).unwrap(); // Diff is 2, emitted
+    ///
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut distinct, 500).await)).value, 10);
+    /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut distinct, 500).await)).value, 13);
+    /// # }
+    /// ```
+    pub fn distinct_until_changed_by<F>(
+        self,
+        compare: F,
+    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
+    where
+        S: Send + Sync + Unpin + 'static,
+        F: Fn(&T::Inner, &T::Inner) -> bool + Send + Sync + 'static,
+    {
+        let inner = self.into_inner();
+        FluxionStream::new(DistinctUntilChangedByExt::distinct_until_changed_by(
+            inner, compare,
+        ))
     }
 
     /// Accumulates state across stream items, emitting intermediate results.
