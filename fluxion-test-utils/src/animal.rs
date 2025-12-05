@@ -13,10 +13,7 @@ pub struct Animal {
 impl Animal {
     #[must_use]
     pub const fn new(species: String, legs: u32) -> Self {
-        Self {
-            species,
-            legs,
-        }
+        Self { species, legs }
     }
 }
 

@@ -6,9 +6,7 @@ use fluxion_test_utils::person::Person;
 use fluxion_test_utils::test_data::{
     animal_dog, animal_spider, person_alice, person_charlie, plant_rose, TestData,
 };
-use fluxion_test_utils::{
-    test_channel, test_channel_with_errors, unwrap_stream, Sequenced,
-};
+use fluxion_test_utils::{test_channel, test_channel_with_errors, unwrap_stream, Sequenced};
 
 #[tokio::test]
 async fn subject_at_start_complex_chain_propagates_error() -> anyhow::Result<()> {

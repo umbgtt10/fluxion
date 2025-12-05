@@ -1,28 +1,16 @@
 // Composition tests for chaining FluxionStream with FluxionSubject using shared test data.
 
 use fluxion_core::{FluxionSubject, HasTimestamp, StreamItem, Timestamped};
+use fluxion_stream::merge_with::MergedStream;
 use fluxion_stream::FluxionStream;
 use fluxion_test_utils::animal::Animal;
 use fluxion_test_utils::person::Person;
+use fluxion_test_utils::plant::Plant;
 use fluxion_test_utils::test_data::{
-    animal_bird, animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
-    plant_fern, plant_rose, plant_sunflower, TestData,
+    animal_ant, animal_bird, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
+    person_charlie, person_diane, plant_fern, plant_rose, plant_sunflower, TestData,
 };
 use fluxion_test_utils::{assert_no_element_emitted, test_channel, unwrap_stream, Sequenced};
-
-fn person_age(data: &TestData) -> u32 {
-    match data {
-        TestData::Person(person) => person.age,
-        other => panic!("expected person, got {other:?}"),
-    }
-}
-
-fn animal_legs(data: &TestData) -> u32 {
-    match data {
-        TestData::Animal(animal) => animal.legs,
-        other => panic!("expected animal, got {other:?}"),
-    }
-}
 
 #[tokio::test]
 async fn subject_at_start_map_and_filter() -> anyhow::Result<()> {
@@ -151,9 +139,8 @@ async fn subject_combines_with_latest_from() -> anyhow::Result<()> {
     let secondary_subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
     let primary = FluxionStream::new(primary_rx);
-    let secondary = FluxionStream::new(secondary_subject.subscribe());
 
-    let mut stream = primary.with_latest_from(secondary, |state| {
+    let mut stream = primary.with_latest_from(secondary_subject.subscribe(), |state| {
         let values = state.values();
         let age = person_age(&values[0]);
         let legs = animal_legs(&values[1]);
@@ -244,4 +231,180 @@ async fn subject_chain_with_filter_and_map() -> anyhow::Result<()> {
         TestData::Animal(ref animal) if animal.species == "Cat" && animal.legs == 8
     ));
     Ok(())
+}
+
+#[tokio::test]
+async fn subject_with_previous_computes_age_deltas() -> anyhow::Result<()> {
+    let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
+
+    let mut deltas = FluxionStream::new(subject.subscribe())
+        .combine_with_previous()
+        .map_ordered(|pair| {
+            let ts = pair.current.timestamp();
+            let current_age = match pair.current.into_inner() {
+                TestData::Person(p) => p.age,
+                _ => 0,
+            };
+            let prev_age = match pair.previous.as_ref() {
+                Some(prev) => match prev.clone().into_inner() {
+                    TestData::Person(p) => p.age,
+                    _ => 0,
+                },
+                None => 0,
+            };
+            Sequenced::with_timestamp(current_age - prev_age, ts)
+        });
+
+    subject.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    subject.send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    subject.send(StreamItem::Value(Sequenced::new(person_diane())))?;
+
+    // First emission has no previous, delta is 0 - discard
+    let _ = unwrap_stream(&mut deltas, 200).await;
+    assert_eq!(
+        unwrap_stream(&mut deltas, 200).await.unwrap().into_inner(),
+        5
+    );
+    assert_eq!(
+        unwrap_stream(&mut deltas, 200).await.unwrap().into_inner(),
+        10
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn subject_take_while_with_stops_on_short_plants() -> anyhow::Result<()> {
+    let (src_tx, src_rx) = test_channel::<Sequenced<TestData>>();
+    let gate: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
+
+    let mut stream = FluxionStream::new(src_rx).take_while_with(
+        FluxionStream::new(gate.subscribe()),
+        |plant| matches!(plant, TestData::Plant(ref p) if p.height >= 100),
+    );
+
+    // Initialize gate before first source so emission is allowed
+    gate.send(StreamItem::Value(Sequenced::new(plant_sunflower())))?;
+    src_tx.send(Sequenced::new(person_alice()))?;
+    assert!(matches!(
+        unwrap_stream(&mut stream, 200).await.unwrap().into_inner(),
+        TestData::Person(ref person) if person.name == "Alice"
+    ));
+
+    // Drop gate below threshold, then send next source to trigger termination
+    gate.send(StreamItem::Value(Sequenced::new(plant_rose())))?;
+    src_tx.send(Sequenced::new(person_bob()))?;
+
+    // After predicate becomes false, stream stays silent; ensure no further output is emitted
+    assert_no_element_emitted(&mut stream, 200).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn subject_merge_with_stateful_height_bonus() -> anyhow::Result<()> {
+    // Merge a subject-driven plant stream with a secondary subject to apply a running height bonus.
+    let plants: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
+    let bonuses: FluxionSubject<Sequenced<u32>> = FluxionSubject::new();
+
+    let mut merged = MergedStream::seed::<Sequenced<TestData>>(0u32)
+        // Apply bonuses first so state is updated before plants are processed
+        .merge_with(bonuses.subscribe(), |bonus, state| {
+            *state = bonus;
+            TestData::Plant(Plant::new("BonusMarker".to_string(), *state))
+        })
+        .merge_with(plants.subscribe(), |plant, bonus| match plant {
+            TestData::Plant(mut p) => {
+                p.height += *bonus;
+                TestData::Plant(p)
+            }
+            other => other,
+        })
+        .into_fluxion_stream()
+        .filter_ordered(
+            |item| !matches!(item, TestData::Plant(ref p) if p.species == "BonusMarker"),
+        );
+
+    // Use explicit timestamps to enforce merge order: bonus first, then plant
+    bonuses.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
+    plants.send(StreamItem::Value(Sequenced::with_timestamp(
+        plant_rose(),
+        2,
+    )))?;
+    assert!(matches!(
+        unwrap_stream(&mut merged, 200).await.unwrap().into_inner(),
+        TestData::Plant(ref p) if p.species == "Rose" && p.height == 25
+    ));
+
+    bonuses.send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
+    plants.send(StreamItem::Value(Sequenced::with_timestamp(
+        plant_sunflower(),
+        4,
+    )))?;
+    assert!(matches!(
+        unwrap_stream(&mut merged, 200).await.unwrap().into_inner(),
+        TestData::Plant(ref p) if p.species == "Sunflower" && p.height == 185
+    ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn subject_scan_and_distinct_detects_unique_leg_totals() -> anyhow::Result<()> {
+    // Combine scan_ordered with distinct_until_changed to emit unique cumulative legs.
+    let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
+
+    let mut uniques = FluxionStream::new(subject.subscribe())
+        .scan_ordered::<Sequenced<u32>, _, _>(0u32, |acc, data| {
+            let legs = match data {
+                TestData::Animal(animal) => animal.legs,
+                _ => 0,
+            };
+            *acc += legs;
+            *acc
+        })
+        .distinct_until_changed();
+
+    subject.send(StreamItem::Value(Sequenced::new(animal_dog())))?;
+    assert_eq!(
+        unwrap_stream(&mut uniques, 200).await.unwrap().into_inner(),
+        4
+    );
+
+    subject.send(StreamItem::Value(Sequenced::new(animal_ant())))?;
+    assert_eq!(
+        unwrap_stream(&mut uniques, 200).await.unwrap().into_inner(),
+        10
+    );
+
+    subject.send(StreamItem::Value(Sequenced::new(animal_ant())))?;
+    assert_eq!(
+        unwrap_stream(&mut uniques, 200).await.unwrap().into_inner(),
+        16
+    );
+
+    subject.send(StreamItem::Value(Sequenced::new(animal_ant())))?;
+    assert_eq!(
+        unwrap_stream(&mut uniques, 200).await.unwrap().into_inner(),
+        22
+    );
+
+    subject.send(StreamItem::Value(Sequenced::new(animal_spider())))?;
+    assert_eq!(
+        unwrap_stream(&mut uniques, 200).await.unwrap().into_inner(),
+        30
+    );
+
+    Ok(())
+}
+
+fn person_age(data: &TestData) -> u32 {
+    match data {
+        TestData::Person(person) => person.age,
+        other => panic!("expected person, got {other:?}"),
+    }
+}
+
+fn animal_legs(data: &TestData) -> u32 {
+    match data {
+        TestData::Animal(animal) => animal.legs,
+        other => panic!("expected animal, got {other:?}"),
+    }
 }
