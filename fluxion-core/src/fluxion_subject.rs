@@ -9,13 +9,40 @@
 //! - Error/close: errors are propagated to all subscribers and then terminate the subject.
 
 use crate::{FluxionError, StreamItem};
-use futures::channel::mpsc::{self, UnboundedSender};
-use futures::stream::{self, BoxStream, StreamExt};
+use futures::channel::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use futures::stream;
+use futures::Stream;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
+use std::task::{Context, Poll};
+
+type SubjectBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
 
 struct SubjectState<T> {
     closed: bool,
     senders: Vec<UnboundedSender<StreamItem<T>>>,
+}
+
+// A Sync-capable wrapper around the unbounded receiver used by FluxionSubject subscriptions.
+struct SubjectStream<T> {
+    inner: Arc<Mutex<UnboundedReceiver<StreamItem<T>>>>,
+}
+
+impl<T: Clone + Send + Sync + 'static> SubjectStream<T> {
+    fn into_boxed_stream(rx: UnboundedReceiver<StreamItem<T>>) -> SubjectBoxStream<T> {
+        Box::pin(Self {
+            inner: Arc::new(Mutex::new(rx)),
+        })
+    }
+}
+
+impl<T: Clone + Send + Sync + 'static> Stream for SubjectStream<T> {
+    type Item = StreamItem<T>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut guard = self.inner.lock().unwrap();
+        Pin::new(&mut *guard).poll_next(cx)
+    }
 }
 
 /// A hot, unbounded subject that broadcasts items to all current subscribers.
@@ -23,11 +50,11 @@ struct SubjectState<T> {
 /// - Hot: late subscribers start receiving from the moment they subscribe.
 /// - Unbounded: uses unbounded mpsc channels (no backpressure).
 /// - Thread-safe: cheap to clone.
-pub struct FluxionSubject<T: Clone + Send + 'static> {
+pub struct FluxionSubject<T: Clone + Send + Sync + 'static> {
     state: Arc<Mutex<SubjectState<T>>>,
 }
 
-impl<T: Clone + Send + 'static> FluxionSubject<T> {
+impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
     /// Create an unbounded subject.
     #[must_use]
     pub fn new() -> Self {
@@ -41,15 +68,15 @@ impl<T: Clone + Send + 'static> FluxionSubject<T> {
 
     /// Subscribe to this subject and receive a stream of `StreamItem<T>`.
     /// Late subscribers do not receive previously sent items.
-    pub fn subscribe(&self) -> BoxStream<'static, StreamItem<T>> {
+    pub fn subscribe(&self) -> SubjectBoxStream<T> {
         let mut state = self.state.lock().unwrap();
         if state.closed {
-            return stream::empty().boxed();
+            return Box::pin(stream::empty());
         }
 
         let (tx, rx) = mpsc::unbounded();
         state.senders.push(tx);
-        rx.boxed()
+        SubjectStream::into_boxed_stream(rx)
     }
 
     /// Send an item to all active subscribers.
@@ -87,13 +114,13 @@ impl<T: Clone + Send + 'static> FluxionSubject<T> {
     }
 }
 
-impl<T: Clone + Send + 'static> Default for FluxionSubject<T> {
+impl<T: Clone + Send + Sync + 'static> Default for FluxionSubject<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Clone + Send + 'static> Clone for FluxionSubject<T> {
+impl<T: Clone + Send + Sync + 'static> Clone for FluxionSubject<T> {
     fn clone(&self) -> Self {
         Self {
             state: self.state.clone(),

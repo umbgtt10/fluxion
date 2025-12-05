@@ -80,7 +80,7 @@ async fn test_combine_with_previous_map_ordered_merge() -> anyhow::Result<()> {
     // Stream 2: Just map
     let stream2 = FluxionStream::new(s2_rx).map_ordered(|item| {
         let curr = match item.value {
-            TestData::Animal(a) => a.name,
+            TestData::Animal(a) => a.species,
             _ => "Other".to_string(),
         };
         Sequenced::new(format!("S2: {}", curr))
@@ -128,7 +128,7 @@ async fn test_filter_ordered_map_ordered_merge() -> anyhow::Result<()> {
     let stream2 = FluxionStream::new(s2_rx)
         .filter_ordered(|d| matches!(d, TestData::Animal(_)))
         .map_ordered(|d| match d.value {
-            TestData::Animal(a) => Sequenced::new(format!("Animal: {}", a.name)),
+            TestData::Animal(a) => Sequenced::new(format!("Animal: {}", a.species)),
             _ => Sequenced::new("Should not happen".to_string()),
         });
 

@@ -15,3 +15,4 @@ pub mod take_items;
 pub mod take_latest_when;
 pub mod take_while_with;
 pub mod with_latest_from;
+pub mod fluxion_subject;

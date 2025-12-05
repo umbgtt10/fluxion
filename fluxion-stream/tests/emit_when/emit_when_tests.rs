@@ -145,7 +145,7 @@ async fn test_emit_when_name_length_comparison() -> anyhow::Result<()> {
             _ => return false,
         };
         let filter_name = match &values[1] {
-            TestData::Animal(a) => &a.name,
+            TestData::Animal(a) => &a.species,
             _ => return false,
         };
         source_name.len() > filter_name.len()
