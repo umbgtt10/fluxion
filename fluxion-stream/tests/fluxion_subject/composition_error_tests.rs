@@ -1,10 +1,12 @@
-// Composition error tests for FluxionSubject integrations.
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, FluxionSubject, HasTimestamp, StreamItem};
 use fluxion_stream::FluxionStream;
 use fluxion_test_utils::person::Person;
 use fluxion_test_utils::test_data::{
-    animal_dog, animal_spider, person_alice, person_charlie, plant_rose, TestData,
+    animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_rose, TestData,
 };
 use fluxion_test_utils::{test_channel, test_channel_with_errors, unwrap_stream, Sequenced};
 
@@ -116,5 +118,34 @@ async fn subject_at_end_forwarding_chain_propagates_error() -> anyhow::Result<()
         StreamItem::Error(FluxionError::StreamProcessingError { context }) if context == "sink fail"
     ));
 
+    Ok(())
+}
+
+#[tokio::test]
+async fn subject_on_error_with_ordered_merge_skips_transient() -> anyhow::Result<()> {
+    let (tx, err_stream) = test_channel_with_errors::<Sequenced<TestData>>();
+    let gate: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
+
+    let mut merged = FluxionStream::new(err_stream)
+        .on_error(|err| err.to_string().contains("transient"))
+        .ordered_merge(vec![gate.subscribe()]);
+
+    tx.send(StreamItem::Error(FluxionError::stream_error(
+        "transient failure",
+    )))?;
+    gate.send(StreamItem::Value(Sequenced::with_timestamp(
+        plant_rose(),
+        1,
+    )))?;
+    tx.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_bob(),
+        2,
+    )))?;
+
+    let first = unwrap_stream(&mut merged, 200).await.unwrap().into_inner();
+    assert!(matches!(first, TestData::Plant(ref p) if p.species == "Rose"));
+
+    let second = unwrap_stream(&mut merged, 200).await.unwrap().into_inner();
+    assert!(matches!(second, TestData::Person(ref p) if p.name == "Bob"));
     Ok(())
 }

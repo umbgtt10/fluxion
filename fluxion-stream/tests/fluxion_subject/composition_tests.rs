@@ -1,4 +1,6 @@
-// Composition tests for chaining FluxionStream with FluxionSubject using shared test data.
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionSubject, HasTimestamp, StreamItem, Timestamped};
 use fluxion_stream::merge_with::MergedStream;
@@ -392,6 +394,125 @@ async fn subject_scan_and_distinct_detects_unique_leg_totals() -> anyhow::Result
         30
     );
 
+    Ok(())
+}
+
+#[tokio::test]
+async fn subject_start_with_take_items_preserves_temporal_merge() -> anyhow::Result<()> {
+    let plants: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
+    let (animal_tx, animal_rx) = test_channel::<Sequenced<TestData>>();
+
+    let mut merged = FluxionStream::new(plants.subscribe())
+        .start_with(vec![
+            StreamItem::Value(Sequenced::with_timestamp(plant_rose(), 1)),
+            StreamItem::Value(Sequenced::with_timestamp(plant_sunflower(), 2)),
+        ])
+        .ordered_merge(vec![animal_rx])
+        .take_items(3);
+
+    animal_tx.send(Sequenced::with_timestamp(animal_dog(), 3))?;
+    assert!(
+        matches!(unwrap_stream(&mut merged, 200).await.unwrap().into_inner(), TestData::Plant(ref p) if p.species == "Rose")
+    );
+
+    assert!(
+        matches!(unwrap_stream(&mut merged, 200).await.unwrap().into_inner(), TestData::Plant(ref p) if p.species == "Sunflower")
+    );
+
+    assert!(
+        matches!(unwrap_stream(&mut merged, 200).await.unwrap().into_inner(), TestData::Animal(ref a) if a.species == "Dog")
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn subject_skip_items_with_latest_from_ignores_prelude() -> anyhow::Result<()> {
+    let primary: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
+    let context: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
+
+    let mut stream = FluxionStream::new(primary.subscribe())
+        .start_with(vec![
+            StreamItem::Value(Sequenced::with_timestamp(person_alice(), 1)),
+            StreamItem::Value(Sequenced::with_timestamp(person_bob(), 2)),
+        ])
+        .skip_items(2)
+        .with_latest_from(context.subscribe(), |state| {
+            let values = state.values();
+            let age = person_age(&values[0]);
+            let legs = animal_legs(&values[1]);
+            Sequenced::new(age * legs)
+        });
+
+    context.send(StreamItem::Value(Sequenced::with_timestamp(
+        animal_dog(),
+        3,
+    )))?;
+    primary.send(StreamItem::Value(Sequenced::with_timestamp(
+        person_charlie(),
+        4,
+    )))?;
+
+    assert_eq!(
+        unwrap_stream(&mut stream, 200).await.unwrap().into_inner(),
+        140
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn subject_ordered_merge_distinct_by_species() -> anyhow::Result<()> {
+    let plants: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
+    let (other_tx, other_rx) = test_channel::<Sequenced<TestData>>();
+
+    let mut merged = FluxionStream::new(plants.subscribe())
+        .ordered_merge(vec![other_rx])
+        .distinct_until_changed_by(|prev, current| match (prev, current) {
+            (TestData::Plant(p1), TestData::Plant(p2)) => p1.species == p2.species,
+            _ => false,
+        });
+
+    plants.send(StreamItem::Value(Sequenced::with_timestamp(
+        plant_rose(),
+        1,
+    )))?;
+    other_tx.send(Sequenced::with_timestamp(plant_rose(), 2))?;
+    plants.send(StreamItem::Value(Sequenced::with_timestamp(
+        plant_sunflower(),
+        3,
+    )))?;
+
+    assert!(
+        matches!(unwrap_stream(&mut merged, 200).await.unwrap().into_inner(), TestData::Plant(ref p) if p.species == "Rose")
+    );
+
+    assert!(
+        matches!(unwrap_stream(&mut merged, 200).await.unwrap().into_inner(), TestData::Plant(ref p) if p.species == "Sunflower")
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn subject_combine_latest_then_take_items_limits_output() -> anyhow::Result<()> {
+    let primary: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
+    let (secondary_tx, secondary_rx) = test_channel::<Sequenced<TestData>>();
+
+    let mut stream = FluxionStream::new(primary.subscribe())
+        .combine_latest(vec![secondary_rx], |_| true)
+        .take_items(2);
+
+    secondary_tx.send(Sequenced::new(plant_fern()))?;
+    primary.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    primary.send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    let first = unwrap_stream(&mut stream, 200).await.unwrap().into_inner();
+    let vals = first.values();
+    assert!(matches!(vals[0], TestData::Person(ref p) if p.name == "Alice"));
+    assert!(matches!(vals[1], TestData::Plant(ref p) if p.species == "Fern"));
+
+    let second = unwrap_stream(&mut stream, 200).await.unwrap().into_inner();
+    let vals = second.values();
+    assert!(matches!(vals[0], TestData::Person(ref p) if p.name == "Bob"));
+    assert!(matches!(vals[1], TestData::Plant(ref p) if p.species == "Fern"));
     Ok(())
 }
 
