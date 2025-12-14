@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -145,7 +145,7 @@ async fn test_emit_when_name_length_comparison() -> anyhow::Result<()> {
             _ => return false,
         };
         let filter_name = match &values[1] {
-            TestData::Animal(a) => &a.name,
+            TestData::Animal(a) => &a.species,
             _ => return false,
         };
         source_name.len() > filter_name.len()

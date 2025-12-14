@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -79,7 +79,7 @@ async fn test_filter_ordered_with_latest_from() -> anyhow::Result<()> {
             _ => String::from("Unknown"),
         };
         let secondary_info = match &state.values()[1] {
-            TestData::Animal(a) => format!("with animal {} ({} legs)", a.name, a.legs),
+            TestData::Animal(a) => format!("with animal {} ({} legs)", a.species, a.legs),
             TestData::Person(p) => format!("with person {} (age {})", p.name, p.age),
             TestData::Plant(p) => format!("with plant {} (height {})", p.species, p.height),
         };
@@ -185,7 +185,7 @@ async fn test_ordered_merge_into_with_latest_from() -> anyhow::Result<()> {
                 let values = state.values();
                 let primary_name = match &values[0] {
                     TestData::Person(p) => p.name.clone(),
-                    TestData::Animal(a) => a.name.clone(),
+                    TestData::Animal(a) => a.species.clone(),
                     _ => "Unknown".to_string(),
                 };
                 let secondary_name = match &values[1] {

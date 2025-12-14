@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -177,7 +177,7 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
     // Output: Sequenced<TestData>
     let mapped_trigger = FluxionStream::new(trigger_stream).map_ordered(|x| {
         if let TestData::Animal(a) = &x.value {
-            Sequenced::with_timestamp(animal(a.name.clone(), a.legs * 2), x.timestamp())
+            Sequenced::with_timestamp(animal(a.species.clone(), a.legs * 2), x.timestamp())
         } else {
             x.clone()
         }

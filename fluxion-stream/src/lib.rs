@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -652,7 +652,7 @@ pub mod distinct_until_changed;
 pub mod distinct_until_changed_by;
 pub mod emit_when;
 pub mod fluxion_stream;
-pub mod from_receiver;
+pub mod into_fluxion_stream;
 pub mod merge_with;
 pub mod ordered_merge;
 pub mod scan_ordered;
@@ -668,7 +668,7 @@ pub use distinct_until_changed::DistinctUntilChangedExt;
 pub use distinct_until_changed_by::DistinctUntilChangedByExt;
 pub use emit_when::EmitWhenExt;
 pub use fluxion_stream::FluxionStream;
-pub use from_receiver::IntoFluxionStream;
+pub use into_fluxion_stream::IntoFluxionStream;
 pub use merge_with::MergedStream;
 pub use ordered_merge::OrderedStreamExt;
 pub use scan_ordered::ScanOrderedExt;

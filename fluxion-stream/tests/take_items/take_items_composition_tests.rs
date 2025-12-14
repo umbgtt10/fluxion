@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -128,7 +128,7 @@ async fn test_map_ordered_then_take_items() -> anyhow::Result<()> {
         .map_ordered(|item| {
             let name = match item.value {
                 TestData::Person(p) => p.name,
-                TestData::Animal(a) => a.name,
+                TestData::Animal(a) => a.species,
                 TestData::Plant(p) => p.species,
             };
             Sequenced::new(name)
@@ -176,7 +176,7 @@ async fn test_with_latest_from_then_take_items() -> anyhow::Result<()> {
                     _ => "Unknown".to_string(),
                 };
                 let s_name = match &values[1] {
-                    TestData::Animal(a) => a.name.clone(),
+                    TestData::Animal(a) => a.species.clone(),
                     _ => "Unknown".to_string(),
                 };
                 Sequenced::new(format!("{} with {}", p_name, s_name))

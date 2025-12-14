@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -221,7 +221,7 @@ async fn test_with_latest_from_large_number_of_emissions() -> anyhow::Result<()>
         let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
         assert_eq!(element.clone().into_inner().values()[1], person_alice());
         if let TestData::Animal(ref animal) = element.clone().into_inner().values()[0] {
-            assert_eq!(animal.name, format!("Animal{}", i));
+            assert_eq!(animal.species, format!("Animal{}", i));
         } else {
             panic!("Expected Animal");
         }

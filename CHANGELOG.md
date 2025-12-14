@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **FluxionSubject Enhancements** (`fluxion-core`)
+  - `is_closed()` - Check if subject has been closed
+  - `subscriber_count()` - Get number of active subscribers
+  - `next(value)` - Convenience method for sending values (wraps `send(StreamItem::Value(value))`)
+
+### Changed
+- **Documentation**: Improved `FluxionSubject` documentation
+  - Added comprehensive module-level documentation with examples
+  - Enhanced struct and method documentation
+  - Added integration example showing usage with `FluxionStream` operators
 
 ## [0.5.0] - 2025-12-04
 

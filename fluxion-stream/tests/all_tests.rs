@@ -1,9 +1,14 @@
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
 pub mod combine_latest;
 pub mod combine_with_previous;
 pub mod distinct_until_changed;
 pub mod distinct_until_changed_by;
 pub mod emit_when;
 pub mod filter_ordered;
+pub mod fluxion_subject;
 pub mod map_ordered;
 pub mod merge_with;
 pub mod on_error;
