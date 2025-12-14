@@ -32,7 +32,7 @@ pub fn bench_subject(c: &mut Criterion) {
                     for _ in 0..subs {
                         let s = subj.subscribe();
                         handles.push(tokio::spawn(async move {
-                            let mut s = s;
+                            let mut s = s.unwrap();
                             let item = s.next().await;
                             black_box(item);
                         }));
@@ -67,7 +67,7 @@ pub fn bench_subject(c: &mut Criterion) {
                         for _ in 0..subs {
                             let s = subj.subscribe();
                             handles.push(tokio::spawn(async move {
-                                let mut s = s;
+                                let mut s = s.unwrap();
                                 let item = s.next().await;
                                 black_box(item);
                             }));

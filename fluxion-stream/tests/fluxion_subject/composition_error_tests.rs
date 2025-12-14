@@ -15,7 +15,7 @@ async fn subject_at_start_complex_chain_propagates_error() -> anyhow::Result<()>
     // subject feeds a map -> filter -> combine_with_previous -> map chain
     let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
-    let mut stream = FluxionStream::new(subject.subscribe())
+    let mut stream = FluxionStream::new(subject.subscribe().unwrap())
         .map_ordered(|item| {
             let ts = item.timestamp();
             let mapped = match item.into_inner() {
@@ -71,7 +71,7 @@ async fn subject_in_middle_gate_error_terminates_stream() -> anyhow::Result<()> 
     let gate: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
     let mut stream = FluxionStream::new(rx).take_latest_when(
-        gate.subscribe(),
+        gate.subscribe().unwrap(),
         |data| matches!(data, TestData::Animal(animal) if animal.legs >= 4),
     );
 
@@ -96,7 +96,8 @@ async fn subject_at_end_forwarding_chain_propagates_error() -> anyhow::Result<()
     let (tx, rx) = test_channel_with_errors::<Sequenced<TestData>>();
     let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
-    let mut combined = FluxionStream::new(rx).combine_latest(vec![subject.subscribe()], |_| true);
+    let mut combined =
+        FluxionStream::new(rx).combine_latest(vec![subject.subscribe().unwrap()], |_| true);
 
     // First, provide both sides so combine_latest can emit a value
     tx.send(StreamItem::Value(Sequenced::new(plant_rose())))?;
@@ -128,7 +129,7 @@ async fn subject_on_error_with_ordered_merge_skips_transient() -> anyhow::Result
 
     let mut merged = FluxionStream::new(err_stream)
         .on_error(|err| err.to_string().contains("transient"))
-        .ordered_merge(vec![gate.subscribe()]);
+        .ordered_merge(vec![gate.subscribe().unwrap()]);
 
     tx.send(StreamItem::Error(FluxionError::stream_error(
         "transient failure",

@@ -20,7 +20,7 @@ async fn subject_at_start_map_and_filter() -> anyhow::Result<()> {
     let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
     let (other_tx, other_rx) = test_channel::<Sequenced<TestData>>();
 
-    let mut stream = FluxionStream::new(subject.subscribe())
+    let mut stream = FluxionStream::new(subject.subscribe().unwrap())
         .combine_latest(vec![other_rx], |_| true)
         .map_ordered(|combined| {
             let person = combined.values()[0].clone();
@@ -65,8 +65,8 @@ async fn subject_combined_with_stream_via_combine_latest() -> anyhow::Result<()>
     let (primary_tx, primary_rx) = test_channel::<Sequenced<TestData>>();
     let gate_subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
-    let mut combined =
-        FluxionStream::new(primary_rx).combine_latest(vec![gate_subject.subscribe()], |_| true);
+    let mut combined = FluxionStream::new(primary_rx)
+        .combine_latest(vec![gate_subject.subscribe().unwrap()], |_| true);
 
     // Act
     gate_subject.send(StreamItem::Value(Sequenced::new(plant_sunflower())))?;
@@ -104,7 +104,7 @@ async fn subject_in_middle_take_latest_when() -> anyhow::Result<()> {
     let gate_subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
     let source = FluxionStream::new(src_rx);
-    let gate = FluxionStream::new(gate_subject.subscribe());
+    let gate = gate_subject.subscribe().unwrap();
 
     let mut stream = source.take_latest_when(
         gate,
@@ -142,7 +142,7 @@ async fn subject_combines_with_latest_from() -> anyhow::Result<()> {
 
     let primary = FluxionStream::new(primary_rx);
 
-    let mut stream = primary.with_latest_from(secondary_subject.subscribe(), |state| {
+    let mut stream = primary.with_latest_from(secondary_subject.subscribe().unwrap(), |state| {
         let values = state.values();
         let age = person_age(&values[0]);
         let legs = animal_legs(&values[1]);
@@ -168,7 +168,7 @@ async fn subject_as_filter_for_emit_when() -> anyhow::Result<()> {
     let filter_subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
     let mut stream = FluxionStream::new(src_rx).emit_when(
-        filter_subject.subscribe(),
+        filter_subject.subscribe().unwrap(),
         |state| matches!(state.values()[1], TestData::Plant(ref plant) if plant.height >= 100),
     );
 
@@ -199,7 +199,7 @@ async fn subject_as_filter_for_emit_when() -> anyhow::Result<()> {
 async fn subject_chain_with_filter_and_map() -> anyhow::Result<()> {
     // Arrange
     let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
-    let mut stream = FluxionStream::new(subject.subscribe())
+    let mut stream = FluxionStream::new(subject.subscribe().unwrap())
         .filter_ordered(|data| {
             matches!(
                 data,
@@ -239,7 +239,7 @@ async fn subject_chain_with_filter_and_map() -> anyhow::Result<()> {
 async fn subject_with_previous_computes_age_deltas() -> anyhow::Result<()> {
     let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
-    let mut deltas = FluxionStream::new(subject.subscribe())
+    let mut deltas = FluxionStream::new(subject.subscribe().unwrap())
         .combine_with_previous()
         .map_ordered(|pair| {
             let ts = pair.current.timestamp();
@@ -280,7 +280,7 @@ async fn subject_take_while_with_stops_on_short_plants() -> anyhow::Result<()> {
     let gate: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
     let mut stream = FluxionStream::new(src_rx).take_while_with(
-        FluxionStream::new(gate.subscribe()),
+        gate.subscribe().unwrap(),
         |plant| matches!(plant, TestData::Plant(ref p) if p.height >= 100),
     );
 
@@ -309,11 +309,11 @@ async fn subject_merge_with_stateful_height_bonus() -> anyhow::Result<()> {
 
     let mut merged = MergedStream::seed::<Sequenced<TestData>>(0u32)
         // Apply bonuses first so state is updated before plants are processed
-        .merge_with(bonuses.subscribe(), |bonus, state| {
+        .merge_with(bonuses.subscribe().unwrap(), |bonus, state| {
             *state = bonus;
             TestData::Plant(Plant::new("BonusMarker".to_string(), *state))
         })
-        .merge_with(plants.subscribe(), |plant, bonus| match plant {
+        .merge_with(plants.subscribe().unwrap(), |plant, bonus| match plant {
             TestData::Plant(mut p) => {
                 p.height += *bonus;
                 TestData::Plant(p)
@@ -353,7 +353,7 @@ async fn subject_scan_and_distinct_detects_unique_leg_totals() -> anyhow::Result
     // Combine scan_ordered with distinct_until_changed to emit unique cumulative legs.
     let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
-    let mut uniques = FluxionStream::new(subject.subscribe())
+    let mut uniques = FluxionStream::new(subject.subscribe().unwrap())
         .scan_ordered::<Sequenced<u32>, _, _>(0u32, |acc, data| {
             let legs = match data {
                 TestData::Animal(animal) => animal.legs,
@@ -402,7 +402,7 @@ async fn subject_start_with_take_items_preserves_temporal_merge() -> anyhow::Res
     let plants: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
     let (animal_tx, animal_rx) = test_channel::<Sequenced<TestData>>();
 
-    let mut merged = FluxionStream::new(plants.subscribe())
+    let mut merged = FluxionStream::new(plants.subscribe().unwrap())
         .start_with(vec![
             StreamItem::Value(Sequenced::with_timestamp(plant_rose(), 1)),
             StreamItem::Value(Sequenced::with_timestamp(plant_sunflower(), 2)),
@@ -430,13 +430,13 @@ async fn subject_skip_items_with_latest_from_ignores_prelude() -> anyhow::Result
     let primary: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
     let context: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
-    let mut stream = FluxionStream::new(primary.subscribe())
+    let mut stream = FluxionStream::new(primary.subscribe().unwrap())
         .start_with(vec![
             StreamItem::Value(Sequenced::with_timestamp(person_alice(), 1)),
             StreamItem::Value(Sequenced::with_timestamp(person_bob(), 2)),
         ])
         .skip_items(2)
-        .with_latest_from(context.subscribe(), |state| {
+        .with_latest_from(context.subscribe().unwrap(), |state| {
             let values = state.values();
             let age = person_age(&values[0]);
             let legs = animal_legs(&values[1]);
@@ -464,7 +464,7 @@ async fn subject_ordered_merge_distinct_by_species() -> anyhow::Result<()> {
     let plants: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
     let (other_tx, other_rx) = test_channel::<Sequenced<TestData>>();
 
-    let mut merged = FluxionStream::new(plants.subscribe())
+    let mut merged = FluxionStream::new(plants.subscribe().unwrap())
         .ordered_merge(vec![other_rx])
         .distinct_until_changed_by(|prev, current| match (prev, current) {
             (TestData::Plant(p1), TestData::Plant(p2)) => p1.species == p2.species,
@@ -496,7 +496,7 @@ async fn subject_combine_latest_then_take_items_limits_output() -> anyhow::Resul
     let primary: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
     let (secondary_tx, secondary_rx) = test_channel::<Sequenced<TestData>>();
 
-    let mut stream = FluxionStream::new(primary.subscribe())
+    let mut stream = FluxionStream::new(primary.subscribe().unwrap())
         .combine_latest(vec![secondary_rx], |_| true)
         .take_items(2);
 

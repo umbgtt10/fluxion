@@ -10,6 +10,7 @@ pub mod has_timestamp;
 pub mod into_stream;
 pub mod lock_utilities;
 pub mod stream_item;
+pub mod subject_error;
 pub mod timestamped;
 
 pub use self::fluxion_error::{FluxionError, IntoFluxionError, Result, ResultExt};
@@ -17,4 +18,5 @@ pub use self::fluxion_item::Fluxion;
 pub use self::fluxion_subject::FluxionSubject;
 pub use self::has_timestamp::HasTimestamp;
 pub use self::stream_item::StreamItem;
+pub use self::subject_error::SubjectError;
 pub use self::timestamped::Timestamped;

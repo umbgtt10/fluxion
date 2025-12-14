@@ -4,13 +4,63 @@
 
 //! Hot, multi-subscriber subject for Fluxion streams.
 //!
-//! A `FluxionSubject` broadcasts each `StreamItem<T>` to all active subscribers.
-//! - Hot: late subscribers do not see past items.
-//! - Error/close: errors are propagated to all subscribers and then terminate the subject.
+//! A [`FluxionSubject`] broadcasts each [`StreamItem<T>`] to all active subscribers.
+//!
+//! ## Characteristics
+//!
+//! - **Hot**: Late subscribers do not receive past items—only items sent after subscribing.
+//! - **Unbounded**: Uses unbounded mpsc channels internally (no backpressure).
+//! - **Thread-safe**: Cheap to clone; all clones share the same internal state.
+//! - **Error/close**: Errors are propagated to all subscribers and terminate the subject.
+//!
+//! ## Example
+//!
+//! ```
+//! use fluxion_core::{FluxionSubject, StreamItem};
+//! use futures::StreamExt;
+//!
+//! # #[tokio::main]
+//! # async fn main() {
+//! let subject = FluxionSubject::<i32>::new();
+//!
+//! // Subscribe before sending
+//! let mut stream = subject.subscribe().unwrap();
+//!
+//! // Send values to all subscribers
+//! subject.send(StreamItem::Value(1)).unwrap();
+//! subject.send(StreamItem::Value(2)).unwrap();
+//! subject.close();
+//!
+//! // Receive values
+//! assert_eq!(stream.next().await, Some(StreamItem::Value(1)));
+//! assert_eq!(stream.next().await, Some(StreamItem::Value(2)));
+//! assert_eq!(stream.next().await, None); // Subject closed
+//! # }
+//! ```
+//!
+//! ## Integration with FluxionStream
+//!
+//! To use operators like `filter_ordered` or `map_ordered`, wrap the subscription
+//! in a `FluxionStream` from the `fluxion-stream` crate:
+//!
+//! ```ignore
+//! use fluxion_core::{FluxionSubject, StreamItem, Timestamped};
+//! use fluxion_stream::{FluxionStream, IntoFluxionStream};
+//! use fluxion_test_utils::Sequenced;
+//!
+//! let subject: FluxionSubject<Sequenced<i32>> = FluxionSubject::new();
+//!
+//! let processed = FluxionStream::new(subject.subscribe().unwrap())
+//!     .filter_ordered(|&x| x > 10)
+//!     .map_ordered(|x| Sequenced::new(x * 2));
+//!
+//! // Send timestamped values
+//! subject.send(StreamItem::Value(Sequenced::new(5))).unwrap();  // filtered out
+//! subject.send(StreamItem::Value(Sequenced::new(15))).unwrap(); // passes -> 30
+//! ```
 
-use crate::{FluxionError, StreamItem};
+use crate::{FluxionError, StreamItem, SubjectError};
 use futures::channel::mpsc::{self, UnboundedReceiver, UnboundedSender};
-use futures::stream;
 use futures::Stream;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
@@ -47,15 +97,20 @@ impl<T: Clone + Send + Sync + 'static> Stream for SubjectStream<T> {
 
 /// A hot, unbounded subject that broadcasts items to all current subscribers.
 ///
-/// - Hot: late subscribers start receiving from the moment they subscribe.
-/// - Unbounded: uses unbounded mpsc channels (no backpressure).
-/// - Thread-safe: cheap to clone.
+/// `FluxionSubject` is the entry point for pushing values into a Fluxion stream pipeline.
+/// It implements a publish-subscribe pattern where multiple subscribers can receive
+/// the same items.
+///
+/// See the [module documentation](self) for examples and more details.
 pub struct FluxionSubject<T: Clone + Send + Sync + 'static> {
     state: Arc<Mutex<SubjectState<T>>>,
 }
 
 impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
-    /// Create an unbounded subject.
+    /// Creates a new unbounded subject with no subscribers.
+    ///
+    /// The subject starts in an open state and can immediately accept
+    /// subscriptions and items.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -68,23 +123,26 @@ impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
 
     /// Subscribe to this subject and receive a stream of `StreamItem<T>`.
     /// Late subscribers do not receive previously sent items.
-    pub fn subscribe(&self) -> SubjectBoxStream<T> {
+    pub fn subscribe(&self) -> Result<SubjectBoxStream<T>, SubjectError> {
         let mut state = self.state.lock().unwrap();
         if state.closed {
-            return Box::pin(stream::empty());
+            return Err(SubjectError::Closed);
         }
 
         let (tx, rx) = mpsc::unbounded();
         state.senders.push(tx);
-        SubjectStream::into_boxed_stream(rx)
+        Ok(SubjectStream::into_boxed_stream(rx))
     }
 
     /// Send an item to all active subscribers.
-    /// Returns an error if the subject is closed.
-    pub fn send(&self, item: StreamItem<T>) -> Result<(), FluxionError> {
+    ///
+    /// Returns a subject-specific error if the operation fails:
+    /// - `SubjectError::Closed` if the subject has been closed
+    /// - `SubjectError::NoSubscribers` if no subscribers remain (optional check)
+    pub fn send(&self, item: StreamItem<T>) -> Result<(), SubjectError> {
         let mut state = self.state.lock().unwrap();
         if state.closed {
-            return Err(FluxionError::stream_error("Subject is closed"));
+            return Err(SubjectError::Closed);
         }
 
         let mut next_senders = Vec::with_capacity(state.senders.len());
@@ -99,18 +157,55 @@ impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
         Ok(())
     }
 
-    /// Convenience helper to send an error to all subscribers and terminate the subject.
-    pub fn error(&self, err: FluxionError) -> Result<(), FluxionError> {
+    /// Send a value to all active subscribers.
+    ///
+    /// This is a convenience wrapper around `send(StreamItem::Value(value))`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `SubjectError::Closed` if the subject has been closed.
+    pub fn next(&self, value: T) -> Result<(), SubjectError> {
+        self.send(StreamItem::Value(value))
+    }
+
+    /// Convenience helper to send a stream error to all subscribers and terminate the subject.
+    ///
+    /// This bridges stream errors (FluxionError) with subject operations (SubjectError).
+    pub fn error(&self, err: FluxionError) -> Result<(), SubjectError> {
         let result = self.send(StreamItem::Error(err));
         self.close();
         result
     }
 
-    /// Close the subject, completing all subscribers.
+    /// Closes the subject, completing all subscriber streams.
+    ///
+    /// After closing:
+    /// - All existing subscribers will receive `None` on their next poll (stream ends).
+    /// - `send()` and `error()` will return `SubjectError::Closed`.
+    /// - `subscribe()` will return `SubjectError::Closed`.
+    ///
+    /// Closing is idempotent—calling it multiple times has no additional effect.
     pub fn close(&self) {
         let mut state = self.state.lock().unwrap();
         state.closed = true;
         state.senders.clear();
+    }
+
+    /// Returns `true` if the subject has been closed.
+    ///
+    /// A closed subject cannot accept new items or subscribers.
+    #[must_use]
+    pub fn is_closed(&self) -> bool {
+        self.state.lock().unwrap().closed
+    }
+
+    /// Returns the number of currently active subscribers.
+    ///
+    /// Note: This count is updated lazily—dropped subscribers are removed
+    /// on the next `send()` call, not immediately when dropped.
+    #[must_use]
+    pub fn subscriber_count(&self) -> usize {
+        self.state.lock().unwrap().senders.len()
     }
 }
 
