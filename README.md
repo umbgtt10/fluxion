@@ -7,7 +7,7 @@
 [![Crates.io](https://img.shields.io/crates/v/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
 [![Downloads](https://img.shields.io/crates/d/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
 
-Fluxion is 100% Rust-idiomatic reactive streams library in with temporal ordering guarantees with friendly fluent API, bullet-proof reliability, and comprehensive testing. It has a 4.8:1 test-to-code ratio with 730 passing tests, zero warnings, and comprehensive performance benchmarks. It's published on crates.io and demonstrates production-quality Rust engineering.
+Fluxion is 100% Rust-idiomatic reactive streams library in with temporal ordering guarantees with friendly fluent API, bullet-proof reliability, and comprehensive testing. It has a 4.8:1 test-to-code ratio with 800+ passing tests, zero warnings, and comprehensive performance benchmarks. It's published on crates.io and demonstrates production-quality Rust engineering.
 
 **📊 [See why Fluxion sets new standards for quality →](PITCH.md)**
 
@@ -21,12 +21,12 @@ Fluxion is 100% Rust-idiomatic reactive streams library in with temporal orderin
 
 ## Features
 
-- 🔄 **Rx-Style Operators**: 25 implemented operators (32 planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, `share`, etc.)
+- 🔄 **Rx-Style Operators**: 26 implemented operators (32 planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, `share`, `partition`, etc.)
 - ⏱️ **Temporal Ordering**: Guaranteed ordering semantics via `Timestamped` trait
 - ⚡ **Async Execution**: Efficient async processing with `subscribe` and `subscribe_latest`
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
-- ✅ **Well Tested**: 730 tests with comprehensive coverage
+- ✅ **Well Tested**: 800+ tests with comprehensive coverage
 
 ### 📋 Independent Code Reviews
 

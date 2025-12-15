@@ -29,7 +29,7 @@ pub trait IntoFluxionStream<T> {
     /// let (tx, rx) = mpsc::unbounded_channel::<i32>();
     /// let stream = rx.into_fluxion_stream();
     /// ```
-    fn into_fluxion_stream(self) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>;
+    fn into_fluxion_stream(self) -> impl Stream<Item = StreamItem<T>> + Send + Sync;
 
     /// Converts this receiver into a fluxion stream by applying a transformation.
     ///
@@ -112,7 +112,7 @@ pub trait IntoFluxionStream<T> {
 }
 
 impl<T: Send + 'static> IntoFluxionStream<T> for UnboundedReceiver<T> {
-    fn into_fluxion_stream(self) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>> {
+    fn into_fluxion_stream(self) -> impl Stream<Item = StreamItem<T>> + Send + Sync {
         Box::pin(UnboundedReceiverStream::new(self).map(StreamItem::Value))
     }
 

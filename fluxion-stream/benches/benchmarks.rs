@@ -11,6 +11,7 @@ mod filter_ordered_bench;
 mod map_ordered_bench;
 mod merge_with_bench;
 mod ordered_merge_bench;
+mod partition_bench;
 mod scan_ordered_bench;
 mod share_bench;
 mod skip_items_bench;
@@ -30,6 +31,9 @@ use filter_ordered_bench::bench_filter_ordered;
 use map_ordered_bench::bench_map_ordered;
 use merge_with_bench::bench_merge_with;
 use ordered_merge_bench::bench_ordered_merge;
+use partition_bench::{
+    bench_partition_balanced, bench_partition_imbalanced, bench_partition_single_consumer,
+};
 use scan_ordered_bench::{
     bench_scan_ordered_count, bench_scan_ordered_sum, bench_scan_ordered_vec_accumulator,
 };
@@ -52,6 +56,9 @@ criterion_group!(
     bench_map_ordered,
     bench_merge_with,
     bench_ordered_merge,
+    bench_partition_balanced,
+    bench_partition_imbalanced,
+    bench_partition_single_consumer,
     bench_scan_ordered_count,
     bench_scan_ordered_sum,
     bench_scan_ordered_vec_accumulator,
