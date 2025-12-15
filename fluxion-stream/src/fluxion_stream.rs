@@ -1156,4 +1156,56 @@ where
     {
         FluxionStream::new(StreamExt::skip(self.into_inner(), n))
     }
+
+    /// Converts this stream into a shared, multi-subscriber source.
+    ///
+    /// `share()` consumes this stream and returns a [`FluxionShared`] subscription factory.
+    /// The source stream is consumed once, and all emitted items are broadcast to all
+    /// active subscribers.
+    ///
+    /// This is useful when you have an expensive computation or external data source
+    /// that you want to share among multiple consumers without re-executing the source.
+    ///
+    /// # Behavior
+    ///
+    /// - **Hot**: Late subscribers do not receive past items
+    /// - **Shared execution**: Source operators run once; results are broadcast
+    /// - **Owned lifecycle**: The forwarding task is cancelled when `FluxionShared` is dropped
+    ///
+    /// # Returns
+    ///
+    /// A [`FluxionShared`] subscription factory. Call `subscribe()` on it to create
+    /// subscriber streams, then wrap in `FluxionStream::new()` to chain operators.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use fluxion_stream::{FluxionStream, IntoFluxionStream};
+    /// use fluxion_test_utils::Sequenced;
+    ///
+    /// // Source with expensive computation (runs ONCE)
+    /// let source = FluxionStream::new(rx)
+    ///     .map_ordered(|x| expensive_computation(x));
+    ///
+    /// // Share among multiple subscribers
+    /// let shared = source.share();
+    ///
+    /// // Each subscriber chains independently
+    /// let sub1 = FluxionStream::new(shared.subscribe().unwrap())
+    ///     .filter_ordered(|x| x > 10);
+    ///
+    /// let sub2 = FluxionStream::new(shared.subscribe().unwrap())
+    ///     .map_ordered(|x| format!("{}", x));
+    /// ```
+    ///
+    /// # See Also
+    ///
+    /// - [`FluxionSubject`](fluxion_core::FluxionSubject) - For push-based multicast
+    /// - [`FluxionShared`](crate::FluxionShared) - The returned subscription factory
+    pub fn share(self) -> crate::FluxionShared<T>
+    where
+        S: Send + Sync + Unpin + 'static,
+    {
+        crate::FluxionShared::new(self.into_inner())
+    }
 }

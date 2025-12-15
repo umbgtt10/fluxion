@@ -193,7 +193,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 **Goal:** Enable stream sharing across multiple consumers and add sampling/batching operators
 
 **Essential Features:**
-- [ ] `FluxionSubject` - Foundation for multi-consumer scenarios
+- ✅ `FluxionSubject` - Foundation for multi-consumer scenarios
 - [ ] `share()` operator - Share single stream source among multiple subscribers (standard Rx operator)
 - [ ] `sample_ratio(fraction)` operator - Probabilistic downsampling (0.0 to 1.0)
 - [ ] `window_by_count(n)` operator - Count-based batching into Vec<T>

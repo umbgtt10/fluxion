@@ -8,6 +8,7 @@ pub mod distinct_until_changed;
 pub mod distinct_until_changed_by;
 pub mod emit_when;
 pub mod filter_ordered;
+pub mod fluxion_shared;
 pub mod fluxion_subject;
 pub mod map_ordered;
 pub mod merge_with;

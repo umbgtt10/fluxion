@@ -37,8 +37,7 @@ where
     S: Stream<Item = StreamItem<T>> + Unpin,
     T: Timestamped<Inner = CombinedState<TestData>>,
 {
-    let item = unwrap_stream(stream, 100).await;
-    let state = unwrap_value(Some(item));
+    let state = unwrap_value(Some(unwrap_stream(stream, 100).await));
     let actual: Vec<TestData> = state.clone().into_inner().values().clone();
     assert_eq!(actual, expected);
 }
