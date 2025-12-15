@@ -41,7 +41,7 @@ Stream combinators for async Rust with strong temporal-ordering guarantees. This
 ## Key Features
 
 - **Temporal Ordering**: All operators maintain temporal correctness via the `Timestamped` trait
-- **Composable Operators**: 9+ stream combinators designed to work together seamlessly
+- **Composable Operators**: 10+ stream combinators designed to work together seamlessly
 - **Error Propagation**: Structured error handling through `StreamItem<T>` enum
 - **Zero-Copy**: Minimal allocations and efficient buffering strategies
 - **Tokio Integration**: Built on tokio streams for async runtime compatibility
@@ -444,6 +444,41 @@ let handled = stream
 
 [Full documentation](src/fluxion_stream.rs#L780-L866) | [Tests](tests/on_error_tests.rs) | [Specification](../docs/FLUXION_OPERATOR_SUMMARY.md#on_error)
 
+### Multicasting Operators
+
+#### `share`
+Convert a cold stream into a hot, multi-subscriber broadcast source.
+
+**Use case:** Share expensive computations across multiple consumers
+
+```rust
+use fluxion_stream::{IntoFluxionStream, ShareExt, FilterOrderedExt, MapOrderedExt};
+use fluxion_test_utils::Sequenced;
+
+let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+
+// Source operators run ONCE
+let source = rx.into_fluxion_stream()
+    .map_ordered(|x: Sequenced<i32>| Sequenced::new(x.into_inner() * 2));
+
+// Share among multiple subscribers
+let shared = source.share();
+
+// Each subscriber chains independently
+let evens = shared.subscribe().unwrap()
+    .filter_ordered(|x| x.into_inner() % 2 == 0);
+let strings = shared.subscribe().unwrap()
+    .map_ordered(|x: Sequenced<i32>| Sequenced::new(x.into_inner().to_string()));
+```
+
+**Behavior:**
+- **Hot stream**: Late subscribers do not receive past items
+- **Shared execution**: Source operators run once; results are broadcast to all
+- **Subscription factory**: Call `subscribe()` to create independent subscriber streams
+- **Error propagation**: Errors broadcast to all subscribers, then source closes
+
+[Full documentation](src/fluxion_shared.rs) | [Tests](tests/fluxion_shared/) | [Benchmarks](benches/share_bench.rs)
+
 ## Operator Selection Guide
 
 ### When You Need Combined State
@@ -482,6 +517,12 @@ let handled = stream
 | Operator | Consumes Errors | Enables Side Effects | Propagation Control | Best For |
 |----------|-----------------|----------------------|---------------------|----------|
 | `on_error` | Selective | Yes (logging, metrics) | Handler-controlled | Layered error handling, monitoring |
+
+### When You Need Multicasting
+
+| Operator | Late Subscribers | Source Execution | Best For |
+|----------|------------------|------------------|----------|
+| `share` | Miss past items | Once (broadcast) | Sharing expensive computations, fan-out |
 
 ## Quick Start
 

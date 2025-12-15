@@ -8,16 +8,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`share` Operator** (`fluxion-stream`)
+  - Convert cold streams to hot, multi-subscriber broadcast sources
+  - `ShareExt` trait with `share()` method for any `Stream<Item = StreamItem<T>>`
+  - `FluxionShared` subscription factory - call `subscribe()` for independent subscriber streams
+  - Late subscribers miss past items (hot stream semantics)
+  - Source stream consumed once, results broadcast to all subscribers
+  - Comprehensive test suite: `fluxion_shared_tests.rs`, `fluxion_shared_error_tests.rs`, `fluxion_shared_composition_tests.rs`, `fluxion_shared_composition_error_tests.rs`
+  - Benchmark: `share_bench.rs` with subscriber count variations
+  - Documentation in `FLUXION_OPERATOR_SUMMARY.md` and `fluxion-stream/README.md`
+
 - **FluxionSubject Enhancements** (`fluxion-core`)
   - `is_closed()` - Check if subject has been closed
   - `subscriber_count()` - Get number of active subscribers
   - `next(value)` - Convenience method for sending values (wraps `send(StreamItem::Value(value))`)
 
 ### Changed
+- **BREAKING**: Removed `FluxionStream` wrapper type
+  - Extension traits now work directly on any `Stream<Item = StreamItem<T>>`
+  - Use `IntoFluxionStream` trait to convert `UnboundedReceiver` to fluxion streams
+  - Simplified API: `rx.into_fluxion_stream().map_ordered(...)` instead of `FluxionStream::new(rx).map_ordered(...)`
+- **Documentation**: Updated operator count to 25 (was 22)
+- **Documentation**: Updated test count to 730 (was 641/717)
 - **Documentation**: Improved `FluxionSubject` documentation
   - Added comprehensive module-level documentation with examples
   - Enhanced struct and method documentation
-  - Added integration example showing usage with `FluxionStream` operators
+  - Added integration example showing usage with stream operators
+
+### Migration Guide
+
+**FluxionStream removal:**
+```rust
+// Before (v0.5.x)
+use fluxion_stream::FluxionStream;
+let stream = FluxionStream::new(rx);
+
+// After
+use fluxion_stream::IntoFluxionStream;
+let stream = rx.into_fluxion_stream();
+```
 
 ## [0.5.0] - 2025-12-04
 

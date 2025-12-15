@@ -21,7 +21,7 @@ Fluxion is 100% Rust-idiomatic reactive streams library in with temporal orderin
 
 ## Features
 
-- 🔄 **Rx-Style Operators**: 22 implemented operators (32 planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, etc.)
+- 🔄 **Rx-Style Operators**: 25 implemented operators (32 planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, `share`, etc.)
 - ⏱️ **Temporal Ordering**: Guaranteed ordering semantics via `Timestamped` trait
 - ⚡ **Async Execution**: Efficient async processing with `subscribe` and `subscribe_latest`
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
