@@ -62,6 +62,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::task::JoinHandle;
+use tokio_util::sync::CancellationToken;
 
 /// Extension trait providing the `partition` operator for streams.
 ///
@@ -167,14 +168,18 @@ where
 /// Type alias for the boxed streams returned by partition.
 type InnerStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
 
-/// Guard that aborts the routing task when dropped.
+/// Guard that owns the routing task and signals cancellation when dropped.
+///
+/// Uses cooperative cancellation via `CancellationToken` for graceful shutdown.
+/// The task will complete its current operation before exiting.
 struct TaskGuard {
-    task: JoinHandle<()>,
+    cancel: CancellationToken,
+    _task: JoinHandle<()>,
 }
 
 impl Drop for TaskGuard {
     fn drop(&mut self) {
-        self.task.abort();
+        self.cancel.cancel();
     }
 }
 
@@ -229,35 +234,53 @@ where
             .subscribe()
             .expect("fresh subject should allow subscription");
 
-        // Spawn routing task - aborted when both PartitionedStreams are dropped
+        let cancel = CancellationToken::new();
+        let cancel_clone = cancel.clone();
+
+        // Spawn routing task - cancelled gracefully when both PartitionedStreams are dropped
         let task = tokio::spawn(async move {
             let mut stream = self;
-            while let Some(item) = stream.next().await {
-                match item {
-                    StreamItem::Value(ref value) => {
-                        let inner = value.clone().into_inner();
-                        if predicate(&inner) {
-                            if true_subject.next(value.clone()).is_err() {
-                                // True subscriber dropped, but continue for false subscriber
-                            }
-                        } else if false_subject.next(value.clone()).is_err() {
-                            // False subscriber dropped, but continue for true subscriber
-                        }
-                    }
-                    StreamItem::Error(e) => {
-                        // Propagate error to both streams
-                        let _ = true_subject.error(e.clone());
-                        let _ = false_subject.error(e);
+            loop {
+                tokio::select! {
+                    biased;
+
+                    _ = cancel_clone.cancelled() => {
+                        // Graceful shutdown requested
                         break;
+                    }
+
+                    item = stream.next() => {
+                        match item {
+                            Some(StreamItem::Value(ref value)) => {
+                                let inner = value.clone().into_inner();
+                                if predicate(&inner) {
+                                    if true_subject.next(value.clone()).is_err() {
+                                        // True subscriber dropped, but continue for false subscriber
+                                    }
+                                } else if false_subject.next(value.clone()).is_err() {
+                                    // False subscriber dropped, but continue for true subscriber
+                                }
+                            }
+                            Some(StreamItem::Error(e)) => {
+                                // Propagate error to both streams
+                                let _ = true_subject.error(e.clone());
+                                let _ = false_subject.error(e);
+                                break;
+                            }
+                            None => {
+                                // Source completed
+                                break;
+                            }
+                        }
                     }
                 }
             }
-            // Source completed, close both subjects
+            // Close both subjects on exit
             true_subject.close();
             false_subject.close();
         });
 
-        let guard = Arc::new(TaskGuard { task });
+        let guard = Arc::new(TaskGuard { cancel, _task: task });
 
         (
             PartitionedStream {
