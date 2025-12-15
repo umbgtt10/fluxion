@@ -5,6 +5,7 @@
 use crate::types::WithPrevious;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
+use std::fmt::Debug;
 
 /// Extension trait providing the `combine_with_previous` operator for timestamped streams.
 ///
@@ -13,8 +14,8 @@ use futures::{future::ready, Stream, StreamExt};
 pub trait CombineWithPreviousExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
-    T::Inner: std::fmt::Debug + Ord + Send + Sync + Unpin + 'static,
-    T::Timestamp: std::fmt::Debug + Ord + Send + Sync + Copy + 'static,
+    T::Inner: Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
     /// Pairs each stream element with its previous element.
     ///
@@ -93,8 +94,8 @@ impl<T, S> CombineWithPreviousExt<T> for S
 where
     S: Stream<Item = StreamItem<T>> + Send + Sized + 'static,
     T: Fluxion,
-    T::Inner: std::fmt::Debug + Ord + Send + Sync + Unpin + 'static,
-    T::Timestamp: std::fmt::Debug + Ord + Send + Sync + Copy + 'static,
+    T::Inner: Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
     fn combine_with_previous(self) -> impl Stream<Item = StreamItem<WithPrevious<T>>> + Send {
         Box::pin(

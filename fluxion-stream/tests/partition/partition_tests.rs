@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use std::time::Duration;
+
 use fluxion_stream::PartitionExt;
 use fluxion_test_utils::test_data::{
     animal_bird, animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
@@ -10,6 +12,7 @@ use fluxion_test_utils::test_data::{
 use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{assert_stream_ended, test_channel};
 use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value};
+use tokio::time::sleep;
 
 #[tokio::test]
 async fn test_partition_basic_predicate() -> anyhow::Result<()> {
@@ -357,5 +360,62 @@ async fn test_partition_multiple_types_complex() -> anyhow::Result<()> {
         &person_dave()
     );
 
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_partition_drop_one_stream_early() -> anyhow::Result<()> {
+    // Arrange - partition by type, then drop one stream and continue reading the other
+    let (tx, stream) = test_channel();
+    let (mut persons, non_persons) = stream.partition(|data| matches!(data, TestData::Person(_)));
+
+    // Drop the non_persons stream immediately
+    drop(non_persons);
+
+    // Act - send items of both types
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(animal_dog()))?; // Goes to dropped stream - should be discarded
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(animal_cat()))?; // Goes to dropped stream - should be discarded
+    tx.send(Sequenced::new(person_charlie()))?;
+    drop(tx);
+
+    // Assert - persons stream should still work correctly
+    assert_eq!(
+        &unwrap_value(Some(unwrap_stream(&mut persons, 500).await)).value,
+        &person_alice()
+    );
+    assert_eq!(
+        &unwrap_value(Some(unwrap_stream(&mut persons, 500).await)).value,
+        &person_bob()
+    );
+    assert_eq!(
+        &unwrap_value(Some(unwrap_stream(&mut persons, 500).await)).value,
+        &person_charlie()
+    );
+    assert_stream_ended(&mut persons, 500).await;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_partition_drop_both_streams_gracefully() -> anyhow::Result<()> {
+    // Arrange - create partition and drop both streams
+    // This tests that dropping both streams doesn't panic or leak resources
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+    let (persons, non_persons) = stream.partition(|data| matches!(data, TestData::Person(_)));
+
+    // Send some items before dropping
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
+
+    // Drop both partition streams - task should be cancelled gracefully
+    drop(persons);
+    drop(non_persons);
+
+    // Give the task time to notice cancellation and clean up
+    sleep(Duration::from_millis(50)).await;
+
+    // Test passes if no panic occurred - resources are cleaned up properly
     Ok(())
 }

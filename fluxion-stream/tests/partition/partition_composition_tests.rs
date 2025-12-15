@@ -2,9 +2,11 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
-    assert_stream_ended,
+    assert_no_element_emitted, assert_stream_ended,
     helpers::unwrap_stream,
     test_channel,
     test_data::{
@@ -413,6 +415,225 @@ async fn test_share_then_partition() -> anyhow::Result<()> {
         &unwrap_value(Some(unwrap_stream(&mut adults1, 500).await)).value,
         &person_charlie()
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
+    // Arrange - partition persons and animals, then combine_latest between them
+    let (tx, stream) = test_channel();
+    let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
+
+    // combine_latest requires all streams to have emitted before producing output
+    let mut combined = persons.combine_latest(vec![animals], |_| true);
+
+    // Act - send one of each to satisfy combine_latest requirements
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
+
+    // Assert - should have both values combined
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
+            .into_inner()
+            .values(),
+        &[person_alice(), animal_dog()]
+    );
+
+    // Act - update person, combined should emit with latest animal
+    tx.send(Sequenced::new(person_bob()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
+            .into_inner()
+            .values(),
+        &[person_bob(), animal_dog()]
+    );
+
+    // Act - update animal, combined should emit with latest person
+    tx.send(Sequenced::new(animal_cat()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
+            .into_inner()
+            .values(),
+        &[person_bob(), animal_cat()]
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_partition_with_subject_and_filter() -> anyhow::Result<()> {
+    use fluxion_core::{FluxionSubject, StreamItem};
+
+    // Arrange - use a subject as the source, partition, then filter
+    let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
+
+    let stream = subject.subscribe().unwrap();
+    let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
+
+    // Filter persons for age > 30
+    let mut older_persons = persons.filter_ordered(|data| match data {
+        TestData::Person(p) => p.age > 30,
+        _ => false,
+    });
+
+    // Filter animals for legs >= 4
+    let mut four_legged = animals.filter_ordered(|data| match data {
+        TestData::Animal(a) => a.legs >= 4,
+        _ => false,
+    });
+
+    // Act - send through subject
+    subject.send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25 - filtered
+    subject.send(StreamItem::Value(Sequenced::new(animal_bird())))?; // 2 legs - filtered
+    subject.send(StreamItem::Value(Sequenced::new(person_charlie())))?; // age 35 - kept
+    subject.send(StreamItem::Value(Sequenced::new(animal_dog())))?; // 4 legs - kept
+    subject.send(StreamItem::Value(Sequenced::new(person_diane())))?; // age 40 - kept
+    subject.send(StreamItem::Value(Sequenced::new(animal_spider())))?; // 8 legs - kept
+
+    // Assert
+    assert_eq!(
+        &unwrap_value(Some(unwrap_stream(&mut older_persons, 500).await)).value,
+        &person_charlie()
+    );
+    assert_eq!(
+        &unwrap_value(Some(unwrap_stream(&mut four_legged, 500).await)).value,
+        &animal_dog()
+    );
+    assert_eq!(
+        &unwrap_value(Some(unwrap_stream(&mut older_persons, 500).await)).value,
+        &person_diane()
+    );
+    assert_eq!(
+        &unwrap_value(Some(unwrap_stream(&mut four_legged, 500).await)).value,
+        &animal_spider()
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_partition_share_then_combine_latest() -> anyhow::Result<()> {
+    // Arrange - share a stream, partition from one sub, use another sub with combine_latest
+    let (tx, rx) = test_channel();
+    let shared = rx.share();
+
+    // Subscriber 1: partition into persons and non-persons
+    let sub1 = shared.subscribe().unwrap();
+    let (persons1, _non_persons1) = sub1.partition(|data| matches!(data, TestData::Person(_)));
+
+    // Subscriber 2: just filter for animals
+    let sub2 = shared.subscribe().unwrap();
+    let animals2 = sub2.filter_ordered(|data| matches!(data, TestData::Animal(_)));
+
+    // combine_latest between partitioned persons and filtered animals
+    let mut combined = persons1.combine_latest(vec![animals2], |_| true);
+
+    // Act
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
+
+    // Assert - both streams need to emit before combine_latest produces
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
+            .clone()
+            .into_inner()
+            .values(),
+        [person_alice(), animal_dog()]
+    );
+
+    // Act - update both
+    tx.send(Sequenced::new(person_bob()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
+            .clone()
+            .into_inner()
+            .values(),
+        [person_bob(), animal_dog()]
+    );
+
+    tx.send(Sequenced::new(animal_cat()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
+            .clone()
+            .into_inner()
+            .values(),
+        [person_bob(), animal_cat()]
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_partition_then_with_latest_from() -> anyhow::Result<()> {
+    // Arrange - partition by type, use with_latest_from to sample animals when persons emit
+    let (tx, stream) = test_channel();
+    let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
+
+    // When a person emits, sample the latest animal
+    let mut person_with_animal = persons
+        .with_latest_from(animals, |state: &CombinedState<TestData, u64>| {
+            state.clone()
+        });
+
+    // Act - need animal first (secondary), then person (primary) triggers
+    tx.send(Sequenced::new(animal_dog()))?;
+    tx.send(Sequenced::new(person_alice()))?;
+
+    // Assert
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut person_with_animal, 500).await))
+            .clone()
+            .into_inner()
+            .values(),
+        [person_alice(), animal_dog()]
+    );
+
+    // Act - animal update alone shouldn't emit (only primary triggers)
+    tx.send(Sequenced::new(animal_cat()))?;
+    assert_no_element_emitted(&mut person_with_animal, 100).await;
+
+    // Act - person update triggers with latest animal
+    tx.send(Sequenced::new(person_bob()))?;
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut person_with_animal, 500).await))
+            .clone()
+            .into_inner()
+            .values(),
+        [person_bob(), animal_cat()]
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_partition_then_combine_with_previous() -> anyhow::Result<()> {
+    // Arrange - partition by type, then track previous values in each partition
+    let (tx, stream) = test_channel();
+    let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
+
+    let mut persons_with_prev = persons.combine_with_previous();
+    let mut animals_with_prev = animals.combine_with_previous();
+
+    // Act
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(animal_dog()))?;
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(animal_cat()))?;
+
+    // Assert - first emissions have no previous
+    let item1 = unwrap_value(Some(unwrap_stream(&mut persons_with_prev, 500).await));
+    assert!(item1.current.value == person_alice() && item1.previous.is_none());
+
+    let item2 = unwrap_value(Some(unwrap_stream(&mut animals_with_prev, 500).await));
+    assert!(item2.current.value == animal_dog() && item2.previous.is_none());
+
+    // Second emissions have previous
+    let item3 = unwrap_value(Some(unwrap_stream(&mut persons_with_prev, 500).await));
+    assert!(item3.current.value == person_bob() && item3.previous.unwrap().value == person_alice());
+
+    let item4 = unwrap_value(Some(unwrap_stream(&mut animals_with_prev, 500).await));
+    assert!(item4.current.value == animal_cat() && item4.previous.unwrap().value == animal_dog());
 
     Ok(())
 }

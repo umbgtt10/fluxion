@@ -109,7 +109,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<TItem>> + Send + Sync>>;
+    ) -> impl Stream<Item = StreamItem<TItem>> + Send + Sync;
 }
 
 impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
@@ -126,7 +126,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<TItem>> + Send + Sync>> {
+    ) -> impl Stream<Item = StreamItem<TItem>> + Send + Sync {
         let filter = Arc::new(filter);
 
         // Tag each stream with its type - unwrap StreamItem first

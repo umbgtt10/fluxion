@@ -17,6 +17,18 @@
 //! - **Non-blocking**: Both streams can be consumed independently
 //! - **Hot**: Uses internal subjects for broadcasting (late consumers miss items)
 //! - **Error propagation**: Errors are sent to both output streams
+//! - **Unbounded buffers**: Items are buffered in memory until consumed
+//!
+//! ## Buffer Behavior
+//!
+//! The partition operator uses unbounded internal channels. If one partition stream
+//! is consumed slowly (or not at all), items destined for that stream will accumulate
+//! in memory. This is typically fine for balanced workloads, but be aware:
+//!
+//! - If you only consume one partition, items for the other still buffer
+//! - For high-throughput streams with imbalanced consumption, consider adding
+//!   backpressure mechanisms downstream
+//! - Dropping one partition stream is safe; items for it are simply discarded
 //!
 //! ## Example
 //!
@@ -165,24 +177,6 @@ where
         F: Fn(&T::Inner) -> bool + Send + Sync + 'static;
 }
 
-/// Type alias for the boxed streams returned by partition.
-type InnerStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
-
-/// Guard that owns the routing task and signals cancellation when dropped.
-///
-/// Uses cooperative cancellation via `CancellationToken` for graceful shutdown.
-/// The task will complete its current operation before exiting.
-struct TaskGuard {
-    cancel: CancellationToken,
-    _task: JoinHandle<()>,
-}
-
-impl Drop for TaskGuard {
-    fn drop(&mut self) {
-        self.cancel.cancel();
-    }
-}
-
 /// A partitioned stream that keeps the routing task alive.
 ///
 /// This stream wraps an inner stream and holds an `Arc` reference to the
@@ -197,6 +191,18 @@ where
 {
     inner: InnerStream<T>,
     _guard: Arc<TaskGuard>,
+}
+
+impl<T: Fluxion> Debug for PartitionedStream<T>
+where
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PartitionedStream")
+            .field("inner", &"<stream>")
+            .finish()
+    }
 }
 
 impl<T: Fluxion> Stream for PartitionedStream<T>
@@ -237,7 +243,6 @@ where
         let cancel = CancellationToken::new();
         let cancel_clone = cancel.clone();
 
-        // Spawn routing task - cancelled gracefully when both PartitionedStreams are dropped
         let task = tokio::spawn(async move {
             let mut stream = self;
             loop {
@@ -280,7 +285,10 @@ where
             false_subject.close();
         });
 
-        let guard = Arc::new(TaskGuard { cancel, _task: task });
+        let guard = Arc::new(TaskGuard {
+            cancel,
+            _task: task,
+        });
 
         (
             PartitionedStream {
@@ -292,5 +300,19 @@ where
                 _guard: guard,
             },
         )
+    }
+}
+
+type InnerStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
+
+#[derive(Debug)]
+struct TaskGuard {
+    cancel: CancellationToken,
+    _task: JoinHandle<()>,
+}
+
+impl Drop for TaskGuard {
+    fn drop(&mut self) {
+        self.cancel.cancel();
     }
 }

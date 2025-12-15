@@ -108,7 +108,7 @@ where
         self,
         other: IS,
         result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<R>> + Send + Sync>>
+    ) -> impl Stream<Item = StreamItem<R>> + Send + Sync
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -128,7 +128,7 @@ where
         self,
         other: IS,
         result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<R>> + Send + Sync>>
+    ) -> impl Stream<Item = StreamItem<R>> + Send + Sync
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -136,8 +136,6 @@ where
         R::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
         R::Timestamp: From<T::Timestamp> + Debug + Ord + Send + Sync + Copy + 'static,
     {
-        type PinnedStream<T> =
-            std::pin::Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;
         let streams: Vec<PinnedStream<T>> = vec![
             Box::pin(self.map(move |item| (item, 0))),
             Box::pin(other.into_stream().map(move |item| (item, 1))),
@@ -197,6 +195,8 @@ where
         Box::pin(combined_stream)
     }
 }
+
+type PinnedStream<T> = Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;
 
 #[derive(Clone)]
 struct IntermediateState<T> {
