@@ -4,9 +4,12 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_core::StreamItem;
-use fluxion_stream::FluxionStream;
+use fluxion_stream::DistinctUntilChangedByExt;
 use fluxion_test_utils::Sequenced;
-use futures::stream::{self, StreamExt};
+use futures::{
+    stream::{self, StreamExt},
+    Stream,
+};
 use std::hint::black_box;
 use tokio::runtime::Runtime;
 
@@ -39,7 +42,7 @@ impl Ord for OrderedF64 {
 fn make_stream_with_duplicates(
     size: usize,
     duplicate_factor: usize,
-) -> FluxionStream<impl futures::Stream<Item = StreamItem<Sequenced<Record>>>> {
+) -> impl Stream<Item = StreamItem<Sequenced<Record>>> {
     // Create stream with consecutive duplicates based on id
     let items: Vec<Sequenced<Record>> = (0..size)
         .map(|i| {
@@ -49,12 +52,10 @@ fn make_stream_with_duplicates(
             })
         })
         .collect();
-    FluxionStream::new(stream::iter(items).map(StreamItem::Value))
+    stream::iter(items).map(StreamItem::Value)
 }
 
-fn make_stream_case_insensitive(
-    size: usize,
-) -> FluxionStream<impl futures::Stream<Item = StreamItem<Sequenced<String>>>> {
+fn make_stream_case_insensitive(size: usize) -> impl Stream<Item = StreamItem<Sequenced<String>>> {
     // Create stream with case variations
     let items: Vec<Sequenced<String>> = (0..size)
         .map(|i| {
@@ -66,12 +67,10 @@ fn make_stream_case_insensitive(
             }
         })
         .collect();
-    FluxionStream::new(stream::iter(items).map(StreamItem::Value))
+    stream::iter(items).map(StreamItem::Value)
 }
 
-fn make_stream_threshold(
-    size: usize,
-) -> FluxionStream<impl futures::Stream<Item = StreamItem<Sequenced<OrderedF64>>>> {
+fn make_stream_threshold(size: usize) -> impl Stream<Item = StreamItem<Sequenced<OrderedF64>>> {
     // Create stream with values that vary within/outside threshold
     let items: Vec<Sequenced<OrderedF64>> = (0..size)
         .map(|i| {
@@ -80,7 +79,7 @@ fn make_stream_threshold(
             Sequenced::new(OrderedF64(base + variation))
         })
         .collect();
-    FluxionStream::new(stream::iter(items).map(StreamItem::Value))
+    stream::iter(items).map(StreamItem::Value)
 }
 
 /// # Panics

@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::StartWithExt;
 use fluxion_test_utils::{helpers::unwrap_stream, test_channel_with_errors, Sequenced};
 
 #[tokio::test]
@@ -17,7 +18,7 @@ async fn test_start_with_propagates_errors_from_initial_values() -> anyhow::Resu
         StreamItem::Value(Sequenced::new(2)),
     ];
 
-    let mut result = FluxionStream::new(stream).start_with(initial);
+    let mut result = stream.start_with(initial);
 
     // Act & Assert
     let item1 = unwrap_stream(&mut result, 100).await;
@@ -39,7 +40,7 @@ async fn test_start_with_propagates_errors_from_source_stream() -> anyhow::Resul
 
     let initial = vec![StreamItem::Value(Sequenced::new(1))];
 
-    let mut result = FluxionStream::new(stream).start_with(initial);
+    let mut result = stream.start_with(initial);
 
     // Act
     tx.send(StreamItem::Value(Sequenced::new(2)))?;

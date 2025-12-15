@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_stream::{FluxionStream, WithPrevious};
+use fluxion_stream::prelude::*;
+use fluxion_stream::WithPrevious;
 use fluxion_test_utils::helpers::unwrap_stream;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_dave, TestData,
@@ -23,9 +24,7 @@ async fn test_combine_with_previous_start_with() -> anyhow::Result<()> {
         )),
     ];
 
-    let mut result = FluxionStream::new(stream)
-        .combine_with_previous()
-        .start_with(initial);
+    let mut result = stream.combine_with_previous().start_with(initial);
 
     // Act
     tx.send(Sequenced::new(person_charlie()))?;
@@ -67,9 +66,7 @@ async fn test_ordered_merge_then_start_with() -> anyhow::Result<()> {
     ];
 
     // Merge streams then prepend values
-    let mut stream = FluxionStream::new(s1_rx)
-        .ordered_merge(vec![s2_rx])
-        .start_with(initial_values);
+    let mut stream = s1_rx.ordered_merge(vec![s2_rx]).start_with(initial_values);
 
     // Act & Assert
     // 1. Should receive initial values immediately

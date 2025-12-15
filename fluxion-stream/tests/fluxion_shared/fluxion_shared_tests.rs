@@ -3,7 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem, SubjectError};
-use fluxion_stream::FluxionStream;
+use fluxion_stream::prelude::*;
+use fluxion_stream::ShareExt;
 use fluxion_test_utils::person::Person;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_diane, TestData,
@@ -18,7 +19,7 @@ use futures::StreamExt;
 async fn share_broadcasts_to_multiple_subscribers() {
     // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
     let mut sub1 = shared.subscribe().unwrap();
@@ -42,7 +43,7 @@ async fn share_broadcasts_to_multiple_subscribers() {
 async fn share_completes_subscribers_when_source_completes() {
     // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
     let mut sub1 = shared.subscribe().unwrap();
@@ -63,7 +64,7 @@ async fn share_completes_subscribers_when_source_completes() {
 async fn share_propagates_errors_to_all_subscribers() {
     // Arrange
     let (tx, rx) = test_channel_with_errors::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
     let mut sub1 = shared.subscribe().unwrap();
@@ -92,7 +93,7 @@ async fn share_propagates_errors_to_all_subscribers() {
 async fn late_subscriber_does_not_receive_past_items() {
     // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
 
@@ -124,7 +125,7 @@ async fn late_subscriber_does_not_receive_past_items() {
 async fn subscriber_count_tracks_active_subscribers() {
     // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
 
@@ -153,7 +154,7 @@ async fn subscriber_count_tracks_active_subscribers() {
 async fn is_closed_reflects_state() {
     // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
     let mut sub = shared.subscribe().unwrap();
@@ -175,7 +176,7 @@ async fn is_closed_reflects_state() {
 async fn subscribe_after_close_returns_error() {
     // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
     let mut sub = shared.subscribe().unwrap();
@@ -195,17 +196,19 @@ async fn subscribe_after_close_returns_error() {
 async fn each_subscriber_can_chain_independently() {
     // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
 
     // Each subscriber chains differently
     // Filter: only people older than 30
-    let mut filtered = FluxionStream::new(shared.subscribe().unwrap())
+    let mut filtered = shared
+        .subscribe()
+        .unwrap()
         .filter_ordered(|data| matches!(data, TestData::Person(p) if p.age > 30));
 
     // Map: add 10 years to age
-    let mut mapped = FluxionStream::new(shared.subscribe().unwrap()).map_ordered(|data| {
+    let mut mapped = shared.subscribe().unwrap().map_ordered(|data| {
         let updated = match data.into_inner() {
             TestData::Person(p) => TestData::Person(Person::new(p.name, p.age + 10)),
             other => other,
@@ -246,7 +249,7 @@ async fn source_operators_run_once_per_emission() {
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
 
     // Source with tracked transformation (runs ONCE per item)
-    let source = FluxionStream::new(rx).map_ordered(move |data| {
+    let source = rx.map_ordered(move |data| {
         call_count_clone.fetch_add(1, Ordering::SeqCst);
         // Add 100 years to age
         let updated = match data.into_inner() {
@@ -278,7 +281,7 @@ async fn source_operators_run_once_per_emission() {
 async fn drop_closes_subject_and_cancels_task() {
     // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
     let mut sub = shared.subscribe().unwrap();
@@ -299,7 +302,7 @@ async fn empty_source_stream_completes_subscribers_immediately() {
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
     drop(tx); // Source completes immediately with no items
 
-    let source = FluxionStream::new(rx);
+    let source = rx;
     let shared = source.share();
 
     // Subscribe after source is already closed
@@ -313,7 +316,7 @@ async fn empty_source_stream_completes_subscribers_immediately() {
 async fn subscriber_dropped_mid_stream_does_not_affect_others() {
     // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
     let mut sub1 = shared.subscribe().unwrap();
@@ -357,7 +360,7 @@ async fn subscriber_dropped_mid_stream_does_not_affect_others() {
 async fn high_subscriber_count_broadcasts_correctly() {
     // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
 

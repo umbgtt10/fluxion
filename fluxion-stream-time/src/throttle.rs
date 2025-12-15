@@ -2,6 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+//! Throttle operator for time-based stream processing.
+
+use crate::ChronoTimestamped;
 use fluxion_core::StreamItem;
 use futures::Stream;
 use pin_project::pin_project;
@@ -11,60 +14,83 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 use tokio::time::{sleep, Instant, Sleep};
 
-/// Throttles values from the source stream by the specified duration.
+/// Extension trait providing the `throttle` operator for streams.
 ///
-/// The throttle operator emits the first value, then ignores subsequent values
-/// for the specified duration. After the duration expires, it accepts the next
-/// value and repeats the process.
-///
-/// This implements **leading throttle** semantics:
-/// - When a value arrives and we are not throttling:
-///   - Emit the value immediately
-///   - Start the throttle timer
-///   - Ignore subsequent values until the timer expires
-/// - When the timer expires:
-///   - We become ready to accept a new value
-///
-/// Errors pass through immediately without throttling, to ensure timely
-/// error propagation.
-///
-/// # Example
-///
-/// ```rust
-/// use fluxion_stream_time::throttle;
-/// use fluxion_core::StreamItem;
-/// use fluxion_test_utils::test_data::{person_alice, person_bob};
-/// use futures::stream::StreamExt;
-/// use std::time::Duration;
-/// use tokio::sync::mpsc;
-/// use tokio_stream::wrappers::UnboundedReceiverStream;
-///
-/// # #[tokio::main]
-/// # async fn main() {
-/// let (tx, rx) = mpsc::unbounded_channel();
-/// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
-///
-/// let mut throttled = throttle(source, Duration::from_millis(100));
-///
-/// // Alice and Bob emitted immediately. Bob should be throttled (dropped).
-/// tx.send(person_alice()).unwrap();
-/// tx.send(person_bob()).unwrap();
-///
-/// // Only Alice should remain (leading throttle)
-/// let item = throttled.next().await.unwrap().unwrap();
-/// assert_eq!(item, person_alice());
-/// # }
-/// ```
-pub fn throttle<S, T>(stream: S, duration: std::time::Duration) -> impl Stream<Item = StreamItem<T>>
+/// This trait allows any stream of `StreamItem<ChronoTimestamped<T>>` to throttle emissions
+/// by a specified duration.
+pub trait ThrottleExt<T>: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Sized
 where
-    S: Stream<Item = StreamItem<T>>,
     T: Send,
 {
-    ThrottleStream {
-        stream,
-        duration,
-        sleep: Box::pin(sleep(Duration::from_millis(0))), // Initial dummy sleep
-        throttling: false,
+    /// Throttles the stream by the specified duration.
+    ///
+    /// The throttle operator emits the first value, then ignores subsequent values
+    /// for the specified duration. After the duration expires, it accepts the next
+    /// value and repeats the process.
+    ///
+    /// This implements **leading throttle** semantics:
+    /// - When a value arrives and we are not throttling:
+    ///   - Emit the value immediately
+    ///   - Start the throttle timer
+    ///   - Ignore subsequent values until the timer expires
+    /// - When the timer expires:
+    ///   - We become ready to accept a new value
+    ///
+    /// Errors pass through immediately without throttling, to ensure timely
+    /// error propagation.
+    ///
+    /// # Arguments
+    ///
+    /// * `duration` - The duration to ignore values after an emission
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fluxion_stream_time::{ThrottleExt, ChronoTimestamped};
+    /// use fluxion_core::StreamItem;
+    /// use fluxion_test_utils::test_data::{person_alice, person_bob};
+    /// use futures::stream::StreamExt;
+    /// use std::time::Duration;
+    /// use tokio::sync::mpsc;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
+    ///
+    /// let mut throttled = source.throttle(Duration::from_millis(100));
+    ///
+    /// // Alice and Bob emitted immediately. Bob should be throttled (dropped).
+    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
+    /// tx.send(ChronoTimestamped::now(person_bob())).unwrap();
+    ///
+    /// // Only Alice should remain (leading throttle)
+    /// let item = throttled.next().await.unwrap().unwrap();
+    /// assert_eq!(&*item, &person_alice());
+    /// # }
+    /// ```
+    fn throttle(
+        self,
+        duration: Duration,
+    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send;
+}
+
+impl<S, T> ThrottleExt<T> for S
+where
+    S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send,
+    T: Send,
+{
+    fn throttle(
+        self,
+        duration: Duration,
+    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send {
+        ThrottleStream {
+            stream: self,
+            duration,
+            sleep: Box::pin(sleep(Duration::from_millis(0))),
+            throttling: false,
+        }
     }
 }
 
@@ -79,10 +105,10 @@ struct ThrottleStream<S: Stream> {
 
 impl<S, T> Stream for ThrottleStream<S>
 where
-    S: Stream<Item = StreamItem<T>>,
+    S: Stream<Item = StreamItem<ChronoTimestamped<T>>>,
     T: Send,
 {
-    type Item = StreamItem<T>;
+    type Item = StreamItem<ChronoTimestamped<T>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();

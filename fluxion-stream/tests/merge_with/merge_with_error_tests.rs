@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -8,7 +8,7 @@
 //! happens through the FluxionStream wrapper that converts inputs to StreamItem.
 //! These tests use filter_map to convert StreamItem to raw Timestamped values.
 
-use fluxion_core::{FluxionError, StreamItem};
+use fluxion_core::{into_stream::IntoStream, FluxionError, StreamItem};
 use fluxion_stream::MergedStream;
 use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors, Sequenced};
 use futures::StreamExt;
@@ -410,25 +410,25 @@ async fn test_merge_with_into_fluxion_stream_error_handling() -> anyhow::Result<
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Create a MergedStream that returns raw Sequenced values, wrap in FluxionStream
-    let merged_raw = MergedStream::seed::<Sequenced<i32>>(0).merge_with(
-        // Convert StreamItem to raw Sequenced by filtering out errors
-        stream.filter_map(|item| async move {
-            match item {
-                StreamItem::Value(v) => Some(v),
-                StreamItem::Error(_) => None, // Filter out errors at this level
-            }
-        }),
-        |value, state| {
-            *state += value;
-            *state
-        },
-    );
-
-    let mut result = merged_raw.into_fluxion_stream();
+    let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
+        .merge_with(
+            // Convert StreamItem to raw Sequenced by filtering out errors
+            stream.filter_map(|item| async move {
+                match item {
+                    StreamItem::Value(v) => Some(v),
+                    StreamItem::Error(_) => None, // Filter out errors at this level
+                }
+            }),
+            |value, state| {
+                *state += value;
+                *state
+            },
+        )
+        .into_stream();
 
     // Act: Send value (error will be filtered by filter_map above)
     tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
-    let StreamItem::Value(v) = result.next().await.unwrap() else {
+    let StreamItem::Value(v) = merged.next().await.unwrap() else {
         panic!("Expected Value");
     };
     assert_eq!(v.into_inner(), 10);
@@ -438,7 +438,7 @@ async fn test_merge_with_into_fluxion_stream_error_handling() -> anyhow::Result<
 
     // Send another value
     tx.send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
-    let StreamItem::Value(v) = result.next().await.unwrap() else {
+    let StreamItem::Value(v) = merged.next().await.unwrap() else {
         panic!("Expected Value");
     };
     assert_eq!(v.into_inner(), 30);

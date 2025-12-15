@@ -128,53 +128,6 @@ where
     }
 }
 
-impl<S, State, Item> MergedStream<S, State, Item>
-where
-    S: Stream<Item = Item>,
-{
-    /// Converts this `MergedStream` into a `FluxionStream` for operator chaining.
-    ///
-    /// This allows seamless chaining of stateful merging with other fluxion operators.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use fluxion_stream::{MergedStream, FluxionStream};
-    /// use fluxion_test_utils::Sequenced;
-    /// use tokio::sync::mpsc;
-    /// use futures::StreamExt;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// let (tx1, rx1) = mpsc::unbounded_channel::<Sequenced<i32>>();
-    /// let (tx2, rx2) = mpsc::unbounded_channel::<Sequenced<i32>>();
-    ///
-    /// // Chain merge_with with other operators in one expression
-    /// // Note: Type specified ONCE in seed, not on every merge_with!
-    /// let mut result = MergedStream::seed::<Sequenced<i32>>(0)
-    ///     .merge_with(
-    ///         tokio_stream::wrappers::UnboundedReceiverStream::new(rx1),
-    ///         |value, state| {
-    ///             *state += value;
-    ///             *state
-    ///         }
-    ///     )
-    ///     .into_fluxion_stream()
-    ///     .map_ordered(|seq| {
-    ///         let value = seq.into_inner();
-    ///         Sequenced::new(value * 2)
-    ///     })
-    ///     .filter_ordered(|&x| x > 10);
-    /// # }
-    /// ```
-    pub fn into_fluxion_stream(self) -> crate::FluxionStream<Self>
-    where
-        Self: Sized,
-    {
-        crate::FluxionStream::new(self)
-    }
-}
-
 impl<S, State, Item> Stream for MergedStream<S, State, Item>
 where
     S: Stream<Item = Item>,

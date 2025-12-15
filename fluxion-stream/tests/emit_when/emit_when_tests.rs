@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -604,7 +604,7 @@ async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act: Diane age=40 (even), Dog legs=4 => 40 % 4 = 0 ✓
+    // Act: Diane age=40 (even), Dog legs=4 => 40 % 4 = 0 ?
     source_tx.send(Sequenced::new(person_diane()))?;
     filter_tx.send(Sequenced::new(animal_dog()))?;
 
@@ -612,20 +612,20 @@ async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(&emitted_item.value, &person_diane());
 
-    // Act: Bob age=30 (even), Dog legs=4 => 30 % 4 = 2 ✗
+    // Act: Bob age=30 (even), Dog legs=4 => 30 % 4 = 2 ?
     source_tx.send(Sequenced::new(person_bob()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act: Update filter to Ant legs=6 => 30 % 6 = 0 ✓
+    // Act: Update filter to Ant legs=6 => 30 % 6 = 0 ?
     filter_tx.send(Sequenced::new(animal_ant()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(&emitted_item.value, &person_bob());
 
-    // Act: Alice age=25 (odd) => fails even check ✗
+    // Act: Alice age=25 (odd) => fails even check ?
     source_tx.send(Sequenced::new(person_alice()))?;
 
     // Assert

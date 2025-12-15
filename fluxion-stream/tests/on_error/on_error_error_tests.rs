@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -9,7 +9,8 @@
 //! and interaction with different error types.
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::OnErrorExt;
 use fluxion_test_utils::{
     assert_no_element_emitted, assert_stream_ended, test_channel_with_errors, unwrap_stream,
     unwrap_value, Sequenced,
@@ -24,7 +25,7 @@ async fn test_on_error_handler_receives_correct_error_type() -> anyhow::Result<(
     let received_errors_clone = Arc::clone(&received_errors);
 
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(move |err| {
+    let mut result = stream.on_error(move |err| {
         received_errors_clone.lock().unwrap().push(err.to_string());
         true // Consume all
     });
@@ -71,7 +72,7 @@ async fn test_on_error_handler_with_counter_state() -> anyhow::Result<()> {
     let error_count_clone = Arc::clone(&error_count);
 
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(move |_err| {
+    let mut result = stream.on_error(move |_err| {
         let count = error_count_clone.fetch_add(1, Ordering::SeqCst);
         count < 2 // Consume first 2 errors, propagate rest
     });
@@ -121,7 +122,7 @@ async fn test_on_error_handler_alternating_decision() -> anyhow::Result<()> {
     let toggle_clone = Arc::clone(&toggle);
 
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(move |_err| {
+    let mut result = stream.on_error(move |_err| {
         let count = toggle_clone.fetch_add(1, Ordering::SeqCst);
         count.is_multiple_of(2) // Consume even-numbered calls, propagate odd
     });
@@ -159,7 +160,7 @@ async fn test_on_error_handler_alternating_decision() -> anyhow::Result<()> {
 async fn test_on_error_handler_decision_based_on_error_content() -> anyhow::Result<()> {
     // Arrange: Handler that makes different decisions based on error content
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(|err| {
+    let mut result = stream.on_error(|err| {
         let msg = err.to_string();
         // Consume: transient, retry, timeout
         // Propagate: fatal, permanent, critical
@@ -237,7 +238,7 @@ async fn test_on_error_handler_tracks_error_history() -> anyhow::Result<()> {
     let history_clone = Arc::clone(&history);
 
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(move |err| {
+    let mut result = stream.on_error(move |err| {
         let msg = err.to_string();
         let mut hist = history_clone.lock().unwrap();
         hist.push(msg.clone());
@@ -290,7 +291,7 @@ async fn test_on_error_handler_with_rate_limiting_behavior() -> anyhow::Result<(
 
     // We need to track values separately to reset counter
     // For simplicity, we'll just use the counter behavior
-    let mut result = FluxionStream::new(stream).on_error(move |_err| {
+    let mut result = stream.on_error(move |_err| {
         let count = consecutive_errors_clone.fetch_add(1, Ordering::SeqCst);
         count < 2 // Allow first 2 consecutive errors
     });
@@ -335,7 +336,7 @@ async fn test_on_error_handler_with_rate_limiting_behavior() -> anyhow::Result<(
 async fn test_on_error_handler_never_consumes() -> anyhow::Result<()> {
     // Arrange: Handler that always returns false (never consumes)
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(|_| false);
+    let mut result = stream.on_error(|_| false);
 
     // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;
@@ -375,7 +376,7 @@ async fn test_on_error_handler_always_consumes() -> anyhow::Result<()> {
     let error_count_clone = Arc::clone(&error_count);
 
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(move |_| {
+    let mut result = stream.on_error(move |_| {
         error_count_clone.fetch_add(1, Ordering::SeqCst);
         true
     });
@@ -417,8 +418,7 @@ async fn test_on_error_handler_with_external_flag() -> anyhow::Result<()> {
     let should_consume_clone = Arc::clone(&should_consume);
 
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream)
-        .on_error(move |_| should_consume_clone.load(Ordering::SeqCst) == 1);
+    let mut result = stream.on_error(move |_| should_consume_clone.load(Ordering::SeqCst) == 1);
 
     // Act & Assert
     // Initially consuming
@@ -462,7 +462,7 @@ async fn test_on_error_multiple_errors_same_message() -> anyhow::Result<()> {
     let seen_messages_clone = Arc::clone(&seen_messages);
 
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(move |err| {
+    let mut result = stream.on_error(move |err| {
         let msg = err.to_string();
         let mut seen = seen_messages_clone.lock().unwrap();
         // Consume first occurrence of each message, propagate duplicates
@@ -522,7 +522,7 @@ async fn test_on_error_multiple_errors_same_message() -> anyhow::Result<()> {
 async fn test_on_error_handler_preserves_error_details_on_propagate() -> anyhow::Result<()> {
     // Arrange: Verify that propagated errors retain their original content
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(|err| {
+    let mut result = stream.on_error(|err| {
         // Propagate errors containing "propagate"
         !err.to_string().contains("propagate")
     });
@@ -559,7 +559,7 @@ async fn test_on_error_rapid_error_sequence() -> anyhow::Result<()> {
     let error_count_clone = Arc::clone(&error_count);
 
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(move |_| {
+    let mut result = stream.on_error(move |_| {
         error_count_clone.fetch_add(1, Ordering::SeqCst);
         true // Consume all
     });

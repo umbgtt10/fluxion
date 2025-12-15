@@ -2,13 +2,13 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::FluxionStream;
 use fluxion_core::{into_stream::IntoStream, Fluxion, StreamItem};
+use fluxion_ordered_merge::OrderedMerge;
 use futures::Stream;
 use std::pin::Pin;
 
 // Re-export low-level types from fluxion-ordered-merge
-pub use fluxion_ordered_merge::{OrderedMerge, OrderedMergeExt};
+pub use fluxion_ordered_merge::OrderedMergeExt;
 
 /// Extension trait providing high-level ordered merge for `Timestamped` streams.
 ///
@@ -62,7 +62,7 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream::{OrderedStreamExt, FluxionStream};
+    /// use fluxion_stream::OrderedStreamExt;
     /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
     ///
@@ -96,10 +96,7 @@ where
     ///
     /// - `ordered_merge`: Emits all values from all streams
     /// - `combine_latest`: Emits only when streams change, after all have initialized
-    fn ordered_merge<IS>(
-        self,
-        others: Vec<IS>,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
+    fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
@@ -112,10 +109,7 @@ where
     T::Timestamp: std::fmt::Debug + Ord + Send + Sync + Copy + 'static,
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
 {
-    fn ordered_merge<IS>(
-        self,
-        others: Vec<IS>,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
+    fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -127,7 +121,6 @@ where
             all_streams.push(Box::pin(stream));
         }
 
-        let result = OrderedMerge::new(all_streams);
-        FluxionStream::new(result)
+        OrderedMerge::new(all_streams)
     }
 }

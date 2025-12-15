@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::FluxionStream;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{Fluxion, StreamItem};
@@ -51,7 +50,7 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream::{TakeLatestWhenExt, FluxionStream};
+    /// use fluxion_stream::TakeLatestWhenExt;
     /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
     ///
@@ -113,7 +112,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
@@ -131,7 +130,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -179,7 +178,7 @@ where
                                 }
                             }
                             _ => {
-                                warn!(
+                                crate::warn!(
                                     "take_latest_when: unexpected stream index {} – ignoring",
                                     index
                                 );
@@ -192,6 +191,6 @@ where
             }
         });
 
-        FluxionStream::new(Box::pin(combined_stream))
+        Box::pin(combined_stream)
     }
 }

@@ -4,12 +4,12 @@
 
 use crate::ordered_merge::OrderedMergeExt;
 use crate::types::CombinedState;
-use crate::FluxionStream;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 /// Extension trait providing the `with_latest_from` operator for timestamped streams.
@@ -74,7 +74,7 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream::{WithLatestFromExt, FluxionStream};
+    /// use fluxion_stream::WithLatestFromExt;
     /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
     ///
@@ -108,7 +108,7 @@ where
         self,
         other: IS,
         result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<R>> + Send>
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<R>> + Send + Sync>>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -128,7 +128,7 @@ where
         self,
         other: IS,
         result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<R>> + Send>
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<R>> + Send + Sync>>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -194,7 +194,7 @@ where
             }
         });
 
-        FluxionStream::new(Box::pin(combined_stream))
+        Box::pin(combined_stream)
     }
 }
 

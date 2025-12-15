@@ -5,7 +5,8 @@
 //! Composition error tests for `FluxionShared` with other operators.
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+use fluxion_stream::prelude::*;
+use fluxion_stream::ShareExt;
 use fluxion_test_utils::person::Person;
 use fluxion_test_utils::test_data::{person_alice, TestData};
 use fluxion_test_utils::{
@@ -18,7 +19,7 @@ async fn shared_error_propagates_through_chained_operators() -> anyhow::Result<(
     let (tx, rx) = test_channel_with_errors::<Sequenced<TestData>>();
 
     // Apply map before sharing
-    let source = FluxionStream::new(rx).map_ordered(|data| {
+    let source = rx.map_ordered(|data| {
         let updated = match data.into_inner() {
             TestData::Person(p) => TestData::Person(Person::new(p.name, p.age + 1)),
             other => other,
@@ -29,7 +30,9 @@ async fn shared_error_propagates_through_chained_operators() -> anyhow::Result<(
     let shared = source.share();
 
     // Each subscriber chains further
-    let mut sub1 = FluxionStream::new(shared.subscribe().unwrap())
+    let mut sub1 = shared
+        .subscribe()
+        .unwrap()
         .filter_ordered(|data| matches!(data, TestData::Person(_)))
         .map_ordered(|data| {
             let age = match data.into_inner() {
@@ -39,7 +42,7 @@ async fn shared_error_propagates_through_chained_operators() -> anyhow::Result<(
             Sequenced::new(age)
         });
 
-    let mut sub2 = FluxionStream::new(shared.subscribe().unwrap()).combine_with_previous();
+    let mut sub2 = shared.subscribe().unwrap().combine_with_previous();
 
     // Act - send value
     tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
@@ -80,16 +83,18 @@ async fn shared_error_propagates_through_chained_operators() -> anyhow::Result<(
 async fn shared_with_on_error_allows_selective_handling() -> anyhow::Result<()> {
     // Arrange - use on_error to consume certain errors
     let (tx, rx) = test_channel_with_errors::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
 
     // Subscriber 1: consumes "transient" errors, propagates others
-    let mut tolerant = FluxionStream::new(shared.subscribe().unwrap())
+    let mut tolerant = shared
+        .subscribe()
+        .unwrap()
         .on_error(|err| err.to_string().contains("transient"));
 
     // Subscriber 2: no error handling, receives all errors
-    let mut strict = FluxionStream::new(shared.subscribe().unwrap());
+    let mut strict = shared.subscribe().unwrap();
 
     // Act - send value, transient error, value, fatal error
     tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;

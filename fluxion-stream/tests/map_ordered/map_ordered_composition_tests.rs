@@ -1,8 +1,9 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_stream::prelude::*;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
     assert_no_element_emitted,
     helpers::unwrap_stream,
@@ -16,16 +17,14 @@ async fn test_combine_with_previous_map_ordered() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    let mut stream = FluxionStream::new(stream)
-        .combine_with_previous()
-        .map_ordered(|stream_item| {
-            let item = stream_item;
-            Sequenced::new(format!(
-                "Previous: {:?}, Current: {}",
-                item.previous.map(|p| p.value.to_string()),
-                &item.current.value
-            ))
-        });
+    let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
+        let item = stream_item;
+        Sequenced::new(format!(
+            "Previous: {:?}, Current: {}",
+            item.previous.map(|p| p.value.to_string()),
+            &item.current.value
+        ))
+    });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
@@ -65,26 +64,24 @@ async fn test_combine_with_previous_map_ordered_to_struct() -> anyhow::Result<()
 
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    let mut stream = FluxionStream::new(stream)
-        .combine_with_previous()
-        .map_ordered(|stream_item| {
-            let item = stream_item;
-            let current_age = match &item.current.value {
-                TestData::Person(p) => p.age,
-                _ => 0,
-            };
-            let previous_age = item.previous.and_then(|prev| match &prev.value {
-                TestData::Person(p) => Some(p.age),
-                _ => None,
-            });
-            let age_increased = previous_age.is_some_and(|prev| current_age > prev);
-
-            Sequenced::new(AgeComparison {
-                previous_age,
-                current_age,
-                age_increased,
-            })
+    let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
+        let item = stream_item;
+        let current_age = match &item.current.value {
+            TestData::Person(p) => p.age,
+            _ => 0,
+        };
+        let previous_age = item.previous.and_then(|prev| match &prev.value {
+            TestData::Person(p) => Some(p.age),
+            _ => None,
         });
+        let age_increased = previous_age.is_some_and(|prev| current_age > prev);
+
+        Sequenced::new(AgeComparison {
+            previous_age,
+            current_age,
+            age_increased,
+        })
+    });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
@@ -139,7 +136,7 @@ async fn test_ordered_merge_combine_with_previous_map_ordered() -> anyhow::Resul
     let person_stream = person_rx;
     let animal_stream = animal_rx;
 
-    let stream = FluxionStream::new(person_stream)
+    let stream = person_stream
         .ordered_merge(vec![animal_stream])
         .combine_with_previous()
         .map_ordered(|stream_item| {
@@ -177,8 +174,8 @@ async fn test_combine_latest_combine_with_previous_map_ordered() -> anyhow::Resu
 
     static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;
 
-    let mut stream = FluxionStream::new(person_stream)
-        .combine_latest(vec![FluxionStream::new(animal_stream)], COMBINE_FILTER)
+    let mut stream = person_stream
+        .combine_latest(vec![animal_stream], COMBINE_FILTER)
         .combine_with_previous()
         .map_ordered(|stream_item| {
             let item = stream_item;
@@ -209,26 +206,24 @@ async fn test_combine_with_previous_map_ordered_filter_age_change() -> anyhow::R
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    let mut stream = FluxionStream::new(stream)
-        .combine_with_previous()
-        .map_ordered(|stream_item| {
-            let item = stream_item;
-            let current_age = match &item.current.value {
-                TestData::Person(p) => p.age,
-                _ => return Sequenced::new(None),
-            };
-            let previous_age = item.previous.and_then(|prev| match &prev.value {
-                TestData::Person(p) => Some(p.age),
-                _ => None,
-            });
-
-            Sequenced::new(match previous_age {
-                Some(prev) if current_age != prev => {
-                    Some(format!("Age changed from {} to {}", prev, current_age))
-                }
-                _ => None,
-            })
+    let mut stream = stream.combine_with_previous().map_ordered(|stream_item| {
+        let item = stream_item;
+        let current_age = match &item.current.value {
+            TestData::Person(p) => p.age,
+            _ => return Sequenced::new(None),
+        };
+        let previous_age = item.previous.and_then(|prev| match &prev.value {
+            TestData::Person(p) => Some(p.age),
+            _ => None,
         });
+
+        Sequenced::new(match previous_age {
+            Some(prev) if current_age != prev => {
+                Some(format!("Age changed from {} to {}", prev, current_age))
+            }
+            _ => None,
+        })
+    });
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?; // Age 25
@@ -263,7 +258,7 @@ async fn test_triple_ordered_merge_combine_with_previous_map_ordered() -> anyhow
     let animal_stream = animal_rx;
     let plant_stream = plant_rx;
 
-    let mut stream = FluxionStream::new(person_stream)
+    let mut stream = person_stream
         .ordered_merge(vec![animal_stream, plant_stream])
         .combine_with_previous()
         .map_ordered(|stream_item| {
@@ -298,7 +293,7 @@ async fn test_filter_ordered_map_ordered() -> anyhow::Result<()> {
     // Arrange - filter for people only, then map to names
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    let mut stream = FluxionStream::new(stream)
+    let mut stream = stream
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
         .map_ordered(|stream_item| {
             let item = stream_item;

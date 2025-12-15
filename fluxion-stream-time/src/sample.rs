@@ -2,6 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+//! Sample operator for time-based stream processing.
+
+use crate::ChronoTimestamped;
 use fluxion_core::StreamItem;
 use futures::Stream;
 use pin_project::pin_project;
@@ -11,56 +14,79 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 use tokio::time::{sleep_until, Instant, Sleep};
 
-/// Samples the source stream at periodic intervals.
+/// Extension trait providing the `sample` operator for streams.
 ///
-/// The sample operator emits the most recently emitted value from the source
-/// stream within periodic time intervals.
-///
-/// - If the source emits multiple values within the interval, only the last one is emitted.
-/// - If the source emits no values within the interval, nothing is emitted for that interval.
-/// - Errors are passed through immediately.
-///
-/// # Example
-///
-/// ```rust
-/// use fluxion_stream_time::sample;
-/// use fluxion_stream::{FluxionStream, IntoFluxionStream};
-/// use fluxion_core::StreamItem;
-/// use fluxion_test_utils::test_data::{person_alice, person_bob};
-/// use futures::stream::StreamExt;
-/// use std::time::Duration;
-/// use tokio::sync::mpsc;
-///
-/// # #[tokio::main]
-/// # async fn main() {
-/// // Use a channel to control emission timing relative to the sample interval
-/// let (tx, rx) = mpsc::unbounded_channel();
-/// let source = rx.into_fluxion_stream();
-/// let mut sampled = sample(source, Duration::from_millis(10));
-///
-/// // Emit Alice and Bob immediately
-/// tx.send(person_alice()).unwrap();
-/// tx.send(person_bob()).unwrap();
-///
-/// // Wait for sample duration
-/// tokio::time::sleep(Duration::from_millis(20)).await;
-///
-/// // Sample should pick the latest one (Bob)
-/// let item = sampled.next().await.unwrap().unwrap();
-/// assert_eq!(item, person_bob());
-/// # }
-/// ```
-pub fn sample<S, T>(stream: S, duration: Duration) -> impl Stream<Item = StreamItem<T>>
+/// This trait allows any stream of `StreamItem<ChronoTimestamped<T>>` to sample emissions
+/// at periodic intervals.
+pub trait SampleExt<T>: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Sized
 where
-    S: Stream<Item = StreamItem<T>>,
-    T: Send + Clone, // Clone is needed because we might hold a value that we haven't emitted yet
+    T: Send + Clone,
 {
-    SampleStream {
-        stream,
-        duration,
-        sleep: Box::pin(sleep_until(Instant::now() + duration)),
-        pending_value: None,
-        is_done: false,
+    /// Samples the stream at periodic intervals.
+    ///
+    /// The sample operator emits the most recently emitted value from the source
+    /// stream within periodic time intervals.
+    ///
+    /// - If the source emits multiple values within the interval, only the last one is emitted.
+    /// - If the source emits no values within the interval, nothing is emitted for that interval.
+    /// - Errors are passed through immediately.
+    ///
+    /// # Arguments
+    ///
+    /// * `duration` - The sampling interval
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fluxion_stream_time::{SampleExt, ChronoTimestamped};
+    /// use fluxion_core::StreamItem;
+    /// use fluxion_test_utils::test_data::{person_alice, person_bob};
+    /// use futures::stream::StreamExt;
+    /// use std::time::Duration;
+    /// use tokio::sync::mpsc;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
+    ///
+    /// let mut sampled = source.sample(Duration::from_millis(10));
+    ///
+    /// // Emit Alice and Bob immediately
+    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
+    /// tx.send(ChronoTimestamped::now(person_bob())).unwrap();
+    ///
+    /// // Wait for sample duration
+    /// tokio::time::sleep(Duration::from_millis(20)).await;
+    ///
+    /// // Sample should pick the latest one (Bob)
+    /// let item = sampled.next().await.unwrap().unwrap();
+    /// assert_eq!(&*item, &person_bob());
+    /// # }
+    /// ```
+    fn sample(
+        self,
+        duration: Duration,
+    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send;
+}
+
+impl<S, T> SampleExt<T> for S
+where
+    S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send,
+    T: Send + Clone,
+{
+    fn sample(
+        self,
+        duration: Duration,
+    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send {
+        SampleStream {
+            stream: self,
+            duration,
+            sleep: Box::pin(sleep_until(Instant::now() + duration)),
+            pending_value: None,
+            is_done: false,
+        }
     }
 }
 
@@ -79,10 +105,10 @@ where
 
 impl<S, T> Stream for SampleStream<S>
 where
-    S: Stream<Item = StreamItem<T>>,
+    S: Stream<Item = StreamItem<ChronoTimestamped<T>>>,
     T: Send + Clone,
 {
-    type Item = StreamItem<T>;
+    type Item = StreamItem<ChronoTimestamped<T>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();

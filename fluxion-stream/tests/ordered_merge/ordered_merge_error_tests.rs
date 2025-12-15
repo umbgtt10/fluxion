@@ -8,6 +8,7 @@
 //! happens through the FluxionStream wrapper that converts inputs to StreamItem.
 //! These tests use filter_map to convert StreamItem to raw Timestamped values.
 
+use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::MergedStream;
 use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors, Sequenced};
@@ -424,7 +425,7 @@ async fn test_merge_with_into_fluxion_stream_error_handling() -> anyhow::Result<
         },
     );
 
-    let mut result = merged_raw.into_fluxion_stream();
+    let mut result = merged_raw.into_stream();
 
     // Act: Send value (error will be filtered by filter_map above)
     tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;

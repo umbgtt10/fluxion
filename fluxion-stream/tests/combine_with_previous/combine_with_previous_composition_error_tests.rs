@@ -1,9 +1,12 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{
+    CombineWithPreviousExt, DistinctUntilChangedExt, FilterOrderedExt, MapOrderedExt,
+};
 use fluxion_test_utils::{
     assert_no_element_emitted, test_channel_with_errors,
     test_data::{person_alice, person_bob, TestData},
@@ -15,7 +18,7 @@ async fn test_distinct_until_changed_error_propagation_in_composition() -> anyho
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .distinct_until_changed()
         .filter_ordered(|data| match data {
             TestData::Person(p) => p.age >= 10,
@@ -68,7 +71,7 @@ async fn test_map_ordered_then_combine_with_previous_propagates_error() -> anyho
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .map_ordered(|x| x) // Identity map
         .combine_with_previous();
 
@@ -94,7 +97,7 @@ async fn test_filter_ordered_then_combine_with_previous_propagates_error() -> an
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .filter_ordered(|_| true) // Pass everything
         .combine_with_previous();
 

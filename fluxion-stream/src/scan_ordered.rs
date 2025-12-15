@@ -1,8 +1,6 @@
 ﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
-
-use crate::fluxion_stream::FluxionStream;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
 use std::fmt::Debug;
@@ -52,7 +50,7 @@ where
     ///
     /// # Returns
     ///
-    /// A `FluxionStream` of `Out` where each item is the result of accumulation at that point.
+    /// A stream of `Out` where each item is the result of accumulation at that point.
     ///
     /// # Errors
     ///
@@ -69,7 +67,7 @@ where
     /// ## Running Sum
     ///
     /// ```rust
-    /// use fluxion_stream::{FluxionStream, ScanOrderedExt};
+    /// use fluxion_stream::ScanOrderedExt;
     /// use fluxion_test_utils::{Sequenced, test_channel, unwrap_stream, unwrap_value};
     ///
     /// # async fn example() -> anyhow::Result<()> {
@@ -95,7 +93,7 @@ where
     /// ## Type Transformation: Count to String
     ///
     /// ```rust
-    /// use fluxion_stream::{FluxionStream, ScanOrderedExt};
+    /// use fluxion_stream::ScanOrderedExt;
     /// use fluxion_test_utils::{Sequenced, test_channel, unwrap_stream, unwrap_value};
     ///
     /// # async fn example() -> anyhow::Result<()> {
@@ -119,7 +117,7 @@ where
     /// ## Complex State: Building a List
     ///
     /// ```rust
-    /// use fluxion_stream::{FluxionStream, ScanOrderedExt};
+    /// use fluxion_stream::ScanOrderedExt;
     /// use fluxion_test_utils::{Sequenced, test_channel, unwrap_stream, unwrap_value};
     ///
     /// # async fn example() -> anyhow::Result<()> {
@@ -153,7 +151,7 @@ where
     /// # Advanced Example: State Machine
     ///
     /// ```rust
-    /// use fluxion_stream::{FluxionStream, ScanOrderedExt};
+    /// use fluxion_stream::ScanOrderedExt;
     /// use fluxion_test_utils::{Sequenced, test_channel, unwrap_stream};
     ///
     /// #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -209,14 +207,14 @@ where
     ///
     /// # See Also
     ///
-    /// - [`map_ordered`](crate::FluxionStream::map_ordered) - Stateless transformation
+    /// - [`map_ordered`](crate::MapOrderedExt::map_ordered) - Stateless transformation
     /// - [`combine_with_previous`](crate::CombineWithPreviousExt::combine_with_previous) - Simple stateful pairing
-    /// - [`filter_ordered`](crate::FluxionStream::filter_ordered) - Conditional filtering
+    /// - [`filter_ordered`](crate::FilterOrderedExt::filter_ordered) - Conditional filtering
     fn scan_ordered<Out, Acc, F>(
         self,
         initial: Acc,
         accumulator: F,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<Out>>>
+    ) -> impl Stream<Item = StreamItem<Out>>
     where
         Acc: Send + 'static,
         Out: Fluxion,
@@ -236,7 +234,7 @@ where
         self,
         initial: Acc,
         accumulator: F,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<Out>>>
+    ) -> impl Stream<Item = StreamItem<Out>>
     where
         Acc: Send + 'static,
         Out: Fluxion,
@@ -276,6 +274,6 @@ where
             })
         });
 
-        FluxionStream::new(result)
+        result
     }
 }

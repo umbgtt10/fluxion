@@ -12,10 +12,10 @@
 //!
 //! The crate is built around several key concepts:
 //!
-//! - **[`FluxionStream`]**: A wrapper around any `Stream` that provides access to all operators
-//! - **[`Timestamped`](fluxion_core::Timestamped) trait**: Types must have intrinsic timestamps for temporal ordering
 //! - **Extension traits**: Each operator is provided via an extension trait for composability
+//! - **[`Timestamped`](fluxion_core::Timestamped) trait**: Types must have intrinsic timestamps for temporal ordering
 //! - **Temporal correctness**: All operators respect the timestamp ordering of items across streams
+//! - **[`prelude`] module**: Import all traits at once with `use fluxion_stream::prelude::*;`
 //!
 //! ## Operator Categories
 //!
@@ -30,11 +30,15 @@
 //! - **[`emit_when`](EmitWhenExt::emit_when)**: Gates source emissions based on filter stream conditions
 //! - **[`take_latest_when`](TakeLatestWhenExt::take_latest_when)**: Samples source when filter condition is met
 //! - **[`take_while_with`](TakeWhileExt::take_while_with)**: Emits while condition holds, terminates when false
+//! - **[`filter_ordered`](FilterOrderedExt::filter_ordered)**: Filters items based on predicate
+//! - **[`distinct_until_changed`](DistinctUntilChangedExt::distinct_until_changed)**: Filters consecutive duplicates
 //!
 //! ### Transformation Operators
 //!
 //! - **[`scan_ordered`](ScanOrderedExt::scan_ordered)**: Accumulates state across stream items, emitting intermediate results
 //! - **[`combine_with_previous`](CombineWithPreviousExt::combine_with_previous)**: Pairs each value with previous value
+//! - **[`map_ordered`](MapOrderedExt::map_ordered)**: Transforms each item
+//! - **[`start_with`](StartWithExt::start_with)**: Prepends initial values
 //!
 //! # Temporal Ordering Explained
 //!
@@ -53,7 +57,7 @@
 //! ## Example: Out-of-Order Delivery
 //!
 //! ```
-//! use fluxion_stream::{FluxionStream, OrderedStreamExt};
+//! use fluxion_stream::OrderedStreamExt;
 //! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, test_channel};
 //!
 //! # #[tokio::main]
@@ -124,7 +128,7 @@
 //!
 //! # Return Type Patterns
 //!
-//! Fluxion operators use three different return type patterns, each chosen for specific
+//! Fluxion operators use two different return type patterns, each chosen for specific
 //! reasons related to type erasure, composability, and performance.
 //!
 //! ## Pattern 1: `impl Stream<Item = T>`
@@ -133,8 +137,8 @@
 //!
 //! **Examples:**
 //! - [`ordered_merge`](OrderedStreamExt::ordered_merge)
-//! - [`map_ordered`](FluxionStream::map_ordered)
-//! - [`filter_ordered`](FluxionStream::filter_ordered)
+//! - [`map_ordered`](MapOrderedExt::map_ordered)
+//! - [`filter_ordered`](FilterOrderedExt::filter_ordered)
 //!
 //! **Benefits:**
 //! - Zero-cost abstraction (no boxing)
@@ -145,25 +149,7 @@
 //! - Concrete type exposed in signatures (can be complex)
 //! - May increase compile times for deeply nested operators
 //!
-//! ## Pattern 2: `FluxionStream<impl Stream<Item = T>>`
-//!
-//! **When used:** Operators that should compose with other FluxionStream methods
-//!
-//! **Examples:**
-//! - [`combine_with_previous`](CombineWithPreviousExt::combine_with_previous)
-//! - [`with_latest_from`](WithLatestFromExt::with_latest_from)
-//! - [`combine_latest`](CombineLatestExt::combine_latest)
-//!
-//! **Benefits:**
-//! - Enables method chaining with `FluxionStream` convenience methods
-//! - Still zero-cost (no boxing)
-//! - Provides consistent API surface
-//!
-//! **Use cases:**
-//! - When users are likely to chain multiple operators
-//! - When the operator produces a complex transformed type
-//!
-//! ## Pattern 3: `Pin<Box<dyn Stream<Item = T>>>`
+//! ## Pattern 2: `Pin<Box<dyn Stream<Item = T>>>`
 //!
 //! **When used:** Operators with dynamic dispatch requirements or complex internal state
 //!
@@ -171,6 +157,8 @@
 //! - [`emit_when`](EmitWhenExt::emit_when)
 //! - [`take_latest_when`](TakeLatestWhenExt::take_latest_when)
 //! - [`take_while_with`](TakeWhileExt::take_while_with)
+//! - [`combine_latest`](CombineLatestExt::combine_latest)
+//! - [`combine_with_previous`](CombineWithPreviousExt::combine_with_previous)
 //!
 //! **Benefits:**
 //! - Type erasure simplifies signatures
@@ -187,12 +175,12 @@
 //! lifetime requirements. Type erasure keeps the public API simple while allowing
 //! internal flexibility.
 //!
-//! ## Choosing the Right Pattern
+//! ## Composability
 //!
-//! As a user, you typically don't need to worry about these patterns - all three compose
-//! seamlessly. For example, combining different operators in a single chain works naturally
-//! regardless of their internal implementation patterns. Each operator returns either
-//! `impl Stream` or `FluxionStream<impl Stream>`, and they compose transparently.
+//! As a user, you typically don't need to worry about these patterns - both compose
+//! seamlessly. Each operator returns something that implements `Stream`, so they chain
+//! naturally together. For example, combining different operators in a single chain works
+//! regardless of their internal implementation patterns.
 //!
 //! The patterns are implementation details chosen to balance performance, ergonomics,
 //! and maintainability.
@@ -205,7 +193,7 @@
 //! with context from a secondary stream.
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, WithLatestFromExt};
+//! use fluxion_stream::WithLatestFromExt;
 //! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
@@ -234,7 +222,7 @@
 //! services in temporal order.
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, OrderedStreamExt};
+//! use fluxion_stream::OrderedStreamExt;
 //! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
 //!
 //! # async fn example() {
@@ -259,7 +247,7 @@
 //! when values change by comparing with the previous value.
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
+//! use fluxion_stream::CombineWithPreviousExt;
 //! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
@@ -293,7 +281,7 @@
 //! only emitting when the condition is satisfied.
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, EmitWhenExt};
+//! use fluxion_stream::EmitWhenExt;
 //! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
@@ -378,7 +366,7 @@
 //! ## Basic Chaining Pattern
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, CombineWithPreviousExt, TakeLatestWhenExt};
+//! use fluxion_stream::{CombineWithPreviousExt, TakeLatestWhenExt};
 //! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
@@ -387,8 +375,9 @@
 //! let (filter_tx, filter_stream) = test_channel::<Sequenced<i32>>();
 //!
 //! // Chain: sample when filter emits, then pair with previous value
-//! let sampled = source_stream.take_latest_when(filter_stream, |_| true);
-//! let mut composed = FluxionStream::new(sampled).combine_with_previous();
+//! let mut composed = source_stream
+//!     .take_latest_when(filter_stream, |_| true)
+//!     .combine_with_previous();
 //!
 //! source_tx.send(Sequenced::new(42)).unwrap();
 //! filter_tx.send(Sequenced::new(1)).unwrap();
@@ -401,11 +390,11 @@
 //!
 //! ## Chaining with Transformation
 //!
-//! Use [`map_ordered`] and [`filter_ordered`] to transform streams while preserving
-//! temporal ordering:
+//! Use [`map_ordered`](MapOrderedExt::map_ordered) and [`filter_ordered`](FilterOrderedExt::filter_ordered)
+//! to transform streams while preserving temporal ordering:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream};
+//! use fluxion_stream::{MapOrderedExt, FilterOrderedExt};
 //! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
@@ -413,7 +402,7 @@
 //! let (tx, stream) = test_channel::<Sequenced<i32>>();
 //!
 //! // Chain: filter positives, map to string
-//! let mut composed = FluxionStream::new(stream)
+//! let mut composed = stream
 //!     .filter_ordered(|&n| n > 0)  // filter_ordered receives &T::Inner
 //!     .map_ordered(|seq| Sequenced::new(format!("Value: {}", seq.value)));  // map_ordered receives T
 //!
@@ -430,7 +419,7 @@
 //! Combine multiple streams and then process the result:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt};
+//! use fluxion_stream::{CombineLatestExt, CombineWithPreviousExt};
 //! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
@@ -454,8 +443,7 @@
 //!
 //! ## Key Principles for Chaining
 //!
-//! 1. **Use `map_ordered` and `filter_ordered`**: These preserve the `FluxionStream` wrapper
-//!    and maintain temporal ordering guarantees
+//! 1. **Use extension traits**: Import traits like `MapOrderedExt`, `FilterOrderedExt` for transformations
 //! 2. **Order matters**: `combine_with_previous().filter_ordered()` is different from
 //!    `filter_ordered().combine_with_previous()`
 //! 3. **Type awareness**: Each operator changes the item type - track what flows through
@@ -469,7 +457,7 @@
 //! Merge multiple streams in temporal order, then track consecutive values:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, OrderedStreamExt, CombineWithPreviousExt};
+//! use fluxion_stream::{OrderedStreamExt, CombineWithPreviousExt};
 //! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
@@ -479,7 +467,7 @@
 //!
 //! // Merge streams in temporal order, then pair consecutive values
 //! let mut composed = stream1
-//!     .ordered_merge(vec![FluxionStream::new(stream2)])
+//!     .ordered_merge(vec![stream2])
 //!     .combine_with_previous();
 //!
 //! tx1.send(Sequenced::new(1)).unwrap();
@@ -499,7 +487,7 @@
 //! Combine latest values from multiple streams, then track state changes:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, CombineLatestExt, CombineWithPreviousExt};
+//! use fluxion_stream::{CombineLatestExt, CombineWithPreviousExt};
 //! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
@@ -531,7 +519,7 @@
 //! Combine streams and continue only while a condition holds:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, CombineLatestExt, TakeWhileExt};
+//! use fluxion_stream::{CombineLatestExt, TakeWhileExt};
 //! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
@@ -559,7 +547,7 @@
 //! Merge streams in order and terminate based on external condition:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, OrderedStreamExt, TakeWhileExt};
+//! use fluxion_stream::{OrderedStreamExt, TakeWhileExt};
 //! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
@@ -570,7 +558,7 @@
 //!
 //! // Merge all values in order, but stop when filter says so
 //! let mut composed = stream1
-//!     .ordered_merge(vec![FluxionStream::new(stream2)])
+//!     .ordered_merge(vec![stream2])
 //!     .take_while_with(filter_stream, |f| *f);
 //!
 //! filter_tx.send(Sequenced::new(true)).unwrap();
@@ -590,7 +578,7 @@
 //! Sample latest value on trigger, then pair with previous sampled value:
 //!
 //! ```rust
-//! use fluxion_stream::{FluxionStream, TakeLatestWhenExt, CombineWithPreviousExt};
+//! use fluxion_stream::{TakeLatestWhenExt, CombineWithPreviousExt};
 //! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
@@ -599,8 +587,9 @@
 //! let (filter_tx, filter_stream) = test_channel::<Sequenced<i32>>();
 //!
 //! // Sample source when filter emits, then track consecutive samples
-//! let sampled = source_stream.take_latest_when(filter_stream, |_| true);
-//! let mut composed = FluxionStream::new(sampled).combine_with_previous();
+//! let mut composed = source_stream
+//!     .take_latest_when(filter_stream, |_| true)
+//!     .combine_with_previous();
 //!
 //! source_tx.send(Sequenced::new(42)).unwrap();
 //! filter_tx.send(Sequenced::new(0)).unwrap();
@@ -619,8 +608,8 @@
 //! These patterns demonstrate how Fluxion operators compose to create sophisticated
 //! data flows. See the composition tests in the source repository for more examples.
 //!
-//! [`map_ordered`]: fluxion_stream::FluxionStream::map_ordered
-//! [`filter_ordered`]: fluxion_stream::FluxionStream::filter_ordered
+//! [`map_ordered`]: crate::MapOrderedExt::map_ordered
+//! [`filter_ordered`]: crate::FilterOrderedExt::filter_ordered
 //!
 //! # Getting Started
 //!
@@ -651,12 +640,18 @@ pub mod combine_with_previous;
 pub mod distinct_until_changed;
 pub mod distinct_until_changed_by;
 pub mod emit_when;
+pub mod filter_ordered;
 pub mod fluxion_shared;
-pub mod fluxion_stream;
 pub mod into_fluxion_stream;
+pub mod map_ordered;
 pub mod merge_with;
+pub mod on_error;
 pub mod ordered_merge;
+pub mod prelude;
 pub mod scan_ordered;
+pub mod skip_items;
+pub mod start_with;
+pub mod take_items;
 pub mod take_latest_when;
 pub mod take_while_with;
 pub mod types;
@@ -668,12 +663,17 @@ pub use combine_with_previous::CombineWithPreviousExt;
 pub use distinct_until_changed::DistinctUntilChangedExt;
 pub use distinct_until_changed_by::DistinctUntilChangedByExt;
 pub use emit_when::EmitWhenExt;
-pub use fluxion_shared::FluxionShared;
-pub use fluxion_stream::FluxionStream;
+pub use filter_ordered::FilterOrderedExt;
+pub use fluxion_shared::{FluxionShared, ShareExt};
 pub use into_fluxion_stream::IntoFluxionStream;
+pub use map_ordered::MapOrderedExt;
 pub use merge_with::MergedStream;
+pub use on_error::OnErrorExt;
 pub use ordered_merge::OrderedStreamExt;
 pub use scan_ordered::ScanOrderedExt;
+pub use skip_items::SkipItemsExt;
+pub use start_with::StartWithExt;
+pub use take_items::TakeItemsExt;
 pub use take_latest_when::TakeLatestWhenExt;
 pub use take_while_with::TakeWhileExt;
 pub use types::{CombinedState, WithPrevious};

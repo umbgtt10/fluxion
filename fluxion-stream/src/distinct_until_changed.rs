@@ -1,8 +1,6 @@
 ﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
-
-use crate::FluxionStream;
 use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::stream::StreamExt;
@@ -147,11 +145,9 @@ where
     ///
     /// # See Also
     ///
-    /// - [`filter_ordered`](crate::FluxionStream::filter_ordered) - General filtering
+    /// - [`filter_ordered`](crate::FilterOrderedExt::filter_ordered) - General filtering
     /// - [`take_while_with`](crate::TakeWhileExt::take_while_with) - Conditional stream termination
-    fn distinct_until_changed(
-        self,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>;
+    fn distinct_until_changed(self) -> impl Stream<Item = StreamItem<T>> + Send + Sync;
 }
 
 impl<T, S> DistinctUntilChangedExt<T> for S
@@ -161,9 +157,7 @@ where
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
-    fn distinct_until_changed(
-        self,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync> {
+    fn distinct_until_changed(self) -> impl Stream<Item = StreamItem<T>> + Send + Sync {
         let last_value: Arc<Mutex<Option<T::Inner>>> = Arc::new(Mutex::new(None));
 
         let stream = self.filter_map(move |item| {
@@ -197,6 +191,6 @@ where
             }
         });
 
-        FluxionStream::new(Box::pin(stream))
+        Box::pin(stream)
     }
 }

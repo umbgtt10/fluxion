@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::Timestamped;
-use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_stream::prelude::*;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
     test_channel,
     test_data::{animal_dog, person_alice, plant_rose},
@@ -19,8 +20,8 @@ async fn test_fluxion_stream_combine_latest_composition() -> anyhow::Result<()> 
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
     let (plant_tx, plant_stream) = test_channel::<Sequenced<TestData>>();
 
-    let mut combined = FluxionStream::new(person_stream)
-        .combine_latest(vec![animal_stream, plant_stream], COMBINE_FILTER);
+    let mut combined =
+        person_stream.combine_latest(vec![animal_stream, plant_stream], COMBINE_FILTER);
 
     // Act
     person_tx.send(Sequenced::new(person_alice()))?;

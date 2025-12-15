@@ -1,8 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::FluxionStream;
+use fluxion_stream::{
+    CombineLatestExt, DistinctUntilChangedByExt, FilterOrderedExt, MapOrderedExt,
+};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -16,7 +18,7 @@ async fn test_distinct_until_changed_by_with_filter_composition() -> anyhow::Res
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     // Composition: filter -> distinct_until_changed_by (age parity check)
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
         .distinct_until_changed_by(|a, b| {
             let age_a = match a {
@@ -60,7 +62,7 @@ async fn test_distinct_until_changed_by_with_map_composition() -> anyhow::Result
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     // Composition: map to age -> distinct_until_changed_by (age difference threshold)
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .map_ordered(|s| {
             let age = match &s.value {
                 TestData::Person(p) => p.age,
@@ -107,7 +109,7 @@ async fn test_distinct_until_changed_by_with_combine_latest_composition() -> any
     let (stream2_tx, stream2) = test_channel::<Sequenced<TestData>>();
 
     // Composition: combine_latest -> map to max age -> distinct_until_changed_by (threshold)
-    let mut result = FluxionStream::new(stream1)
+    let mut result = stream1
         .combine_latest(vec![stream2], |_| true)
         .map_ordered(|state| {
             let ages: Vec<u32> = state

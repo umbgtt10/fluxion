@@ -3,8 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::TakeLatestWhenExt;
-use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_stream::prelude::*;
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::ChronoTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel_with_errors,

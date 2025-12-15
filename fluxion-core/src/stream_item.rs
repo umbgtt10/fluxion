@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::fluxion_error::FluxionError;
+use crate::{fluxion_error::FluxionError, HasTimestamp, Timestamped};
 
 /// A stream item that can be either a value or an error.
 ///
@@ -154,9 +154,9 @@ impl<T> From<StreamItem<T>> for Result<T, FluxionError> {
     }
 }
 
-impl<T> crate::HasTimestamp for StreamItem<T>
+impl<T> HasTimestamp for StreamItem<T>
 where
-    T: crate::Timestamped,
+    T: Timestamped,
 {
     type Timestamp = T::Timestamp;
 
@@ -168,9 +168,9 @@ where
     }
 }
 
-impl<T> crate::Timestamped for StreamItem<T>
+impl<T> Timestamped for StreamItem<T>
 where
-    T: crate::Timestamped,
+    T: Timestamped,
 {
     type Inner = T::Inner;
 

@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{HasTimestamp, Timestamped};
-use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_stream::prelude::*;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -38,7 +39,7 @@ async fn test_take_latest_when_with_latest_from_custom_selector() -> anyhow::Res
         TestWrapper::new(format!("Age difference: {}", diff), state.timestamp())
     };
 
-    let mut stream = FluxionStream::new(source_rx)
+    let mut stream = source_rx
         .take_latest_when(trigger_rx, FILTER)
         .with_latest_from(secondary_rx, age_difference_selector);
 
@@ -89,9 +90,9 @@ async fn test_filter_ordered_with_latest_from() -> anyhow::Result<()> {
         )
     };
 
-    let mut stream = FluxionStream::new(primary_rx)
+    let mut stream = primary_rx
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
-        .with_latest_from(FluxionStream::new(secondary_rx), name_combiner);
+        .with_latest_from(secondary_rx, name_combiner);
 
     // Act & Assert
     secondary_tx.send(Sequenced::new(animal_dog()))?;
@@ -138,9 +139,9 @@ async fn test_with_latest_from_composition_end_of_chain() -> anyhow::Result<()> 
         Sequenced::new(format!("Combined age: {}", primary_age + secondary_age))
     };
 
-    let mut stream = FluxionStream::new(primary_rx)
+    let mut stream = primary_rx
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
-        .with_latest_from(FluxionStream::new(secondary_rx), age_combiner);
+        .with_latest_from(secondary_rx, age_combiner);
 
     // Act & Assert
     secondary_tx.send(Sequenced::new(person_alice()))?; // 25
@@ -177,24 +178,22 @@ async fn test_ordered_merge_into_with_latest_from() -> anyhow::Result<()> {
     let (s3_tx, s3_rx) = test_channel::<Sequenced<TestData>>();
 
     // Merge s1 and s2, then combine with s3
-    let mut stream = FluxionStream::new(s1_rx)
-        .ordered_merge(vec![s2_rx])
-        .with_latest_from(
-            FluxionStream::new(s3_rx),
-            |state: &CombinedState<TestData, u64>| -> Sequenced<String> {
-                let values = state.values();
-                let primary_name = match &values[0] {
-                    TestData::Person(p) => p.name.clone(),
-                    TestData::Animal(a) => a.species.clone(),
-                    _ => "Unknown".to_string(),
-                };
-                let secondary_name = match &values[1] {
-                    TestData::Person(p) => p.name.clone(),
-                    _ => "Unknown".to_string(),
-                };
-                Sequenced::new(format!("{} with {}", primary_name, secondary_name))
-            },
-        );
+    let mut stream = s1_rx.ordered_merge(vec![s2_rx]).with_latest_from(
+        s3_rx,
+        |state: &CombinedState<TestData, u64>| -> Sequenced<String> {
+            let values = state.values();
+            let primary_name = match &values[0] {
+                TestData::Person(p) => p.name.clone(),
+                TestData::Animal(a) => a.species.clone(),
+                _ => "Unknown".to_string(),
+            };
+            let secondary_name = match &values[1] {
+                TestData::Person(p) => p.name.clone(),
+                _ => "Unknown".to_string(),
+            };
+            Sequenced::new(format!("{} with {}", primary_name, secondary_name))
+        },
+    );
 
     // Act & Assert
     // 1. Set secondary value

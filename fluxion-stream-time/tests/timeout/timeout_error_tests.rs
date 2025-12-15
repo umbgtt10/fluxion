@@ -3,8 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
-use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::ChronoTimestamped;
 use fluxion_test_utils::{
     helpers::recv_timeout, test_channel_with_errors, test_data::person_alice, TestData,
 };
@@ -20,7 +20,7 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
     let timeout_duration = Duration::from_millis(100);
-    let timed_out = FluxionStream::new(stream).timeout(timeout_duration);
+    let timed_out = stream.timeout(timeout_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 

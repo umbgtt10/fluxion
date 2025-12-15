@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{MapOrderedExt, SkipItemsExt};
 use fluxion_test_utils::{
     assert_no_element_emitted, test_channel_with_errors,
     test_data::{person_alice, person_bob, TestData},
@@ -16,7 +17,7 @@ async fn test_map_ordered_then_skip_items_propagates_error() -> anyhow::Result<(
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
     // Map then skip 1
-    let mut result = FluxionStream::new(stream).map_ordered(|x| x).skip_items(1);
+    let mut result = stream.map_ordered(|x| x).skip_items(1);
 
     // Act
     // 1. Send Alice -> Skipped

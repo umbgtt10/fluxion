@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::HasTimestamp;
-use fluxion_stream::{DistinctUntilChangedExt, FluxionStream};
+use fluxion_stream::prelude::*;
+use fluxion_stream::DistinctUntilChangedExt;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, assert_stream_ended, unwrap_stream},
     test_channel,
@@ -280,7 +281,7 @@ async fn test_distinct_until_changed_with_filter_ordered() -> anyhow::Result<()>
 
     // Arrange: Compose with filter_ordered - filter out people under 30
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut composed = FluxionStream::new(stream)
+    let mut composed = stream
         .distinct_until_changed()
         .filter_ordered(|data| match data {
             TestData::Person(p) => p.age >= 30,

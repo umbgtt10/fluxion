@@ -90,12 +90,6 @@
 pub use fluxion_core::into_stream::IntoStream;
 pub use fluxion_core::{HasTimestamp, Timestamped};
 
-// Re-export the main FluxionStream type
-pub use fluxion_stream::FluxionStream;
-
-// Re-export the IntoFluxionStream extension trait for simple channel conversion
-pub use fluxion_stream::IntoFluxionStream;
-
 // Re-export commonly used types
 pub use fluxion_stream::{CombinedState, WithPrevious};
 
@@ -110,18 +104,16 @@ pub use fluxion_exec;
 /// use fluxion_rx::prelude::*;
 ///
 /// // Now you have access to:
-/// // - FluxionStream
+/// // - Extension traits via fluxion_stream::prelude
 /// // - Timestamped trait
 /// // - IntoStream trait
 /// // - CombinedState, WithPrevious
-/// // - IntoFluxionStream
 /// ```
 ///
 /// This is the recommended way to use Fluxion in most applications.
 pub mod prelude {
-    pub use crate::FluxionStream;
-    pub use crate::IntoFluxionStream;
     pub use fluxion_core::into_stream::IntoStream;
     pub use fluxion_core::{HasTimestamp, Timestamped};
+    pub use fluxion_stream::prelude::*;
     pub use fluxion_stream::{CombinedState, WithPrevious};
 }

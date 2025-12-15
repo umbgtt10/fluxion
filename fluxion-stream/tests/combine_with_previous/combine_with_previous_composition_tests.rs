@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{StreamItem, Timestamped};
-use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_stream::prelude::*;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
     assert_no_element_emitted,
     helpers::unwrap_stream,
@@ -21,7 +22,7 @@ async fn test_take_latest_when_combine_with_previous() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<TestData>>();
 
-    let mut composed = FluxionStream::new(source_stream)
+    let mut composed = source_stream
         .take_latest_when(filter_stream, FILTER)
         .combine_with_previous();
 
@@ -70,8 +71,8 @@ async fn test_ordered_merge_combine_with_previous() -> anyhow::Result<()> {
     let person_stream = person_rx;
     let animal_stream = animal_rx;
 
-    let mut composed = FluxionStream::new(person_stream)
-        .ordered_merge(vec![FluxionStream::new(animal_stream)])
+    let mut composed = person_stream
+        .ordered_merge(vec![animal_stream])
         .combine_with_previous();
 
     // Act & Assert
@@ -105,7 +106,7 @@ async fn test_combine_latest_combine_with_previous() -> anyhow::Result<()> {
     let person_stream = person_rx;
     let animal_stream = animal_rx;
 
-    let mut composed = FluxionStream::new(person_stream)
+    let mut composed = person_stream
         .combine_latest(vec![animal_stream], COMBINE_FILTER)
         .combine_with_previous();
 
@@ -148,8 +149,8 @@ async fn test_complex_composition_ordered_merge_and_combine_with_previous() -> a
     let person1_stream = person1_rx;
     let person2_stream = person2_rx;
 
-    let mut stream = FluxionStream::new(person1_stream)
-        .ordered_merge(vec![FluxionStream::new(person2_stream)])
+    let mut stream = person1_stream
+        .ordered_merge(vec![person2_stream])
         .combine_with_previous();
 
     // Act & Assert
@@ -179,7 +180,7 @@ async fn test_filter_ordered_combine_with_previous() -> anyhow::Result<()> {
     // Arrange - filter for adults (age > 25), then track changes
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    let mut stream = FluxionStream::new(stream)
+    let mut stream = stream
         .filter_ordered(|test_data| match test_data {
             TestData::Person(p) => p.age > 25,
             _ => false,
@@ -218,7 +219,7 @@ async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow
     let (stream2_tx, stream2) = test_channel::<Sequenced<TestData>>();
 
     // Composition: combine_latest -> map to combined age -> distinct_until_changed -> combine_with_previous
-    let mut result = FluxionStream::new(stream1)
+    let mut result = stream1
         .combine_latest(vec![stream2], |_| true)
         .map_ordered(|state| {
             let age1 = match &state.values()[0] {

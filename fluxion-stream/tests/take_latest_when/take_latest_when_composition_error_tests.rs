@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, HasTimestamp, StreamItem};
-use fluxion_stream::{take_latest_when::TakeLatestWhenExt, FluxionStream};
+use fluxion_stream::prelude::*;
+use fluxion_stream::take_latest_when::TakeLatestWhenExt;
 use fluxion_test_utils::{
     assert_no_element_emitted, test_channel_with_errors,
     test_data::{
@@ -21,7 +22,7 @@ async fn test_take_latest_when_propagates_error_from_mapped_source() -> anyhow::
 
     // Source chain: map_ordered -> take_latest_when
     // Map: Append " Jr." to person name
-    let mapped_source = FluxionStream::new(source_stream).map_ordered(|x| {
+    let mapped_source = source_stream.map_ordered(|x| {
         if let TestData::Person(p) = &x.value {
             Sequenced::with_timestamp(person(format!("{} Jr.", p.name), p.age), x.timestamp())
         } else {
@@ -93,7 +94,7 @@ async fn test_take_latest_when_propagates_error_from_filtered_trigger() -> anyho
 
     // Trigger chain: filter_ordered -> take_latest_when (as trigger)
     // We filter trigger values (Animals) with legs > 4.
-    let filtered_trigger = FluxionStream::new(trigger_stream).filter_ordered(|x| {
+    let filtered_trigger = trigger_stream.filter_ordered(|x| {
         if let TestData::Animal(a) = x {
             a.legs > 4
         } else {
@@ -165,7 +166,7 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
     // Source: scan (sum of ages)
     // Input: Sequenced<TestData>
     // Output: Sequenced<TestData> (Person with name "Sum" and age = sum)
-    let scanned_source = FluxionStream::new(source_stream).scan_ordered(0u32, |acc, x| {
+    let scanned_source = source_stream.scan_ordered(0u32, |acc, x| {
         if let TestData::Person(p) = x {
             *acc += p.age;
         }
@@ -175,7 +176,7 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
     // Trigger: map (double legs)
     // Input: Sequenced<TestData>
     // Output: Sequenced<TestData>
-    let mapped_trigger = FluxionStream::new(trigger_stream).map_ordered(|x| {
+    let mapped_trigger = trigger_stream.map_ordered(|x| {
         if let TestData::Animal(a) = &x.value {
             Sequenced::with_timestamp(animal(a.species.clone(), a.legs * 2), x.timestamp())
         } else {

@@ -1,11 +1,12 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 //! Error propagation tests for `filter_ordered` operator.
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{CombineWithPreviousExt, FilterOrderedExt, MapOrderedExt};
 use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors, unwrap_stream, Sequenced};
 use futures::StreamExt;
 
@@ -14,7 +15,7 @@ async fn test_filter_ordered_propagates_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut result = FluxionStream::new(stream).filter_ordered(|x| x % 2 == 0);
+    let mut result = stream.filter_ordered(|x| x % 2 == 0);
 
     // Act & Assert: First item (1) filtered out
     tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
@@ -55,7 +56,7 @@ async fn test_filter_ordered_predicate_after_error() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Only pass values > 18
-    let mut result = FluxionStream::new(stream).filter_ordered(|x| *x > 18);
+    let mut result = stream.filter_ordered(|x| *x > 18);
 
     // Values that don't pass
     tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
@@ -97,7 +98,7 @@ async fn test_filter_ordered_error_at_start() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut result = FluxionStream::new(stream).filter_ordered(|x| *x > 1);
+    let mut result = stream.filter_ordered(|x| *x > 1);
 
     // Act & Assert: Error first
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
@@ -129,7 +130,7 @@ async fn test_filter_ordered_all_filtered_except_error() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut result = FluxionStream::new(stream).filter_ordered(|x| x % 2 == 0);
+    let mut result = stream.filter_ordered(|x| x % 2 == 0);
 
     // Act & Assert: Send odd number (filtered)
     tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
@@ -159,7 +160,7 @@ async fn test_filter_ordered_chain_with_map_after_error() -> anyhow::Result<()> 
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Chain filter and map
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .filter_ordered(|x| *x >= 20)
         .combine_with_previous()
         .map_ordered(|x| Sequenced::new(x.current.value / 10));

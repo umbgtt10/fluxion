@@ -1,9 +1,9 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_stream::FluxionStream;
+use fluxion_stream::StartWithExt;
 use fluxion_test_utils::{
     helpers::{assert_stream_ended, unwrap_stream},
     test_channel,
@@ -18,8 +18,7 @@ async fn test_start_with_prepends_initial_values() -> anyhow::Result<()> {
 
     let initial = vec![Sequenced::new(person_alice()), Sequenced::new(person_bob())];
 
-    let mut result =
-        FluxionStream::new(stream).start_with(initial.into_iter().map(StreamItem::Value).collect());
+    let mut result = stream.start_with(initial.into_iter().map(StreamItem::Value).collect());
 
     // Act & Assert - Initial values emitted first
     assert_eq!(
@@ -49,7 +48,7 @@ async fn test_start_with_empty_initial_values() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<_>>();
 
     let initial = vec![];
-    let mut result = FluxionStream::new(stream).start_with(initial);
+    let mut result = stream.start_with(initial);
 
     // Act
     tx.send(Sequenced::new(person_alice()))?;

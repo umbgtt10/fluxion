@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{MapOrderedExt, StartWithExt};
 use fluxion_test_utils::{
     test_channel_with_errors,
     test_data::{person_alice, person_bob, TestData},
@@ -16,7 +17,7 @@ async fn test_map_ordered_then_start_with_propagates_error() -> anyhow::Result<(
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
     // Map then start with Bob
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .map_ordered(|x| x)
         .start_with(vec![StreamItem::Value(Sequenced::new(person_bob()))]);
 

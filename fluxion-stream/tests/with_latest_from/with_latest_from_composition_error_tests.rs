@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, HasTimestamp, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{MapOrderedExt, WithLatestFromExt};
 use fluxion_test_utils::{person::Person, test_channel_with_errors, unwrap_stream, Sequenced};
 
 #[tokio::test]
@@ -12,7 +13,7 @@ async fn test_with_latest_from_error_propagation_at_end_of_chain() -> anyhow::Re
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<Person>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<Person>>();
 
-    let mut result = FluxionStream::new(stream1)
+    let mut result = stream1
         .map_ordered(|x| {
             let ts = HasTimestamp::timestamp(&x);
             let mut p = x.into_inner();

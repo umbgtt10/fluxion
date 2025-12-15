@@ -2,8 +2,11 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::{FluxionStream, MergedStream};
-use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_core::IntoStream;
+use fluxion_stream::prelude::*;
+use fluxion_stream::MergedStream;
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::ChronoTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -22,7 +25,7 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
     let delay_duration = Duration::from_secs(1);
 
     // Chain map_ordered then delay - transform the data before delaying
-    let mut processed = FluxionStream::new(stream)
+    let mut processed = stream
         .map_ordered(|item: ChronoTimestamped<_>| {
             // Transform Alice to Bob
             let transformed = if item.value == person_alice() {
@@ -67,7 +70,7 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
     let delay_duration = Duration::from_secs(1);
 
     // Chain filter_ordered then delay - keep only Alice and Charlie
-    let mut processed = FluxionStream::new(stream)
+    let mut processed = stream
         .filter_ordered(|data: &_| *data == person_alice() || *data == person_charlie())
         .delay(delay_duration);
 
@@ -117,7 +120,7 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
             *state += 1;
             value // Pass through
         })
-        .into_fluxion_stream()
+        .into_stream()
         .delay(delay_duration);
 
     // Act & Assert

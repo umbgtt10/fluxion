@@ -5,7 +5,6 @@
 //! Adapter that wraps legacy User records with timestamps
 //! This is Pattern 3: Wrapper Ordering from the Integration Guide
 
-use fluxion_stream::FluxionStream;
 use futures::{Stream, StreamExt};
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
@@ -31,7 +30,7 @@ impl UserAdapter {
     pub fn start(
         &mut self,
         cancel_token: CancellationToken,
-    ) -> FluxionStream<impl Stream<Item = TimestampedEvent> + Send + Unpin> {
+    ) -> impl Stream<Item = TimestampedEvent> + Send + Unpin {
         let (user_tx, user_rx) = unbounded_channel();
 
         // Spawn legacy database poller
@@ -41,10 +40,8 @@ impl UserAdapter {
         self.task_handle = Some(task_handle);
 
         // Create stream that wraps with timestamps
-        let stream = UnboundedReceiverStream::new(user_rx)
-            .map(|user| TimestampedEvent::new(UnifiedEvent::UserAdded(user)));
-
-        FluxionStream::new(stream)
+        UnboundedReceiverStream::new(user_rx)
+            .map(|user| TimestampedEvent::new(UnifiedEvent::UserAdded(user)))
     }
 
     /// Shutdown and wait for task completion

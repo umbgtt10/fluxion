@@ -3,8 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::HasTimestamp;
-use fluxion_stream::{CombineLatestExt, FluxionStream};
-use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_stream::prelude::*;
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::ChronoTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -23,7 +24,7 @@ async fn test_debounce_chaining_with_map_ordered() -> anyhow::Result<()> {
     let debounce_duration = Duration::from_millis(500);
 
     // Chain map_ordered then debounce - transform the data before debouncing
-    let mut processed = FluxionStream::new(stream)
+    let mut processed = stream
         .map_ordered(|item: ChronoTimestamped<_>| {
             // Transform Alice to Bob
             let transformed = if item.value == person_alice() {
@@ -73,7 +74,7 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
     let debounce_duration = Duration::from_millis(500);
 
     // Chain filter_ordered then debounce - keep only Alice and Charlie
-    let mut processed = FluxionStream::new(stream)
+    let mut processed = stream
         .filter_ordered(|data: &_| *data == person_alice() || *data == person_charlie())
         .debounce(debounce_duration);
 
@@ -133,9 +134,7 @@ async fn test_debounce_then_delay() -> anyhow::Result<()> {
     let delay_duration = Duration::from_millis(200);
 
     // Chain debounce then delay
-    let mut processed = FluxionStream::new(stream)
-        .debounce(debounce_duration)
-        .delay(delay_duration);
+    let mut processed = stream.debounce(debounce_duration).delay(delay_duration);
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
@@ -170,9 +169,7 @@ async fn test_delay_then_debounce() -> anyhow::Result<()> {
     let debounce_duration = Duration::from_millis(300);
 
     // Chain delay then debounce
-    let mut processed = FluxionStream::new(stream)
-        .delay(delay_duration)
-        .debounce(debounce_duration);
+    let mut processed = stream.delay(delay_duration).debounce(debounce_duration);
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;

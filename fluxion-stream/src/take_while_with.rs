@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::FluxionStream;
 use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{Fluxion, FluxionError, HasTimestamp, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
@@ -50,7 +49,7 @@ where
     ///
     /// # Returns
     ///
-    /// A `FluxionStream` of source elements that are emitted while the filter condition
+    /// A stream of source elements that are emitted while the filter condition
     /// remains true. Stream terminates when condition becomes false.
     ///
     /// # Errors
@@ -72,7 +71,7 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream::{TakeWhileExt, FluxionStream};
+    /// use fluxion_stream::TakeWhileExt;
     /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
     ///
@@ -110,7 +109,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<TItem>> + Send>;
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<TItem>> + Send + Sync>>;
 }
 
 impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
@@ -127,7 +126,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<TItem>> + Send> {
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<TItem>> + Send + Sync>> {
         let filter = Arc::new(filter);
 
         // Tag each stream with its type - unwrap StreamItem first
@@ -186,7 +185,7 @@ where
             }
         });
 
-        FluxionStream::new(Box::pin(combined_stream))
+        Box::pin(combined_stream)
     }
 }
 

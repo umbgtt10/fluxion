@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -8,7 +8,8 @@
 //! operators in various composition scenarios.
 
 use fluxion_core::{FluxionError, HasTimestamp, StreamItem};
-use fluxion_stream::{CombineLatestExt, FluxionStream, OrderedStreamExt, TakeLatestWhenExt};
+use fluxion_stream::prelude::*;
+use fluxion_stream::{CombineLatestExt, OrderedStreamExt, TakeLatestWhenExt};
 use fluxion_test_utils::{
     assert_no_element_emitted, assert_stream_ended, test_channel_with_errors,
     test_data::{animal_cat, animal_dog, person_alice, person_bob, person_charlie, TestData},
@@ -199,7 +200,7 @@ async fn test_on_error_selective_handling_in_composed_pipeline() -> anyhow::Resu
     let transient_clone = transient_errors.clone();
     let validation_clone = validation_errors.clone();
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .map_ordered(|x| {
             // Add " mapped" suffix to person names
             if let TestData::Person(p) = &x.value {
@@ -290,12 +291,12 @@ async fn test_on_error_before_ordered_merge_handles_individual_stream_errors() -
     let s2_errors_clone = stream2_errors.clone();
 
     // Apply on_error to each stream before merging
-    let handled_stream1 = FluxionStream::new(stream1).on_error(move |_err| {
+    let handled_stream1 = stream1.on_error(move |_err| {
         *s1_errors_clone.lock().unwrap() += 1;
         true // Consume stream1 errors
     });
 
-    let handled_stream2 = FluxionStream::new(stream2).on_error(move |_err| {
+    let handled_stream2 = stream2.on_error(move |_err| {
         *s2_errors_clone.lock().unwrap() += 1;
         true // Consume stream2 errors
     });
@@ -342,7 +343,7 @@ async fn test_on_error_with_scan_ordered_preserves_accumulator_state() -> anyhow
     let errors_handled = Arc::new(Mutex::new(0));
     let errors_clone = errors_handled.clone();
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .scan_ordered(0i32, |acc, value| {
             *acc += value;
             *acc
@@ -396,12 +397,10 @@ async fn test_on_error_with_combine_with_previous_maintains_previous_value() -> 
     let errors_handled = Arc::new(Mutex::new(0));
     let errors_clone = errors_handled.clone();
 
-    let mut result = FluxionStream::new(stream)
-        .combine_with_previous()
-        .on_error(move |_err| {
-            *errors_clone.lock().unwrap() += 1;
-            true
-        });
+    let mut result = stream.combine_with_previous().on_error(move |_err| {
+        *errors_clone.lock().unwrap() += 1;
+        true
+    });
 
     // Act & Assert
     // 1. First value - no previous
@@ -444,7 +443,7 @@ async fn test_on_error_propagation_stops_at_first_handler() -> anyhow::Result<()
     let h2 = handler2_count.clone();
     let h3 = handler3_count.clone();
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .on_error(move |err| {
             *h1.lock().unwrap() += 1;
             // Only handle errors containing "type1"
@@ -501,7 +500,7 @@ async fn test_on_error_handles_rapid_consecutive_errors_in_pipeline() -> anyhow:
     let errors_handled = Arc::new(Mutex::new(0));
     let errors_clone = errors_handled.clone();
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .map_ordered(|x| Sequenced::with_timestamp(x.value * 2, x.timestamp()))
         .on_error(move |_err| {
             *errors_clone.lock().unwrap() += 1;
@@ -533,12 +532,10 @@ async fn test_on_error_empty_pipeline_with_errors() -> anyhow::Result<()> {
     let errors_count = Arc::new(Mutex::new(0));
     let errors_clone = errors_count.clone();
 
-    let mut result = FluxionStream::new(stream)
-        .filter_ordered(|_| true)
-        .on_error(move |_| {
-            *errors_clone.lock().unwrap() += 1;
-            true
-        });
+    let mut result = stream.filter_ordered(|_| true).on_error(move |_| {
+        *errors_clone.lock().unwrap() += 1;
+        true
+    });
 
     // Act - send errors one at a time, polling after each
     tx.send(StreamItem::Error(FluxionError::stream_error("error 1")))?;

@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_stream::{CombinedState, FluxionStream, WithPrevious};
+use fluxion_stream::prelude::*;
+use fluxion_stream::{CombinedState, WithPrevious};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -43,8 +44,8 @@ async fn test_ordered_merge_combine_with_previous_emit_when() -> anyhow::Result<
         threshold_stream.map(|seq| StreamItem::Value(WithPrevious::new(None, seq.unwrap())));
 
     // Chained composition: merge -> combine_with_previous -> emit_when
-    let mut output_stream = FluxionStream::new(person1_stream)
-        .ordered_merge(vec![FluxionStream::new(person2_stream)])
+    let mut output_stream = person1_stream
+        .ordered_merge(vec![person2_stream])
         .combine_with_previous()
         .emit_when(threshold_mapped, filter_fn);
 
@@ -133,10 +134,10 @@ async fn test_combine_with_previous_emit_when_map_ordered() -> anyhow::Result<()
     };
 
     // Chain: combine_with_previous -> map_ordered (extract current) -> emit_when
-    let mut stream = FluxionStream::new(source_stream)
+    let mut stream = source_stream
         .combine_with_previous()
         .map_ordered(|wp| wp.current)
-        .emit_when(FluxionStream::new(threshold_stream), filter_fn);
+        .emit_when(threshold_stream, filter_fn);
 
     // Act & Assert
     threshold_tx.send(Sequenced::new(person_bob()))?; // Threshold 30

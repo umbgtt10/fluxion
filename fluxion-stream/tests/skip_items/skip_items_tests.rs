@@ -1,8 +1,8 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::FluxionStream;
+use fluxion_stream::SkipItemsExt;
 use fluxion_test_utils::{
     helpers::{assert_stream_ended, unwrap_stream},
     test_channel,
@@ -14,7 +14,7 @@ use fluxion_test_utils::{
 async fn test_skip_skips_initial_items() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<_>>();
-    let mut result = FluxionStream::new(stream).skip_items(2);
+    let mut result = stream.skip_items(2);
 
     // Act
     tx.send(Sequenced::new(person_alice()))?; // Skipped
@@ -37,7 +37,7 @@ async fn test_skip_skips_initial_items() -> anyhow::Result<()> {
 async fn test_skip_more_than_available() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<_>>();
-    let mut result = FluxionStream::new(stream).skip_items(10);
+    let mut result = stream.skip_items(10);
 
     // Act
     tx.send(Sequenced::new(person_alice()))?;

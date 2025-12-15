@@ -5,7 +5,8 @@
 use std::collections::HashMap;
 
 use fluxion_core::stream_item::StreamItem;
-use fluxion_stream::{FluxionStream, MergedStream};
+use fluxion_core::IntoStream;
+use fluxion_stream::prelude::*;
 use futures::Stream;
 
 use super::{
@@ -68,9 +69,7 @@ impl Repository {
     }
 
     /// Create the aggregated FluxionStream from the stored streams
-    pub fn create_stream(
-        mut self,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<TimestampedEvent>>> {
+    pub fn create_stream(mut self) -> impl Stream<Item = StreamItem<TimestampedEvent>> {
         let user_stream = self
             .user_stream
             .take()
@@ -113,6 +112,6 @@ impl Repository {
                 }
                 event
             })
-            .into_fluxion_stream()
+            .into_stream()
     }
 }

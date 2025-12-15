@@ -5,7 +5,8 @@
 //! Error propagation tests for `FluxionShared`.
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+use fluxion_stream::prelude::*;
+use fluxion_stream::ShareExt;
 use fluxion_test_utils::test_data::{person_alice, TestData};
 use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors, unwrap_stream, Sequenced};
 
@@ -13,7 +14,7 @@ use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors, unwrap_s
 async fn shared_propagates_error_and_closes_all_subscribers() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = test_channel_with_errors::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
     let mut sub1 = shared.subscribe().unwrap();
@@ -67,7 +68,7 @@ async fn shared_error_from_source_operator_propagates_to_subscribers() -> anyhow
     // Arrange - source with an operator that injects error
     let (tx, rx) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let source = FluxionStream::new(rx).map_ordered(|item| {
+    let source = rx.map_ordered(|item| {
         // This operator runs on the source stream before sharing
         Sequenced::new(item.into_inner())
     });
@@ -102,7 +103,7 @@ async fn shared_error_from_source_operator_propagates_to_subscribers() -> anyhow
 async fn shared_multiple_errors_propagate_in_order() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = test_channel_with_errors::<Sequenced<TestData>>();
-    let source = FluxionStream::new(rx);
+    let source = rx;
 
     let shared = source.share();
     let mut sub = shared.subscribe().unwrap();

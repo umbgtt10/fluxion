@@ -1,8 +1,8 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::FluxionStream;
+use fluxion_stream::{CombineLatestExt, MapOrderedExt, OrderedStreamExt, ScanOrderedExt};
 use fluxion_test_utils::{
     helpers::unwrap_stream,
     test_channel,
@@ -17,7 +17,7 @@ async fn test_scan_ordered_chained() -> anyhow::Result<()> {
 
     // First scan: running sum of ages
     // Second scan: count of emissions
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .scan_ordered::<Sequenced<i32>, _, _>(0, |sum: &mut i32, value: &TestData| {
             if let TestData::Person(p) = value {
                 *sum += p.age as i32;
@@ -64,12 +64,13 @@ async fn test_scan_ordered_composed_with_map_ordered() -> anyhow::Result<()> {
     // Act: Chain map_ordered before scan_ordered
     // 1. Map each item to value 10
     // 2. Scan (accumulate) the values
-    let mut result = FluxionStream::new(stream)
-        .map_ordered(|_item| Sequenced::new(10))
-        .scan_ordered(0, |sum: &mut i32, value: &i32| {
+    let mut result = stream.map_ordered(|_item| Sequenced::new(10)).scan_ordered(
+        0,
+        |sum: &mut i32, value: &i32| {
             *sum += value;
             *sum
-        });
+        },
+    );
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
@@ -104,26 +105,24 @@ async fn test_ordered_merge_scan_ordered_name_change() -> anyhow::Result<()> {
     let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
     let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
 
-    let mut stream = FluxionStream::new(s1_rx)
-        .ordered_merge(vec![s2_rx])
-        .scan_ordered(
-            None::<String>,
-            |last_name: &mut Option<String>, item: &TestData| {
-                let current_name = match item {
-                    TestData::Person(p) => p.name.clone(),
-                    _ => "Unknown".to_string(),
-                };
-                let result = match last_name {
-                    Some(prev) if prev != &current_name => {
-                        format!("Name changed from {} to {}", prev, current_name)
-                    }
-                    Some(_) => format!("Same name: {}", current_name),
-                    None => format!("First entry: {}", current_name),
-                };
-                *last_name = Some(current_name);
-                result
-            },
-        );
+    let mut stream = s1_rx.ordered_merge(vec![s2_rx]).scan_ordered(
+        None::<String>,
+        |last_name: &mut Option<String>, item: &TestData| {
+            let current_name = match item {
+                TestData::Person(p) => p.name.clone(),
+                _ => "Unknown".to_string(),
+            };
+            let result = match last_name {
+                Some(prev) if prev != &current_name => {
+                    format!("Name changed from {} to {}", prev, current_name)
+                }
+                Some(_) => format!("Same name: {}", current_name),
+                None => format!("First entry: {}", current_name),
+            };
+            *last_name = Some(current_name);
+            result
+        },
+    );
 
     // Act & Assert
     s1_tx.send(Sequenced::new(person_alice()))?;
@@ -158,8 +157,8 @@ async fn test_combine_latest_scan_ordered_total_age() -> anyhow::Result<()> {
 
     let combine_filter = |_: &fluxion_stream::CombinedState<TestData, u64>| true;
 
-    let mut stream = FluxionStream::new(person_stream)
-        .combine_latest(vec![FluxionStream::new(animal_stream)], combine_filter)
+    let mut stream = person_stream
+        .combine_latest(vec![animal_stream], combine_filter)
         .scan_ordered(
             0u32,
             |total_age: &mut u32, state: &fluxion_stream::CombinedState<TestData, u64>| {

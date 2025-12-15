@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::TakeItemsExt;
 use fluxion_test_utils::{
     helpers::{assert_stream_ended, unwrap_stream},
     test_channel_with_errors, Sequenced,
@@ -13,7 +14,7 @@ use fluxion_test_utils::{
 async fn test_take_propagates_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).take_items(3);
+    let mut result = stream.take_items(3);
 
     // Act
     tx.send(StreamItem::Value(Sequenced::new(1)))?;
@@ -41,7 +42,7 @@ async fn test_take_propagates_errors() -> anyhow::Result<()> {
 async fn test_take_counts_errors_as_items() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).take_items(2);
+    let mut result = stream.take_items(2);
 
     // Act - Send 2 errors, no values
     tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;

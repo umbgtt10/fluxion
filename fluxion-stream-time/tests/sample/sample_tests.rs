@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::FluxionStream;
-use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::ChronoTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     test_channel,
@@ -22,7 +22,7 @@ async fn test_sample_emits_latest_in_window() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let sample_duration = Duration::from_millis(100);
-    let sampled = FluxionStream::new(stream).sample(sample_duration);
+    let sampled = stream.sample(sample_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -55,7 +55,7 @@ async fn test_sample_no_emission_if_no_value() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let sample_duration = Duration::from_millis(100);
-    let sampled = FluxionStream::new(stream).sample(sample_duration);
+    let sampled = stream.sample(sample_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 

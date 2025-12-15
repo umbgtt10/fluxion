@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::FluxionStream;
-use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::ChronoTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     person::Person,
@@ -23,7 +23,7 @@ async fn test_delay_with_chrono_timestamped() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let delay_duration = Duration::from_secs(1);
-    let mut delayed = FluxionStream::new(stream).delay(delay_duration);
+    let mut delayed = stream.delay(delay_duration);
 
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
@@ -56,7 +56,7 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let delay_duration = Duration::from_millis(10);
-    let delayed = FluxionStream::new(stream).delay(delay_duration);
+    let delayed = stream.delay(delay_duration);
 
     let count = 100;
     let (result_tx, mut result_rx) = unbounded_channel();

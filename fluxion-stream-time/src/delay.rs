@@ -2,6 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+//! Delay operator for time-based stream processing.
+
+use crate::ChronoTimestamped;
 use fluxion_core::StreamItem;
 use futures::stream::FuturesOrdered;
 use futures::{Stream, StreamExt};
@@ -12,46 +15,69 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 use tokio::time::{sleep, Sleep};
 
-/// Delays each emission from the source stream by the specified duration.
+/// Extension trait providing the `delay` operator for streams.
 ///
-/// Each item is delayed independently - the delay is applied to each item
-/// as it arrives. Errors are passed through without delay to ensure timely
-/// error propagation.
-///
-/// # Example
-///
-/// ```rust
-/// use fluxion_stream_time::delay;
-/// use fluxion_core::StreamItem;
-/// use fluxion_test_utils::test_data::person_alice;
-/// use futures::stream::StreamExt;
-/// use std::time::Duration;
-/// use tokio::sync::mpsc;
-/// use tokio_stream::wrappers::UnboundedReceiverStream;
-///
-/// # #[tokio::main]
-/// # async fn main() {
-/// let (tx, rx) = mpsc::unbounded_channel();
-/// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
-///
-/// let mut delayed = delay(source, Duration::from_millis(10));
-///
-/// tx.send(person_alice()).unwrap();
-///
-/// let item = delayed.next().await.unwrap().unwrap();
-/// assert_eq!(item, person_alice());
-/// # }
-/// ```
-pub fn delay<S, T>(stream: S, duration: Duration) -> impl Stream<Item = StreamItem<T>>
+/// This trait allows any stream of `StreamItem<ChronoTimestamped<T>>` to delay emissions
+/// by a specified duration.
+pub trait DelayExt<T>: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Sized
 where
-    S: Stream<Item = StreamItem<T>>,
     T: Send,
 {
-    DelayStream {
-        stream,
-        duration,
-        in_flight: FuturesOrdered::new(),
-        upstream_done: false,
+    /// Delays each emission by the specified duration.
+    ///
+    /// Each item is delayed independently - the delay is applied to each item
+    /// as it arrives. Errors are passed through without delay to ensure timely
+    /// error propagation.
+    ///
+    /// # Arguments
+    ///
+    /// * `duration` - The duration by which to delay each emission
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fluxion_stream_time::{DelayExt, ChronoTimestamped};
+    /// use fluxion_core::StreamItem;
+    /// use fluxion_test_utils::test_data::person_alice;
+    /// use futures::stream::StreamExt;
+    /// use std::time::Duration;
+    /// use tokio::sync::mpsc;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
+    ///
+    /// let mut delayed = source.delay(Duration::from_millis(10));
+    ///
+    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
+    ///
+    /// let item = delayed.next().await.unwrap().unwrap();
+    /// assert_eq!(&*item, &person_alice());
+    /// # }
+    /// ```
+    fn delay(
+        self,
+        duration: Duration,
+    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send;
+}
+
+impl<S, T> DelayExt<T> for S
+where
+    S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send,
+    T: Send,
+{
+    fn delay(
+        self,
+        duration: Duration,
+    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send {
+        DelayStream {
+            stream: self,
+            duration,
+            in_flight: FuturesOrdered::new(),
+            upstream_done: false,
+        }
     }
 }
 
@@ -59,11 +85,11 @@ where
 struct DelayFuture<T> {
     #[pin]
     delay: Sleep,
-    value: Option<T>,
+    value: Option<ChronoTimestamped<T>>,
 }
 
 impl<T> Future for DelayFuture<T> {
-    type Output = StreamItem<T>;
+    type Output = StreamItem<ChronoTimestamped<T>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
@@ -91,10 +117,10 @@ struct DelayStream<S, T> {
 
 impl<S, T> Stream for DelayStream<S, T>
 where
-    S: Stream<Item = StreamItem<T>>,
+    S: Stream<Item = StreamItem<ChronoTimestamped<T>>>,
     T: Send,
 {
-    type Item = StreamItem<T>;
+    type Item = StreamItem<ChronoTimestamped<T>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();

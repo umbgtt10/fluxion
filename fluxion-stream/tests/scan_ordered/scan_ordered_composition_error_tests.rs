@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{FilterOrderedExt, MapOrderedExt, ScanOrderedExt};
 use fluxion_test_utils::{
     assert_no_element_emitted, person::Person, test_channel_with_errors, unwrap_stream, Sequenced,
 };
@@ -13,7 +14,7 @@ async fn test_map_ordered_error_propagation_into_scan_ordered() -> anyhow::Resul
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<Person>>();
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .map_ordered(|val: Sequenced<Person>| {
             let mut p = val.into_inner();
             p.age *= 2;
@@ -59,12 +60,13 @@ async fn test_filter_ordered_error_propagation_into_scan_ordered() -> anyhow::Re
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<Person>>();
 
-    let mut result = FluxionStream::new(stream)
-        .filter_ordered(|val| val.age > 10)
-        .scan_ordered(0, |count: &mut i32, _: &Person| {
-            *count += 1;
-            *count
-        });
+    let mut result =
+        stream
+            .filter_ordered(|val| val.age > 10)
+            .scan_ordered(0, |count: &mut i32, _: &Person| {
+                *count += 1;
+                *count
+            });
 
     // Act & Assert
     tx.send(StreamItem::Value(Sequenced::with_timestamp(
@@ -107,7 +109,7 @@ async fn test_chained_scan_ordered_error_propagation() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<Person>>();
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .scan_ordered::<Sequenced<u32>, _, _>(0, |sum: &mut u32, value: &Person| {
             *sum += value.age;
             *sum

@@ -1,11 +1,12 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 //! Tests for the `on_error` operator implementing Chain of Responsibility pattern.
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::OnErrorExt;
 use fluxion_test_utils::{assert_no_element_emitted, assert_stream_ended};
 use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, unwrap_value, Sequenced};
 use std::sync::{Arc, Mutex};
@@ -14,7 +15,7 @@ use std::sync::{Arc, Mutex};
 async fn test_on_error_consumes_all_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(|_err| {
+    let mut result = stream.on_error(|_err| {
         true // Consume all errors
     });
 
@@ -55,7 +56,7 @@ async fn test_on_error_consumes_all_errors() -> anyhow::Result<()> {
 async fn test_on_error_propagates_all_errors() -> anyhow::Result<()> {
     //  Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(|_err| {
+    let mut result = stream.on_error(|_err| {
         false // Propagate all errors
     });
 
@@ -94,7 +95,7 @@ async fn test_on_error_propagates_all_errors() -> anyhow::Result<()> {
 async fn test_on_error_selective_by_message_content() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(|err| {
+    let mut result = stream.on_error(|err| {
         // Only consume errors containing "user"
         err.to_string().contains("user")
     });
@@ -134,7 +135,7 @@ async fn test_on_error_selective_by_message_content() -> anyhow::Result<()> {
 async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .on_error(|err| err.to_string().contains("validation"))
         .on_error(|err| err.to_string().contains("network"))
         .on_error(|err| {
@@ -178,7 +179,7 @@ async fn test_on_error_with_side_effects() -> anyhow::Result<()> {
     let error_log_clone = Arc::clone(&error_log);
 
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(move |err| {
+    let mut result = stream.on_error(move |err| {
         error_log_clone.lock().unwrap().push(err.to_string());
         true // Consume after logging
     });
@@ -217,7 +218,7 @@ async fn test_on_error_with_side_effects() -> anyhow::Result<()> {
 async fn test_on_error_partial_chain() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .on_error(|err| err.to_string().contains("validation"))
         .on_error(|err| {
             // Don't handle network errors - let them propagate
@@ -260,7 +261,7 @@ async fn test_on_error_partial_chain() -> anyhow::Result<()> {
 async fn test_on_error_continues_after_consumed_error() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(|_| true);
+    let mut result = stream.on_error(|_| true);
 
     // Act & Assert
     tx.send(StreamItem::Value(Sequenced::new(1)))?;
@@ -307,7 +308,7 @@ async fn test_on_error_continues_after_consumed_error() -> anyhow::Result<()> {
 async fn test_on_error_multiple_consecutive_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(|err| err.to_string().contains("user"));
+    let mut result = stream.on_error(|err| err.to_string().contains("user"));
 
     // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error("user error1")))?;
@@ -344,7 +345,7 @@ async fn test_on_error_multiple_consecutive_errors() -> anyhow::Result<()> {
 async fn test_on_error_empty_stream() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(|_| true);
+    let mut result = stream.on_error(|_| true);
 
     // Act & Assert
     drop(tx);
@@ -358,7 +359,7 @@ async fn test_on_error_empty_stream() -> anyhow::Result<()> {
 async fn test_on_error_only_errors_stream() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(|_| true);
+    let mut result = stream.on_error(|_| true);
 
     // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;
@@ -381,7 +382,7 @@ async fn test_on_error_only_errors_stream() -> anyhow::Result<()> {
 async fn test_on_error_conditional_based_on_error_content() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(|err| {
+    let mut result = stream.on_error(|err| {
         // Consume errors containing "transient"
         err.to_string().contains("transient")
     });
@@ -417,7 +418,7 @@ async fn test_on_error_conditional_based_on_error_content() -> anyhow::Result<()
 async fn test_on_error_three_level_chain() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .on_error(|err| err.to_string().contains("level1"))
         .on_error(|err| err.to_string().contains("level2"))
         .on_error(|_| true); // Catch-all
@@ -453,7 +454,7 @@ async fn test_on_error_three_level_chain() -> anyhow::Result<()> {
 async fn test_on_error_preserves_value_order() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = FluxionStream::new(stream).on_error(|_| true);
+    let mut result = stream.on_error(|_| true);
 
     // Act & Assert
     tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;

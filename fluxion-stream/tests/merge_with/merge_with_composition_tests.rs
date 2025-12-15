@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::Timestamped;
-use fluxion_stream::{FluxionStream, MergedStream};
+use fluxion_stream::prelude::*;
+use fluxion_stream::MergedStream;
 use fluxion_test_utils::{person::Person, test_channel, unwrap_stream, Sequenced};
 
 #[tokio::test]
@@ -14,13 +15,13 @@ async fn test_merge_with_chaining_map_ordered() -> anyhow::Result<()> {
 
     // Act: Chain map_ordered before merge_with
     // We map each person to have age 2, then sum ages in merge_with
-    let mapped_stream1 = FluxionStream::new(stream1).map_ordered(|seq| {
+    let mapped_stream1 = stream1.map_ordered(|seq| {
         let mut p = seq.into_inner();
         p.age = 2;
         Sequenced::new(p)
     });
 
-    let mapped_stream2 = FluxionStream::new(stream2).map_ordered(|seq| {
+    let mapped_stream2 = stream2.map_ordered(|seq| {
         let mut p = seq.into_inner();
         p.age = 3;
         Sequenced::new(p)
@@ -58,7 +59,7 @@ async fn test_merge_with_chaining_multiple_operators_map_ordered() -> anyhow::Re
     // 2. Filter age > 3
     // 3. Map age + 10
     // 4. Merge (Sum ages)
-    let processed_stream = FluxionStream::new(stream)
+    let processed_stream = stream
         .map_ordered(|seq| {
             let mut p = seq.into_inner();
             p.age = p.name.len() as u32;

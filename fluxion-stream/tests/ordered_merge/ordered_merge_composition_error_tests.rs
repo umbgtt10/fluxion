@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{MapOrderedExt, OrderedStreamExt};
 use fluxion_test_utils::{
     person::Person, test_channel_with_errors, test_data::TestData, unwrap_stream, Sequenced,
 };
@@ -14,7 +15,7 @@ async fn test_ordered_merge_error_propagation_with_map_ordered() -> anyhow::Resu
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let s1 = FluxionStream::new(stream1).map_ordered(|seq| {
+    let s1 = stream1.map_ordered(|seq| {
         let inner = seq.into_inner();
         let new_inner = match inner {
             TestData::Person(mut p) => {
@@ -26,7 +27,7 @@ async fn test_ordered_merge_error_propagation_with_map_ordered() -> anyhow::Resu
         Sequenced::new(new_inner)
     });
 
-    let s2 = FluxionStream::new(stream2).map_ordered(|seq| {
+    let s2 = stream2.map_ordered(|seq| {
         let inner = seq.into_inner();
         let new_inner = match inner {
             TestData::Person(mut p) => {

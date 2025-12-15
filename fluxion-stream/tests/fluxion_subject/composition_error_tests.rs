@@ -1,9 +1,13 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, FluxionSubject, HasTimestamp, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{
+    CombineLatestExt, CombineWithPreviousExt, FilterOrderedExt, MapOrderedExt, OnErrorExt,
+    OrderedStreamExt, TakeLatestWhenExt,
+};
 use fluxion_test_utils::person::Person;
 use fluxion_test_utils::test_data::{
     animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_rose, TestData,
@@ -15,7 +19,9 @@ async fn subject_at_start_complex_chain_propagates_error() -> anyhow::Result<()>
     // subject feeds a map -> filter -> combine_with_previous -> map chain
     let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
-    let mut stream = FluxionStream::new(subject.subscribe().unwrap())
+    let mut stream = subject
+        .subscribe()
+        .unwrap()
         .map_ordered(|item| {
             let ts = item.timestamp();
             let mapped = match item.into_inner() {
@@ -70,7 +76,7 @@ async fn subject_in_middle_gate_error_terminates_stream() -> anyhow::Result<()> 
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
     let gate: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
-    let mut stream = FluxionStream::new(rx).take_latest_when(
+    let mut stream = rx.take_latest_when(
         gate.subscribe().unwrap(),
         |data| matches!(data, TestData::Animal(animal) if animal.legs >= 4),
     );
@@ -96,8 +102,7 @@ async fn subject_at_end_forwarding_chain_propagates_error() -> anyhow::Result<()
     let (tx, rx) = test_channel_with_errors::<Sequenced<TestData>>();
     let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
-    let mut combined =
-        FluxionStream::new(rx).combine_latest(vec![subject.subscribe().unwrap()], |_| true);
+    let mut combined = rx.combine_latest(vec![subject.subscribe().unwrap()], |_| true);
 
     // First, provide both sides so combine_latest can emit a value
     tx.send(StreamItem::Value(Sequenced::new(plant_rose())))?;
@@ -127,7 +132,7 @@ async fn subject_on_error_with_ordered_merge_skips_transient() -> anyhow::Result
     let (tx, err_stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let gate: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
-    let mut merged = FluxionStream::new(err_stream)
+    let mut merged = err_stream
         .on_error(|err| err.to_string().contains("transient"))
         .ordered_merge(vec![gate.subscribe().unwrap()]);
 

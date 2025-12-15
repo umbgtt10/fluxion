@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, HasTimestamp, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{MapOrderedExt, TakeWhileExt};
 use fluxion_test_utils::{person::Person, test_channel_with_errors, unwrap_stream, Sequenced};
 
 #[tokio::test]
@@ -14,7 +15,7 @@ async fn test_take_while_with_error_propagation_at_end_of_chain() -> anyhow::Res
 
     // Chain: map_ordered -> take_while_with
     // We map the source stream (increment age), then take while condition is true
-    let mut result = FluxionStream::new(source_stream)
+    let mut result = source_stream
         .map_ordered(|seq| {
             let ts = HasTimestamp::timestamp(&seq);
             let mut p = seq.into_inner();

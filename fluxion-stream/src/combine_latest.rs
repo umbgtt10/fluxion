@@ -1,8 +1,6 @@
 ﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
-
-use crate::FluxionStream;
 use futures::future::ready;
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
@@ -74,7 +72,7 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream::{CombineLatestExt, FluxionStream};
+    /// use fluxion_stream::CombineLatestExt;
     /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
     ///
@@ -110,9 +108,7 @@ where
         self,
         others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<
-        impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Send + Unpin,
-    >
+    ) -> impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Send + Unpin
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -135,9 +131,7 @@ where
         self,
         others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
-    ) -> FluxionStream<
-        impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Send + Unpin,
-    >
+    ) -> impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Send + Unpin
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -205,7 +199,7 @@ where
                 }
             });
 
-        FluxionStream::new(Box::pin(combined_stream))
+        Box::pin(combined_stream)
     }
 }
 

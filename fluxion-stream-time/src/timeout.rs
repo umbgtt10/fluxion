@@ -2,6 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+//! Timeout operator for time-based stream processing.
+
+use crate::ChronoTimestamped;
 use fluxion_core::{FluxionError, StreamItem};
 use futures::Stream;
 use pin_project::pin_project;
@@ -11,49 +14,69 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 use tokio::time::{sleep_until, Instant, Sleep};
 
-/// Errors if the source stream does not emit any value within the specified duration.
+/// Extension trait providing the `timeout` operator for streams.
 ///
-/// The timeout operator monitors the time interval between emissions from the source stream.
-/// If the source stream does not emit any value within the specified duration, the operator
-/// emits a `FluxionError::TimeoutError` with "Timeout" context and terminates the stream.
-///
-/// - If the source emits a value, the timer is reset.
-/// - If the source completes, the timeout operator completes.
-/// - If the source errors, the error is passed through and the timer is reset (or stream ends depending on error handling).
-///
-/// # Example
-///
-/// ```rust
-/// use fluxion_stream_time::timeout;
-/// use fluxion_core::StreamItem;
-/// use fluxion_test_utils::test_data::person_alice;
-/// use futures::stream::StreamExt;
-/// use std::time::Duration;
-/// use tokio::sync::mpsc;
-/// use tokio_stream::wrappers::UnboundedReceiverStream;
-///
-/// # #[tokio::main]
-/// # async fn main() {
-/// let (tx, rx) = mpsc::unbounded_channel();
-/// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
-///
-/// let mut timed_out = timeout(source, Duration::from_millis(100));
-///
-/// tx.send(person_alice()).unwrap();
-///
-/// let item = timed_out.next().await.unwrap().unwrap();
-/// assert_eq!(item, person_alice());
-/// # }
-/// ```
-pub fn timeout<S, T>(stream: S, duration: Duration) -> impl Stream<Item = StreamItem<T>>
+/// This trait allows any stream of `StreamItem<ChronoTimestamped<T>>` to enforce a timeout
+/// between emissions.
+pub trait TimeoutExt<T>: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Sized {
+    /// Errors if the stream does not emit any value within the specified duration.
+    ///
+    /// The timeout operator monitors the time interval between emissions from the source stream.
+    /// If the source stream does not emit any value within the specified duration, the operator
+    /// emits a `FluxionError::TimeoutError` with "Timeout" context and terminates the stream.
+    ///
+    /// - If the source emits a value, the timer is reset.
+    /// - If the source completes, the timeout operator completes.
+    /// - If the source errors, the error is passed through.
+    ///
+    /// # Arguments
+    ///
+    /// * `duration` - The timeout duration
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fluxion_stream_time::{TimeoutExt, ChronoTimestamped};
+    /// use fluxion_core::StreamItem;
+    /// use fluxion_test_utils::test_data::person_alice;
+    /// use futures::stream::StreamExt;
+    /// use std::time::Duration;
+    /// use tokio::sync::mpsc;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
+    ///
+    /// let mut timed_out = source.timeout(Duration::from_millis(100));
+    ///
+    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
+    ///
+    /// let item = timed_out.next().await.unwrap().unwrap();
+    /// assert_eq!(&*item, &person_alice());
+    /// # }
+    /// ```
+    fn timeout(
+        self,
+        duration: Duration,
+    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send;
+}
+
+impl<S, T> TimeoutExt<T> for S
 where
-    S: Stream<Item = StreamItem<T>>,
+    S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send,
 {
-    TimeoutStream {
-        stream,
-        duration,
-        sleep: Box::pin(sleep_until(Instant::now() + duration)),
-        is_done: false,
+    fn timeout(
+        self,
+        duration: Duration,
+    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send {
+        TimeoutStream {
+            stream: self,
+            duration,
+            sleep: Box::pin(sleep_until(Instant::now() + duration)),
+            is_done: false,
+        }
     }
 }
 
@@ -68,9 +91,9 @@ struct TimeoutStream<S> {
 
 impl<S, T> Stream for TimeoutStream<S>
 where
-    S: Stream<Item = StreamItem<T>>,
+    S: Stream<Item = StreamItem<ChronoTimestamped<T>>>,
 {
-    type Item = StreamItem<T>;
+    type Item = StreamItem<ChronoTimestamped<T>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.project();

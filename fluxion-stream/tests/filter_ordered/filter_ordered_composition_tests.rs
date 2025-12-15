@@ -1,9 +1,11 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{StreamItem, Timestamped};
-use fluxion_stream::{CombinedState, FluxionStream, MergedStream};
+use fluxion_stream::prelude::*;
+use fluxion_stream::{CombinedState, MergedStream};
 use fluxion_test_utils::{
     assert_no_element_emitted,
     helpers::unwrap_stream,
@@ -24,8 +26,8 @@ async fn test_ordered_merge_filter_ordered() -> anyhow::Result<()> {
     let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
     let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
 
-    let mut stream = FluxionStream::new(s1_rx)
-        .ordered_merge(vec![FluxionStream::new(s2_rx)])
+    let mut stream = s1_rx
+        .ordered_merge(vec![s2_rx])
         .filter_ordered(|test_data| !matches!(test_data, TestData::Animal(_))); // Filter out animals
 
     // Act & Assert
@@ -57,7 +59,7 @@ async fn test_combine_latest_filter_ordered() -> anyhow::Result<()> {
     let (p_tx, p_rx) = test_channel::<Sequenced<TestData>>();
     let (a_tx, a_rx) = test_channel::<Sequenced<TestData>>();
 
-    let mut stream = FluxionStream::new(p_rx)
+    let mut stream = p_rx
         .combine_latest(vec![a_rx], COMBINE_FILTER)
         .filter_ordered(|wrapper| {
             // Filter: only emit when first item is a person with age > 30
@@ -106,7 +108,7 @@ async fn test_merge_with_chaining_filter_ordered() -> anyhow::Result<()> {
             *state += 1;
             *state
         })
-        .into_fluxion_stream()
+        .into_stream()
         .filter_ordered(|&value| value > 2);
 
     // Send first value - state will be 1 (filtered out)
@@ -146,7 +148,7 @@ async fn test_scan_ordered_composed_with_filter() -> anyhow::Result<()> {
         *count
     };
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .scan_ordered(0, accumulator)
         .filter_ordered(|count| count % 2 == 0); // Only even counts
 

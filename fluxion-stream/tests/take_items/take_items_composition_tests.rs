@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_stream::prelude::*;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::test_data::TestData;
 use fluxion_test_utils::{
     helpers::{assert_stream_ended, unwrap_stream},
@@ -22,7 +23,7 @@ async fn test_start_with_then_take_items() -> anyhow::Result<()> {
         StreamItem::Value(Sequenced::new(person_bob())),
     ];
 
-    let mut result = FluxionStream::new(stream).start_with(initial).take_items(3); // Take 2 initial + 1 from stream
+    let mut result = stream.start_with(initial).take_items(3); // Take 2 initial + 1 from stream
 
     // Act
     tx.send(Sequenced::new(person_charlie()))?;
@@ -49,7 +50,7 @@ async fn test_skip_items_then_take_items() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<_>>();
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .skip_items(2) // Skip first 2
         .take_items(2); // Then take next 2
 
@@ -85,7 +86,7 @@ async fn test_start_with_skip_items_take_items() -> anyhow::Result<()> {
     ];
 
     // Start with 2 initial values, skip 1, take 4
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .start_with(initial)
         .skip_items(1) // Skip alice
         .take_items(4); // Take next 4: [dave, bob, charlie, diane]
@@ -124,7 +125,7 @@ async fn test_map_ordered_then_take_items() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .map_ordered(|item| {
             let name = match item.value {
                 TestData::Person(p) => p.name,
@@ -166,9 +167,9 @@ async fn test_with_latest_from_then_take_items() -> anyhow::Result<()> {
     let (secondary_tx, secondary_rx) = test_channel::<Sequenced<TestData>>();
 
     // Combine then take 2 items
-    let mut stream = FluxionStream::new(primary_rx)
+    let mut stream = primary_rx
         .with_latest_from(
-            FluxionStream::new(secondary_rx),
+            secondary_rx,
             |state: &CombinedState<TestData, u64>| -> Sequenced<String> {
                 let values = state.values();
                 let p_name = match &values[0] {

@@ -3,8 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
-use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_stream::prelude::*;
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::ChronoTimestamped;
 use fluxion_test_utils::{
     helpers::recv_timeout, person::Person, test_channel_with_errors, test_data::person_alice,
     TestData,
@@ -23,7 +24,7 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
     let throttle_duration = Duration::from_millis(100);
 
     // Map then Throttle
-    let throttled = FluxionStream::new(stream)
+    let throttled = stream
         .map_ordered(|x| {
             let val = if let TestData::Person(p) = x.value {
                 TestData::Person(Person::new(p.name, p.age * 2))

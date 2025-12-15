@@ -1,8 +1,8 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::FluxionStream;
+use fluxion_stream::{MapOrderedExt, OrderedStreamExt, SkipItemsExt};
 use fluxion_test_utils::helpers::unwrap_stream;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_dave, person_diane, TestData,
@@ -14,7 +14,7 @@ async fn test_map_ordered_skip_items() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .map_ordered(|item| Sequenced::new(item.into_inner())) // Preserve Sequenced wrapper
         .skip_items(2);
 
@@ -49,9 +49,7 @@ async fn test_ordered_merge_then_skip_items() -> anyhow::Result<()> {
     let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
 
     // Merge streams then skip 3 items
-    let mut stream = FluxionStream::new(s1_rx)
-        .ordered_merge(vec![s2_rx])
-        .skip_items(3);
+    let mut stream = s1_rx.ordered_merge(vec![s2_rx]).skip_items(3);
 
     // Act & Assert
     // 1. Stream 1 emits (Skipped #1)

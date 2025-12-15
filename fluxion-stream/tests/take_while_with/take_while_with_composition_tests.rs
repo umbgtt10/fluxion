@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::Timestamped;
-use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_stream::prelude::*;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -28,7 +29,7 @@ async fn test_take_latest_when_take_while_with() -> anyhow::Result<()> {
     let latest_filter_stream = latest_filter_rx;
     let while_filter_stream = while_filter_rx;
 
-    let mut composed = FluxionStream::new(source_stream)
+    let mut composed = source_stream
         .take_latest_when(latest_filter_stream, LATEST_FILTER)
         .take_while_with(while_filter_stream, |f| *f);
 
@@ -67,7 +68,7 @@ async fn test_combine_latest_take_while_with() -> anyhow::Result<()> {
     let plant_stream = plant_rx;
     let filter_stream = filter_rx;
 
-    let mut composed = FluxionStream::new(person_stream)
+    let mut composed = person_stream
         .combine_latest(vec![animal_stream, plant_stream], COMBINE_FILTER)
         .take_while_with(filter_stream, |f| *f);
 
@@ -111,8 +112,8 @@ async fn test_ordered_merge_filter_ordered_take_while_with() -> anyhow::Result<(
     let predicate_stream = predicate_rx;
 
     // Chain ordered operations, then take_while_with at the end
-    let mut stream = FluxionStream::new(source_stream)
-        .ordered_merge(vec![FluxionStream::new(other_stream)])
+    let mut stream = source_stream
+        .ordered_merge(vec![other_stream])
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
         .take_while_with(predicate_stream, |_| true);
 
@@ -140,8 +141,8 @@ async fn test_ordered_merge_take_while_with() -> anyhow::Result<()> {
     let animal_stream = animal_rx;
     let filter_stream = filter_rx;
 
-    let mut composed = FluxionStream::new(person_stream)
-        .ordered_merge(vec![FluxionStream::new(animal_stream)])
+    let mut composed = person_stream
+        .ordered_merge(vec![animal_stream])
         .take_while_with(filter_stream, |f| *f);
 
     // Act & Assert
@@ -178,7 +179,7 @@ async fn test_filter_ordered_map_ordered_combine_with_previous_take_while_with(
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let (predicate_tx, predicate_rx) = test_channel::<Sequenced<bool>>();
 
-    let mut stream = FluxionStream::new(stream)
+    let mut stream = stream
         .filter_ordered(|data| match data {
             TestData::Person(p) => p.age >= 30,
             _ => false,
@@ -240,7 +241,7 @@ async fn test_combine_with_previous_map_ordered_take_while_with_age_difference(
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let (predicate_tx, predicate_rx) = test_channel::<Sequenced<bool>>();
 
-    let mut stream = FluxionStream::new(stream)
+    let mut stream = stream
         .combine_with_previous()
         .map_ordered(|stream_item| {
             let item = stream_item;

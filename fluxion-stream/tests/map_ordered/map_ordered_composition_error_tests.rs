@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::{combine_latest::CombineLatestExt, FluxionStream};
+use fluxion_stream::combine_latest::CombineLatestExt;
+use fluxion_stream::prelude::*;
 use fluxion_test_utils::{
     assert_no_element_emitted, test_channel_with_errors, unwrap_stream, Sequenced,
 };
@@ -14,7 +15,7 @@ async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<(
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Chain multiple operators
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .filter_ordered(|x| *x > 1) // Filter out first item
         .combine_with_previous()
         .map_ordered(|x| Sequenced::new(x.current.value * 10));
@@ -106,7 +107,7 @@ async fn test_scan_ordered_error_propagation_with_map() -> anyhow::Result<()> {
         *sum
     };
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .scan_ordered(0, accumulator)
         .map_ordered(|sum: Sequenced<i32>| Sequenced::new(sum.into_inner() * 2));
 

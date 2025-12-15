@@ -4,7 +4,7 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::IntoFluxionStream;
-use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_stream_time::{ChronoTimestamped, DebounceExt};
 use futures::stream::StreamExt;
 use std::hint::black_box;
 use std::time::Duration;

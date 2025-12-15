@@ -3,8 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_stream::FluxionStream;
-use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::ChronoTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     test_channel,
@@ -23,7 +23,7 @@ async fn test_timeout_no_emission() -> anyhow::Result<()> {
 
     let (_tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let timeout_duration = Duration::from_millis(100);
-    let timed_out = FluxionStream::new(stream).timeout(timeout_duration);
+    let timed_out = stream.timeout(timeout_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -58,7 +58,7 @@ async fn test_timeout_with_emissions() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let timeout_duration = Duration::from_millis(100);
-    let timed_out = FluxionStream::new(stream).timeout(timeout_duration);
+    let timed_out = stream.timeout(timeout_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 

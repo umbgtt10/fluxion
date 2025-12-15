@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::HasTimestamp;
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::FilterOrderedExt;
 use fluxion_test_utils::test_data::{
     animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_dave, person_diane,
     plant_rose, TestData,
@@ -16,8 +17,7 @@ use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value};
 async fn test_filter_ordered_basic_predicate() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
-    let mut result =
-        FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Person(_)));
+    let mut result = stream.filter_ordered(|data| matches!(data, TestData::Person(_)));
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
@@ -37,7 +37,7 @@ async fn test_filter_ordered_basic_predicate() -> anyhow::Result<()> {
 async fn test_filter_ordered_age_threshold() -> anyhow::Result<()> {
     // Arrange - filter people by age > 30
     let (tx, stream) = test_channel();
-    let mut result = FluxionStream::new(stream).filter_ordered(|data| match data {
+    let mut result = stream.filter_ordered(|data| match data {
         TestData::Person(p) => p.age > 30,
         _ => false,
     });
@@ -63,7 +63,7 @@ async fn test_filter_ordered_age_threshold() -> anyhow::Result<()> {
 async fn test_filter_ordered_empty_stream() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut result = FluxionStream::new(stream).filter_ordered(|_| true);
+    let mut result = stream.filter_ordered(|_| true);
 
     // Act
     drop(tx); // Close the channel
@@ -78,7 +78,7 @@ async fn test_filter_ordered_empty_stream() -> anyhow::Result<()> {
 async fn test_filter_ordered_all_filtered_out() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
-    let mut result = FluxionStream::new(stream).filter_ordered(|_| false); // Filter everything
+    let mut result = stream.filter_ordered(|_| false); // Filter everything
 
     // Act
     tx.send(Sequenced::new(person_alice()))?;
@@ -96,7 +96,7 @@ async fn test_filter_ordered_all_filtered_out() -> anyhow::Result<()> {
 async fn test_filter_ordered_none_filtered() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
-    let mut result = FluxionStream::new(stream).filter_ordered(|_| true); // Keep everything
+    let mut result = stream.filter_ordered(|_| true); // Keep everything
 
     // Act
     tx.send(Sequenced::new(person_alice()))?;
@@ -126,7 +126,7 @@ async fn test_filter_ordered_preserves_ordering() -> anyhow::Result<()> {
     let (tx, stream) = test_channel();
 
     // Keep only people with even ages
-    let mut result = FluxionStream::new(stream).filter_ordered(|data| match data {
+    let mut result = stream.filter_ordered(|data| match data {
         TestData::Person(p) => p.age % 2 == 0,
         _ => false,
     });
@@ -158,8 +158,7 @@ async fn test_filter_ordered_preserves_ordering() -> anyhow::Result<()> {
 async fn test_filter_ordered_multiple_types() -> anyhow::Result<()> {
     // Arrange - keep only animals
     let (tx, stream) = test_channel();
-    let mut result =
-        FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Animal(_)));
+    let mut result = stream.filter_ordered(|data| matches!(data, TestData::Animal(_)));
 
     // Act
     tx.send(Sequenced::new(person_alice()))?;
@@ -185,7 +184,7 @@ async fn test_filter_ordered_multiple_types() -> anyhow::Result<()> {
 async fn test_filter_ordered_complex_predicate() -> anyhow::Result<()> {
     // Arrange - complex predicate: people with age between 30-40 OR animals
     let (tx, stream) = test_channel();
-    let mut result = FluxionStream::new(stream).filter_ordered(|data| match data {
+    let mut result = stream.filter_ordered(|data| match data {
         TestData::Person(p) => p.age >= 30 && p.age <= 40,
         TestData::Animal(_) => true,
         _ => false,
@@ -219,8 +218,7 @@ async fn test_filter_ordered_complex_predicate() -> anyhow::Result<()> {
 async fn test_filter_ordered_single_item() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
-    let mut result =
-        FluxionStream::new(stream).filter_ordered(|data| matches!(data, TestData::Person(_)));
+    let mut result = stream.filter_ordered(|data| matches!(data, TestData::Person(_)));
 
     // Act
     tx.send(Sequenced::new(person_alice()))?;
@@ -240,7 +238,7 @@ async fn test_filter_ordered_single_item() -> anyhow::Result<()> {
 async fn test_filter_ordered_with_pattern_matching() -> anyhow::Result<()> {
     // Arrange - filter by name pattern
     let (tx, stream) = test_channel();
-    let mut result = FluxionStream::new(stream).filter_ordered(|data| match data {
+    let mut result = stream.filter_ordered(|data| match data {
         TestData::Person(p) => p.name.starts_with('A') || p.name.starts_with('D'),
         _ => false,
     });
@@ -275,7 +273,7 @@ async fn test_filter_ordered_alternating_pattern() -> anyhow::Result<()> {
     let (tx, stream) = test_channel();
 
     let mut count = 0;
-    let mut result = FluxionStream::new(stream).filter_ordered(move |data| {
+    let mut result = stream.filter_ordered(move |data| {
         if matches!(data, TestData::Person(_)) {
             count += 1;
             count % 2 == 1 // Keep odd-numbered people

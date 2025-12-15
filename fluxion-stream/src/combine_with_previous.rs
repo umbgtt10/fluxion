@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::fluxion_stream::FluxionStream;
 use crate::types::WithPrevious;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
@@ -32,7 +31,7 @@ where
     ///
     /// # Returns
     ///
-    /// A `FluxionStream` of `WithPrevious<T>` where each item contains the current
+    /// A stream of `WithPrevious<T>` where each item contains the current
     /// and previous values.
     ///
     /// # Errors
@@ -54,7 +53,7 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream::{CombineWithPreviousExt, FluxionStream};
+    /// use fluxion_stream::CombineWithPreviousExt;
     /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
     ///
@@ -87,9 +86,7 @@ where
     /// - Delta calculation (computing differences)
     /// - State transitions (analyzing previous → current)
     /// - Duplicate filtering (skip if same as previous)
-    fn combine_with_previous(
-        self,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<WithPrevious<T>>>>;
+    fn combine_with_previous(self) -> impl Stream<Item = StreamItem<WithPrevious<T>>> + Send;
 }
 
 impl<T, S> CombineWithPreviousExt<T> for S
@@ -99,19 +96,18 @@ where
     T::Inner: std::fmt::Debug + Ord + Send + Sync + Unpin + 'static,
     T::Timestamp: std::fmt::Debug + Ord + Send + Sync + Copy + 'static,
 {
-    fn combine_with_previous(
-        self,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<WithPrevious<T>>>> {
-        let result = self.scan(None, |state: &mut Option<T>, item: StreamItem<T>| {
-            ready(Some(match item {
-                StreamItem::Value(current) => {
-                    let previous = state.take();
-                    *state = Some(current.clone());
-                    StreamItem::Value(WithPrevious::new(previous, current))
-                }
-                StreamItem::Error(e) => StreamItem::Error(e),
-            }))
-        });
-        FluxionStream::new(result)
+    fn combine_with_previous(self) -> impl Stream<Item = StreamItem<WithPrevious<T>>> + Send {
+        Box::pin(
+            self.scan(None, |state: &mut Option<T>, item: StreamItem<T>| {
+                ready(Some(match item {
+                    StreamItem::Value(current) => {
+                        let previous = state.take();
+                        *state = Some(current.clone());
+                        StreamItem::Value(WithPrevious::new(previous, current))
+                    }
+                    StreamItem::Error(e) => StreamItem::Error(e),
+                }))
+            }),
+        )
     }
 }

@@ -2,6 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+//! Debounce operator for time-based stream processing.
+
+use crate::ChronoTimestamped;
 use fluxion_core::StreamItem;
 use futures::Stream;
 use pin_project::pin_project;
@@ -11,60 +14,83 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 use tokio::time::{sleep, Instant, Sleep};
 
-/// Debounces values from the source stream by the specified duration.
+/// Extension trait providing the `debounce` operator for streams.
 ///
-/// The debounce operator waits for a pause in the input stream of at least
-/// the given duration before emitting the latest value. If a new value
-/// arrives before the duration elapses, the timer is reset and only the
-/// newest value is eventually emitted.
-///
-/// This implements **trailing debounce** semantics (Rx standard):
-/// - When a value arrives, start/restart the timer
-/// - If no new value arrives before the timer expires, emit the latest value
-/// - If a new value arrives, discard the pending value and restart the timer
-/// - When the stream ends, emit any pending value immediately
-///
-/// Errors pass through immediately without debounce, to ensure timely
-/// error propagation.
-///
-/// # Example
-///
-/// ```rust
-/// use fluxion_stream_time::debounce;
-/// use fluxion_core::StreamItem;
-/// use fluxion_test_utils::test_data::{person_alice, person_bob};
-/// use futures::stream::StreamExt;
-/// use std::time::Duration;
-/// use tokio::sync::mpsc;
-/// use tokio_stream::wrappers::UnboundedReceiverStream;
-///
-/// # #[tokio::main]
-/// # async fn main() {
-/// let (tx, rx) = mpsc::unbounded_channel();
-/// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
-///
-/// let mut debounced = debounce(source, Duration::from_millis(100));
-///
-/// // Alice and Bob emitted immediately. Alice should be debounced (dropped).
-/// tx.send(person_alice()).unwrap();
-/// tx.send(person_bob()).unwrap();
-///
-/// // Only Bob should remain (trailing debounce)
-/// let item = debounced.next().await.unwrap().unwrap();
-/// assert_eq!(item, person_bob());
-/// # }
-/// ```
-pub fn debounce<S, T>(stream: S, duration: std::time::Duration) -> impl Stream<Item = StreamItem<T>>
+/// This trait allows any stream of `StreamItem<ChronoTimestamped<T>>` to debounce emissions
+/// by a specified duration.
+pub trait DebounceExt<T>: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Sized
 where
-    S: Stream<Item = StreamItem<T>>,
     T: Send,
 {
-    DebounceStream {
-        stream,
-        duration,
-        sleep: Box::pin(sleep(Duration::from_millis(0))), // Initial dummy sleep
-        pending_value: None,
-        stream_ended: false,
+    /// Debounces the stream by the specified duration.
+    ///
+    /// The debounce operator waits for a pause in the input stream of at least
+    /// the given duration before emitting the latest value. If a new value
+    /// arrives before the duration elapses, the timer is reset and only the
+    /// newest value is eventually emitted.
+    ///
+    /// This implements **trailing debounce** semantics (Rx standard):
+    /// - When a value arrives, start/restart the timer
+    /// - If no new value arrives before the timer expires, emit the latest value
+    /// - If a new value arrives, discard the pending value and restart the timer
+    /// - When the stream ends, emit any pending value immediately
+    ///
+    /// Errors pass through immediately without debounce, to ensure timely
+    /// error propagation.
+    ///
+    /// # Arguments
+    ///
+    /// * `duration` - The duration of required inactivity before emitting a value
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fluxion_stream_time::{DebounceExt, ChronoTimestamped};
+    /// use fluxion_core::StreamItem;
+    /// use fluxion_test_utils::test_data::{person_alice, person_bob};
+    /// use futures::stream::StreamExt;
+    /// use std::time::Duration;
+    /// use tokio::sync::mpsc;
+    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let (tx, rx) = mpsc::unbounded_channel();
+    /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
+    ///
+    /// let mut debounced = source.debounce(Duration::from_millis(100));
+    ///
+    /// // Alice and Bob emitted immediately. Alice should be debounced (dropped).
+    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
+    /// tx.send(ChronoTimestamped::now(person_bob())).unwrap();
+    ///
+    /// // Only Bob should remain (trailing debounce)
+    /// let item = debounced.next().await.unwrap().unwrap();
+    /// assert_eq!(&*item, &person_bob());
+    /// # }
+    /// ```
+    fn debounce(
+        self,
+        duration: Duration,
+    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send;
+}
+
+impl<S, T> DebounceExt<T> for S
+where
+    S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send,
+    T: Send,
+{
+    fn debounce(
+        self,
+        duration: Duration,
+    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send {
+        DebounceStream {
+            stream: self,
+            duration,
+            sleep: Box::pin(sleep(Duration::from_millis(0))),
+            pending_value: None,
+            stream_ended: false,
+        }
     }
 }
 
@@ -80,10 +106,10 @@ struct DebounceStream<S: Stream> {
 
 impl<S, T> Stream for DebounceStream<S>
 where
-    S: Stream<Item = StreamItem<T>>,
+    S: Stream<Item = StreamItem<ChronoTimestamped<T>>>,
     T: Send,
 {
-    type Item = StreamItem<T>;
+    type Item = StreamItem<ChronoTimestamped<T>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();

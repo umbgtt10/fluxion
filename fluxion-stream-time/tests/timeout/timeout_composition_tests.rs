@@ -3,8 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_stream::{FluxionStream, WithPrevious};
-use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_stream::prelude::*;
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::ChronoTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     test_channel,
@@ -25,7 +26,7 @@ async fn test_timeout_chained_with_map() -> anyhow::Result<()> {
     let timeout_duration = Duration::from_millis(100);
 
     // Chain: map -> timeout
-    let pipeline = FluxionStream::new(stream)
+    let pipeline = stream
         .map_ordered(|item| ChronoTimestamped::new(item.value, item.timestamp))
         .timeout(timeout_duration);
 
@@ -64,7 +65,7 @@ async fn test_timeout_chained_with_combine_with_previous() -> anyhow::Result<()>
 
     // Chain: combine_with_previous -> map -> timeout
     // We need to map back to ChronoTimestamped for timeout to work
-    let pipeline = FluxionStream::new(stream)
+    let pipeline = stream
         .combine_with_previous()
         .map_ordered(|wp| {
             let timestamp = wp.current.timestamp;
@@ -116,8 +117,8 @@ async fn test_timeout_chained_with_scan_ordered() -> anyhow::Result<()> {
     let timeout_duration = Duration::from_millis(100);
 
     // Chain: scan_ordered -> timeout
-    let pipeline = FluxionStream::new(stream)
-        .scan_ordered(0, |acc, item| {
+    let pipeline = stream
+        .scan_ordered(0u32, |acc, item| {
             let val = match item {
                 TestData::Person(p) => p.age,
                 _ => 0,
@@ -127,13 +128,13 @@ async fn test_timeout_chained_with_scan_ordered() -> anyhow::Result<()> {
         })
         .timeout(timeout_duration);
 
-    let (result_tx, mut result_rx) = unbounded_channel();
+    let (result_tx, mut result_rx) = unbounded_channel::<ChronoTimestamped<u32>>();
 
     spawn(async move {
         let mut stream = pipeline;
         while let Some(item) = stream.next().await {
             if let StreamItem::Value(val) = item {
-                result_tx.send(val.value).unwrap();
+                result_tx.send(val).unwrap();
             }
         }
     });
@@ -141,11 +142,11 @@ async fn test_timeout_chained_with_scan_ordered() -> anyhow::Result<()> {
     // Act & Assert
     tx.send(ChronoTimestamped::now(person_alice()))?;
     advance(Duration::from_millis(50)).await;
-    assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap(), 25);
+    assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 25);
 
     tx.send(ChronoTimestamped::now(person_bob()))?;
     advance(Duration::from_millis(50)).await;
-    assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap(), 55);
+    assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 55);
 
     advance(Duration::from_millis(100)).await;
     assert_no_recv(&mut result_rx, 100).await;

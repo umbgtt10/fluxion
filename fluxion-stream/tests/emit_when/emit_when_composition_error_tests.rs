@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, HasTimestamp, StreamItem};
-use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_stream::prelude::*;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
     assert_no_element_emitted, test_channel_with_errors,
     test_data::{
@@ -21,7 +22,7 @@ async fn test_emit_when_propagates_error_from_scanned_source() -> anyhow::Result
 
     // Source chain: scan_ordered -> emit_when
     // Scan: Sum ages of persons
-    let scanned_source = FluxionStream::new(source_stream).scan_ordered(0u32, |acc, x| {
+    let scanned_source = source_stream.scan_ordered(0u32, |acc, x| {
         if let TestData::Person(p) = x {
             *acc += p.age;
         }
@@ -106,7 +107,7 @@ async fn test_emit_when_propagates_error_from_mapped_trigger() -> anyhow::Result
 
     // Trigger chain: map_ordered -> emit_when (as filter stream)
     // Map: Double the legs of the animal
-    let mapped_trigger = FluxionStream::new(trigger_stream).map_ordered(|x| {
+    let mapped_trigger = trigger_stream.map_ordered(|x| {
         if let TestData::Animal(a) = &x.value {
             Sequenced::with_timestamp(animal(a.species.clone(), a.legs * 2), x.timestamp())
         } else {
@@ -116,9 +117,8 @@ async fn test_emit_when_propagates_error_from_mapped_trigger() -> anyhow::Result
 
     // Source: Person stream
     // Filter: Person age > Mapped Animal legs
-    let mut result = FluxionStream::new(source_stream).emit_when(
-        mapped_trigger,
-        |state: &CombinedState<TestData, u64>| {
+    let mut result =
+        source_stream.emit_when(mapped_trigger, |state: &CombinedState<TestData, u64>| {
             let values = state.values();
             let source_val = &values[0]; // Person
             let trigger_val = &values[1]; // Mapped Animal
@@ -127,8 +127,7 @@ async fn test_emit_when_propagates_error_from_mapped_trigger() -> anyhow::Result
                 (TestData::Person(p), TestData::Animal(a)) => p.age > a.legs,
                 _ => false,
             }
-        },
-    );
+        });
 
     // Act & Assert
     // 1. Setup trigger (Dog 4 legs -> Mapped to 8 legs)

@@ -2,8 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::FluxionStream;
-use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_stream::prelude::*;
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::ChronoTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     person::Person,
@@ -25,7 +26,7 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
     let throttle_duration = Duration::from_millis(100);
 
     // Map then Throttle
-    let throttled = FluxionStream::new(stream)
+    let throttled = stream
         .map_ordered(|x| {
             let val = if let TestData::Person(p) = x.value {
                 TestData::Person(Person::new(p.name, p.age * 2))
@@ -71,7 +72,7 @@ async fn test_throttle_chained_with_throttle() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
 
-    let throttled = FluxionStream::new(stream)
+    let throttled = stream
         .throttle(Duration::from_millis(100))
         .throttle(Duration::from_millis(200));
 
@@ -119,7 +120,7 @@ async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
 
     let throttle_duration = Duration::from_millis(100);
 
-    let throttled = FluxionStream::new(stream)
+    let throttled = stream
         .take_while_with(filter_stream, |&condition| condition)
         .throttle(throttle_duration);
 

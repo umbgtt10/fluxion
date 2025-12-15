@@ -4,7 +4,7 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_core::StreamItem;
-use fluxion_stream::FluxionStream;
+use fluxion_stream::DistinctUntilChangedExt;
 use fluxion_test_utils::Sequenced;
 use futures::stream::{self, StreamExt};
 use std::hint::black_box;
@@ -13,7 +13,7 @@ use tokio::runtime::Runtime;
 fn make_stream_with_duplicates(
     size: usize,
     duplicate_factor: usize,
-) -> FluxionStream<impl futures::Stream<Item = StreamItem<Sequenced<i32>>>> {
+) -> impl futures::Stream<Item = StreamItem<Sequenced<i32>>> {
     // Create stream with consecutive duplicates
     // Each unique value repeated duplicate_factor times
     let items: Vec<Sequenced<i32>> = (0..size)
@@ -25,15 +25,13 @@ fn make_stream_with_duplicates(
         })
         .take(size)
         .collect();
-    FluxionStream::new(stream::iter(items).map(StreamItem::Value))
+    stream::iter(items).map(StreamItem::Value)
 }
 
-fn make_stream_alternating(
-    size: usize,
-) -> FluxionStream<impl futures::Stream<Item = StreamItem<Sequenced<i32>>>> {
+fn make_stream_alternating(size: usize) -> impl futures::Stream<Item = StreamItem<Sequenced<i32>>> {
     // Create stream with no consecutive duplicates (worst case - no filtering)
     let items: Vec<Sequenced<i32>> = (0..size).map(|i| Sequenced::new((i % 2) as i32)).collect();
-    FluxionStream::new(stream::iter(items).map(StreamItem::Value))
+    stream::iter(items).map(StreamItem::Value)
 }
 
 /// # Panics

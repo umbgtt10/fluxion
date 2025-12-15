@@ -1,9 +1,13 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{
+    CombineWithPreviousExt, FilterOrderedExt, MapOrderedExt, OrderedStreamExt, SkipItemsExt,
+    StartWithExt, TakeLatestWhenExt,
+};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -24,9 +28,9 @@ async fn test_take_latest_when_ordered_merge() -> anyhow::Result<()> {
     let filter_stream = filter_rx;
     let animal_stream = animal_rx;
 
-    let mut composed = FluxionStream::new(source_stream)
-        .take_latest_when(FluxionStream::new(filter_stream), LATEST_FILTER_LOCAL)
-        .ordered_merge(vec![FluxionStream::new(FluxionStream::new(animal_stream))]);
+    let mut composed = source_stream
+        .take_latest_when(filter_stream, LATEST_FILTER_LOCAL)
+        .ordered_merge(vec![animal_stream]);
 
     // Act & Assert
     source_tx.send(Sequenced::new(person_alice()))?;
@@ -59,26 +63,24 @@ async fn test_combine_with_previous_map_ordered_merge() -> anyhow::Result<()> {
     let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
 
     // Stream 1: Track previous value
-    let stream1 = FluxionStream::new(s1_rx)
-        .combine_with_previous()
-        .map_ordered(|item| {
-            let prev = item
-                .previous
-                .map(|p| match p.value {
-                    TestData::Person(p) => p.name,
-                    _ => "Other".to_string(),
-                })
-                .unwrap_or("None".to_string());
-
-            let curr = match item.current.value {
+    let stream1 = s1_rx.combine_with_previous().map_ordered(|item| {
+        let prev = item
+            .previous
+            .map(|p| match p.value {
                 TestData::Person(p) => p.name,
                 _ => "Other".to_string(),
-            };
-            Sequenced::new(format!("S1: {} -> {}", prev, curr))
-        });
+            })
+            .unwrap_or("None".to_string());
+
+        let curr = match item.current.value {
+            TestData::Person(p) => p.name,
+            _ => "Other".to_string(),
+        };
+        Sequenced::new(format!("S1: {} -> {}", prev, curr))
+    });
 
     // Stream 2: Just map
-    let stream2 = FluxionStream::new(s2_rx).map_ordered(|item| {
+    let stream2 = s2_rx.map_ordered(|item| {
         let curr = match item.value {
             TestData::Animal(a) => a.species,
             _ => "Other".to_string(),
@@ -117,7 +119,7 @@ async fn test_filter_ordered_map_ordered_merge() -> anyhow::Result<()> {
     let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
 
     // Stream 1: Only Persons, extract name
-    let stream1 = FluxionStream::new(s1_rx)
+    let stream1 = s1_rx
         .filter_ordered(|d| matches!(d, TestData::Person(_)))
         .map_ordered(|d| match d.value {
             TestData::Person(p) => Sequenced::new(format!("Person: {}", p.name)),
@@ -125,7 +127,7 @@ async fn test_filter_ordered_map_ordered_merge() -> anyhow::Result<()> {
         });
 
     // Stream 2: Only Animals, extract name
-    let stream2 = FluxionStream::new(s2_rx)
+    let stream2 = s2_rx
         .filter_ordered(|d| matches!(d, TestData::Animal(_)))
         .map_ordered(|d| match d.value {
             TestData::Animal(a) => Sequenced::new(format!("Animal: {}", a.species)),
@@ -171,10 +173,10 @@ async fn test_start_with_and_skip_items_into_ordered_merge() -> anyhow::Result<(
     let initial = vec![StreamItem::Value(Sequenced::new(person_alice()))];
 
     // Stream 1: Start with Alice
-    let stream1 = FluxionStream::new(s1_rx).start_with(initial);
+    let stream1 = s1_rx.start_with(initial);
 
     // Stream 2: Skip 1 item
-    let stream2 = FluxionStream::new(s2_rx).skip_items(1);
+    let stream2 = s2_rx.skip_items(1);
 
     // Merge
     let mut merged = stream1.ordered_merge(vec![stream2]);

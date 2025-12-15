@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::FluxionStream;
-use fluxion_stream_time::{ChronoStreamOps, ChronoTimestamped};
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::ChronoTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     person::Person,
@@ -23,7 +23,7 @@ async fn test_throttle_with_chrono_timestamped() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let throttle_duration = Duration::from_secs(1);
-    let throttled = FluxionStream::new(stream).throttle(throttle_duration);
+    let throttled = stream.throttle(throttle_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -63,7 +63,7 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
     let throttle_duration = Duration::from_millis(100);
-    let throttled = FluxionStream::new(stream).throttle(throttle_duration);
+    let throttled = stream.throttle(throttle_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
 

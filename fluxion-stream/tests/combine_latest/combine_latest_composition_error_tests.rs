@@ -1,9 +1,9 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::{CombineWithPreviousExt, FluxionStream};
+use fluxion_stream::{CombineLatestExt, CombineWithPreviousExt, FilterOrderedExt, MapOrderedExt};
 use fluxion_test_utils::{
     helpers::unwrap_stream,
     test_channel_with_errors,
@@ -17,7 +17,7 @@ async fn test_map_ordered_then_combine_latest_propagates_error() -> anyhow::Resu
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut result = FluxionStream::new(stream1)
+    let mut result = stream1
         .map_ordered(|x| {
             // Identity map
             x
@@ -50,7 +50,7 @@ async fn test_filter_ordered_then_combine_latest_propagates_error() -> anyhow::R
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut result = FluxionStream::new(stream1)
+    let mut result = stream1
         .filter_ordered(|_| true)
         .combine_latest(vec![stream2], |_| true);
 

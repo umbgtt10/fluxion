@@ -5,6 +5,7 @@
 use chrono::{DateTime, Utc};
 use fluxion_core::{HasTimestamp, Timestamped};
 use std::cmp::Ordering;
+use std::ops::Deref;
 
 /// A timestamped value using chrono's DateTime for real-world time operations.
 ///
@@ -95,5 +96,13 @@ where
 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.timestamp.cmp(&other.timestamp)
+    }
+}
+
+impl<T> Deref for ChronoTimestamped<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
     }
 }

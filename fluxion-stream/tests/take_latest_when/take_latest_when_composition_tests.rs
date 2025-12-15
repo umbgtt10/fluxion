@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::Timestamped;
-use fluxion_stream::{CombinedState, FluxionStream};
+use fluxion_stream::prelude::*;
+use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -30,11 +31,11 @@ async fn test_combine_latest_take_latest_when() -> anyhow::Result<()> {
     let trigger_animal_stream = trigger_animal_rx;
 
     // Create trigger combined stream first
-    let trigger_combined = FluxionStream::new(trigger_person_stream)
-        .combine_latest(vec![trigger_animal_stream], COMBINE_FILTER);
+    let trigger_combined =
+        trigger_person_stream.combine_latest(vec![trigger_animal_stream], COMBINE_FILTER);
 
     // Chain: combine_latest then take_latest_when
-    let mut composed = FluxionStream::new(person_stream)
+    let mut composed = person_stream
         .combine_latest(vec![animal_stream], COMBINE_FILTER)
         .take_latest_when(
             trigger_combined,
@@ -89,9 +90,9 @@ async fn test_ordered_merge_take_latest_when() -> anyhow::Result<()> {
 
     static LATEST_FILTER: fn(&TestData) -> bool = |_| true;
 
-    let mut composed = FluxionStream::new(person_stream)
-        .ordered_merge(vec![FluxionStream::new(animal_stream)])
-        .take_latest_when(FluxionStream::new(filter_stream), LATEST_FILTER);
+    let mut composed = person_stream
+        .ordered_merge(vec![animal_stream])
+        .take_latest_when(filter_stream, LATEST_FILTER);
 
     // Act & Assert
     person_tx.send(Sequenced::new(person_alice()))?;
@@ -129,9 +130,9 @@ async fn test_filter_ordered_take_latest_when() -> anyhow::Result<()> {
     let (source_tx, source_rx) = test_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_rx) = test_channel::<Sequenced<TestData>>();
 
-    let mut stream = FluxionStream::new(source_rx)
+    let mut stream = source_rx
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
-        .take_latest_when(FluxionStream::new(filter_rx), FILTER);
+        .take_latest_when(filter_rx, FILTER);
 
     // Act & Assert
     source_tx.send(Sequenced::new(person_alice()))?;

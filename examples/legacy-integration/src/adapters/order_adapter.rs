@@ -4,7 +4,6 @@
 
 use crate::domain::{events::UnifiedEvent, TimestampedEvent};
 use crate::legacy::message_queue::LegacyMessageQueue;
-use fluxion_stream::FluxionStream;
 use futures::{Stream, StreamExt};
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
@@ -27,7 +26,7 @@ impl OrderAdapter {
     pub fn start(
         &mut self,
         cancel_token: CancellationToken,
-    ) -> FluxionStream<impl Stream<Item = TimestampedEvent> + Send + Unpin> {
+    ) -> impl Stream<Item = TimestampedEvent> + Send + Unpin {
         let (order_tx, order_rx) = unbounded_channel();
 
         // Spawn legacy message queue consumer
@@ -39,10 +38,8 @@ impl OrderAdapter {
         self.task_handle = Some(task_handle);
 
         // Create stream that wraps with timestamps
-        let stream = UnboundedReceiverStream::new(order_rx)
-            .map(|order| TimestampedEvent::new(UnifiedEvent::OrderReceived(order)));
-
-        FluxionStream::new(stream)
+        UnboundedReceiverStream::new(order_rx)
+            .map(|order| TimestampedEvent::new(UnifiedEvent::OrderReceived(order)))
     }
 
     /// Shutdown and wait for task completion

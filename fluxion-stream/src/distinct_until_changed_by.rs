@@ -2,12 +2,12 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::FluxionStream;
 use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::stream::StreamExt;
 use futures::Stream;
 use std::fmt::Debug;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 /// Extension trait providing the `distinct_until_changed_by` operator for streams.
@@ -166,11 +166,11 @@ where
     /// # See Also
     ///
     /// - [`distinct_until_changed`](crate::DistinctUntilChangedExt::distinct_until_changed) - Uses `PartialEq` for comparison
-    /// - [`filter_ordered`](crate::FluxionStream::filter_ordered) - General filtering
+    /// - [`filter_ordered`](crate::FilterOrderedExt::filter_ordered) - General filtering
     fn distinct_until_changed_by<F>(
         self,
         compare: F,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
     where
         F: Fn(&T::Inner, &T::Inner) -> bool + Send + Sync + 'static;
 }
@@ -185,7 +185,7 @@ where
     fn distinct_until_changed_by<F>(
         self,
         compare: F,
-    ) -> FluxionStream<impl Stream<Item = StreamItem<T>> + Send + Sync>
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
     where
         F: Fn(&T::Inner, &T::Inner) -> bool + Send + Sync + 'static,
     {
@@ -225,6 +225,6 @@ where
             }
         });
 
-        FluxionStream::new(Box::pin(stream))
+        Box::pin(stream)
     }
 }

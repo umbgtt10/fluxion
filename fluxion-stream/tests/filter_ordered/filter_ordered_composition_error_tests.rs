@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{DistinctUntilChangedByExt, FilterOrderedExt, MapOrderedExt, ScanOrderedExt};
 use fluxion_test_utils::{
     assert_no_element_emitted, test_channel_with_errors, unwrap_stream, Sequenced,
 };
@@ -14,7 +15,7 @@ async fn test_distinct_until_changed_by_multiple_errors_in_composition() -> anyh
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     // Composition: distinct_until_changed_by (parity) -> map -> filter
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .distinct_until_changed_by(|a, b| a % 2 == b % 2)
         .map_ordered(|s| {
             let doubled = s.value * 2;
@@ -65,7 +66,7 @@ async fn test_scan_ordered_error_propagation_with_filter() -> anyhow::Result<()>
         *count
     };
 
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .scan_ordered(0, accumulator)
         .filter_ordered(|count| count % 2 == 0); // Only even counts
 

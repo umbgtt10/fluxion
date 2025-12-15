@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -6,6 +6,7 @@ use fluxion_core::HasTimestamp;
 use fluxion_core::StreamItem;
 use fluxion_core::Timestamped;
 use fluxion_stream::IntoFluxionStream;
+use fluxion_stream::OrderedStreamExt;
 use fluxion_test_utils::{assert_no_element_emitted, assert_stream_ended, helpers::unwrap_stream};
 use std::time::Duration;
 use tokio::{spawn, sync::mpsc::unbounded_channel, time::sleep};

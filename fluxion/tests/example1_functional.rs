@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::HasTimestamp;
-use fluxion_rx::IntoFluxionStream;
+use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use tokio::sync::mpsc::unbounded_channel;
 

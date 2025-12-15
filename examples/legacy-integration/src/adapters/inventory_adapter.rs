@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream::FluxionStream;
 use futures::{Stream, StreamExt};
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
@@ -28,7 +27,7 @@ impl InventoryAdapter {
     pub fn start(
         &mut self,
         cancel_token: CancellationToken,
-    ) -> FluxionStream<impl Stream<Item = TimestampedEvent> + Send + Unpin> {
+    ) -> impl Stream<Item = TimestampedEvent> + Send + Unpin {
         let (inventory_tx, inventory_rx) = unbounded_channel();
 
         // Spawn legacy file watcher
@@ -40,10 +39,8 @@ impl InventoryAdapter {
         self.task_handle = Some(task_handle);
 
         // Create stream that wraps with timestamps
-        let stream = UnboundedReceiverStream::new(inventory_rx)
-            .map(|inventory| TimestampedEvent::new(UnifiedEvent::InventoryUpdated(inventory)));
-
-        FluxionStream::new(stream)
+        UnboundedReceiverStream::new(inventory_rx)
+            .map(|inventory| TimestampedEvent::new(UnifiedEvent::InventoryUpdated(inventory)))
     }
 
     /// Shutdown and wait for task completion

@@ -16,30 +16,34 @@
 //!
 //! ## Example
 //!
-//! ```ignore
-//! use fluxion_stream::{FluxionStream, IntoFluxionStream};
+//! ```rust
+//! use fluxion_stream::{IntoFluxionStream, ShareExt, MapOrderedExt, FilterOrderedExt};
 //! use fluxion_test_utils::Sequenced;
 //!
-//! // Create a source stream with some expensive computation
-//! let source = FluxionStream::new(rx)
-//!     .map_ordered(|x| expensive_computation(x));  // Runs ONCE
+//! # async fn example() {
+//! let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+//!
+//! // Create a source stream
+//! let source = rx.into_fluxion_stream()
+//!     .map_ordered(|x: Sequenced<i32>| Sequenced::new(x.into_inner() * 2));
 //!
 //! // Share it among multiple subscribers
 //! let shared = source.share();
 //!
 //! // Each subscriber gets broadcast values, can chain independently
-//! let sub1 = FluxionStream::new(shared.subscribe().unwrap())
-//!     .filter_ordered(|x| x > 10);
+//! let _sub1 = shared.subscribe().unwrap()
+//!     .filter_ordered(|x| *x > 10);
 //!
-//! let sub2 = FluxionStream::new(shared.subscribe().unwrap())
-//!     .map_ordered(|x| x.to_string());
+//! let _sub2 = shared.subscribe().unwrap()
+//!     .map_ordered(|x: Sequenced<i32>| Sequenced::new(x.into_inner().to_string()));
+//! # }
 //! ```
 //!
 //! ## Comparison with FluxionSubject
 //!
 //! | Type | Source | Push API |
 //! |------|--------|----------|
-//! | [`FluxionSubject`](fluxion_core::FluxionSubject) | External (you call `next()`) | Yes |
+//! | [`FluxionSubject`] | External (you call `next()`) | Yes |
 //! | [`FluxionShared`] | Existing stream | No |
 //!
 //! Both are subscription factories with the same `subscribe()` pattern.
@@ -54,7 +58,7 @@ pub type SharedBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + 
 
 /// A shared stream that broadcasts items from a source to multiple subscribers.
 ///
-/// `FluxionShared` is created by calling [`share()`](crate::FluxionStream::share) on a
+/// `FluxionShared` is created by calling [`share()`](ShareExt::share) on a
 /// `FluxionStream`. It consumes the source stream and forwards all items to an internal
 /// [`FluxionSubject`], which broadcasts to all subscribers.
 ///
@@ -74,7 +78,7 @@ impl<T: Clone + Send + Sync + 'static> FluxionShared<T> {
     /// all items to the internal subject. The task runs until the source completes,
     /// errors, or all subscribers have been dropped.
     ///
-    /// Prefer using [`FluxionStream::share()`](crate::FluxionStream::share) instead
+    /// Prefer using [`ShareExt::share()`] instead
     /// of calling this directly.
     pub fn new<S>(source: S) -> Self
     where
@@ -121,12 +125,17 @@ impl<T: Clone + Send + Sync + 'static> FluxionShared<T> {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```rust
+    /// use fluxion_stream::{IntoFluxionStream, ShareExt, FilterOrderedExt, MapOrderedExt};
+    /// use fluxion_test_utils::Sequenced;
+    ///
+    /// # async fn example() {
+    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+    /// let source = rx.into_fluxion_stream();
     /// let shared = source.share();
     ///
-    /// let stream = FluxionStream::new(shared.subscribe()?)
-    ///     .filter_ordered(|x| x > 10)
-    ///     .map_ordered(|x| x * 2);
+    /// let _stream = shared.subscribe().unwrap();
+    /// # }
     /// ```
     pub fn subscribe(&self) -> Result<SharedBoxStream<T>, SubjectError> {
         self.subject.subscribe()
@@ -156,4 +165,73 @@ impl<T: Clone + Send + Sync + 'static> Drop for FluxionShared<T> {
         self.subject.close();
         // Task will be aborted when JoinHandle is dropped
     }
+}
+
+/// Extension trait providing the `share` operator for streams.
+///
+/// This trait allows any stream of `StreamItem<T>` to be converted into a
+/// [`FluxionShared`] subscription factory for multi-subscriber broadcasting.
+pub trait ShareExt<T>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Clone + Send + Sync + 'static,
+{
+    /// Converts this stream into a shared, multi-subscriber source.
+    ///
+    /// `share()` consumes this stream and returns a [`FluxionShared`] subscription factory.
+    /// The source stream is consumed once, and all emitted items are broadcast to all
+    /// active subscribers.
+    ///
+    /// This is useful when you have an expensive computation or external data source
+    /// that you want to share among multiple consumers without re-executing the source.
+    ///
+    /// # Behavior
+    ///
+    /// - **Hot**: Late subscribers do not receive past items
+    /// - **Shared execution**: Source operators run once; results are broadcast
+    /// - **Owned lifecycle**: The forwarding task is cancelled when `FluxionShared` is dropped
+    ///
+    /// # Returns
+    ///
+    /// A [`FluxionShared`] subscription factory. Call `subscribe()` on it to create
+    /// subscriber streams, then wrap in `FluxionStream::new()` to chain operators.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use fluxion_stream::{IntoFluxionStream, ShareExt, FilterOrderedExt, MapOrderedExt};
+    /// use fluxion_test_utils::Sequenced;
+    ///
+    /// # async fn example() {
+    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+    ///
+    /// // Source (runs ONCE)
+    /// let source = rx.into_fluxion_stream()
+    ///     .map_ordered(|x: Sequenced<i32>| Sequenced::new(x.into_inner() * 2));
+    ///
+    /// // Share among multiple subscribers
+    /// let shared = source.share();
+    ///
+    /// // Each subscriber chains independently
+    /// let _sub1 = shared.subscribe().unwrap();
+    /// let _sub2 = shared.subscribe().unwrap();
+    /// # }
+    /// ```
+    ///
+    /// # See Also
+    ///
+    /// - [`FluxionSubject`] - For push-based multicast
+    /// - [`FluxionShared`] - The returned subscription factory
+    fn share(self) -> FluxionShared<T>
+    where
+        Self: Send + Sync + Unpin + 'static,
+    {
+        FluxionShared::new(self)
+    }
+}
+
+impl<S, T> ShareExt<T> for S
+where
+    S: Stream<Item = StreamItem<T>>,
+    T: Clone + Send + Sync + 'static,
+{
 }

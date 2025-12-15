@@ -1,9 +1,13 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{
+    CombineLatestExt, CombineWithPreviousExt, DistinctUntilChangedExt, FilterOrderedExt,
+    MapOrderedExt,
+};
 use fluxion_test_utils::{
     helpers::unwrap_stream,
     test_channel,
@@ -17,7 +21,7 @@ async fn test_filter_ordered_distinct_until_changed() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     // Composition: filter -> distinct_until_changed
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
         .distinct_until_changed();
 
@@ -53,7 +57,7 @@ async fn test_distinct_until_changed_with_map_composition() -> anyhow::Result<()
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     // Composition: map -> distinct_until_changed
-    let mut result = FluxionStream::new(stream)
+    let mut result = stream
         .map_ordered(|s| {
             let age = match &s.value {
                 TestData::Person(p) => p.age,
@@ -97,9 +101,7 @@ async fn test_distinct_until_changed_with_combine_with_previous_composition() ->
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     // Composition: combine_with_previous -> distinct_until_changed
-    let mut result = FluxionStream::new(stream)
-        .combine_with_previous()
-        .distinct_until_changed();
+    let mut result = stream.combine_with_previous().distinct_until_changed();
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
@@ -135,7 +137,7 @@ async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow
     let (stream2_tx, stream2) = test_channel::<Sequenced<TestData>>();
 
     // Composition: combine_latest -> map to combined age -> distinct_until_changed
-    let mut result = FluxionStream::new(stream1)
+    let mut result = stream1
         .combine_latest(vec![stream2], |_| true)
         .map_ordered(|state| {
             let age1 = match &state.values()[0] {

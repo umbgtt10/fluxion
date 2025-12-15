@@ -1,7 +1,8 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::MergedStream;
 use fluxion_test_utils::Sequenced;
@@ -557,7 +558,7 @@ async fn test_merge_with_into_fluxion_stream_standalone() -> anyhow::Result<()> 
     });
 
     // Act: Convert to FluxionStream without chaining
-    let mut fluxion_stream = merged.into_fluxion_stream();
+    let mut fluxion_stream = merged.into_stream();
 
     // Assert: Can still use as stream
     tx.send(Sequenced::with_timestamp(10, 1))?;
@@ -588,7 +589,7 @@ async fn test_merge_with_into_fluxion_stream_empty() -> anyhow::Result<()> {
     });
 
     // Act: Convert empty stream to FluxionStream
-    let mut fluxion_stream = merged.into_fluxion_stream();
+    let mut fluxion_stream = merged.into_stream();
 
     // Drop sender immediately to end stream
     drop(tx);

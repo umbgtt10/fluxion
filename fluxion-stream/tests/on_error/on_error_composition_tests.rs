@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream::FluxionStream;
+
+use fluxion_stream::{CombineWithPreviousExt, FilterOrderedExt, MapOrderedExt, OnErrorExt};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel_with_errors,
@@ -21,7 +22,7 @@ async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
     let early_errors_clone = early_errors.clone();
     let late_errors_clone = late_errors.clone();
 
-    let mut stream = FluxionStream::new(stream)
+    let mut stream = stream
         .on_error(move |err| {
             // Handle specific errors early
             if err.to_string().contains("early") {
@@ -110,7 +111,7 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
     let validation_errors_clone = validation_errors.clone();
     let other_errors_clone = other_errors.clone();
 
-    let mut stream = FluxionStream::new(stream)
+    let mut stream = stream
         .on_error(move |err| {
             // First handler: network errors
             if err.to_string().contains("network") {
