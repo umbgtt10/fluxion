@@ -214,8 +214,8 @@ async fn shared_with_mixed_combine_latest_combines_subscribers() -> anyhow::Resu
     let shared = source.share();
 
     // Two subscribers from the same shared source, combined with combine_latest
-    let mut combined = FluxionStream::new(shared.subscribe().unwrap())
-        .combine_latest(vec![stream], |_| true);
+    let mut combined =
+        FluxionStream::new(shared.subscribe().unwrap()).combine_latest(vec![stream], |_| true);
 
     // Act - send items
     tx1.send(Sequenced::new(person_charlie()))?;
@@ -262,6 +262,63 @@ async fn shared_with_mixed_combine_latest_combines_subscribers() -> anyhow::Resu
             .values()
             .clone(),
         vec![person_diane(), person_bob()]
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn shared_with_transientcombine_latest_combines_subscribers() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, rx) = test_channel::<Sequenced<TestData>>();
+    let source = FluxionStream::new(rx);
+
+    let shared = source.share();
+
+    // Two subscribers from the same shared source, combined with combine_latest
+    let mut combined = FluxionStream::new(shared.subscribe().unwrap())
+        .combine_latest(vec![shared.subscribe().unwrap()], |_| true);
+
+    // Act - send items
+    tx.send(Sequenced::new(person_alice()))?;
+
+    // Assert - combine_latest emits when both have values
+    // After Alice is sent, both subscribers receive it, so we get (Alice, Alice)
+    assert_eq!(
+        unwrap_stream(&mut combined, 500)
+            .await
+            .unwrap()
+            .clone()
+            .into_inner()
+            .values()
+            .clone(),
+        vec![person_alice(), person_alice()]
+    );
+
+    // Send Bob
+    tx.send(Sequenced::new(person_bob()))?;
+
+    // After Bob is sent, we get a combination with Bob on one side
+    assert_eq!(
+        unwrap_stream(&mut combined, 500)
+            .await
+            .unwrap()
+            .clone()
+            .into_inner()
+            .values()
+            .clone(),
+        vec![person_bob(), person_alice()]
+    );
+
+    assert_eq!(
+        unwrap_stream(&mut combined, 500)
+            .await
+            .unwrap()
+            .clone()
+            .into_inner()
+            .values()
+            .clone(),
+        vec![person_bob(), person_bob()]
     );
 
     Ok(())
