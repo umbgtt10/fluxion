@@ -118,6 +118,9 @@ where
 
 type IndexedStream<T> =
     Pin<Box<dyn Stream<Item = (fluxion_core::StreamItem<T>, usize)> + Send + Sync>>;
+
+type SharedState<V, TS> = Arc<Mutex<Option<(V, TS)>>>;
+
 impl<T, S> EmitWhenExt<T> for S
 where
     S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
@@ -139,8 +142,8 @@ where
 
         let streams: Vec<IndexedStream<T>> = vec![source_stream, filter_stream];
 
-        let source_value: Arc<Mutex<Option<T::Inner>>> = Arc::new(Mutex::new(None));
-        let filter_value: Arc<Mutex<Option<T::Inner>>> = Arc::new(Mutex::new(None));
+        let source_value: SharedState<T::Inner, T::Timestamp> = Arc::new(Mutex::new(None));
+        let filter_value: SharedState<T::Inner, T::Timestamp> = Arc::new(Mutex::new(None));
         let filter = Arc::new(filter);
 
         let combined_stream = streams.ordered_merge().filter_map(move |(item, index)| {
@@ -157,14 +160,14 @@ where
                                 let mut source = lock_or_recover(&source_value, "emit_when source");
                                 let filter_val = lock_or_recover(&filter_value, "emit_when filter");
 
-                                // Update source value
-                                *source = Some(ordered_value.clone().into_inner());
+                                // Update source value with its timestamp
                                 let timestamp = ordered_value.timestamp();
+                                *source = Some((ordered_value.clone().into_inner(), timestamp));
 
-                                if let Some(src) = source.as_ref() {
-                                    if let Some(filt) = filter_val.as_ref() {
+                                if let Some((src, src_ts)) = source.as_ref() {
+                                    if let Some((filt, filt_ts)) = filter_val.as_ref() {
                                         let combined_state = CombinedState::new(
-                                            vec![src.clone(), filt.clone()],
+                                            vec![(src.clone(), *src_ts), (filt.clone(), *filt_ts)],
                                             timestamp,
                                         );
                                         if filter(&combined_state) {
@@ -188,14 +191,14 @@ where
                                     lock_or_recover(&filter_value, "emit_when filter");
                                 let source = lock_or_recover(&source_value, "emit_when source");
 
-                                // Update filter value
-                                *filter_val = Some(ordered_value.clone().into_inner());
+                                // Update filter value with its timestamp
                                 let timestamp = ordered_value.timestamp();
+                                *filter_val = Some((ordered_value.clone().into_inner(), timestamp));
 
-                                if let Some(src) = source.as_ref() {
-                                    if let Some(filt) = filter_val.as_ref() {
+                                if let Some((src, src_ts)) = source.as_ref() {
+                                    if let Some((filt, filt_ts)) = filter_val.as_ref() {
                                         let combined_state = CombinedState::new(
-                                            vec![src.clone(), filt.clone()],
+                                            vec![(src.clone(), *src_ts), (filt.clone(), *filt_ts)],
                                             timestamp,
                                         );
                                         if filter(&combined_state) {

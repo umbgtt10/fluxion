@@ -172,8 +172,8 @@ where
                                 // values[0] = primary, values[1] = secondary
                                 let combined_state = CombinedState::new(
                                     vec![
-                                        values[0].clone().into_inner(),
-                                        values[1].clone().into_inner(),
+                                        (values[0].clone().into_inner(), values[0].timestamp()),
+                                        (values[1].clone().into_inner(), values[1].timestamp()),
                                     ],
                                     timestamp,
                                 );

@@ -74,14 +74,19 @@ impl<T: Timestamped> Timestamped for WithPrevious<T> {
 /// [`with_latest_from`](crate::WithLatestFromExt::with_latest_from), and
 /// [`emit_when`](crate::EmitWhenExt::emit_when).
 ///
+/// Each value is paired with its original timestamp, enabling detection of
+/// transient states when combining multiple subscribers from the same shared source.
+///
 /// # Examples
 ///
 /// ```
 /// use fluxion_stream::CombinedState;
 ///
-/// let state = CombinedState::new(vec![1, 2, 3], 0);
+/// let state = CombinedState::new(vec![(1, 100u64), (2, 100u64), (3, 100u64)], 100u64);
 /// assert_eq!(state.values().len(), 3);
 /// assert_eq!(state.values()[0], 1);
+/// // All timestamps match - this is a stable state
+/// assert!(state.timestamps().iter().all(|ts| *ts == 100));
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CombinedState<V, TS = u64>
@@ -89,7 +94,9 @@ where
     V: Clone + Debug + Ord,
     TS: Clone + Debug + Ord,
 {
-    state: Vec<V>,
+    /// Values paired with their individual timestamps
+    state: Vec<(V, TS)>,
+    /// The maximum timestamp (for Timestamped trait compatibility)
     timestamp: TS,
 }
 
@@ -98,13 +105,27 @@ where
     V: Clone + Debug + Ord,
     TS: Clone + Debug + Ord,
 {
-    /// Creates a new CombinedState with the given vector of values and timestamp.
-    pub fn new(state: Vec<V>, timestamp: TS) -> Self {
+    /// Creates a new CombinedState with the given vector of value-timestamp pairs and max timestamp.
+    pub fn new(state: Vec<(V, TS)>, timestamp: TS) -> Self {
         Self { state, timestamp }
     }
 
-    /// Returns a reference to the internal values vector.
-    pub fn values(&self) -> &Vec<V> {
+    /// Returns the values as a vector.
+    ///
+    /// If you need access to individual timestamps, use [`pairs()`](Self::pairs) or
+    /// [`timestamps()`](Self::timestamps) instead.
+    pub fn values(&self) -> Vec<V> {
+        self.state.iter().map(|(v, _)| v.clone()).collect()
+    }
+
+    /// Returns the values as a vector of timestamps.
+    ///
+    pub fn timestamps(&self) -> Vec<TS> {
+        self.state.iter().map(|(_, ts)| ts.clone()).collect()
+    }
+
+    /// Returns a slice of the raw value-timestamp pairs.
+    pub fn pairs(&self) -> &[(V, TS)] {
         &self.state
     }
 

@@ -292,3 +292,98 @@ async fn drop_closes_subject_and_cancels_task() {
     // Subscriber should complete (subject closed)
     assert_stream_ended(&mut sub, 500).await;
 }
+
+#[tokio::test]
+async fn empty_source_stream_completes_subscribers_immediately() {
+    // Arrange - create a channel and immediately drop the sender
+    let (tx, rx) = test_channel::<Sequenced<TestData>>();
+    drop(tx); // Source completes immediately with no items
+
+    let source = FluxionStream::new(rx);
+    let shared = source.share();
+
+    // Subscribe after source is already closed
+    let mut sub = shared.subscribe().unwrap();
+
+    // Assert - subscriber completes without receiving any items
+    assert_stream_ended(&mut sub, 500).await;
+}
+
+#[tokio::test]
+async fn subscriber_dropped_mid_stream_does_not_affect_others() {
+    // Arrange
+    let (tx, rx) = test_channel::<Sequenced<TestData>>();
+    let source = FluxionStream::new(rx);
+
+    let shared = source.share();
+    let mut sub1 = shared.subscribe().unwrap();
+    let mut sub2 = shared.subscribe().unwrap();
+    let sub3 = shared.subscribe().unwrap(); // Will be dropped
+
+    // Act - send first item
+    tx.send(Sequenced::new(person_alice())).unwrap();
+
+    // Consume from all three
+    let _ = unwrap_stream(&mut sub1, 500).await;
+    let _ = unwrap_stream(&mut sub2, 500).await;
+
+    // Drop sub3 mid-stream (simulating subscriber being dropped)
+    drop(sub3);
+
+    // Send more items - remaining subscribers should still receive them
+    tx.send(Sequenced::new(person_bob())).unwrap();
+    tx.send(Sequenced::new(person_charlie())).unwrap();
+
+    // Assert - sub1 and sub2 still receive items
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut sub1, 500).await)).into_inner(),
+        person_bob()
+    );
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut sub2, 500).await)).into_inner(),
+        person_bob()
+    );
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut sub1, 500).await)).into_inner(),
+        person_charlie()
+    );
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut sub2, 500).await)).into_inner(),
+        person_charlie()
+    );
+}
+
+#[tokio::test]
+async fn high_subscriber_count_broadcasts_correctly() {
+    // Arrange
+    let (tx, rx) = test_channel::<Sequenced<TestData>>();
+    let source = FluxionStream::new(rx);
+
+    let shared = source.share();
+
+    // Create many subscribers
+    const SUBSCRIBER_COUNT: usize = 50;
+    let mut subscribers: Vec<_> = (0..SUBSCRIBER_COUNT)
+        .map(|_| shared.subscribe().unwrap())
+        .collect();
+
+    // Act - send items
+    tx.send(Sequenced::new(person_alice())).unwrap();
+    tx.send(Sequenced::new(person_bob())).unwrap();
+
+    // Assert - all subscribers receive both items
+    for (i, sub) in subscribers.iter_mut().enumerate() {
+        let first = unwrap_value(Some(unwrap_stream(sub, 500).await)).into_inner();
+        assert_eq!(
+            first,
+            person_alice(),
+            "Subscriber {i} did not receive Alice"
+        );
+
+        let second = unwrap_value(Some(unwrap_stream(sub, 500).await)).into_inner();
+        assert_eq!(second, person_bob(), "Subscriber {i} did not receive Bob");
+    }
+
+    // Verify subscriber count
+    assert_eq!(shared.subscriber_count(), SUBSCRIBER_COUNT);
+}

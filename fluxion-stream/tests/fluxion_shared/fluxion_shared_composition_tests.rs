@@ -7,7 +7,9 @@
 use fluxion_core::Timestamped;
 use fluxion_stream::FluxionStream;
 use fluxion_test_utils::person::Person;
-use fluxion_test_utils::test_data::{TestData, person_alice, person_bob, person_charlie, person_diane};
+use fluxion_test_utils::test_data::{
+    person_alice, person_bob, person_charlie, person_diane, TestData,
+};
 use fluxion_test_utils::{test_channel, unwrap_stream, unwrap_value, Sequenced};
 
 #[tokio::test]
@@ -268,7 +270,7 @@ async fn shared_with_mixed_combine_latest_combines_subscribers() -> anyhow::Resu
 }
 
 #[tokio::test]
-async fn shared_with_transientcombine_latest_combines_subscribers() -> anyhow::Result<()> {
+async fn shared_with_transient_combine_latest_combines_subscribers() -> anyhow::Result<()> {
     // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
     let source = FluxionStream::new(rx);
@@ -320,6 +322,108 @@ async fn shared_with_transientcombine_latest_combines_subscribers() -> anyhow::R
             .clone(),
         vec![person_bob(), person_bob()]
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn shared_with_transient_filtered_combine_latest_combines_subscribers() -> anyhow::Result<()>
+{
+    // Arrange
+    let (tx, rx) = test_channel::<Sequenced<TestData>>();
+    let source = FluxionStream::new(rx);
+
+    let shared = source.share();
+
+    // Two subscribers from the same shared source, combined with combine_latest
+    // Filter predicate checks that all values have the same timestamp (filters transients)
+    let mut combined = FluxionStream::new(shared.subscribe().unwrap()).combine_latest(
+        vec![shared.subscribe().unwrap()],
+        |state| {
+            // Only emit when all values have the same timestamp (stable state)
+            state.timestamps().windows(2).all(|w| w[0] == w[1])
+        },
+    );
+
+    // Act - send items
+    tx.send(Sequenced::new(person_alice()))?;
+
+    // Assert - combine_latest emits when both have values with matching timestamps
+    assert_eq!(
+        unwrap_stream(&mut combined, 500)
+            .await
+            .unwrap()
+            .clone()
+            .into_inner()
+            .values()
+            .clone(),
+        vec![person_alice(), person_alice()]
+    );
+
+    // Send Bob
+    tx.send(Sequenced::new(person_bob()))?;
+
+    // After Bob is sent, both subscribers receive it with the same timestamp, so we get (Bob, Bob)
+    assert_eq!(
+        unwrap_stream(&mut combined, 500)
+            .await
+            .unwrap()
+            .clone()
+            .into_inner()
+            .values()
+            .clone(),
+        vec![person_bob(), person_bob()]
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn shared_with_distinct_until_changed_tracks_state_per_subscriber() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, rx) = test_channel::<Sequenced<TestData>>();
+    let source = FluxionStream::new(rx);
+
+    let shared = source.share();
+
+    // Two subscribers both using distinct_until_changed - each tracks state independently
+    let mut sub1 = FluxionStream::new(shared.subscribe().unwrap()).distinct_until_changed();
+    let mut sub2 = FluxionStream::new(shared.subscribe().unwrap()).distinct_until_changed();
+
+    // Act - send sequence with duplicates: Alice, Alice, Bob, Bob, Alice
+    tx.send(Sequenced::new(person_alice()))?;
+    tx.send(Sequenced::new(person_alice()))?; // duplicate - should be filtered
+    tx.send(Sequenced::new(person_bob()))?;
+    tx.send(Sequenced::new(person_bob()))?; // duplicate - should be filtered
+    tx.send(Sequenced::new(person_alice()))?; // back to Alice - should emit
+
+    // Assert sub1 - receives Alice, Bob, Alice (duplicates filtered)
+    assert!(matches!(
+        unwrap_value(Some(unwrap_stream(&mut sub1, 500).await)).into_inner(),
+        TestData::Person(ref p) if p.name == "Alice"
+    ));
+    assert!(matches!(
+        unwrap_value(Some(unwrap_stream(&mut sub1, 500).await)).into_inner(),
+        TestData::Person(ref p) if p.name == "Bob"
+    ));
+    assert!(matches!(
+        unwrap_value(Some(unwrap_stream(&mut sub1, 500).await)).into_inner(),
+        TestData::Person(ref p) if p.name == "Alice"
+    ));
+
+    // Assert sub2 - receives the same pattern independently
+    assert!(matches!(
+        unwrap_value(Some(unwrap_stream(&mut sub2, 500).await)).into_inner(),
+        TestData::Person(ref p) if p.name == "Alice"
+    ));
+    assert!(matches!(
+        unwrap_value(Some(unwrap_stream(&mut sub2, 500).await)).into_inner(),
+        TestData::Person(ref p) if p.name == "Bob"
+    ));
+    assert!(matches!(
+        unwrap_value(Some(unwrap_stream(&mut sub2, 500).await)).into_inner(),
+        TestData::Person(ref p) if p.name == "Alice"
+    ));
 
     Ok(())
 }

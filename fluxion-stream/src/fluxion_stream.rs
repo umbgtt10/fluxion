@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -13,6 +13,7 @@ use crate::take_latest_when::TakeLatestWhenExt;
 use crate::take_while_with::TakeWhileExt;
 use crate::types::{CombinedState, WithPrevious};
 use crate::with_latest_from::WithLatestFromExt;
+use crate::FluxionShared;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::Fluxion;
 use fluxion_core::{FluxionError, StreamItem, Timestamped};
@@ -1202,10 +1203,10 @@ where
     ///
     /// - [`FluxionSubject`](fluxion_core::FluxionSubject) - For push-based multicast
     /// - [`FluxionShared`](crate::FluxionShared) - The returned subscription factory
-    pub fn share(self) -> crate::FluxionShared<T>
+    pub fn share(self) -> FluxionShared<T>
     where
         S: Send + Sync + Unpin + 'static,
     {
-        crate::FluxionShared::new(self.into_inner())
+        FluxionShared::new(self.into_inner())
     }
 }

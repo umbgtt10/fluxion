@@ -186,14 +186,16 @@ where
             })
             .map(|item| {
                 item.map(|state| {
-                    // Extract the inner values to create CombinedState
-                    let inner_values: Vec<T::Inner> = state
+                    // Extract the inner values with their timestamps to create CombinedState
+                    let value_timestamp_pairs: Vec<(T::Inner, T::Timestamp)> = state
                         .get_ordered_values()
                         .iter()
-                        .map(|ordered_val| ordered_val.clone().into_inner())
+                        .map(|ordered_val| {
+                            (ordered_val.clone().into_inner(), ordered_val.timestamp())
+                        })
                         .collect();
                     let timestamp = state.last_timestamp().expect("State must have timestamp");
-                    CombinedState::new(inner_values, timestamp)
+                    CombinedState::new(value_timestamp_pairs, timestamp)
                 })
             })
             .filter(move |item| {
