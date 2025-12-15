@@ -152,7 +152,7 @@ Combines multiple streams, emitting when any stream emits (after all have emitte
 **Use case:** Dashboard combining data from multiple sources
 
 ```rust
-use fluxion_stream::{FluxionStream, CombineLatestExt};
+use fluxion_stream::CombineLatestExt;
 
 let combined = stream1.combine_latest(
     vec![stream2, stream3],
@@ -174,7 +174,7 @@ Samples secondary streams only when primary stream emits.
 **Use case:** User actions enriched with latest configuration/state
 
 ```rust
-use fluxion_stream::{FluxionStream, WithLatestFromExt};
+use fluxion_stream::WithLatestFromExt;
 
 let enriched = user_clicks.with_latest_from(
     vec![config_stream, state_stream],
@@ -197,7 +197,7 @@ Merges multiple streams preserving temporal order.
 **Use case:** Event log from multiple services
 
 ```rust
-use fluxion_stream::{FluxionStream, OrderedStreamExt};
+use fluxion_stream::OrderedStreamExt;
 
 let merged = stream1.ordered_merge(vec![stream2, stream3]);
 ```
@@ -259,7 +259,7 @@ Gates source emissions based on filter stream conditions.
 **Use case:** Only emit sensor data when system is active
 
 ```rust
-use fluxion_stream::{FluxionStream, EmitWhenExt};
+use fluxion_stream::EmitWhenExt;
 
 let gated = source.emit_when(
     filter_stream,
@@ -281,7 +281,7 @@ Samples source when filter condition is met.
 **Use case:** Capture latest sensor reading on user request
 
 ```rust
-use fluxion_stream::{FluxionStream, TakeLatestWhenExt};
+use fluxion_stream::TakeLatestWhenExt;
 
 let sampled = source.take_latest_when(
     trigger_stream,
@@ -303,7 +303,7 @@ Emits while condition holds, terminates when false.
 **Use case:** Process events until shutdown signal
 
 ```rust
-use fluxion_stream::{FluxionStream, TakeWhileExt};
+use fluxion_stream::TakeWhileExt;
 
 let bounded = source.take_while_with(
     condition_stream,
@@ -327,7 +327,8 @@ Accumulates state across stream items, emitting intermediate results.
 **Use case:** Running totals, moving averages, state machines, building collections over time
 
 ```rust
-use fluxion_stream::{FluxionStream, ScanOrderedExt};
+use fluxion_stream::ScanOrderedExt;
+use fluxion_test_utils::Sequenced;
 
 let sums = stream.scan_ordered::<Sequenced<i32>, _, _>(0, |acc, val| {
     *acc += val;
@@ -356,7 +357,7 @@ Pairs each value with the previous value.
 **Use case:** Detect value changes or calculate deltas
 
 ```rust
-use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
+use fluxion_stream::CombineWithPreviousExt;
 
 let pairs = stream.combine_with_previous();
 
@@ -417,7 +418,7 @@ Selectively consume or propagate errors using the Chain of Responsibility patter
 **Use case:** Logging errors, metrics collection, conditional error recovery
 
 ```rust
-use fluxion_stream::FluxionStream;
+use fluxion_stream::OnErrorExt;
 
 let handled = stream
     .on_error(|err| {
@@ -497,7 +498,7 @@ futures = "0.3"
 Basic usage:
 
 ```rust
-use fluxion_stream::{FluxionStream, OrderedStreamExt};
+use fluxion_stream::{IntoFluxionStream, OrderedStreamExt};
 use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
 
@@ -529,7 +530,7 @@ async fn main() {
 ### Combine Latest for Dashboard
 
 ```rust
-use fluxion_stream::{FluxionStream, CombineLatestExt};
+use fluxion_stream::{IntoFluxionStream, CombineLatestExt};
 use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
 
@@ -564,7 +565,7 @@ async fn main() -> anyhow::Result<()> {
 ### Filter with emit_when
 
 ```rust
-use fluxion_stream::{FluxionStream, EmitWhenExt};
+use fluxion_stream::{IntoFluxionStream, EmitWhenExt};
 use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
 
@@ -597,7 +598,7 @@ async fn main() -> anyhow::Result<()> {
 ### Running Total with scan_ordered
 
 ```rust
-use fluxion_stream::{FluxionStream, ScanOrderedExt};
+use fluxion_stream::{IntoFluxionStream, ScanOrderedExt};
 use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
 
@@ -635,7 +636,7 @@ async fn main() -> anyhow::Result<()> {
 ### Change Detection with combine_with_previous
 
 ```rust
-use fluxion_stream::{FluxionStream, CombineWithPreviousExt};
+use fluxion_stream::{IntoFluxionStream, CombineWithPreviousExt};
 use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
 

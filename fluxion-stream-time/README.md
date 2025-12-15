@@ -119,7 +119,7 @@ let with_timeout = stream.timeout(Duration::from_secs(30));
 
 ## Seamless Operator Chaining
 
-**Key insight**: Operators from both crates chain seamlessly because they all work with `FluxionStream<S>` where `S: Stream<Item = StreamItem<T>>` and `T: HasTimestamp`.
+**Key insight**: Operators from both crates chain seamlessly because they all work with streams where `S: Stream<Item = StreamItem<T>>` and `T: HasTimestamp`.
 
 The only requirement is that your stream items implement `HasTimestamp` with a compatible timestamp type:
 - **Core operators** (`map_ordered`, `filter_ordered`, `combine_latest`, etc.) work with **any** timestamp type
@@ -128,17 +128,17 @@ The only requirement is that your stream items implement `HasTimestamp` with a c
 ### Example: Mixing Operators
 
 ```rust
-use fluxion_stream::FluxionStream;
-use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
+use fluxion_stream::{IntoFluxionStream, FilterOrderedExt, MapOrderedExt, DistinctUntilChangedExt};
+use fluxion_stream_time::{ChronoTimestamped, DelayExt, DebounceExt};
 use std::time::Duration;
 
 // Start with time-based stream
-let stream = FluxionStream::new(source_stream)
+let stream = source_stream
     // Time operator (requires DateTime<Utc>)
     .debounce(Duration::from_millis(100))
 
     // Core operators work seamlessly
-    .filter_ordered(|item| item > &50)
+    .filter_ordered(|item| *item > 50)
     .map_ordered(|item| item * 2)
 
     // Back to time operator
@@ -149,8 +149,8 @@ let stream = FluxionStream::new(source_stream)
 ```
 
 **This works because:**
-1. `debounce` returns `FluxionStream<impl Stream<Item = StreamItem<ChronoTimestamped<T>>>>`
-2. Core operators like `filter_ordered` accept **any** `FluxionStream` where items implement `HasTimestamp`
+1. `debounce` returns `impl Stream<Item = StreamItem<ChronoTimestamped<T>>>`
+2. Core operators like `filter_ordered` accept **any** stream where items implement `HasTimestamp`
 3. The timestamp type (`DateTime<Utc>`) is preserved through the chain
 4. `delay` can then use it again because the type is still `ChronoTimestamped<T>`
 
@@ -174,20 +174,19 @@ let stream = FluxionStream::new(source_stream)
 ## Usage
 
 ```rust
-use fluxion_stream::FluxionStream;
-use fluxion_stream_time::{ChronoTimestamped, ChronoStreamOps};
+use fluxion_stream_time::{ChronoTimestamped, DelayExt, DebounceExt, SampleExt};
 use std::time::Duration;
 
-// Create a stream with ChronoTimestamped items
-let delayed_stream = FluxionStream::new(source_stream)
+// Delay all emissions by 100ms
+let delayed_stream = source_stream
     .delay(Duration::from_millis(100));
 
 // Debounce emissions
-let debounced_stream = FluxionStream::new(source_stream)
+let debounced_stream = source_stream
     .debounce(Duration::from_millis(100));
 
 // Sample emissions
-let sampled_stream = FluxionStream::new(source_stream)
+let sampled_stream = source_stream
     .sample(Duration::from_millis(100));
 ```
 

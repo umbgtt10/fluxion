@@ -61,7 +61,7 @@ The `on_error` operator provides composable, selective error handling:
 #### Basic Error Consumption
 
 ```rust
-use fluxion_stream::FluxionStream;
+use fluxion_stream::OnErrorExt;
 use fluxion_core::FluxionError;
 
 let stream = source_stream
@@ -110,7 +110,8 @@ See [on_error operator specification](FLUXION_OPERATOR_SUMMARY.md#on_error) for 
 Match on each stream item to handle values and errors separately:
 
 ```rust
-use fluxion_stream::{FluxionStream, IntoFluxionStream};
+use fluxion_stream::{IntoFluxionStream, CombineLatestExt};
+use fluxion_core::StreamItem;
 use futures::StreamExt;
 
 let stream = rx.into_fluxion_stream();
@@ -138,7 +139,8 @@ while let Some(item) = combined.next().await {
 Stream operators use internal locks for shared state. If a lock becomes poisoned (thread panicked while holding it), a `LockError` is emitted. Use pattern matching or `on_error` to handle these:
 
 ```rust
-use fluxion_stream::{FluxionStream, IntoFluxionStream};
+use fluxion_stream::{IntoFluxionStream, CombineLatestExt};
+use fluxion_core::StreamItem;
 use futures::StreamExt;
 
 let stream = rx.into_fluxion_stream();

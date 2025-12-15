@@ -117,7 +117,7 @@ impl<T: Clone + Send + Sync + 'static> FluxionShared<T> {
     /// Subscribe to this shared source and receive a stream of items.
     ///
     /// Late subscribers do not receive previously emitted items.
-    /// Wrap the result in `FluxionStream::new()` to access chaining operators.
+    /// The returned stream can be used directly with extension traits for chaining operators.
     ///
     /// # Errors
     ///
@@ -193,7 +193,7 @@ where
     /// # Returns
     ///
     /// A [`FluxionShared`] subscription factory. Call `subscribe()` on it to create
-    /// subscriber streams, then wrap in `FluxionStream::new()` to chain operators.
+    /// subscriber streams that can be used with extension traits for chaining operators.
     ///
     /// # Example
     ///

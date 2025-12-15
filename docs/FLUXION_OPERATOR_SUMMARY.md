@@ -25,6 +25,7 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`take_latest_when`](#take_latest_when) | Sampling | Sample on trigger | Trigger |
 | [`emit_when`](#emit_when) | Gating | Gate with combined state | Source (filtered) |
 | [`on_error`](#on_error) | Error Handling | Selectively consume or propagate errors | Source |
+| [`share`](#share) | Multicasting | Broadcast to multiple subscribers | Source |
 | [`subscribe`](#subscribe) ⚡ | Execution | Process every item sequentially | Source |
 | [`subscribe_latest`](#subscribe_latest) ⚡ | Execution | Process latest item, cancel outdated | Source |
 | `debounce` ⏱️ | Time | Emit after silence | Source (debounced) |
@@ -66,6 +67,9 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 
 ### 🛡️ Error Handling
 - [`on_error`](#on_error) - Selectively consume or propagate errors
+
+### 📡 Multicasting
+- [`share`](#share) - Broadcast stream to multiple subscribers
 
 ### ⚡ Execution (fluxion-exec)
 - [`subscribe`](#subscribe) - Sequential processing of all items
@@ -690,6 +694,83 @@ stream
 - [FluxionError types](../fluxion-core/src/error.rs) for error enum details
 
 [Full documentation](../fluxion-stream/src/fluxion_stream.rs#L780-L866) | [Tests](../fluxion-stream/tests/on_error_tests.rs)
+
+---
+
+### 📡 Multicasting
+
+#### `share`
+**Convert a cold stream into a hot, multi-subscriber broadcast source**
+
+**Signature:**
+```rust
+fn share(self) -> FluxionShared<T>
+where
+    T: Clone + Send + Sync + 'static;
+```
+
+**Basic Usage:**
+```rust
+use fluxion_stream::{IntoFluxionStream, ShareExt, MapOrderedExt};
+use fluxion_test_utils::Sequenced;
+
+let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+// Create and share a source stream
+let shared = rx.into_fluxion_stream()
+    .map_ordered(|x: Sequenced<i32>| Sequenced::new(x.into_inner() * 2))
+    .share();
+
+// Multiple subscribers receive the same broadcast
+let sub1 = shared.subscribe().unwrap();
+let sub2 = shared.subscribe().unwrap();
+
+// Send value - both subscribers receive it
+tx.send(Sequenced::new(5)).unwrap();
+```
+
+**Independent Subscriber Chains:**
+```rust
+let shared = source_stream.share();
+
+// Each subscriber can chain operators independently
+let evens = shared.subscribe().unwrap()
+    .filter_ordered(|x| x.into_inner() % 2 == 0);
+
+let strings = shared.subscribe().unwrap()
+    .map_ordered(|x: Sequenced<i32>| Sequenced::new(x.into_inner().to_string()));
+```
+
+**Behavior:**
+- **Hot stream** - Late subscribers do not receive past items
+- **Shared execution** - Source stream consumed once, results broadcast to all
+- **Subscription factory** - Call `subscribe()` to create independent subscriber streams
+- **Owned lifecycle** - Forwarding task cancelled when `FluxionShared` is dropped
+- **Error propagation** - Errors broadcast to all subscribers, then source closes
+
+**Comparison with FluxionSubject:**
+
+| Type | Source | Push API | Use Case |
+|------|--------|----------|----------|
+| `FluxionSubject` | External (you call `next()`) | Yes | Manual event emission |
+| `FluxionShared` | Existing stream | No | Share computed stream |
+
+**Common Patterns:**
+- Share expensive computations across multiple consumers
+- Fan-out pattern for event distribution
+- Broadcast transformed data to multiple processors
+- Decouple stream production from consumption
+
+**Performance Characteristics:**
+- Single source consumption regardless of subscriber count
+- Broadcast overhead proportional to subscriber count
+- Internal `FluxionSubject` handles subscriber management
+
+**See Also:**
+- [`FluxionSubject`](../fluxion-core/src/fluxion_subject.rs) for manual event emission
+- [Error Handling Guide](ERROR-HANDLING.md) for error propagation patterns
+
+[Full documentation](../fluxion-stream/src/fluxion_shared.rs) | [Tests](../fluxion-stream/tests/fluxion_shared/)
 
 ---
 

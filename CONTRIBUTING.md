@@ -109,8 +109,9 @@ All public items **must** have documentation:
 ///
 /// ```rust
 /// // Runnable example demonstrating usage
-/// use fluxion_stream::FluxionStream;
-/// let stream = FluxionStream::new(some_stream);
+/// use fluxion_stream::{IntoFluxionStream, FilterOrderedExt};
+/// let stream = rx.into_fluxion_stream()
+///     .filter_ordered(|x| *x > 0);
 /// ```
 ///
 /// # Errors

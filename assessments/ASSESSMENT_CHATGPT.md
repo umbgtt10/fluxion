@@ -12,7 +12,7 @@ Scope: Entire workspace (multi-crate) + comparison with RxRust (https://github.c
 
 ## Executive Summary
 
-Fluxion is an exceptionally well-engineered reactive streams library for Rust that demonstrates **production-grade design, testing, and documentation discipline**. With a **4.3:1 test-to-code ratio**, **717 passing tests**, **zero unsafe code**, and deep documentation coverage, it is a strong reference for how to structure and ship a serious Rust library.
+Fluxion is an exceptionally well-engineered reactive streams library for Rust that demonstrates **production-grade design, testing, and documentation discipline**. With a **4.3:1 test-to-code ratio**, **730 passing tests**, **zero unsafe code**, and deep documentation coverage, it is a strong reference for how to structure and ship a serious Rust library.
 
 **Overall Grade: A (Excellent)**
 
@@ -39,7 +39,7 @@ All metrics exclude comments, empty lines, and the entire `examples/` tree, as r
 
 | Metric              | Value |
 |---------------------|-------|
-| Total tests         | 717   |
+| Total tests         | 730   |
 | Integration/unit    | 607   |
 | Doc tests           | 110   |
 | Pass rate           | 100%  |
@@ -285,7 +285,7 @@ Choose RxRust when:
 
 ### 8.1 Strengths
 
-1. Testing discipline: 4.3:1 test-to-code ratio with 717 tests.
+1. Testing discipline: 4.3:1 test-to-code ratio with 730 tests.
 2. Safety: Zero `unsafe` code; concurrency built entirely on safe primitives.
 3. Documentation: Deep, accurate, and example-rich across all crates.
 4. Architecture: Multi-crate design that is clear, modular, and future-proof.
