@@ -188,16 +188,17 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 
 ## 🚀 Version 0.6.0 - Stream Composition & Sampling
 
-**Status:** Planned
+**Status:** Being implemented
 
 **Goal:** Enable stream sharing across multiple consumers and add sampling/batching operators
 
 **Essential Features:**
 - ✅ `FluxionSubject` - Foundation for multi-consumer scenarios
 - ✅ `share()` operator - Share single stream source among multiple subscribers (standard Rx operator)
+- ✅ `partition(predicate)` operator - Split stream into two based on condition
 - [ ] `sample_ratio(fraction)` operator - Probabilistic downsampling (0.0 to 1.0)
 - [ ] `window_by_count(n)` operator - Count-based batching into Vec<T>
-- [ ] `partition(predicate)` operator - Split stream into two based on condition
+- [ ] `tap` operator - used to troubleshoot stream values in complex chains
 - [ ] `merge_with` can handle errors
 
 **Documentation:**

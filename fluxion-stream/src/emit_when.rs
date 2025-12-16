@@ -109,7 +109,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
+    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
@@ -131,7 +131,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
+    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,

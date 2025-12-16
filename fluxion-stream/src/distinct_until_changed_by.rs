@@ -7,7 +7,6 @@ use fluxion_core::{Fluxion, StreamItem};
 use futures::stream::StreamExt;
 use futures::Stream;
 use std::fmt::Debug;
-use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 /// Extension trait providing the `distinct_until_changed_by` operator for streams.
@@ -170,7 +169,7 @@ where
     fn distinct_until_changed_by<F>(
         self,
         compare: F,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
+    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         F: Fn(&T::Inner, &T::Inner) -> bool + Send + Sync + 'static;
 }
@@ -185,7 +184,7 @@ where
     fn distinct_until_changed_by<F>(
         self,
         compare: F,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
+    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         F: Fn(&T::Inner, &T::Inner) -> bool + Send + Sync + 'static,
     {

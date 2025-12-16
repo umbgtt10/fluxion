@@ -13,6 +13,7 @@ readme = "README.md"
 
 [dependencies]
 futures = { workspace = true }
+parking_lot = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true, optional = true }
 

@@ -61,8 +61,9 @@
 use crate::{FluxionError, StreamItem, SubjectError};
 use futures::channel::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use futures::Stream;
+use parking_lot::Mutex;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 type SubjectBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
@@ -89,7 +90,7 @@ impl<T: Clone + Send + Sync + 'static> Stream for SubjectStream<T> {
     type Item = StreamItem<T>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut guard = self.inner.lock().unwrap();
+        let mut guard = self.inner.lock();
         Pin::new(&mut *guard).poll_next(cx)
     }
 }
@@ -123,7 +124,7 @@ impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
     /// Subscribe to this subject and receive a stream of `StreamItem<T>`.
     /// Late subscribers do not receive previously sent items.
     pub fn subscribe(&self) -> Result<SubjectBoxStream<T>, SubjectError> {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock();
         if state.closed {
             return Err(SubjectError::Closed);
         }
@@ -139,7 +140,7 @@ impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
     /// - `SubjectError::Closed` if the subject has been closed
     /// - `SubjectError::NoSubscribers` if no subscribers remain (optional check)
     pub fn send(&self, item: StreamItem<T>) -> Result<(), SubjectError> {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock();
         if state.closed {
             return Err(SubjectError::Closed);
         }
@@ -185,7 +186,7 @@ impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
     ///
     /// Closing is idempotent—calling it multiple times has no additional effect.
     pub fn close(&self) {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock();
         state.closed = true;
         state.senders.clear();
     }
@@ -195,7 +196,7 @@ impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
     /// A closed subject cannot accept new items or subscribers.
     #[must_use]
     pub fn is_closed(&self) -> bool {
-        self.state.lock().unwrap().closed
+        self.state.lock().closed
     }
 
     /// Returns the number of currently active subscribers.
@@ -204,7 +205,7 @@ impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
     /// on the next `send()` call, not immediately when dropped.
     #[must_use]
     pub fn subscriber_count(&self) -> usize {
-        self.state.lock().unwrap().senders.len()
+        self.state.lock().senders.len()
     }
 }
 

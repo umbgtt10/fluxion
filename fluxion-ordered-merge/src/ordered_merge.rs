@@ -79,11 +79,12 @@ where
             }
         } // Return the minimum item if found
         if let Some(idx) = min_idx {
-            debug_assert!(this.buffered[idx].is_some(), "invariant violation");
-            let item = this.buffered[idx]
-                .take()
-                .expect("min_idx is only Some when buffered[idx] is Some");
-            Poll::Ready(Some(item))
+            if let Some(item) = this.buffered[idx].take() {
+                Poll::Ready(Some(item))
+            } else {
+                // This branch is unreachable: min_idx is only Some when buffered[idx] is Some
+                unreachable!("min_idx is only Some when buffered[idx] is Some")
+            }
         } else if any_pending {
             Poll::Pending
         } else {

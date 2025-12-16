@@ -3,7 +3,6 @@
 Operators planned for implementation in future versions of Fluxion.
 
 ## Status Legend
-- ✅ **Implemented** - Available in current version
 - 🚀 **Planned** - Scheduled for next release
 - 💭 **Considering** - Under evaluation
 - 📝 **Research** - Investigating feasibility
@@ -11,216 +10,7 @@ Operators planned for implementation in future versions of Fluxion.
 
 ---
 
-## ✅ Recently Implemented (Version 0.3.0)
-
-### `on_error` ✅
-**Composable error handling with Chain of Responsibility**
-
-```rust
-let stream = stream
-    .on_error(|err| {
-        if err.to_string().contains("retry") {
-            retry_queue.push(err);
-            true
-        } else {
-            false
-        }
-    })
-    .on_error(|err| {
-        log::error!("Unhandled: {}", err);
-        true
-    });
-```
-
-**Status**: Implemented in v0.3.0
-**Use case**: Logging, metrics, selective error recovery
-**Complexity**: Low
-**Documentation**: [FLUXION_OPERATOR_SUMMARY.md#on_error](FLUXION_OPERATOR_SUMMARY.md#on_error)
-**Tests**: 13 comprehensive tests
-**Similar to**: RxJS `catchError` (but filter-based, not replacement-based)
-
----
-
-### `distinct_until_changed` ✅
-**Suppress consecutive duplicate values**
-
-```rust
-let distinct = stream.distinct_until_changed();
-```
-
-**Status**: Implemented (unreleased)
-**Use case**: Change detection, noise reduction, state monitoring
-**Complexity**: Low - simple `PartialEq` check
-**Tests**: 9 unit tests + 7 error tests + 4 composition tests + 3 doctests
-**Benchmarks**: Various duplicate factors (1x-10x) + worst case scenarios
-**Similar to**: RxJS `distinctUntilChanged`
-
----
-
-### `distinct_until_changed_by` ✅
-**Custom duplicate suppression with comparison function**
-
-```rust
-// Field-based comparison
-let distinct = stream.distinct_until_changed_by(|a, b| a.id == b.id);
-
-// Case-insensitive
-let distinct = stream.distinct_until_changed_by(|a, b|
-    a.to_lowercase() == b.to_lowercase()
-);
-
-// Threshold-based
-let distinct = stream.distinct_until_changed_by(|a, b| (a - b).abs() < 0.5);
-```
-
-**Status**: Implemented (unreleased)
-**Use case**: Field comparison, case-insensitive matching, threshold filtering, custom equality logic
-**Complexity**: Low - user-provided comparison function
-**Pattern**: Follows Rust stdlib (`sort_by`, `dedup_by`, `max_by`)
-**Tests**: 9 unit tests + 8 error tests + 3 composition tests + 3 doctests
-**Benchmarks**: Field comparison, case-insensitive strings, threshold-based (f64)
-**Similar to**: RxJS `distinctUntilChanged` with custom comparer
-
----
-
-## ✅ Implemented in Version 0.4.0
-
-### `scan_ordered` ✅
-**Accumulate state across stream**
-
-```rust
-let accumulated = stream.scan_ordered(initial_state, |acc, item| {
-    *acc += item;
-    *acc
-});
-```
-
-**Status**: Implemented in v0.4.0
-**Use case**: Running totals, counters, state machines
-**Complexity**: Medium - requires mutable state management
-**Tests**: 26 comprehensive tests (functional + error + composition)
-**RxJS equivalent**: `scan`
-
----
-
-### `skip_items` / `take_items` ✅
-**Stream control operators**
-
-```rust
-let skipped = stream.skip_items(5);
-let limited = stream.take_items(10);
-```
-
-**Status**: Implemented in v0.4.0
-**Use case**: Pagination, limiting results, skipping warmup
-**Complexity**: Low - simple counter
-**RxJS equivalent**: `skip` / `take`
-
----
-
-### `start_with` ✅
-**Prepend initial values**
-
-```rust
-let with_defaults = stream.start_with(vec![default_value]);
-```
-
-**Status**: Implemented in v0.4.0
-**Use case**: Default values, initialization
-**Complexity**: Low - emit before first stream item
-**RxJS equivalent**: `startWith`
-
----
-
-### `distinct_until_changed` / `distinct_until_changed_by` ✅
-**Suppress consecutive duplicates**
-
-```rust
-let distinct = stream.distinct_until_changed();
-let custom = stream.distinct_until_changed_by(|a, b| a.id == b.id);
-```
-
-**Status**: Implemented in v0.4.0
-**Use case**: Change detection, noise reduction
-**Complexity**: Low - simple comparison
-**Tests**: 30 comprehensive tests
-**RxJS equivalent**: `distinctUntilChanged`
-
----
-
-## ✅ Time-Based Operators (fluxion-stream-time v0.4.0)
-
-### `delay` ✅
-**Delay emissions by duration**
-
-```rust
-let delayed = stream.delay(Duration::from_millis(100));
-```
-
-**Status**: Implemented in fluxion-stream-time v0.4.0
-**Use case**: Artificial delays, scheduling
-**Complexity**: Medium - timing logic
-**RxJS equivalent**: `delay`
-
----
-
-### `debounce` ✅
-**Emit only after a period of inactivity**
-
-```rust
-let debounced = stream.debounce(Duration::from_millis(500));
-```
-
-**Status**: Implemented in fluxion-stream-time v0.4.0
-**Use case**: Rate limiting, search input handling, button debouncing
-**Complexity**: High - requires timing and cancellation
-**RxJS equivalent**: `debounceTime`
-
----
-
-### `throttle` ✅
-**Limit emission rate**
-
-```rust
-let throttled = stream.throttle(Duration::from_millis(100));
-```
-
-**Status**: Implemented in fluxion-stream-time v0.4.0
-**Use case**: Rate limiting, API call throttling
-**Complexity**: Medium - requires timing logic
-**RxJS equivalent**: `throttleTime`
-
----
-
-### `sample` ✅
-**Periodic sampling**
-
-```rust
-let sampled = stream.sample(Duration::from_millis(100));
-```
-
-**Status**: Implemented in fluxion-stream-time v0.4.0
-**Use case**: Downsampling high-frequency streams
-**Complexity**: Medium - periodic timing
-**RxJS equivalent**: `sample`
-
----
-
-### `timeout` ✅
-**Error if no emission within duration**
-
-```rust
-let with_timeout = stream.timeout(Duration::from_secs(30));
-```
-
-**Status**: Implemented in fluxion-stream-time v0.4.0
-**Use case**: Watchdogs, health checks
-**Complexity**: Medium - timing and error handling
-**RxJS equivalent**: `timeout`
-
----
-
-## Medium Priority (Version 0.6.0+)
+## Medium Priority (Version 0.7.0+)
 
 ### `buffer` 💭
 **Collect items into batches**
@@ -248,7 +38,7 @@ let windowed = stream.window(Duration::from_secs(5));
 
 ---
 
-## Lower Priority (Version 0.7.0+)
+## Lower Priority (Version 0.8.0+)
 
 ### `retry` 📝
 **Retry failed operations**
@@ -304,14 +94,6 @@ let sequential = stream.concat_map(|item| async_operation(item));
 
 ## Research Phase 1.X.0
 
-### `partition` 📝
-**Split stream into two based on predicate**
-
-**Use case**: Routing, error separation
-**Complexity**: High - requires dual outputs
-
----
-
 ### `group_by` 📝
 **Group items by key into sub-streams**
 
@@ -333,6 +115,72 @@ let sequential = stream.concat_map(|item| async_operation(item));
 
 **Use case**: Timeouts, fallbacks
 **Complexity**: Medium - requires cancellation
+
+---
+
+### `take_until` 💭
+**Take items until notifier stream emits**
+
+```rust
+let bounded = stream.take_until(stop_signal);
+```
+
+**Use case**: Graceful shutdown, cancellation, bounded processing
+**Complexity**: Medium - requires coordination between streams
+**RxJS equivalent**: `takeUntil`
+
+---
+
+### `reduce` 💭
+**Aggregate all items into a single final value**
+
+```rust
+let total = stream.reduce(0, |acc, item| acc + item.value);
+```
+
+**Use case**: Aggregation, accumulation, final computation
+**Complexity**: Low - similar to scan but emits only final value
+**RxJS equivalent**: `reduce`
+
+---
+
+### `tap` 💭
+**Perform side-effects without transforming items**
+
+```rust
+let logged = stream.tap(|item| println!("Processing: {:?}", item));
+```
+
+**Use case**: Logging, debugging, metrics, side-effects
+**Complexity**: Low - pass-through with callback
+**RxJS equivalent**: `tap` / `do`
+
+---
+
+### `finalize` 📝
+**Execute cleanup on stream completion, error, or cancellation**
+
+```rust
+let with_cleanup = stream.finalize(|| cleanup_resources());
+```
+
+**Use case**: Resource cleanup, metrics finalization, logging
+**Complexity**: Medium - requires tracking all termination paths
+**RxJS equivalent**: `finalize`
+
+---
+
+### `first` / `last` 📝
+**Emit only the first or last item from a stream**
+
+```rust
+let first_item = stream.first();
+let last_item = stream.last();
+```
+
+**Use case**: Single value extraction, initialization values
+**Complexity**: Low - `first` is trivial, `last` requires buffering
+**RxJS equivalent**: `first`, `last`
 
 ---
 

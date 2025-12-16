@@ -24,6 +24,7 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`skip_items`](#skip_items) | Limiting | Skip first N items | Source |
 | [`take_latest_when`](#take_latest_when) | Sampling | Sample on trigger | Trigger |
 | [`emit_when`](#emit_when) | Gating | Gate with combined state | Source (filtered) |
+| [`partition`](#partition) | Splitting | Split stream into two by predicate | Source |
 | [`on_error`](#on_error) | Error Handling | Selectively consume or propagate errors | Source |
 | [`share`](#share) | Multicasting | Broadcast to multiple subscribers | Source |
 | [`subscribe`](#subscribe) ⚡ | Execution | Process every item sequentially | Source |
@@ -64,6 +65,9 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 ### 📊 Sampling & Gating
 - [`take_latest_when`](#take_latest_when) - Sample on trigger events
 - [`emit_when`](#emit_when) - Gate based on combined state
+
+### ✂️ Splitting
+- [`partition`](#partition) - Split stream into two based on predicate
 
 ### 🛡️ Error Handling
 - [`on_error`](#on_error) - Selectively consume or propagate errors
@@ -694,6 +698,99 @@ stream
 - [FluxionError types](../fluxion-core/src/error.rs) for error enum details
 
 [Full documentation](../fluxion-stream/src/fluxion_stream.rs#L780-L866) | [Tests](../fluxion-stream/tests/on_error_tests.rs)
+
+---
+
+### ✂️ Splitting
+
+#### `partition`
+**Split a stream into two based on a predicate**
+
+**Signature:**
+```rust
+fn partition<F>(self, predicate: F) -> (PartitionedStream<T>, PartitionedStream<T>)
+where
+    F: Fn(&T::Inner) -> bool + Send + Sync + 'static;
+```
+
+**Basic Usage:**
+```rust
+use fluxion_stream::{IntoFluxionStream, PartitionExt};
+use fluxion_test_utils::Sequenced;
+use futures::StreamExt;
+
+let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+// Partition numbers into even and odd
+let (mut evens, mut odds) = rx.into_fluxion_stream()
+    .partition(|n: &i32| n % 2 == 0);
+
+tx.send(Sequenced::new(1)).unwrap();
+tx.send(Sequenced::new(2)).unwrap();
+tx.send(Sequenced::new(3)).unwrap();
+tx.send(Sequenced::new(4)).unwrap();
+drop(tx);
+
+// Consume both streams independently
+// evens: 2, 4
+// odds: 1, 3
+```
+
+**Error Routing Example:**
+```rust
+// Separate successful values from validation failures
+let (valid, invalid) = events.partition(|event| event.is_valid());
+
+// Process valid events normally
+tokio::spawn(async move {
+    while let Some(item) = valid.next().await {
+        handle_valid(item.unwrap()).await;
+    }
+});
+
+// Route invalid events to error queue
+tokio::spawn(async move {
+    while let Some(item) = invalid.next().await {
+        send_to_dlq(item.unwrap()).await;
+    }
+});
+```
+
+**Behavior:**
+- **Chain-breaking** - Returns two streams, cannot chain further on original
+- **Spawns task** - Routing runs in a background Tokio task
+- **Timestamp-preserving** - Original timestamps are preserved in both output streams
+- **Routing** - Every item goes to exactly one output stream
+- **Non-blocking** - Both streams can be consumed independently
+- **Hot** - Uses internal subjects for broadcasting (late consumers miss items)
+- **Error propagation** - Errors are sent to both output streams
+- **Unbounded buffers** - Items are buffered in memory until consumed
+
+**Buffer Behavior:**
+
+The partition operator uses unbounded internal channels. If one partition stream is consumed slowly (or not at all), items destined for that stream will accumulate in memory:
+
+- If you only consume one partition, items for the other still buffer
+- For high-throughput streams with imbalanced consumption, consider adding backpressure mechanisms downstream
+- Dropping one partition stream is safe; items for it are simply discarded
+
+**Use Cases:**
+- **Error routing** - Separate successful values from validation failures
+- **Priority queues** - Split high-priority and low-priority items
+- **Type routing** - Route different enum variants to specialized handlers
+- **Threshold filtering** - Split values above/below a threshold
+
+**Performance Characteristics:**
+- Background task spawned immediately on partition creation
+- Single pass through source stream
+- Minimal overhead per item (predicate evaluation + channel send)
+- Benchmarked for balanced (50/50) and imbalanced (90/10) splits
+
+**See Also:**
+- [`filter_ordered`](#filter_ordered) - For single-stream filtering (keeps items passing predicate)
+- [`share`](#share) - For broadcasting same items to multiple consumers
+
+[Full documentation](../fluxion-stream/src/partition.rs) | [Tests](../fluxion-stream/tests/partition_tests.rs) | [Benchmarks](../benchmarks/benches/partition_bench.rs)
 
 ---
 

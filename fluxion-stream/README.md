@@ -22,6 +22,8 @@ Stream combinators for async Rust with strong temporal-ordering guarantees. This
   - [Transformation Operators](#transformation-operators)
   - [Utility Operators](#utility-operators)
   - [Error Handling Operators](#error-handling-operators)
+  - [Splitting Operators](#splitting-operators)
+  - [Multicasting Operators](#multicasting-operators)
 - [Operator Selection Guide](#operator-selection-guide)
 - [Quick Start](#quick-start)
 - [Examples](#examples)
@@ -444,6 +446,44 @@ let handled = stream
 
 [Full documentation](src/fluxion_stream.rs#L780-L866) | [Tests](tests/on_error_tests.rs) | [Specification](../docs/FLUXION_OPERATOR_SUMMARY.md#on_error)
 
+### Splitting Operators
+
+#### `partition`
+Splits a stream into two based on a predicate.
+
+**Use case:** Error routing, priority queues, type routing, threshold filtering
+
+```rust
+use fluxion_stream::{IntoFluxionStream, PartitionExt};
+use fluxion_test_utils::Sequenced;
+use futures::StreamExt;
+
+let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+// Partition numbers into even and odd
+let (mut evens, mut odds) = rx.into_fluxion_stream()
+    .partition(|n: &i32| n % 2 == 0);
+
+tx.send(Sequenced::new(1)).unwrap();
+tx.send(Sequenced::new(2)).unwrap();
+tx.send(Sequenced::new(3)).unwrap();
+tx.send(Sequenced::new(4)).unwrap();
+drop(tx);
+
+// evens: 2, 4
+// odds: 1, 3
+```
+
+**Behavior:**
+- Chain-breaking operator (returns two streams)
+- Spawns background routing task
+- Timestamp-preserving (original timestamps maintained)
+- Error propagation to both output streams
+- Unbounded internal buffers
+- Each item goes to exactly one output stream
+
+[Full documentation](src/partition.rs) | [Tests](tests/partition_tests.rs) | [Benchmarks](../benchmarks/benches/partition_bench.rs)
+
 ### Multicasting Operators
 
 #### `share`
@@ -523,6 +563,12 @@ let strings = shared.subscribe().unwrap()
 | Operator | Late Subscribers | Source Execution | Best For |
 |----------|------------------|------------------|----------|
 | `share` | Miss past items | Once (broadcast) | Sharing expensive computations, fan-out |
+
+### When You Need Stream Splitting
+
+| Operator | Outputs | Routing | Best For |
+|----------|---------|---------|----------|
+| `partition` | Two streams | By predicate | Error routing, priority queues, threshold filtering |
 
 ## Quick Start
 

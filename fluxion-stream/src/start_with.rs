@@ -5,7 +5,7 @@
 //! Start-with operator that prepends initial values to a stream.
 
 use fluxion_core::StreamItem;
-use futures::{Stream, StreamExt};
+use futures::{stream::iter, Stream, StreamExt};
 
 /// Extension trait providing the `start_with` operator for streams.
 ///
@@ -73,7 +73,7 @@ where
     S: Stream<Item = StreamItem<T>>,
 {
     fn start_with(self, initial_values: Vec<StreamItem<T>>) -> impl Stream<Item = StreamItem<T>> {
-        let initial_stream = futures::stream::iter(initial_values);
+        let initial_stream = iter(initial_values);
         initial_stream.chain(self)
     }
 }

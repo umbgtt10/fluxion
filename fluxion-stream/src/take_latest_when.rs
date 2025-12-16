@@ -112,13 +112,14 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
+    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
 }
 
 type IndexedStream<T> = Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;
+
 impl<T, S> TakeLatestWhenExt<T> for S
 where
     S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
@@ -130,7 +131,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>
+    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
