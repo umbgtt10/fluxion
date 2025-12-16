@@ -12,6 +12,7 @@ mod map_ordered_bench;
 mod merge_with_bench;
 mod ordered_merge_bench;
 mod partition_bench;
+mod sample_ratio_bench;
 mod scan_ordered_bench;
 mod share_bench;
 mod skip_items_bench;
@@ -33,6 +34,9 @@ use merge_with_bench::bench_merge_with;
 use ordered_merge_bench::bench_ordered_merge;
 use partition_bench::{
     bench_partition_balanced, bench_partition_imbalanced, bench_partition_single_consumer,
+};
+use sample_ratio_bench::{
+    bench_sample_ratio_full, bench_sample_ratio_half, bench_sample_ratio_sparse,
 };
 use scan_ordered_bench::{
     bench_scan_ordered_count, bench_scan_ordered_sum, bench_scan_ordered_vec_accumulator,
@@ -59,6 +63,9 @@ criterion_group!(
     bench_partition_balanced,
     bench_partition_imbalanced,
     bench_partition_single_consumer,
+    bench_sample_ratio_full,
+    bench_sample_ratio_half,
+    bench_sample_ratio_sparse,
     bench_scan_ordered_count,
     bench_scan_ordered_sum,
     bench_scan_ordered_vec_accumulator,

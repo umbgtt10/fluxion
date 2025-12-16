@@ -60,6 +60,7 @@ pub use crate::merge_with::MergedStream;
 pub use crate::on_error::OnErrorExt;
 pub use crate::ordered_merge::OrderedStreamExt;
 pub use crate::partition::{PartitionExt, PartitionedStream};
+pub use crate::sample_ratio::SampleRatioExt;
 pub use crate::scan_ordered::ScanOrderedExt;
 pub use crate::skip_items::SkipItemsExt;
 pub use crate::start_with::StartWithExt;

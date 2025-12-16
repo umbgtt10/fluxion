@@ -15,6 +15,7 @@ pub mod merge_with;
 pub mod on_error;
 pub mod ordered_merge;
 pub mod partition;
+pub mod sample_ratio;
 pub mod scan_ordered;
 pub mod skip_items;
 pub mod start_with;

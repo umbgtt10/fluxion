@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`sample_ratio` Operator** (`fluxion-stream`)
+  - Probabilistic downsampling with configurable ratio (0.0 to 1.0)
+  - `SampleRatioExt` trait with `sample_ratio(ratio, seed)` method
+  - Deterministic seeding for reproducible tests; use `fastrand::u64(..)` in production
+  - Errors always pass through unconditionally (never sampled)
+  - Panics on invalid ratio (outside 0.0..=1.0)
+  - Use cases: Load reduction, logging sampling, monitoring downsampling
+  - Comprehensive test suite: `sample_ratio_tests.rs`, `sample_ratio_error_tests.rs`, `sample_ratio_composition_tests.rs`, `sample_ratio_composition_error_tests.rs`
+  - Benchmark: `sample_ratio_bench.rs` with half/full/sparse sampling scenarios
+  - Documentation in module-level docs with usage examples
+
 - **`share` Operator** (`fluxion-stream`)
   - Convert cold streams to hot, multi-subscriber broadcast sources
   - `ShareExt` trait with `share()` method for any `Stream<Item = StreamItem<T>>`

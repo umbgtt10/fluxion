@@ -299,6 +299,30 @@ let sampled = source.take_latest_when(
 
 [Full documentation](src/take_latest_when.rs) | [Tests](tests/take_latest_when_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#take_latest_when---sampling-with-trigger-stream)
 
+#### `sample_ratio`
+Probabilistic downsampling with configurable ratio.
+
+**Use case:** Load reduction, logging sampling, monitoring downsampling
+
+```rust
+use fluxion_stream::SampleRatioExt;
+
+// Sample approximately 10% of items
+let sampled = stream.sample_ratio(0.1, fastrand::u64(..));
+
+// For testing with deterministic seed
+let sampled = stream.sample_ratio(0.5, 42);
+```
+
+**Behavior:**
+- Ratio range: `0.0` (emit nothing) to `1.0` (emit all)
+- Panics if ratio outside valid range
+- Deterministic with same seed for reproducible tests
+- Errors always pass through (never sampled)
+- Timestamp-preserving
+
+[Full documentation](src/sample_ratio.rs) | [Tests](tests/sample_ratio/) | [Benchmarks](benches/sample_ratio_bench.rs)
+
 #### `take_while_with`
 Emits while condition holds, terminates when false.
 
@@ -544,6 +568,7 @@ let strings = shared.subscribe().unwrap()
 | `emit_when` | Yes (buffers when gated) | Source completes | Conditional processing |
 | `take_latest_when` | No (only latest) | Source completes | Sampling, snapshots |
 | `take_while_with` | No | First false | Bounded processing |
+| `sample_ratio` | No | Source completes | Load reduction, logging sampling |
 
 ### When You Need Deduplication
 

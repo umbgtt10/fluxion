@@ -23,6 +23,7 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`take_items`](#take_items) | Limiting | Take first N items | Source |
 | [`skip_items`](#skip_items) | Limiting | Skip first N items | Source |
 | [`take_latest_when`](#take_latest_when) | Sampling | Sample on trigger | Trigger |
+| [`sample_ratio`](#sample_ratio) | Sampling | Probabilistic downsampling | Source |
 | [`emit_when`](#emit_when) | Gating | Gate with combined state | Source (filtered) |
 | [`partition`](#partition) | Splitting | Split stream into two by predicate | Source |
 | [`on_error`](#on_error) | Error Handling | Selectively consume or propagate errors | Source |
@@ -64,6 +65,7 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 
 ### 📊 Sampling & Gating
 - [`take_latest_when`](#take_latest_when) - Sample on trigger events
+- [`sample_ratio`](#sample_ratio) - Probabilistic downsampling by ratio
 - [`emit_when`](#emit_when) - Gate based on combined state
 
 ### ✂️ Splitting
@@ -360,6 +362,59 @@ let sampled = stream.take_latest_when(trigger, |_| true);
 - After first trigger, source emits immediately
 - Rate limiting and event-driven sampling
 - See API docs for detailed examples
+
+---
+
+#### `sample_ratio`
+**Probabilistic downsampling by ratio**
+
+**Signature:**
+```rust
+fn sample_ratio(self, ratio: f64, seed: u64) -> impl Stream<Item = StreamItem<T>>
+```
+
+**Basic Usage:**
+```rust
+use fluxion_stream::prelude::*;
+use fluxion_test_utils::{Sequenced, test_channel};
+use futures::StreamExt;
+
+let (tx, stream) = test_channel::<Sequenced<i32>>();
+
+// Sample approximately 50% of items
+let sampled = stream.sample_ratio(0.5, 42);
+
+// In production, use random seed:
+// let sampled = stream.sample_ratio(0.1, fastrand::u64(..));
+```
+
+**Behavior:**
+- **Ratio range** - `0.0` (emit nothing) to `1.0` (emit all), panics if outside range
+- **Deterministic** - Same seed produces same sampling pattern for testing
+- **Error pass-through** - Errors always pass through, never subject to sampling
+- **Timestamp-preserving** - Original timestamps maintained on sampled items
+- **Stateless per-item** - Each item evaluated independently (no windowing)
+
+**Use Cases:**
+- **Load reduction** - Reduce downstream processing load on high-frequency streams
+- **Logging sampling** - Log a representative sample of events
+- **Monitoring** - Downsample metrics while preserving error visibility
+- **Testing** - Deterministic seed enables reproducible sampling behavior
+
+**Production vs Testing:**
+```rust
+// Testing - deterministic sampling with fixed seed
+let sampled = stream.sample_ratio(0.5, 42);
+
+// Production - random sampling
+let sampled = stream.sample_ratio(0.1, fastrand::u64(..));
+```
+
+**See Also:**
+- [`take_latest_when`](#take_latest_when) - For trigger-based sampling
+- `sample` (⏱️ fluxion-stream-time) - For time-based sampling
+
+[Full documentation](../fluxion-stream/src/sample_ratio.rs) | [Tests](../fluxion-stream/tests/sample_ratio/) | [Benchmarks](../fluxion-stream/benches/sample_ratio_bench.rs)
 
 ---
 
