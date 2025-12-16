@@ -113,7 +113,7 @@ pub mod test_wrapper;
 pub use error_injection::ErrorInjectingStream;
 pub use helpers::{
     assert_no_element_emitted, assert_stream_ended, test_channel, test_channel_with_errors,
-    unwrap_stream, unwrap_value,
+    unwrap_all, unwrap_stream, unwrap_value,
 };
 pub use sequenced::Sequenced;
 pub use test_data::{DataVariant, TestData};

@@ -225,6 +225,48 @@ where
     }
 }
 
+/// Collects all values from a stream until it times out waiting for the next item.
+///
+/// This function repeatedly polls the stream with a per-item timeout. It collects
+/// all `StreamItem::Value` items, ignoring errors, until no more items arrive within
+/// the timeout period.
+///
+/// # Returns
+/// A `Vec<T>` containing all the inner values from `StreamItem::Value` items.
+///
+/// # Example
+///
+/// ```rust
+/// use fluxion_test_utils::{test_channel, unwrap_all, Sequenced};
+/// use fluxion_test_utils::test_data::{person_alice, person_bob};
+///
+/// # async fn example() {
+/// let (tx, mut stream) = test_channel();
+/// tx.send(Sequenced::new(person_alice())).unwrap();
+/// tx.send(Sequenced::new(person_bob())).unwrap();
+/// drop(tx);
+///
+/// let results = unwrap_all(&mut stream, 100).await;
+/// assert_eq!(results.len(), 2);
+/// # }
+/// ```
+pub async fn unwrap_all<T, S>(stream: &mut S, timeout_ms: u64) -> Vec<T>
+where
+    S: Stream<Item = StreamItem<T>> + Unpin,
+{
+    let mut results = Vec::new();
+    while let Some(item) = timeout(Duration::from_millis(timeout_ms), stream.next())
+        .await
+        .ok()
+        .flatten()
+    {
+        if let Some(val) = item.ok() {
+            results.push(val);
+        }
+    }
+    results
+}
+
 /// Macro to wrap test bodies with timeout to prevent hanging tests
 #[macro_export]
 macro_rules! with_timeout {
