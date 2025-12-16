@@ -55,11 +55,17 @@
 //!
 //! In production, provide a random seed from `fastrand`:
 //!
-//! ```ignore
+//! ```
 //! use fluxion_stream::prelude::*;
+//! use fluxion_test_utils::{Sequenced, test_channel};
+//!
+//! # #[tokio::main]
+//! # async fn main() {
+//! let (_tx, stream) = test_channel::<Sequenced<i32>>();
 //!
 //! // Random sampling in production
-//! let sampled = stream.sample_ratio(0.1, fastrand::u64(..)); // Sample ~10%
+//! let _sampled = stream.sample_ratio(0.1, fastrand::u64(..)); // Sample ~10%
+//! # }
 //! ```
 //!
 //! # Error Handling

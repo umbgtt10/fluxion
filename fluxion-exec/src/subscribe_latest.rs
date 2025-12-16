@@ -85,12 +85,14 @@ where
     /// let processed_clone = processed.clone();
     ///
     /// // Gate to control when first item completes
-    /// let (gate_tx, mut gate_rx) = unbounded_channel::<()>();
+    /// let (gate_tx, gate_rx) = unbounded_channel::<()>();
     /// let gate_shared = Arc::new(Mutex::new(Some(gate_rx)));
     ///
-    /// // Signal when processing starts
+    /// // Signal when processing starts and completes
     /// let (started_tx, mut started_rx) = unbounded_channel::<i32>();
     /// let started_tx = Arc::new(started_tx);
+    /// let (done_tx, mut done_rx) = unbounded_channel::<i32>();
+    /// let done_tx = Arc::new(done_tx);
     ///
     /// let handle = tokio::spawn(async move {
     ///     stream.subscribe_latest(
@@ -98,6 +100,7 @@ where
     ///             let processed = processed_clone.clone();
     ///             let gate = gate_shared.clone();
     ///             let started = started_tx.clone();
+    ///             let done = done_tx.clone();
     ///             async move {
     ///                 started.send(item).unwrap();
     ///                 // First item waits at gate
@@ -107,6 +110,7 @@ where
     ///                 if !token.is_cancelled() {
     ///                     processed.lock().await.push(item);
     ///                 }
+    ///                 done.send(item).unwrap();
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
@@ -115,18 +119,25 @@ where
     ///     ).await
     /// });
     ///
-    /// // Send first item
+    /// // Send first item and wait for it to start processing
     /// tx.send(1).unwrap();
-    /// // Wait for it to start processing
     /// assert_eq!(started_rx.recv().await, Some(1));
     ///
-    /// // Send subsequent items
+    /// // Send subsequent items while item 1 is blocked
     /// tx.send(2).unwrap();
     /// tx.send(3).unwrap();
     /// tx.send(4).unwrap();
     ///
     /// // Release the gate to let item 1 finish
     /// gate_tx.send(()).unwrap();
+    ///
+    /// // Wait for item 1 to complete
+    /// assert_eq!(done_rx.recv().await, Some(1));
+    /// // Wait for latest item (4) to start and complete
+    /// assert_eq!(started_rx.recv().await, Some(4));
+    /// assert_eq!(done_rx.recv().await, Some(4));
+    ///
+    /// // Now close the stream
     /// drop(tx);
     ///
     /// handle.await.unwrap().unwrap();

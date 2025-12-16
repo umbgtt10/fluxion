@@ -22,4 +22,5 @@ pub mod start_with;
 pub mod take_items;
 pub mod take_latest_when;
 pub mod take_while_with;
+pub mod tap;
 pub mod with_latest_from;

@@ -82,9 +82,6 @@ fn make_stream_threshold(size: usize) -> impl Stream<Item = StreamItem<Sequenced
     stream::iter(items).map(StreamItem::Value)
 }
 
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_distinct_until_changed_by(c: &mut Criterion) {
     // Benchmark field comparison
     let mut group = c.benchmark_group("distinct_until_changed_by_field");

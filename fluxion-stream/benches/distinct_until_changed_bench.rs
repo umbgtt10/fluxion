@@ -34,9 +34,6 @@ fn make_stream_alternating(size: usize) -> impl futures::Stream<Item = StreamIte
     stream::iter(items).map(StreamItem::Value)
 }
 
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_distinct_until_changed(c: &mut Criterion) {
     let mut group = c.benchmark_group("distinct_until_changed");
     let sizes = [100usize, 1000usize, 10000];

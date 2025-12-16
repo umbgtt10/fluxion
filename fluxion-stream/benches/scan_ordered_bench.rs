@@ -28,9 +28,6 @@ fn make_stream_with_payload(
     stream::iter(items).map(StreamItem::Value)
 }
 
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_scan_ordered_sum(c: &mut Criterion) {
     let mut group = c.benchmark_group("scan_ordered_sum");
     let sizes = [100usize, 1000usize, 10000];
@@ -63,9 +60,6 @@ pub fn bench_scan_ordered_sum(c: &mut Criterion) {
     group.finish();
 }
 
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_scan_ordered_vec_accumulator(c: &mut Criterion) {
     let mut group = c.benchmark_group("scan_ordered_vec_accumulator");
     let sizes = [100usize, 1000usize, 10000];
@@ -107,9 +101,6 @@ pub fn bench_scan_ordered_vec_accumulator(c: &mut Criterion) {
     group.finish();
 }
 
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_scan_ordered_count(c: &mut Criterion) {
     let mut group = c.benchmark_group("scan_ordered_count");
     let sizes = [100usize, 1000usize, 10000];

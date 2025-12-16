@@ -9,9 +9,6 @@ use futures::{future::join_all, StreamExt};
 use std::hint::black_box;
 use tokio::{runtime::Runtime, sync::mpsc::unbounded_channel};
 
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_share(c: &mut Criterion) {
     let mut group = c.benchmark_group("share");
     let sizes = [100usize, 1000usize, 10000];

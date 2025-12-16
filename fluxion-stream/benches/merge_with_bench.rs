@@ -19,9 +19,6 @@ fn make_stream(
     stream::iter(items)
 }
 
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_merge_with(c: &mut Criterion) {
     let mut group = c.benchmark_group("merge_with");
     let sizes = [100usize, 1000usize, 10000];
