@@ -656,6 +656,7 @@ pub mod start_with;
 pub mod take_items;
 pub mod take_latest_when;
 pub mod take_while_with;
+pub mod tap;
 pub mod types;
 pub mod with_latest_from;
 
@@ -680,5 +681,6 @@ pub use start_with::StartWithExt;
 pub use take_items::TakeItemsExt;
 pub use take_latest_when::TakeLatestWhenExt;
 pub use take_while_with::TakeWhileExt;
+pub use tap::TapExt;
 pub use types::{CombinedState, WithPrevious};
 pub use with_latest_from::WithLatestFromExt;

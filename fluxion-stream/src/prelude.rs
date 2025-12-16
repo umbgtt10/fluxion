@@ -36,8 +36,7 @@
 //! - [`StartWithExt`] - Prepend initial values
 //! - [`TakeItemsExt`] - Take first n items
 //! - [`TakeLatestWhenExt`] - Sample on trigger events
-//! - [`TakeWhileExt`] - Take while condition holds
-//! - [`WithLatestFromExt`] - Combine with latest from secondary streams
+//! - [`TakeWhileExt`] - Take while condition holds/// - [`TapExt`] - Side-effect observation for debugging//! - [`WithLatestFromExt`] - Combine with latest from secondary streams
 //! - [`IntoFluxionStream`] - Convert receivers to streams
 //!
 //! ## Types
@@ -67,5 +66,6 @@ pub use crate::start_with::StartWithExt;
 pub use crate::take_items::TakeItemsExt;
 pub use crate::take_latest_when::TakeLatestWhenExt;
 pub use crate::take_while_with::TakeWhileExt;
+pub use crate::tap::TapExt;
 pub use crate::types::{CombinedState, WithPrevious};
 pub use crate::with_latest_from::WithLatestFromExt;
