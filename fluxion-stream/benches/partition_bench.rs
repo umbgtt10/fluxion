@@ -10,13 +10,6 @@ use std::hint::black_box;
 use tokio::{runtime::Runtime, sync::mpsc::unbounded_channel};
 
 /// Benchmarks partition with balanced split (50/50).
-///
-/// Tests the overhead of routing items through partition when
-/// approximately half go to each output stream.
-///
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_partition_balanced(c: &mut Criterion) {
     let mut group = c.benchmark_group("partition_balanced");
     let sizes = [100usize, 1000usize, 10000];
@@ -77,13 +70,6 @@ pub fn bench_partition_balanced(c: &mut Criterion) {
 }
 
 /// Benchmarks partition with imbalanced split (90/10).
-///
-/// Tests performance when most items go to one partition,
-/// which is common in error filtering scenarios.
-///
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_partition_imbalanced(c: &mut Criterion) {
     let mut group = c.benchmark_group("partition_imbalanced");
     let sizes = [100usize, 1000usize, 10000];
@@ -145,13 +131,6 @@ pub fn bench_partition_imbalanced(c: &mut Criterion) {
 }
 
 /// Benchmarks partition when only consuming one stream.
-///
-/// Tests the scenario where one partition is ignored,
-/// measuring the overhead of buffering unused items.
-///
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_partition_single_consumer(c: &mut Criterion) {
     let mut group = c.benchmark_group("partition_single_consumer");
     let sizes = [100usize, 1000usize, 10000];

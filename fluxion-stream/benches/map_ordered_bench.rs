@@ -20,9 +20,6 @@ fn make_stream(
     stream::iter(items).map(StreamItem::Value)
 }
 
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_map_ordered(c: &mut Criterion) {
     let mut group = c.benchmark_group("map_ordered");
     let sizes = [100usize, 1000usize, 10000];
