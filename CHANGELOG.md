@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`tap` Operator** (`fluxion-stream`)
+  - Perform side-effects without transforming items (logging, debugging, metrics)
+  - `TapExt` trait with `tap(f)` method for any `Stream<Item = StreamItem<T>>`
+  - Pass-through operator: items flow unchanged, callback observes each value
+  - Errors pass through unchanged (callback only invoked for values)
+  - Use cases: Debugging complex pipelines, logging, metrics collection, tracing
+  - Comprehensive test suite: `tap_tests.rs`, `tap_error_tests.rs`, `tap_composition_tests.rs`, `tap_composition_error_tests.rs`
+  - Benchmark: `tap_bench.rs` with basic and chained tap scenarios
+  - Documentation in `FLUXION_OPERATOR_SUMMARY.md` and `fluxion-stream/README.md`
+  - RxJS equivalent: `tap` / `do`
+
 - **`sample_ratio` Operator** (`fluxion-stream`)
   - Probabilistic downsampling with configurable ratio (0.0 to 1.0)
   - `SampleRatioExt` trait with `sample_ratio(ratio, seed)` method

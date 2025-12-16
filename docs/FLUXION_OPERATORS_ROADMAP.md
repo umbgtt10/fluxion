@@ -144,19 +144,6 @@ let total = stream.reduce(0, |acc, item| acc + item.value);
 
 ---
 
-### `tap` 💭
-**Perform side-effects without transforming items**
-
-```rust
-let logged = stream.tap(|item| println!("Processing: {:?}", item));
-```
-
-**Use case**: Logging, debugging, metrics, side-effects
-**Complexity**: Low - pass-through with callback
-**RxJS equivalent**: `tap` / `do`
-
----
-
 ### `finalize` 📝
 **Execute cleanup on stream completion, error, or cancellation**
 

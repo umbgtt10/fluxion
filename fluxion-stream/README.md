@@ -436,6 +436,28 @@ Custom duplicate suppression with comparison function.
 
 [Full documentation](src/distinct_until_changed_by.rs) | [Tests](tests/distinct_until_changed_by_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#distinct_until_changed_by---custom-duplicate-suppression)
 
+#### `tap`
+Perform side-effects without transforming items.
+
+**Use case:** Debugging, logging, metrics collection, tracing
+
+```rust
+use fluxion_stream::{IntoFluxionStream, TapExt};
+
+let pipeline = rx.into_fluxion_stream()
+    .tap(|x| println!("Input: {:?}", x))
+    .map_ordered(|x| Sequenced::new(x.into_inner() * 2))
+    .tap(|x| println!("After map: {:?}", x));
+```
+
+**Behavior:**
+- Pass-through operator: items flow unchanged
+- Callback invoked with reference to each value
+- Errors pass through unchanged (callback not invoked for errors)
+- Timestamp-preserving
+
+[Full documentation](src/tap.rs) | [Tests](tests/tap/) | [Benchmarks](benches/tap_bench.rs)
+
 ### Error Handling Operators
 
 #### `on_error`
@@ -582,6 +604,12 @@ let strings = shared.subscribe().unwrap()
 | Operator | Consumes Errors | Enables Side Effects | Propagation Control | Best For |
 |----------|-----------------|----------------------|---------------------|----------|
 | `on_error` | Selective | Yes (logging, metrics) | Handler-controlled | Layered error handling, monitoring |
+
+### When You Need Debugging / Observability
+
+| Operator | Transforms Data | Side Effects | Best For |
+|----------|-----------------|--------------|----------|
+| `tap` | No (pass-through) | Yes (logging, metrics) | Debugging pipelines, tracing, metrics |
 
 ### When You Need Multicasting
 

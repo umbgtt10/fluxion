@@ -27,6 +27,7 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`emit_when`](#emit_when) | Gating | Gate with combined state | Source (filtered) |
 | [`partition`](#partition) | Splitting | Split stream into two by predicate | Source |
 | [`on_error`](#on_error) | Error Handling | Selectively consume or propagate errors | Source |
+| [`tap`](#tap) | Utility | Side-effects without transformation | Source |
 | [`share`](#share) | Multicasting | Broadcast to multiple subscribers | Source |
 | [`subscribe`](#subscribe) ⚡ | Execution | Process every item sequentially | Source |
 | [`subscribe_latest`](#subscribe_latest) ⚡ | Execution | Process latest item, cancel outdated | Source |
@@ -71,7 +72,10 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 ### ✂️ Splitting
 - [`partition`](#partition) - Split stream into two based on predicate
 
-### 🛡️ Error Handling
+### �️ Utility
+- [`tap`](#tap) - Perform side-effects without transforming items
+
+### �🛡️ Error Handling
 - [`on_error`](#on_error) - Selectively consume or propagate errors
 
 ### 📡 Multicasting
@@ -615,7 +619,82 @@ let sampled = stream.take_latest_when(timer, |_| true);
 
 ---
 
-### 🛡️ Error Handling
+### �️ Utility
+
+#### `tap`
+**Perform side-effects without transforming items**
+
+**Signature:**
+```rust
+fn tap<F>(self, f: F) -> Tap<Self, F>
+where
+    F: FnMut(&T);
+```
+
+**Basic Usage:**
+```rust
+use fluxion_stream::{IntoFluxionStream, TapExt};
+use fluxion_test_utils::Sequenced;
+
+let stream = rx.into_fluxion_stream()
+    .tap(|item| println!("Processing: {:?}", item));
+```
+
+**Debugging Complex Pipelines:**
+```rust
+use fluxion_stream::{IntoFluxionStream, TapExt, MapOrderedExt, FilterOrderedExt};
+use fluxion_test_utils::Sequenced;
+
+let pipeline = rx.into_fluxion_stream()
+    .tap(|x| println!("Input: {:?}", x))
+    .map_ordered(|x| Sequenced::new(x.into_inner() * 2))
+    .tap(|x| println!("After map: {:?}", x))
+    .filter_ordered(|x| x.into_inner() > 10)
+    .tap(|x| println!("After filter: {:?}", x));
+```
+
+**Metrics Collection:**
+```rust
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+
+let counter = Arc::new(AtomicUsize::new(0));
+let counter_clone = counter.clone();
+
+let stream = rx.into_fluxion_stream()
+    .tap(move |_| {
+        counter_clone.fetch_add(1, Ordering::SeqCst);
+    });
+```
+
+**Behavior:**
+- **Pass-through operator** - Items flow unchanged through the stream
+- **Callback invocation** - Callback called with reference to each value item
+- **Error transparency** - Errors pass through unchanged (callback not invoked for errors)
+- **Side-effect only** - No transformation of stream items
+- **Timestamp preserving** - Original timestamps maintained
+
+**Design Rationale:**
+- **Non-invasive debugging** - Observe stream values without affecting data flow
+- **Reference-based** - Callback receives `&T`, no ownership transfer or cloning
+- **Chainable** - Multiple `tap` operators can be added at different pipeline stages
+- **Zero transformation** - Guarantees stream semantics unchanged
+
+**Use Cases:**
+- Debugging complex stream pipelines
+- Logging stream values for observability
+- Metrics collection (counters, gauges)
+- Tracing and distributed tracing integration
+- Audit logging for compliance
+- Development-time inspection
+
+**RxJS Equivalent:** `tap` / `do`
+
+[Full documentation](../fluxion-stream/src/tap.rs) | [Tests](../fluxion-stream/tests/tap/)
+
+---
+
+### �🛡️ Error Handling
 
 #### `on_error`
 **Selectively consume or propagate errors using Chain of Responsibility pattern**

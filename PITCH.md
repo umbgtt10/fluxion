@@ -12,7 +12,7 @@
 |--------|-------|------------------|------------------|
 | **Test-to-Code Ratio** | **5.8:1** | 1:1 | ⭐ **5.8x better** |
 | **Total Tests** | **847** | Varies | Comprehensive coverage |
-| **Operators** | **26** | ~50 (RxRust) | Core operators complete |
+| **Operators** | **27** | ~50 (RxRust) | Core operators complete |
 | **Test Success Rate** | **100%** | ~95% | Zero failures |
 | **Code Coverage** | **>90%** | 70-80% | ⭐ Industry leading |
 | **`unsafe` Blocks** | **0** | Some acceptable | ⭐ 100% safe Rust |
@@ -89,7 +89,7 @@ Breaking down our 847 tests:
 3,489 lines of source    - Lean, focused implementation (excluding comments, benchmarks, examples)
 20,055 lines of tests    - Exhaustive validation with 847 passing tests
 Comprehensive benchmarks - 36+ scenarios per operator comparison
-26 operators             - Core reactive operators complete
+27 operators             - Core reactive operators complete
 ```
 
 #### 6. **Data-Driven Performance Optimization**
