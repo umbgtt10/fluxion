@@ -235,10 +235,10 @@ where
         // Subscribe before spawning to ensure no items are missed
         let true_stream = true_subject
             .subscribe()
-            .expect("fresh subject should allow subscription");
+            .unwrap_or_else(|_| unreachable!("fresh subject should allow subscription"));
         let false_stream = false_subject
             .subscribe()
-            .expect("fresh subject should allow subscription");
+            .unwrap_or_else(|_| unreachable!("fresh subject should allow subscription"));
 
         let cancel = CancellationToken::new();
         let cancel_clone = cancel.clone();

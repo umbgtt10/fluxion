@@ -118,6 +118,72 @@ let sequential = stream.concat_map(|item| async_operation(item));
 
 ---
 
+### `take_until` 💭
+**Take items until notifier stream emits**
+
+```rust
+let bounded = stream.take_until(stop_signal);
+```
+
+**Use case**: Graceful shutdown, cancellation, bounded processing
+**Complexity**: Medium - requires coordination between streams
+**RxJS equivalent**: `takeUntil`
+
+---
+
+### `reduce` 💭
+**Aggregate all items into a single final value**
+
+```rust
+let total = stream.reduce(0, |acc, item| acc + item.value);
+```
+
+**Use case**: Aggregation, accumulation, final computation
+**Complexity**: Low - similar to scan but emits only final value
+**RxJS equivalent**: `reduce`
+
+---
+
+### `tap` 💭
+**Perform side-effects without transforming items**
+
+```rust
+let logged = stream.tap(|item| println!("Processing: {:?}", item));
+```
+
+**Use case**: Logging, debugging, metrics, side-effects
+**Complexity**: Low - pass-through with callback
+**RxJS equivalent**: `tap` / `do`
+
+---
+
+### `finalize` 📝
+**Execute cleanup on stream completion, error, or cancellation**
+
+```rust
+let with_cleanup = stream.finalize(|| cleanup_resources());
+```
+
+**Use case**: Resource cleanup, metrics finalization, logging
+**Complexity**: Medium - requires tracking all termination paths
+**RxJS equivalent**: `finalize`
+
+---
+
+### `first` / `last` 📝
+**Emit only the first or last item from a stream**
+
+```rust
+let first_item = stream.first();
+let last_item = stream.last();
+```
+
+**Use case**: Single value extraction, initialization values
+**Complexity**: Low - `first` is trivial, `last` requires buffering
+**RxJS equivalent**: `first`, `last`
+
+---
+
 ## Community Requests
 
 This section will track operator requests from the community.

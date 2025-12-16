@@ -18,22 +18,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Benchmark: `share_bench.rs` with subscriber count variations
   - Documentation in `FLUXION_OPERATOR_SUMMARY.md` and `fluxion-stream/README.md`
 
+- **`partition` Operator** (`fluxion-stream`)
+  - Split a stream into two based on a predicate function
+  - `PartitionExt` trait with `partition()` method returning `(PartitionedStream<T>, PartitionedStream<T>)`
+  - Items satisfying predicate go to first stream, others to second stream
+  - Chain-breaking operator (returns two streams, cannot chain further on original)
+  - Spawns background routing task for non-blocking operation
+  - Timestamp-preserving (original timestamps maintained in both output streams)
+  - Error propagation to both output streams
+  - Unbounded internal buffers (safe to drop one stream)
+  - Use cases: Error routing, priority queues, type routing, threshold filtering
+  - Comprehensive test suite: `partition_tests.rs`, `partition_error_tests.rs`, `partition_composition_tests.rs`, `partition_composition_error_tests.rs`
+  - Benchmark: `partition_bench.rs` with balanced/imbalanced splits and single consumer scenarios
+  - Documentation in `FLUXION_OPERATOR_SUMMARY.md` and `fluxion-stream/README.md`
+
 - **FluxionSubject Enhancements** (`fluxion-core`)
   - `is_closed()` - Check if subject has been closed
   - `subscriber_count()` - Get number of active subscribers
   - `next(value)` - Convenience method for sending values (wraps `send(StreamItem::Value(value))`)
+
+- **`parking_lot` Dependency** (`fluxion-core`)
+  - Added `parking_lot` for non-poisoning mutex implementation
+  - Enables panic-free production code
 
 ### Changed
 - **BREAKING**: Removed `FluxionStream` wrapper type
   - Extension traits now work directly on any `Stream<Item = StreamItem<T>>`
   - Use `IntoFluxionStream` trait to convert `UnboundedReceiver` to fluxion streams
   - Simplified API: `rx.into_fluxion_stream().map_ordered(...)` instead of `FluxionStream::new(rx).map_ordered(...)`
-- **Documentation**: Updated operator count to 25 (was 22)
-- **Documentation**: Updated test count to 730 (was 641/717)
+
+- **`FluxionSubject` Mutex Implementation** (`fluxion-core`)
+  - Migrated from `std::sync::Mutex` to `parking_lot::Mutex`
+  - Eliminates all `unwrap()` calls on lock acquisition (parking_lot doesn't poison)
+  - Zero `unwrap()`/`expect()` in production code
+
+- **Algorithmic Invariant Handling** (`fluxion-ordered-merge`, `fluxion-stream`, `fluxion-stream-time`)
+  - Replaced `expect()` calls with pattern matching and `unreachable!()`
+  - `ordered_merge.rs` - Pattern matching for buffer access
+  - `partition.rs` - `unwrap_or_else(|_| unreachable!())` for subscription
+  - `delay.rs` - Pattern matching for future completion
+
+- **Documentation**: Updated operator count to 26 (was 25)
+- **Documentation**: Updated test count to 800+ (was 730)
 - **Documentation**: Improved `FluxionSubject` documentation
   - Added comprehensive module-level documentation with examples
   - Enhanced struct and method documentation
   - Added integration example showing usage with stream operators
+- **Documentation**: Cleaned up `FLUXION_OPERATORS_ROADMAP.md`
+  - Removed all implemented operators, keeping only planned/future operators
+- **Documentation**: Updated `ASSESSMENT_CLAUDE.md`
+  - Production code now has 0 `unwrap()` and 0 `expect()`
+  - Updated RxRust comparison showing Fluxion wins on all quality metrics
 
 ### Migration Guide
 

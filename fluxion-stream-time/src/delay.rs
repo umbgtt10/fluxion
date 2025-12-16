@@ -95,11 +95,12 @@ impl<T> Future for DelayFuture<T> {
         let this = self.project();
         match this.delay.poll(cx) {
             Poll::Ready(()) => {
-                let value = this
-                    .value
-                    .take()
-                    .expect("DelayFuture polled after completion");
-                Poll::Ready(StreamItem::Value(value))
+                if let Some(value) = this.value.take() {
+                    Poll::Ready(StreamItem::Value(value))
+                } else {
+                    // Future contract violation: poll called after completion
+                    unreachable!("DelayFuture polled after completion")
+                }
             }
             Poll::Pending => Poll::Pending,
         }
