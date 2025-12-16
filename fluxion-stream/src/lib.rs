@@ -658,6 +658,7 @@ pub mod take_latest_when;
 pub mod take_while_with;
 pub mod tap;
 pub mod types;
+pub mod window_by_count;
 pub mod with_latest_from;
 
 // Re-export commonly used types
@@ -683,4 +684,5 @@ pub use take_latest_when::TakeLatestWhenExt;
 pub use take_while_with::TakeWhileExt;
 pub use tap::TapExt;
 pub use types::{CombinedState, WithPrevious};
+pub use window_by_count::WindowByCountExt;
 pub use with_latest_from::WithLatestFromExt;

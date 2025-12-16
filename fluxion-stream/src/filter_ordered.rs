@@ -5,6 +5,7 @@
 //! Filter operator that preserves temporal ordering.
 
 use fluxion_core::{Fluxion, StreamItem};
+use futures::future::ready;
 use futures::Stream;
 use futures::StreamExt;
 use std::fmt::Debug;
@@ -100,7 +101,7 @@ where
         F: FnMut(&T::Inner) -> bool + Send + Sync + 'static,
     {
         self.filter_map(move |item| {
-            futures::future::ready(match item {
+            ready(match item {
                 StreamItem::Value(value) if predicate(&value.clone().into_inner()) => {
                     Some(StreamItem::Value(value))
                 }

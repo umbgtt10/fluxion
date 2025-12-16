@@ -21,6 +21,7 @@ mod take_items_bench;
 mod take_latest_when_bench;
 mod take_while_with_bench;
 mod tap_bench;
+mod window_by_count_bench;
 mod with_latest_from_bench;
 
 use combine_latest_bench::bench_combine_latest;
@@ -49,6 +50,9 @@ use take_items_bench::bench_take_items;
 use take_latest_when_bench::bench_take_latest_when;
 use take_while_with_bench::bench_take_while_with;
 use tap_bench::{bench_tap, bench_tap_chained};
+use window_by_count_bench::{
+    bench_window_by_count, bench_window_by_count_payload, bench_window_by_count_single,
+};
 use with_latest_from_bench::bench_with_latest_from;
 
 criterion_group!(
@@ -79,6 +83,9 @@ criterion_group!(
     bench_take_while_with,
     bench_tap,
     bench_tap_chained,
+    bench_window_by_count,
+    bench_window_by_count_payload,
+    bench_window_by_count_single,
     bench_with_latest_from
 );
 criterion_main!(stream_benches);
