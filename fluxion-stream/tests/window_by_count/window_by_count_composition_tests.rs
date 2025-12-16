@@ -11,7 +11,8 @@ use fluxion_test_utils::{
     },
     unwrap_stream, unwrap_value, Sequenced,
 };
-use std::sync::{Arc, Mutex};
+use parking_lot::Mutex;
+use std::sync::Arc;
 
 #[tokio::test]
 async fn test_window_by_count_then_map_ordered() -> anyhow::Result<()> {
@@ -256,7 +257,7 @@ async fn test_window_by_count_with_tap() -> anyhow::Result<()> {
         stream
             .window_by_count::<Sequenced<Vec<TestData>>>(2)
             .tap(move |window: &Vec<TestData>| {
-                tapped_clone.lock().unwrap().push(window.clone());
+                tapped_clone.lock().push(window.clone());
             });
 
     // Act
@@ -271,7 +272,7 @@ async fn test_window_by_count_with_tap() -> anyhow::Result<()> {
 
     // Assert: tap saw the windows
     assert_eq!(
-        *tapped_values.lock().unwrap(),
+        *tapped_values.lock(),
         vec![
             vec![person_alice(), person_bob()],
             vec![animal_dog(), animal_cat()]

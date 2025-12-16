@@ -73,12 +73,12 @@ async fn test_tap_side_effect_called_for_each_value() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_tap_receives_correct_values() -> anyhow::Result<()> {
     // Arrange
-    let observed = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let observed = Arc::new(parking_lot::Mutex::new(Vec::new()));
     let observed_clone = observed.clone();
 
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.tap(move |value| {
-        observed_clone.lock().unwrap().push(value.clone());
+        observed_clone.lock().push(value.clone());
     });
 
     // Act
@@ -93,7 +93,7 @@ async fn test_tap_receives_correct_values() -> anyhow::Result<()> {
 
     // Assert - correct values observed
     assert_eq!(
-        *observed.lock().unwrap(),
+        *observed.lock(),
         [person_alice(), animal_dog(), plant_rose()]
     );
 
@@ -149,12 +149,12 @@ async fn test_tap_preserves_timestamps() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_tap_multiple_types() -> anyhow::Result<()> {
     // Arrange
-    let observed = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let observed = Arc::new(parking_lot::Mutex::new(Vec::new()));
     let observed_clone = observed.clone();
 
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.tap(move |value| {
-        observed_clone.lock().unwrap().push(value.clone());
+        observed_clone.lock().push(value.clone());
     });
 
     // Act
@@ -169,7 +169,7 @@ async fn test_tap_multiple_types() -> anyhow::Result<()> {
 
     // Assert
     assert!(matches!(
-        *observed.lock().unwrap().as_slice(),
+        *observed.lock().as_slice(),
         [
             TestData::Person(_),
             TestData::Animal(_),
@@ -183,12 +183,12 @@ async fn test_tap_multiple_types() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_tap_maintains_order() -> anyhow::Result<()> {
     // Arrange
-    let observed = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let observed = Arc::new(parking_lot::Mutex::new(Vec::new()));
     let observed_clone = observed.clone();
 
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.tap(move |value| {
-        observed_clone.lock().unwrap().push(value.clone());
+        observed_clone.lock().push(value.clone());
     });
 
     // Act
@@ -203,7 +203,7 @@ async fn test_tap_maintains_order() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        *observed.lock().unwrap(),
+        *observed.lock(),
         [person_alice(), person_bob(), person_charlie()]
     );
 

@@ -3,13 +3,13 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 use futures::future::ready;
 use futures::{Stream, StreamExt};
+use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{Fluxion, StreamItem, Timestamped};
 use fluxion_ordered_merge::OrderedMergeExt;
 
@@ -161,7 +161,7 @@ where
                     async move {
                         match item {
                             StreamItem::Value(value) => {
-                                let mut guard = lock_or_recover(&state, "combine_latest state");
+                                let mut guard = state.lock();
                                 guard.insert(index, value);
 
                                 if guard.is_complete() {

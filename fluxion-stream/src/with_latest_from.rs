@@ -5,12 +5,12 @@
 use crate::ordered_merge::OrderedMergeExt;
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{Stream, StreamExt};
+use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Extension trait providing the `with_latest_from` operator for timestamped streams.
 ///
@@ -158,7 +158,7 @@ where
                         StreamItem::Value(value) => {
                             let timestamp = value.timestamp();
                             // Update state with new value
-                            let mut guard = lock_or_recover(&state, "with_latest_from state");
+                            let mut guard = state.lock();
                             guard.insert(stream_index, value);
 
                             // Only emit if:

@@ -11,6 +11,9 @@ keywords = ["async", "stream", "ordered", "trait", "core"]
 categories = ["asynchronous", "concurrency"]
 readme = "README.md"
 
+[package.metadata.cargo-udeps]
+ignore = { normal = ["tracing"] }
+
 [dependencies]
 futures = { workspace = true }
 parking_lot = { workspace = true }

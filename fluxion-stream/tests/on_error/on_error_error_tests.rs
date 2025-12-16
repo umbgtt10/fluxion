@@ -15,8 +15,9 @@ use fluxion_test_utils::{
     assert_no_element_emitted, assert_stream_ended, test_channel_with_errors, unwrap_stream,
     unwrap_value, Sequenced,
 };
+use parking_lot::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[tokio::test]
 async fn test_on_error_handler_receives_correct_error_type() -> anyhow::Result<()> {
@@ -26,7 +27,7 @@ async fn test_on_error_handler_receives_correct_error_type() -> anyhow::Result<(
 
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream.on_error(move |err| {
-        received_errors_clone.lock().unwrap().push(err.to_string());
+        received_errors_clone.lock().push(err.to_string());
         true // Consume all
     });
 
@@ -57,7 +58,7 @@ async fn test_on_error_handler_receives_correct_error_type() -> anyhow::Result<(
     assert_stream_ended(&mut result, 500).await;
 
     // Assert
-    let errors = received_errors.lock().unwrap();
+    let errors = received_errors.lock();
     assert_eq!(errors.len(), 2);
     assert!(errors[0].contains("Stream processing failed"));
     assert!(errors[1].contains("Another stream error"));
@@ -240,7 +241,7 @@ async fn test_on_error_handler_tracks_error_history() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream.on_error(move |err| {
         let msg = err.to_string();
-        let mut hist = history_clone.lock().unwrap();
+        let mut hist = history_clone.lock();
         hist.push(msg.clone());
 
         // If we've seen 3+ errors, start propagating
@@ -274,7 +275,7 @@ async fn test_on_error_handler_tracks_error_history() -> anyhow::Result<()> {
     assert_stream_ended(&mut result, 500).await;
 
     // Verify history
-    let hist = history.lock().unwrap();
+    let hist = history.lock();
     assert_eq!(hist.len(), 4);
 
     Ok(())
@@ -464,7 +465,7 @@ async fn test_on_error_multiple_errors_same_message() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream.on_error(move |err| {
         let msg = err.to_string();
-        let mut seen = seen_messages_clone.lock().unwrap();
+        let mut seen = seen_messages_clone.lock();
         // Consume first occurrence of each message, propagate duplicates
         if seen.contains(&msg) {
             false
@@ -509,7 +510,7 @@ async fn test_on_error_multiple_errors_same_message() -> anyhow::Result<()> {
     assert_stream_ended(&mut result, 500).await;
 
     // Verify seen messages
-    let seen = seen_messages.lock().unwrap();
+    let seen = seen_messages.lock();
     assert_eq!(seen.len(), 3);
     assert!(seen.contains(&"Stream processing error: connection lost".to_string()));
     assert!(seen.contains(&"Stream processing error: timeout".to_string()));

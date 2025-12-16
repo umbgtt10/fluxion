@@ -198,7 +198,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - ✅ `partition(predicate)` operator - Split stream into two based on condition
 - ✅ `sample_ratio(ratio, seed)` operator - Probabilistic downsampling (0.0 to 1.0) with deterministic seeding
 - ✅ `tap` operator - Perform side-effects for debugging/observing stream values
-- [ ] `window_by_count(n)` operator - Count-based batching into Vec<T>
+- ✅ `window_by_count(n)` operator - Count-based batching into Vec<T>
 - [ ] `merge_with` can handle errors
 
 **Documentation:**

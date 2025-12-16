@@ -8,7 +8,6 @@ pub mod fluxion_error;
 pub mod fluxion_subject;
 pub mod has_timestamp;
 pub mod into_stream;
-pub mod lock_utilities;
 pub mod stream_item;
 pub mod subject_error;
 pub mod timestamped;

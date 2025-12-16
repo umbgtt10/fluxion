@@ -2,12 +2,12 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::stream::StreamExt;
 use futures::Stream;
+use parking_lot::Mutex;
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Extension trait providing the `distinct_until_changed_by` operator for streams.
 ///
@@ -200,8 +200,7 @@ where
                     StreamItem::Value(value) => {
                         let current_inner = value.clone().into_inner();
 
-                        let mut last =
-                            lock_or_recover(&last_value, "distinct_until_changed_by last_value");
+                        let mut last = last_value.lock();
 
                         // Check if this value is different from the last emitted value
                         let should_emit = match last.as_ref() {

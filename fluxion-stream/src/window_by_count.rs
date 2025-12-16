@@ -58,8 +58,9 @@
 
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
+use parking_lot::Mutex;
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Extension trait providing the [`window_by_count`](Self::window_by_count) operator.
 ///
@@ -225,7 +226,7 @@ where
                     let timestamp = value.timestamp();
                     let inner = value.into_inner();
 
-                    let mut guard = state.lock().unwrap_or_else(|e| e.into_inner());
+                    let mut guard = state.lock();
                     let (buffer, last_ts) = &mut *guard;
 
                     buffer.push(inner);
@@ -242,7 +243,7 @@ where
                 }
                 StreamItem::Error(e) => {
                     // Clear buffer and propagate error
-                    let mut guard = state.lock().unwrap_or_else(|e| e.into_inner());
+                    let mut guard = state.lock();
                     let (buffer, last_ts) = &mut *guard;
                     buffer.clear();
                     *last_ts = None;
@@ -254,7 +255,7 @@ where
         // Chain with a stream that emits partial window on completion
         let final_state = state;
         let flush_stream = futures::stream::once(async move {
-            let mut guard = final_state.lock().unwrap_or_else(|e| e.into_inner());
+            let mut guard = final_state.lock();
             let (buffer, last_ts) = &mut *guard;
 
             if !buffer.is_empty() {
