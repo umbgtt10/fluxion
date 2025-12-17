@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use crate::ordered_merge::ordered_merge_with_index;
 use fluxion_core::{Fluxion, HasTimestamp, StreamItem, Timestamped};
-use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::{empty, Empty, Stream, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
@@ -114,13 +114,16 @@ where
         // self.inner already yields `StreamItem<Item>`; pass through values unchanged
         let self_stream_mapped = self.inner;
 
-        let merged_stream = vec![
+        let streams = vec![
             Box::pin(self_stream_mapped)
                 as Pin<Box<dyn Stream<Item = StreamItem<Item>> + Send + Sync>>,
             Box::pin(new_stream_mapped)
                 as Pin<Box<dyn Stream<Item = StreamItem<Item>> + Send + Sync>>,
-        ]
-        .ordered_merge();
+        ];
+
+        // Use ordered_merge_with_index for immediate error emission (Rx semantics)
+        // Discard the index since we don't need to track which stream emitted
+        let merged_stream = ordered_merge_with_index(streams).map(|(item, _index)| item);
 
         MergedStream {
             inner: merged_stream,

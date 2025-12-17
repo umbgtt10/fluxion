@@ -4,9 +4,7 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::MergedStream;
-use fluxion_test_utils::{
-    person::Person, test_channel_with_errors, unwrap_stream, Sequenced,
-};
+use fluxion_test_utils::{person::Person, test_channel_with_errors, unwrap_stream, Sequenced};
 use futures::StreamExt;
 
 #[tokio::test]

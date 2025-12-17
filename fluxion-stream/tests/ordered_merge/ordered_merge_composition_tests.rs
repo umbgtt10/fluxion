@@ -10,7 +10,8 @@ use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::{FilterOrderedExt, MapOrderedExt, OrderedStreamExt};
 use fluxion_test_utils::test_data::{
-    TestData, animal, animal_dog, animal_spider, person, person_alice, person_bob, plant_rose, plant_sunflower
+    animal, animal_dog, animal_spider, person, person_alice, person_bob, plant_rose,
+    plant_sunflower, TestData,
 };
 use fluxion_test_utils::{assert_stream_ended, test_channel, unwrap_stream, Sequenced};
 

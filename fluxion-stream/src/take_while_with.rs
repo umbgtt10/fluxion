@@ -2,17 +2,14 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::{Fluxion, FluxionError, HasTimestamp, StreamItem};
-use fluxion_ordered_merge::OrderedMergeExt;
+use crate::ordered_merge::ordered_merge_with_index;
+use fluxion_core::{Fluxion, HasTimestamp, StreamItem, Timestamped};
 use futures::stream::StreamExt;
 use futures::Stream;
 use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::Arc;
-
-type PinnedItemStream<TItem, TFilter> =
-    Pin<Box<dyn Stream<Item = Item<TItem, TFilter>> + Send + Sync + 'static>>;
 
 /// Extension trait providing the `take_while_with` operator for timestamped streams.
 ///
@@ -112,6 +109,8 @@ where
     ) -> impl Stream<Item = StreamItem<TItem>> + Send + Sync;
 }
 
+type PinnedStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>;
+
 impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
 where
     P: Stream<Item = StreamItem<TItem>> + Send + Sync + Unpin + 'static,
@@ -129,57 +128,59 @@ where
     ) -> impl Stream<Item = StreamItem<TItem>> + Send + Sync {
         let filter = Arc::new(filter);
 
-        // Tag each stream with its type - unwrap StreamItem first
-        let source_stream = self.map(|item| match item {
-            StreamItem::Value(value) => Item::<TItem, TFilter>::Source(value),
-            StreamItem::Error(e) => Item::<TItem, TFilter>::Error(e),
-        });
+        // Wrap each stream's values in Item enum, keeping StreamItem wrapper for immediate error emission
+        // This allows ordered_merge_with_index to emit errors immediately (Rx semantics)
+        let source_stream =
+            self.map(|item| item.map(|value| Item::<TItem, TFilter>::Source(value)));
 
-        let filter_stream = filter_stream.map(|item| match item {
-            StreamItem::Value(value) => Item::<TItem, TFilter>::Filter(value),
-            StreamItem::Error(e) => Item::<TItem, TFilter>::Error(e),
-        });
+        let filter_stream =
+            filter_stream.map(|item| item.map(|value| Item::<TItem, TFilter>::Filter(value)));
 
         // Box the streams to make them the same type
-        let streams: Vec<PinnedItemStream<TItem, TFilter>> =
+        let streams: Vec<PinnedStream<Item<TItem, TFilter>>> =
             vec![Box::pin(source_stream), Box::pin(filter_stream)];
 
         // State to track the latest filter value and termination
         let state = Arc::new(Mutex::new((None::<TFilter::Inner>, false)));
 
-        // Use ordered_merge and process items in order
-        let combined_stream = streams.ordered_merge().filter_map({
+        // Use ordered_merge_with_index for temporal ordering with immediate error emission
+        let combined_stream = ordered_merge_with_index(streams).filter_map({
             let state = Arc::clone(&state);
-            move |item| {
+            move |(stream_item, _index)| {
                 let state = Arc::clone(&state);
                 let filter = Arc::clone(&filter);
 
                 async move {
-                    // Restrict the mutex guard's lifetime to the smallest possible scope
-                    let mut guard = state.lock();
-                    let (filter_state, terminated) = &mut *guard;
+                    match stream_item {
+                        // Errors are emitted immediately by ordered_merge_with_index
+                        StreamItem::Error(e) => Some(StreamItem::Error(e)),
+                        StreamItem::Value(item) => {
+                            // Restrict the mutex guard's lifetime to the smallest possible scope
+                            let mut guard = state.lock();
+                            let (filter_state, terminated) = &mut *guard;
 
-                    if *terminated {
-                        return None;
-                    }
+                            if *terminated {
+                                return None;
+                            }
 
-                    match item {
-                        Item::Error(e) => Some(StreamItem::Error(e)),
-                        Item::Filter(filter_val) => {
-                            *filter_state = Some(filter_val.clone().into_inner());
-                            None
-                        }
-                        Item::Source(source_val) => filter_state.as_ref().map_or_else(
-                            || None,
-                            |fval| {
-                                if filter(fval) {
-                                    Some(StreamItem::Value(source_val.clone()))
-                                } else {
-                                    *terminated = true;
+                            match item {
+                                Item::Filter(filter_val) => {
+                                    *filter_state = Some(filter_val.clone().into_inner());
                                     None
                                 }
-                            },
-                        ),
+                                Item::Source(source_val) => filter_state.as_ref().map_or_else(
+                                    || None,
+                                    |fval| {
+                                        if filter(fval) {
+                                            Some(StreamItem::Value(source_val.clone()))
+                                        } else {
+                                            *terminated = true;
+                                            None
+                                        }
+                                    },
+                                ),
+                            }
+                        }
                     }
                 }
             }
@@ -196,7 +197,6 @@ where
 {
     Source(TItem),
     Filter(TFilter),
-    Error(FluxionError),
 }
 
 impl<TItem, TFilter> HasTimestamp for Item<TItem, TFilter>
@@ -210,8 +210,37 @@ where
         match self {
             Self::Source(s) => s.timestamp(),
             Self::Filter(f) => f.timestamp(),
-            Self::Error(_) => panic!("Item::Error has no timestamp"),
         }
+    }
+}
+
+// Implement Timestamped for Item to work with ordered_merge_with_index
+impl<TItem, TFilter> Timestamped for Item<TItem, TFilter>
+where
+    TItem: HasTimestamp + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>
+        + Clone
+        + Debug
+        + Ord
+        + Send
+        + Sync
+        + Unpin
+        + 'static,
+{
+    type Inner = Self;
+
+    fn with_timestamp(value: Self::Inner, _timestamp: Self::Timestamp) -> Self {
+        // Items already have timestamps from their wrapped values, ignore the new timestamp
+        value
+    }
+
+    fn with_fresh_timestamp(value: Self::Inner) -> Self {
+        // Items already have timestamps from their wrapped values
+        value
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self
     }
 }
 
@@ -223,12 +252,7 @@ where
     TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Error(_), Self::Error(_)) => true,
-            (Self::Error(_), _) => false,
-            (_, Self::Error(_)) => false,
-            (a, b) => a.timestamp() == b.timestamp(),
-        }
+        self.timestamp() == other.timestamp()
     }
 }
 
@@ -255,11 +279,6 @@ where
     TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match (self, other) {
-            (Self::Error(_), Self::Error(_)) => std::cmp::Ordering::Equal,
-            (Self::Error(_), _) => std::cmp::Ordering::Less,
-            (_, Self::Error(_)) => std::cmp::Ordering::Greater,
-            (a, b) => a.timestamp().cmp(&b.timestamp()),
-        }
+        self.timestamp().cmp(&other.timestamp())
     }
 }
