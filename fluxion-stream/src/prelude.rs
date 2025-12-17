@@ -68,4 +68,5 @@ pub use crate::take_latest_when::TakeLatestWhenExt;
 pub use crate::take_while_with::TakeWhileExt;
 pub use crate::tap::TapExt;
 pub use crate::types::{CombinedState, WithPrevious};
+pub use crate::window_by_count::WindowByCountExt;
 pub use crate::with_latest_from::WithLatestFromExt;

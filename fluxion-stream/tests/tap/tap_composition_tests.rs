@@ -11,8 +11,9 @@ use fluxion_test_utils::test_data::{
 };
 use fluxion_test_utils::{assert_no_element_emitted, test_channel};
 use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value, Sequenced};
+use parking_lot::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[tokio::test]
 async fn test_tap_after_filter_ordered() -> anyhow::Result<()> {
@@ -72,7 +73,7 @@ async fn test_tap_before_filter_ordered() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_tap_after_map_ordered() -> anyhow::Result<()> {
     // Arrange
-    let observed = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let observed = Arc::new(parking_lot::Mutex::new(Vec::new()));
     let observed_clone = observed.clone();
 
     let (tx, stream) = test_channel();
@@ -87,7 +88,7 @@ async fn test_tap_after_map_ordered() -> anyhow::Result<()> {
             })
         })
         .tap(move |value| {
-            observed_clone.lock().unwrap().push(value.clone());
+            observed_clone.lock().push(value.clone());
         });
 
     // Act
@@ -95,7 +96,7 @@ async fn test_tap_after_map_ordered() -> anyhow::Result<()> {
     unwrap_stream(&mut result, 500).await;
 
     // Assert
-    let values = observed.lock().unwrap();
+    let values = observed.lock();
     assert!(matches!(
         &values[0],
         TestData::Person(p) if p.name.starts_with("Dr. ")
@@ -107,13 +108,13 @@ async fn test_tap_after_map_ordered() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_tap_before_map_ordered() -> anyhow::Result<()> {
     // Arrange
-    let observed = Arc::new(Mutex::new(Vec::new()));
+    let observed = Arc::new(parking_lot::Mutex::new(Vec::new()));
     let observed_clone = observed.clone();
 
     let (tx, stream) = test_channel();
     let mut result = stream
         .tap(move |value: &TestData| {
-            observed_clone.lock().unwrap().push(value.clone());
+            observed_clone.lock().push(value.clone());
         })
         .map_ordered(|item: Sequenced<TestData>| {
             Sequenced::new(match item.value {
@@ -130,7 +131,7 @@ async fn test_tap_before_map_ordered() -> anyhow::Result<()> {
 
     // Assert
     let result_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    let values = observed.lock().unwrap();
+    let values = observed.lock();
     assert_eq!(values[0], person_alice()); // Original
     assert!(matches!(
         &result_item.value,
@@ -248,10 +249,7 @@ async fn test_tap_complex_pipeline() -> anyhow::Result<()> {
     let (tx, stream) = test_channel();
     let mut result = stream
         .tap(move |value: &TestData| {
-            observed_before_filter_clone
-                .lock()
-                .unwrap()
-                .push(value.clone());
+            observed_before_filter_clone.lock().push(value.clone());
         })
         .filter_ordered(|item| matches!(item, TestData::Person(_)))
         .map_ordered(|item: Sequenced<TestData>| {
@@ -264,10 +262,7 @@ async fn test_tap_complex_pipeline() -> anyhow::Result<()> {
             })
         })
         .tap(move |value: &TestData| {
-            observed_after_transform_clone
-                .lock()
-                .unwrap()
-                .push(value.clone());
+            observed_after_transform_clone.lock().push(value.clone());
         });
 
     // Act - send items and consume results
@@ -283,10 +278,10 @@ async fn test_tap_complex_pipeline() -> anyhow::Result<()> {
     // Assert
     // Before filter tap sees only the items that were polled through
     // (filter drops non-matching items synchronously, tap still fires)
-    let before = observed_before_filter.lock().unwrap();
+    let before = observed_before_filter.lock();
     assert_eq!(*before, [person_alice(), person_bob()]); // Only persons consumed
 
-    let after = observed_after_transform.lock().unwrap();
+    let after = observed_after_transform.lock();
     assert_eq!(after.len(), 2); // Only persons after filter
 
     // Verify transformation was applied

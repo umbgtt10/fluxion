@@ -4,13 +4,13 @@
 
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{Fluxion, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
+use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Extension trait providing the `emit_when` operator for timestamped streams.
 ///
@@ -156,8 +156,8 @@ where
                             0 => {
                                 // Source stream update
                                 // Lock both values once to avoid multiple lock acquisitions
-                                let mut source = lock_or_recover(&source_value, "emit_when source");
-                                let filter_val = lock_or_recover(&filter_value, "emit_when filter");
+                                let mut source = source_value.lock();
+                                let filter_val = filter_value.lock();
 
                                 // Update source value with its timestamp
                                 let timestamp = ordered_value.timestamp();
@@ -186,9 +186,8 @@ where
                             1 => {
                                 // Filter stream update
                                 // Lock both values once to avoid multiple lock acquisitions
-                                let mut filter_val =
-                                    lock_or_recover(&filter_value, "emit_when filter");
-                                let source = lock_or_recover(&source_value, "emit_when source");
+                                let mut filter_val = filter_value.lock();
+                                let source = source_value.lock();
 
                                 // Update filter value with its timestamp
                                 let timestamp = ordered_value.timestamp();

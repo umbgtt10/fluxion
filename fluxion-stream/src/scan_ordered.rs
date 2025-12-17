@@ -3,8 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
+use parking_lot::Mutex;
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Extension trait providing the `scan_ordered` operator for streams.
 ///
@@ -252,20 +253,10 @@ where
                     let inner = value.into_inner();
 
                     // Lock state and apply accumulator function
-                    match state.lock() {
-                        Ok(mut guard) => {
-                            let (acc, ref mut f) = &mut *guard;
-                            let output = f(acc, &inner);
-                            StreamItem::Value(Out::with_timestamp(output, timestamp.into()))
-                        }
-                        Err(poisoned) => {
-                            // Recover from poisoned lock
-                            let mut guard = poisoned.into_inner();
-                            let (acc, ref mut f) = &mut *guard;
-                            let output = f(acc, &inner);
-                            StreamItem::Value(Out::with_timestamp(output, timestamp.into()))
-                        }
-                    }
+                    let mut guard = state.lock();
+                    let (acc, ref mut f) = &mut *guard;
+                    let output = f(acc, &inner);
+                    StreamItem::Value(Out::with_timestamp(output, timestamp.into()))
                 }
                 StreamItem::Error(e) => {
                     // Propagate error without affecting accumulator state

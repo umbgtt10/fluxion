@@ -5,9 +5,9 @@
 use async_trait::async_trait;
 use fluxion_core::{FluxionError, Result};
 use futures::{Stream, StreamExt};
+use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::future::Future;
-use std::sync::Mutex as StdMutx;
 use std::{error::Error, sync::Arc};
 use tokio::sync::{Mutex as TokioMutex, Notify};
 use tokio_util::sync::CancellationToken;
@@ -443,7 +443,7 @@ where
         let state = Arc::new(Context::default());
         let cancellation_token = cancellation_token.unwrap_or_default();
         let state_for_wait = state.clone();
-        let errors: Arc<StdMutx<Vec<E>>> = Arc::new(StdMutx::new(Vec::new()));
+        let errors: Arc<Mutex<Vec<E>>> = Arc::new(Mutex::new(Vec::new()));
         let errors_clone = errors.clone();
 
         self.for_each(move |new_data| {
@@ -472,9 +472,7 @@ where
                                     on_error_callback(error);
                                 } else {
                                     // Collect error for later aggregation
-                                    if let Ok(mut errs) = errors.lock() {
-                                        errs.push(error);
-                                    }
+                                    errors.lock().push(error);
                                 }
                             }
 
@@ -496,11 +494,7 @@ where
         state_for_wait.wait_for_processing_complete().await;
 
         // Check if any errors were collected
-        let collected_errors = errors_clone
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .drain(..)
-            .collect::<Vec<_>>();
+        let collected_errors = errors_clone.lock().drain(..).collect::<Vec<_>>();
 
         if collected_errors.is_empty() {
             Ok(())

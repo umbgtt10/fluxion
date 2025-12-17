@@ -13,6 +13,7 @@ categories = ["asynchronous", "concurrency"]
 [dependencies]
 fluxion-core = { workspace = true }
 futures = { workspace = true }
+parking_lot = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 async-trait = { workspace = true }
@@ -27,3 +28,4 @@ anyhow = { workspace = true }
 [features]
 default = []
 tracing = ["dep:tracing"]
+

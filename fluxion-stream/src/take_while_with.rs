@@ -2,14 +2,14 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{Fluxion, FluxionError, HasTimestamp, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::stream::StreamExt;
 use futures::Stream;
+use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 type PinnedItemStream<TItem, TFilter> =
     Pin<Box<dyn Stream<Item = Item<TItem, TFilter>> + Send + Sync + 'static>>;
@@ -156,7 +156,7 @@ where
 
                 async move {
                     // Restrict the mutex guard's lifetime to the smallest possible scope
-                    let mut guard = lock_or_recover(&state, "take_while_with state");
+                    let mut guard = state.lock();
                     let (filter_state, terminated) = &mut *guard;
 
                     if *terminated {

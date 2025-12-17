@@ -11,7 +11,8 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob, person_charlie, person_dave, TestData},
     unwrap_value, Sequenced,
 };
-use std::sync::{Arc, Mutex};
+use parking_lot::Mutex;
+use std::sync::Arc;
 
 #[tokio::test]
 async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
@@ -26,7 +27,7 @@ async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
         .on_error(move |err| {
             // Handle specific errors early
             if err.to_string().contains("early") {
-                *early_errors_clone.lock().unwrap() += 1;
+                *early_errors_clone.lock() += 1;
                 true // Consume early errors
             } else {
                 false // Propagate other errors
@@ -37,7 +38,7 @@ async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
         .on_error(move |err| {
             // Handle remaining errors late
             if err.to_string().contains("late") {
-                *late_errors_clone.lock().unwrap() += 1;
+                *late_errors_clone.lock() += 1;
                 true // Consume late errors
             } else {
                 false // Propagate unhandled errors
@@ -54,8 +55,8 @@ async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
         "early error 1",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
-    assert_eq!(*early_errors.lock().unwrap(), 1);
-    assert_eq!(*late_errors.lock().unwrap(), 0);
+    assert_eq!(*early_errors.lock(), 1);
+    assert_eq!(*late_errors.lock(), 0);
 
     tx.send(StreamItem::Value(Sequenced::new(person_bob())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
@@ -66,16 +67,16 @@ async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
         "late error 1",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
-    assert_eq!(*early_errors.lock().unwrap(), 1);
-    assert_eq!(*late_errors.lock().unwrap(), 1);
+    assert_eq!(*early_errors.lock(), 1);
+    assert_eq!(*late_errors.lock(), 1);
 
     // Send another early error - should be consumed by first handler
     tx.send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
         "early error 2",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
-    assert_eq!(*early_errors.lock().unwrap(), 2);
-    assert_eq!(*late_errors.lock().unwrap(), 1);
+    assert_eq!(*early_errors.lock(), 2);
+    assert_eq!(*late_errors.lock(), 1);
 
     tx.send(StreamItem::Value(Sequenced::new(person_charlie())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
@@ -87,15 +88,11 @@ async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
     assert_eq!(
-        *early_errors.lock().unwrap(),
+        *early_errors.lock(),
         2,
         "Should have handled 2 early errors"
     );
-    assert_eq!(
-        *late_errors.lock().unwrap(),
-        2,
-        "Should have handled 2 late errors"
-    );
+    assert_eq!(*late_errors.lock(), 2, "Should have handled 2 late errors");
 
     Ok(())
 }
@@ -115,7 +112,7 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
         .on_error(move |err| {
             // First handler: network errors
             if err.to_string().contains("network") {
-                *network_errors_clone.lock().unwrap() += 1;
+                *network_errors_clone.lock() += 1;
                 true
             } else {
                 false
@@ -125,7 +122,7 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
         .on_error(move |err| {
             // Second handler: validation errors
             if err.to_string().contains("validation") {
-                *validation_errors_clone.lock().unwrap() += 1;
+                *validation_errors_clone.lock() += 1;
                 true
             } else {
                 false
@@ -135,7 +132,7 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
         .filter_ordered(|_| true)
         .on_error(move |_err| {
             // Final catch-all handler
-            *other_errors_clone.lock().unwrap() += 1;
+            *other_errors_clone.lock() += 1;
             true
         });
 
@@ -149,9 +146,9 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
         "network timeout",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
-    assert_eq!(*network_errors.lock().unwrap(), 1);
-    assert_eq!(*validation_errors.lock().unwrap(), 0);
-    assert_eq!(*other_errors.lock().unwrap(), 0);
+    assert_eq!(*network_errors.lock(), 1);
+    assert_eq!(*validation_errors.lock(), 0);
+    assert_eq!(*other_errors.lock(), 0);
 
     tx.send(StreamItem::Value(Sequenced::new(person_bob())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
@@ -162,9 +159,9 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
         "validation failed",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
-    assert_eq!(*network_errors.lock().unwrap(), 1);
-    assert_eq!(*validation_errors.lock().unwrap(), 1);
-    assert_eq!(*other_errors.lock().unwrap(), 0);
+    assert_eq!(*network_errors.lock(), 1);
+    assert_eq!(*validation_errors.lock(), 1);
+    assert_eq!(*other_errors.lock(), 0);
 
     tx.send(StreamItem::Value(Sequenced::new(person_charlie())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
@@ -175,9 +172,9 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
         "unknown error",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
-    assert_eq!(*network_errors.lock().unwrap(), 1);
-    assert_eq!(*validation_errors.lock().unwrap(), 1);
-    assert_eq!(*other_errors.lock().unwrap(), 1);
+    assert_eq!(*network_errors.lock(), 1);
+    assert_eq!(*validation_errors.lock(), 1);
+    assert_eq!(*other_errors.lock(), 1);
 
     tx.send(StreamItem::Value(Sequenced::new(person_dave())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
@@ -189,17 +186,17 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
     assert_eq!(
-        *network_errors.lock().unwrap(),
+        *network_errors.lock(),
         2,
         "Should have handled 2 network errors"
     );
     assert_eq!(
-        *validation_errors.lock().unwrap(),
+        *validation_errors.lock(),
         1,
         "Should have handled 1 validation error"
     );
     assert_eq!(
-        *other_errors.lock().unwrap(),
+        *other_errors.lock(),
         1,
         "Should have handled 1 unknown error"
     );

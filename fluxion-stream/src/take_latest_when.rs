@@ -3,13 +3,13 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::into_stream::IntoStream;
-use fluxion_core::lock_utilities::lock_or_recover;
 use fluxion_core::{Fluxion, StreamItem};
 use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
+use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Extension trait providing the `take_latest_when` operator for timestamped streams.
 ///
@@ -153,15 +153,13 @@ where
                         match index {
                             0 => {
                                 // Source stream update - just cache the value, don't emit
-                                let mut source =
-                                    lock_or_recover(&source_value, "take_latest_when source");
+                                let mut source = source_value.lock();
                                 *source = Some(ordered_value);
                                 None
                             }
                             1 => {
                                 // Filter stream update - check if we should sample the source
-                                let source =
-                                    lock_or_recover(&source_value, "take_latest_when source");
+                                let source = source_value.lock();
 
                                 // Update filter value
                                 let filter_inner = ordered_value.clone().into_inner();

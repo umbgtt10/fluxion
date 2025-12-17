@@ -10,6 +10,7 @@ use fluxion_test_utils::person::Person;
 use fluxion_test_utils::test_data::{person_alice, person_bob, TestData};
 use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{helpers::unwrap_stream, test_channel_with_errors, unwrap_value};
+use parking_lot::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -90,13 +91,13 @@ async fn test_tap_before_filter_ordered_with_errors() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_tap_with_map_ordered_and_errors() -> anyhow::Result<()> {
     // Arrange
-    let observed = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let observed = Arc::new(Mutex::new(Vec::new()));
     let observed_clone = observed.clone();
 
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream
         .tap(move |value| {
-            observed_clone.lock().unwrap().push(value.clone());
+            observed_clone.lock().push(value.clone());
         })
         .map_ordered(|item: Sequenced<TestData>| {
             Sequenced::new(match item.value {
@@ -121,7 +122,7 @@ async fn test_tap_with_map_ordered_and_errors() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
-    assert_eq!(*observed.lock().unwrap(), [person_alice()]);
+    assert_eq!(*observed.lock(), [person_alice()]);
 
     Ok(())
 }

@@ -9,7 +9,8 @@ use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::OnErrorExt;
 use fluxion_test_utils::{assert_no_element_emitted, assert_stream_ended};
 use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, unwrap_value, Sequenced};
-use std::sync::{Arc, Mutex};
+use parking_lot::Mutex;
+use std::sync::Arc;
 
 #[tokio::test]
 async fn test_on_error_consumes_all_errors() -> anyhow::Result<()> {
@@ -180,7 +181,7 @@ async fn test_on_error_with_side_effects() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream.on_error(move |err| {
-        error_log_clone.lock().unwrap().push(err.to_string());
+        error_log_clone.lock().push(err.to_string());
         true // Consume after logging
     });
 
@@ -206,7 +207,7 @@ async fn test_on_error_with_side_effects() -> anyhow::Result<()> {
     drop(tx);
     assert_stream_ended(&mut result, 500).await;
 
-    let logs = error_log.lock().unwrap();
+    let logs = error_log.lock();
     assert_eq!(logs.len(), 2);
     assert!(logs[0].contains("error1"));
     assert!(logs[1].contains("error2"));
