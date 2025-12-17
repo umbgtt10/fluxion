@@ -5,8 +5,9 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::MergedStream;
 use fluxion_test_utils::{
-    assert_no_element_emitted, person::Person, test_channel_with_errors, unwrap_stream, Sequenced,
+    person::Person, test_channel_with_errors, unwrap_stream, Sequenced,
 };
+use futures::StreamExt;
 
 #[tokio::test]
 async fn test_merge_with_multiple_streams_error() -> anyhow::Result<()> {
@@ -35,10 +36,16 @@ async fn test_merge_with_multiple_streams_error() -> anyhow::Result<()> {
     ));
 
     tx2.send(StreamItem::Error(FluxionError::stream_error("Error2")))?;
-    assert_no_element_emitted(&mut result, 100).await;
+    let StreamItem::Error(err) = result.next().await.unwrap() else {
+        panic!("Expected Error");
+    };
+    assert_eq!(err.to_string(), "Stream processing error: Error2");
 
     tx1.send(StreamItem::Error(FluxionError::stream_error("Error1")))?;
-    assert_no_element_emitted(&mut result, 100).await;
+    let StreamItem::Error(err) = result.next().await.unwrap() else {
+        panic!("Expected Error");
+    };
+    assert_eq!(err.to_string(), "Stream processing error: Error1");
 
     tx2.send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Bob".to_string(), 20),

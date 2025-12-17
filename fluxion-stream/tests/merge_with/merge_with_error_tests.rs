@@ -4,16 +4,13 @@
 
 //! Error propagation tests for `merge_with` operator.
 //!
-//! Note: `merge_with` operates on Timestamped items directly, so error propagation
-//! happens through the FluxionStream wrapper that converts inputs to StreamItem.
-//! These tests use filter_map to convert StreamItem to raw Timestamped values.
+//! The `merge_with` operator now handles `StreamItem<T>` directly and passes errors
+//! through unchanged, allowing error handling at the stream consumer level.
 
 use fluxion_core::{into_stream::IntoStream, FluxionError, StreamItem};
 use fluxion_stream::MergedStream;
-use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors, Sequenced};
+use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors, unwrap_stream, Sequenced};
 use futures::StreamExt;
-use tokio::sync::mpsc::unbounded_channel;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_merge_with_propagates_errors_from_first_stream() -> anyhow::Result<()> {
@@ -38,8 +35,12 @@ async fn test_merge_with_propagates_errors_from_first_stream() -> anyhow::Result
     };
     assert_eq!(result.into_inner(), 5);
 
-    // Send error - will be filtered out
+    // Send error - will pass through
     tx1.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    let StreamItem::Error(err) = merged.next().await.unwrap() else {
+        panic!("Expected Error");
+    };
+    assert_eq!(err.to_string(), "Stream processing error: Error");
 
     // Send value from stream2 - should still work
     tx2.send(StreamItem::Value(Sequenced::with_timestamp(10, 2)))?;
@@ -64,8 +65,12 @@ async fn test_merge_with_error_at_start_filtered() -> anyhow::Result<()> {
         *state
     });
 
-    // Act: Send error before any values - filtered out
+    // Act: Send error before any values - passes through
     tx.send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
+    let StreamItem::Error(err) = merged.next().await.unwrap() else {
+        panic!("Expected Error");
+    };
+    assert_eq!(err.to_string(), "Stream processing error: Early error");
 
     // Send value after error
     tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
@@ -97,9 +102,19 @@ async fn test_merge_with_multiple_streams_error_filtering() -> anyhow::Result<()
             *state
         });
 
-    // Act: Send errors from both streams - filtered out
+    // Act: Send errors from both streams - should pass through
     tx1.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     tx2.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+
+    // Errors should be emitted in order
+    let StreamItem::Error(err1) = merged.next().await.unwrap() else {
+        panic!("Expected Error");
+    };
+    let StreamItem::Error(err2) = merged.next().await.unwrap() else {
+        panic!("Expected Error");
+    };
+    assert!(err1.to_string().contains("Error"));
+    assert!(err2.to_string().contains("Error"));
 
     // Send values
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
@@ -137,8 +152,11 @@ async fn test_merge_with_errors_interleaved_with_values() -> anyhow::Result<()> 
     };
     assert_eq!(result.into_inner(), 5);
 
-    // Error - filtered
+    // Error - passes through
     tx2.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    let StreamItem::Error(_) = merged.next().await.unwrap() else {
+        panic!("Expected Error");
+    };
 
     // Value
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(10, 2)))?;
@@ -147,8 +165,11 @@ async fn test_merge_with_errors_interleaved_with_values() -> anyhow::Result<()> 
     };
     assert_eq!(result.into_inner(), 15);
 
-    // Error - filtered
+    // Error - passes through
     tx1.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    let StreamItem::Error(_) = merged.next().await.unwrap() else {
+        panic!("Expected Error");
+    };
 
     // Value
     tx2.send(StreamItem::Value(Sequenced::with_timestamp(20, 3)))?;
@@ -186,8 +207,11 @@ async fn test_merge_with_state_preserved_despite_filtered_errors() -> anyhow::Re
     };
     assert_eq!(result.into_inner(), 30);
 
-    // Send error - filtered
+    // Send error - passes through
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    let StreamItem::Error(_) = merged.next().await.unwrap() else {
+        panic!("Expected Error");
+    };
 
     // Process more values - state should be preserved
     tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
@@ -218,8 +242,11 @@ async fn test_merge_with_error_before_stream_ends() -> anyhow::Result<()> {
     };
     assert_eq!(result.into_inner(), 10);
 
-    // Send error - filtered
+    // Send error - passes through
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    let StreamItem::Error(_) = merged.next().await.unwrap() else {
+        panic!("Expected Error");
+    };
 
     // Drop transmitter to end stream
     drop(tx);
@@ -240,13 +267,21 @@ async fn test_merge_with_empty_stream_with_only_errors() -> anyhow::Result<()> {
         *state
     });
 
-    // Act: Send only errors, no values - all filtered
+    // Act: Send only errors, no values - all pass through
     tx.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     tx.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
 
+    // Expect both errors
+    let StreamItem::Error(_) = merged.next().await.unwrap() else {
+        panic!("Expected Error 1");
+    };
+    let StreamItem::Error(_) = merged.next().await.unwrap() else {
+        panic!("Expected Error 2");
+    };
+
     drop(tx);
 
-    // Stream should end without emitting anything
+    // Stream should end after errors
     assert_stream_ended(&mut merged, 100).await;
 
     Ok(())
@@ -286,8 +321,11 @@ async fn test_merge_with_three_streams_with_filtered_errors() -> anyhow::Result<
     };
     assert_eq!(result.into_inner(), 30);
 
-    // Error from stream 2 - filtered
+    // Error from stream 2 - passes through
     tx2.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    let StreamItem::Error(_) = merged.next().await.unwrap() else {
+        panic!("Expected Error");
+    };
 
     tx3.send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
     let StreamItem::Value(result) = merged.next().await.unwrap() else {
@@ -322,8 +360,11 @@ async fn test_merge_with_into_fluxion_stream_error_handling() -> anyhow::Result<
     };
     assert_eq!(v.into_inner(), 10);
 
-    // Send error - will be filtered out, stream continues
+    // Send error - will pass through, stream continues
     tx.send(StreamItem::Error(FluxionError::stream_error("Filtered")))?;
+    let StreamItem::Error(_) = merged.next().await.unwrap() else {
+        panic!("Expected Error");
+    };
 
     // Send another value
     tx.send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
@@ -341,8 +382,7 @@ async fn test_merge_with_into_fluxion_stream_error_handling() -> anyhow::Result<
 async fn test_merge_with_poll_pending_simulation() -> anyhow::Result<()> {
     // Arrange: Test that stream handles Poll::Pending correctly
 
-    let (tx, rx) = unbounded_channel::<Sequenced<i32>>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
         *state += value;
@@ -353,7 +393,7 @@ async fn test_merge_with_poll_pending_simulation() -> anyhow::Result<()> {
     // Then send data
     tokio::select! {
         _ = tokio::time::sleep(tokio::time::Duration::from_millis(10)) => {
-            tx.send(Sequenced::with_timestamp(10, 1))?;
+            tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
         }
         result = merged.next() => {
             // If we get here, stream returned something (unlikely)
@@ -363,11 +403,10 @@ async fn test_merge_with_poll_pending_simulation() -> anyhow::Result<()> {
         }
     }
 
-    // Now get the value
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 10);
+    assert_eq!(
+        unwrap_stream(&mut merged, 100).await.unwrap().into_inner(),
+        10
+    );
 
     drop(tx);
 

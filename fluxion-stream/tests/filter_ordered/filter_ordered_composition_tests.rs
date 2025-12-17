@@ -16,7 +16,6 @@ use fluxion_test_utils::{
     },
     Sequenced,
 };
-use tokio::sync::mpsc;
 
 static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;
 
@@ -99,8 +98,7 @@ async fn test_combine_latest_filter_ordered() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_merge_with_chaining_filter_ordered() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     // Act: Chain merge_with with filter_ordered (only values > 2)
     let mut result = MergedStream::seed::<Sequenced<usize>>(0)
