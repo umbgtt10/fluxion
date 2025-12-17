@@ -12,6 +12,8 @@ use fluxion_core::{into_stream::IntoStream, FluxionError, StreamItem};
 use fluxion_stream::MergedStream;
 use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors, Sequenced};
 use futures::StreamExt;
+use tokio::sync::mpsc::unbounded_channel;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::test]
 async fn test_merge_with_propagates_errors_from_first_stream() -> anyhow::Result<()> {
@@ -20,30 +22,14 @@ async fn test_merge_with_propagates_errors_from_first_stream() -> anyhow::Result
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(
-            stream1.filter_map(|item| async move {
-                match item {
-                    StreamItem::Value(v) => Some(v),
-                    StreamItem::Error(_) => None,
-                }
-            }),
-            |value, state| {
-                *state += value;
-                *state
-            },
-        )
-        .merge_with(
-            stream2.filter_map(|item| async move {
-                match item {
-                    StreamItem::Value(v) => Some(v),
-                    StreamItem::Error(_) => None,
-                }
-            }),
-            |value, state| {
-                *state += value;
-                *state
-            },
-        );
+        .merge_with(stream1, |value, state| {
+            *state += value;
+            *state
+        })
+        .merge_with(stream2, |value, state| {
+            *state += value;
+            *state
+        });
 
     // Act: Send value from stream1
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(5, 1)))?;
@@ -73,18 +59,10 @@ async fn test_merge_with_error_at_start_filtered() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(
-        stream.filter_map(|item| async move {
-            match item {
-                StreamItem::Value(v) => Some(v),
-                StreamItem::Error(_) => None,
-            }
-        }),
-        |value, state| {
-            *state += value;
-            *state
-        },
-    );
+    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
+        *state += value;
+        *state
+    });
 
     // Act: Send error before any values - filtered out
     tx.send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
@@ -110,30 +88,14 @@ async fn test_merge_with_multiple_streams_error_filtering() -> anyhow::Result<()
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(
-            stream1.filter_map(|item| async move {
-                match item {
-                    StreamItem::Value(v) => Some(v),
-                    StreamItem::Error(_) => None,
-                }
-            }),
-            |value, state| {
-                *state += value;
-                *state
-            },
-        )
-        .merge_with(
-            stream2.filter_map(|item| async move {
-                match item {
-                    StreamItem::Value(v) => Some(v),
-                    StreamItem::Error(_) => None,
-                }
-            }),
-            |value, state| {
-                *state += value;
-                *state
-            },
-        );
+        .merge_with(stream1, |value, state| {
+            *state += value;
+            *state
+        })
+        .merge_with(stream2, |value, state| {
+            *state += value;
+            *state
+        });
 
     // Act: Send errors from both streams - filtered out
     tx1.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
@@ -159,30 +121,14 @@ async fn test_merge_with_errors_interleaved_with_values() -> anyhow::Result<()> 
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(
-            stream1.filter_map(|item| async move {
-                match item {
-                    StreamItem::Value(v) => Some(v),
-                    StreamItem::Error(_) => None,
-                }
-            }),
-            |value, state| {
-                *state += value;
-                *state
-            },
-        )
-        .merge_with(
-            stream2.filter_map(|item| async move {
-                match item {
-                    StreamItem::Value(v) => Some(v),
-                    StreamItem::Error(_) => None,
-                }
-            }),
-            |value, state| {
-                *state += value;
-                *state
-            },
-        );
+        .merge_with(stream1, |value, state| {
+            *state += value;
+            *state
+        })
+        .merge_with(stream2, |value, state| {
+            *state += value;
+            *state
+        });
 
     // Act & Assert: Value
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(5, 1)))?;
@@ -222,18 +168,10 @@ async fn test_merge_with_state_preserved_despite_filtered_errors() -> anyhow::Re
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(
-        stream.filter_map(|item| async move {
-            match item {
-                StreamItem::Value(v) => Some(v),
-                StreamItem::Error(_) => None,
-            }
-        }),
-        |value, state| {
-            *state += value;
-            *state
-        },
-    );
+    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
+        *state += value;
+        *state
+    });
 
     // Act: Process values to build state
     tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
@@ -268,18 +206,10 @@ async fn test_merge_with_error_before_stream_ends() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(
-        stream.filter_map(|item| async move {
-            match item {
-                StreamItem::Value(v) => Some(v),
-                StreamItem::Error(_) => None,
-            }
-        }),
-        |value, state| {
-            *state += value;
-            *state
-        },
-    );
+    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
+        *state += value;
+        *state
+    });
 
     // Act: Send value
     tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
@@ -305,18 +235,10 @@ async fn test_merge_with_empty_stream_with_only_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(
-        stream.filter_map(|item| async move {
-            match item {
-                StreamItem::Value(v) => Some(v),
-                StreamItem::Error(_) => None,
-            }
-        }),
-        |value, state| {
-            *state += value;
-            *state
-        },
-    );
+    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
+        *state += value;
+        *state
+    });
 
     // Act: Send only errors, no values - all filtered
     tx.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
@@ -338,42 +260,18 @@ async fn test_merge_with_three_streams_with_filtered_errors() -> anyhow::Result<
     let (tx3, stream3) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(
-            stream1.filter_map(|item| async move {
-                match item {
-                    StreamItem::Value(v) => Some(v),
-                    StreamItem::Error(_) => None,
-                }
-            }),
-            |value, state| {
-                *state += value;
-                *state
-            },
-        )
-        .merge_with(
-            stream2.filter_map(|item| async move {
-                match item {
-                    StreamItem::Value(v) => Some(v),
-                    StreamItem::Error(_) => None,
-                }
-            }),
-            |value, state| {
-                *state += value;
-                *state
-            },
-        )
-        .merge_with(
-            stream3.filter_map(|item| async move {
-                match item {
-                    StreamItem::Value(v) => Some(v),
-                    StreamItem::Error(_) => None,
-                }
-            }),
-            |value, state| {
-                *state += value;
-                *state
-            },
-        );
+        .merge_with(stream1, |value, state| {
+            *state += value;
+            *state
+        })
+        .merge_with(stream2, |value, state| {
+            *state += value;
+            *state
+        })
+        .merge_with(stream3, |value, state| {
+            *state += value;
+            *state
+        });
 
     // Act: Send values from all streams with errors interspersed
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
@@ -411,19 +309,10 @@ async fn test_merge_with_into_fluxion_stream_error_handling() -> anyhow::Result<
 
     // Create a MergedStream that returns raw Sequenced values, wrap in FluxionStream
     let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(
-            // Convert StreamItem to raw Sequenced by filtering out errors
-            stream.filter_map(|item| async move {
-                match item {
-                    StreamItem::Value(v) => Some(v),
-                    StreamItem::Error(_) => None, // Filter out errors at this level
-                }
-            }),
-            |value, state| {
-                *state += value;
-                *state
-            },
-        )
+        .merge_with(stream, |value, state| {
+            *state += value;
+            *state
+        })
         .into_stream();
 
     // Act: Send value (error will be filtered by filter_map above)
@@ -451,10 +340,8 @@ async fn test_merge_with_into_fluxion_stream_error_handling() -> anyhow::Result<
 #[tokio::test]
 async fn test_merge_with_poll_pending_simulation() -> anyhow::Result<()> {
     // Arrange: Test that stream handles Poll::Pending correctly
-    use tokio::sync::mpsc;
-    use tokio_stream::wrappers::UnboundedReceiverStream;
 
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
+    let (tx, rx) = unbounded_channel::<Sequenced<i32>>();
     let stream = UnboundedReceiverStream::new(rx);
 
     let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {

@@ -54,11 +54,6 @@ async fn test_merge_with_chaining_multiple_operators_map_ordered() -> anyhow::Re
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<Person>>();
 
-    // Act: Chain map, filter, and map before merge_with
-    // 1. Map to set age = name length
-    // 2. Filter age > 3
-    // 3. Map age + 10
-    // 4. Merge (Sum ages)
     let processed_stream = stream
         .map_ordered(|seq| {
             let mut p = seq.into_inner();

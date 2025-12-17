@@ -7,7 +7,6 @@ use fluxion_stream::MergedStream;
 use fluxion_test_utils::{
     assert_no_element_emitted, person::Person, test_channel_with_errors, unwrap_stream, Sequenced,
 };
-use futures::StreamExt;
 
 #[tokio::test]
 async fn test_merge_with_multiple_streams_error() -> anyhow::Result<()> {
@@ -16,30 +15,14 @@ async fn test_merge_with_multiple_streams_error() -> anyhow::Result<()> {
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<Person>>();
 
     let mut result = MergedStream::seed::<Sequenced<Person>>(Person::new("State".to_string(), 0))
-        .merge_with(
-            stream1.filter_map(|item| async move {
-                match item {
-                    StreamItem::Value(v) => Some(v),
-                    StreamItem::Error(_) => None,
-                }
-            }),
-            |item: Person, state: &mut Person| {
-                state.age += item.age;
-                state.clone()
-            },
-        )
-        .merge_with(
-            stream2.filter_map(|item| async move {
-                match item {
-                    StreamItem::Value(v) => Some(v),
-                    StreamItem::Error(_) => None,
-                }
-            }),
-            |item: Person, state: &mut Person| {
-                state.age += item.age;
-                state.clone()
-            },
-        );
+        .merge_with(stream1, |item: Person, state: &mut Person| {
+            state.age += item.age;
+            state.clone()
+        })
+        .merge_with(stream2, |item: Person, state: &mut Person| {
+            state.age += item.age;
+            state.clone()
+        });
 
     // Act & Assert
     tx1.send(StreamItem::Value(Sequenced::with_timestamp(

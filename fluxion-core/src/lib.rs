@@ -20,3 +20,4 @@ pub use self::into_stream::IntoStream;
 pub use self::stream_item::StreamItem;
 pub use self::subject_error::SubjectError;
 pub use self::timestamped::Timestamped;
+// Removed export of IntoStreamItem as it no longer exists
