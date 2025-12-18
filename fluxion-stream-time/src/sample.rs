@@ -4,6 +4,7 @@
 
 //! Sample operator for time-based stream processing.
 
+use crate::timer::Timer;
 use crate::InstantTimestamped;
 use fluxion_core::StreamItem;
 use futures::Stream;
@@ -12,15 +13,15 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
-use tokio::time::{sleep_until, Instant, Sleep};
 
 /// Extension trait providing the `sample` operator for streams.
 ///
 /// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to sample emissions
 /// at periodic intervals.
-pub trait SampleExt<T>: Stream<Item = StreamItem<InstantTimestamped<T>>> + Sized
+pub trait SampleExt<T, TM>: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Sized
 where
     T: Send + Clone,
+    TM: Timer,
 {
     /// Samples the stream at periodic intervals.
     ///
@@ -68,22 +69,26 @@ where
     fn sample(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send;
+        timer: TM,
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send;
 }
 
-impl<S, T> SampleExt<T> for S
+impl<S, T, TM> SampleExt<T, TM> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T>>> + Send,
     T: Send + Clone,
+    TM: Timer,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send,
 {
     fn sample(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send {
+        timer: TM,
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send {
         SampleStream {
             stream: self,
             duration,
-            sleep: Box::pin(sleep_until(Instant::now() + duration)),
+            timer: timer.clone(),
+            sleep: Box::pin(timer.sleep_future(duration)),
             pending_value: None,
             is_done: false,
         }
@@ -91,24 +96,27 @@ where
 }
 
 #[pin_project]
-struct SampleStream<S: Stream>
+struct SampleStream<S: Stream, TM>
 where
     S::Item: Clone,
+    TM: Timer,
 {
     #[pin]
     stream: S,
     duration: Duration,
-    sleep: Pin<Box<Sleep>>,
+    timer: TM,
+    sleep: Pin<Box<TM::Sleep>>,
     pending_value: Option<S::Item>,
     is_done: bool,
 }
 
-impl<S, T> Stream for SampleStream<S>
+impl<S, T, TM> Stream for SampleStream<S, TM>
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T>>>,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
     T: Send + Clone,
+    TM: Timer,
 {
-    type Item = StreamItem<InstantTimestamped<T>>;
+    type Item = StreamItem<InstantTimestamped<T, TM>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
@@ -156,8 +164,7 @@ where
         match this.sleep.as_mut().poll(cx) {
             Poll::Ready(_) => {
                 // Timer fired.
-                let next_deadline = Instant::now() + *this.duration;
-                this.sleep.as_mut().reset(next_deadline);
+                this.sleep.set(this.timer.sleep_future(*this.duration));
 
                 if let Some(value) = this.pending_value.take() {
                     Poll::Ready(Some(value))

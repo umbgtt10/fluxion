@@ -153,8 +153,8 @@ where
             match this.stream.as_mut().poll_next(cx) {
                 Poll::Ready(Some(StreamItem::Value(value))) => {
                     // New value arrived - reset the debounce timer by creating a new sleep future
-                    let sleep_future = this.timer.sleep_future(*this.duration);
-                    this.sleep.set(Some(sleep_future));
+                    this.sleep
+                        .set(Some(this.timer.sleep_future(*this.duration)));
 
                     // Replace any pending value with this new one
                     *this.pending_value = Some(StreamItem::Value(value));

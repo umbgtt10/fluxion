@@ -13,9 +13,6 @@ use tokio::runtime::Builder;
 use tokio::sync::mpsc;
 use tokio::time::advance;
 
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_delay(c: &mut Criterion) {
     let mut group = c.benchmark_group("delay_overhead");
     let durations = [Duration::from_millis(10), Duration::from_secs(1)];

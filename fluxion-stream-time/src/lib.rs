@@ -50,7 +50,7 @@
 mod debounce;
 mod delay;
 mod instant_timestamped;
-//mod sample;
+mod sample;
 //mod throttle;
 //mod timeout;
 pub mod runtimes;
@@ -61,7 +61,7 @@ pub mod prelude;
 pub use debounce::DebounceExt;
 pub use delay::DelayExt;
 pub use instant_timestamped::InstantTimestamped;
-//pub use sample::SampleExt;
+pub use sample::SampleExt;
 //pub use throttle::ThrottleExt;
 //pub use timeout::TimeoutExt;
 
