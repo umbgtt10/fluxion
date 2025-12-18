@@ -4,7 +4,7 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::IntoFluxionStream;
-use fluxion_stream_time::{ChronoTimestamped, TimeoutExt};
+use fluxion_stream_time::{InstantTimestamped, TimeoutExt};
 use futures::stream::StreamExt;
 use std::hint::black_box;
 use std::time::Duration;
@@ -40,7 +40,7 @@ pub fn bench_timeout(c: &mut Criterion) {
                         let mut stream = Box::pin(stream);
 
                         // 3. Emit value BEFORE timeout
-                        tx.send(ChronoTimestamped::now(1)).unwrap();
+                        tx.send(InstantTimestamped::now(1)).unwrap();
 
                         // 4. Assert result (should be immediate)
                         let item = stream.next().await;

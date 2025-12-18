@@ -4,7 +4,7 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel_with_errors,
@@ -19,12 +19,12 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel_with_errors::<InstantTimestamped<TestData>>();
     let delay_duration = Duration::from_secs(1);
     let mut delayed = stream.delay(delay_duration);
 
     // Act & Assert
-    tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
+    tx.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
@@ -40,7 +40,7 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
-    tx.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;
+    tx.send(StreamItem::Value(InstantTimestamped::now(person_bob())))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 

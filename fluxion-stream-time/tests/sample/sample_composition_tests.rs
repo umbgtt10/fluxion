@@ -5,7 +5,7 @@
 use fluxion_core::StreamItem;
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::recv_timeout,
     test_channel,
@@ -22,11 +22,11 @@ async fn test_sample_chained_with_map() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
     let sample_duration = Duration::from_millis(100);
 
     let pipeline = stream
-        .map_ordered(|item| ChronoTimestamped::new(item.value, item.timestamp))
+        .map_ordered(|item| InstantTimestamped::new(item.value, item.timestamp))
         .sample(sample_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();
@@ -42,10 +42,10 @@ async fn test_sample_chained_with_map() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(ChronoTimestamped::now(person_alice()))?;
+    tx.send(InstantTimestamped::now(person_alice()))?;
     advance(Duration::from_millis(50)).await;
 
-    tx.send(ChronoTimestamped::now(person_bob()))?;
+    tx.send(InstantTimestamped::now(person_bob()))?;
     advance(Duration::from_millis(50)).await;
 
     // Assert
@@ -62,7 +62,7 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
     let sample_duration = Duration::from_millis(100);
 
     // Chain: combine_with_previous -> map -> sample
@@ -72,7 +72,7 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
             let timestamp = wp.current.timestamp;
             let current_val = wp.current.value;
             let previous_val = wp.previous.map(|p| p.value);
-            ChronoTimestamped::new(WithPrevious::new(previous_val, current_val), timestamp)
+            InstantTimestamped::new(WithPrevious::new(previous_val, current_val), timestamp)
         })
         .sample(sample_duration);
 
@@ -89,10 +89,10 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
     });
 
     // Act & Assert
-    tx.send(ChronoTimestamped::now(person_alice()))?;
+    tx.send(InstantTimestamped::now(person_alice()))?;
 
     advance(Duration::from_millis(50)).await;
-    tx.send(ChronoTimestamped::now(person_bob()))?;
+    tx.send(InstantTimestamped::now(person_bob()))?;
     advance(Duration::from_millis(50)).await;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
@@ -100,7 +100,7 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
     );
 
     advance(Duration::from_millis(50)).await;
-    tx.send(ChronoTimestamped::now(person_charlie()))?;
+    tx.send(InstantTimestamped::now(person_charlie()))?;
     advance(Duration::from_millis(50)).await;
 
     assert_eq!(
@@ -115,7 +115,7 @@ async fn test_sample_chained_with_scan_ordered() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
     let sample_duration = Duration::from_millis(100);
 
     let pipeline = stream
@@ -129,7 +129,7 @@ async fn test_sample_chained_with_scan_ordered() -> anyhow::Result<()> {
         })
         .sample(sample_duration);
 
-    let (result_tx, mut result_rx) = unbounded_channel::<ChronoTimestamped<u32>>();
+    let (result_tx, mut result_rx) = unbounded_channel::<InstantTimestamped<u32>>();
 
     spawn(async move {
         let mut stream = pipeline;
@@ -141,14 +141,14 @@ async fn test_sample_chained_with_scan_ordered() -> anyhow::Result<()> {
     });
 
     // Act and Assert
-    tx.send(ChronoTimestamped::now(person_alice()))?;
+    tx.send(InstantTimestamped::now(person_alice()))?;
     advance(Duration::from_millis(50)).await;
-    tx.send(ChronoTimestamped::now(person_bob()))?;
+    tx.send(InstantTimestamped::now(person_bob()))?;
     advance(Duration::from_millis(50)).await;
     assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 55);
 
     advance(Duration::from_millis(50)).await;
-    tx.send(ChronoTimestamped::now(person_charlie()))?;
+    tx.send(InstantTimestamped::now(person_charlie()))?;
     advance(Duration::from_millis(50)).await;
     assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 90);
 

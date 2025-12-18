@@ -4,7 +4,7 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     test_channel_with_errors,
@@ -21,7 +21,7 @@ async fn test_throttle_propagates_errors_immediately() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel_with_errors::<InstantTimestamped<TestData>>();
     let throttle_duration = Duration::from_secs(1);
     let throttled = stream.throttle(throttle_duration);
 
@@ -48,7 +48,7 @@ async fn test_throttle_propagates_errors_immediately() -> anyhow::Result<()> {
         error.to_string()
     );
 
-    tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
+    tx.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
 
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
@@ -68,7 +68,7 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel_with_errors::<InstantTimestamped<TestData>>();
     let throttle_duration = Duration::from_secs(1);
     let throttled = stream.throttle(throttle_duration);
 
@@ -82,7 +82,7 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
     });
 
     // Act & Assert
-    tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
+    tx.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
     let _ = recv_timeout(&mut result_rx, 1000).await; // Consume Alice
 
     let error = FluxionError::stream_error("error during throttle");
@@ -98,7 +98,7 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
         error.to_string()
     );
 
-    tx.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;
+    tx.send(StreamItem::Value(InstantTimestamped::now(person_bob())))?;
     advance(Duration::from_millis(100)).await;
     assert_no_recv(&mut result_rx, 100).await;
 

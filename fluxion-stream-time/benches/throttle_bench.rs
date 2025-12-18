@@ -4,7 +4,7 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::IntoFluxionStream;
-use fluxion_stream_time::{ChronoTimestamped, ThrottleExt};
+use fluxion_stream_time::{InstantTimestamped, ThrottleExt};
 use futures::stream::StreamExt;
 use std::hint::black_box;
 use std::time::Duration;
@@ -40,7 +40,7 @@ pub fn bench_throttle(c: &mut Criterion) {
                         let mut stream = Box::pin(stream);
 
                         // 3. Emit value (Throttle emits immediately)
-                        tx.send(ChronoTimestamped::now(1)).unwrap();
+                        tx.send(InstantTimestamped::now(1)).unwrap();
 
                         // 4. Assert result (should be immediate)
                         let item = stream.next().await;

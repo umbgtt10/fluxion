@@ -4,7 +4,7 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::IntoFluxionStream;
-use fluxion_stream_time::{ChronoTimestamped, DebounceExt};
+use fluxion_stream_time::{DebounceExt, InstantTimestamped};
 use futures::stream::StreamExt;
 use std::hint::black_box;
 use std::time::Duration;
@@ -40,7 +40,7 @@ pub fn bench_debounce(c: &mut Criterion) {
                         let mut stream = Box::pin(stream);
 
                         // 3. Emit value
-                        tx.send(ChronoTimestamped::now(1)).unwrap();
+                        tx.send(InstantTimestamped::now(1)).unwrap();
 
                         // 4. Advance time instantly (0 wall-clock time, pure CPU cost)
                         advance(duration).await;

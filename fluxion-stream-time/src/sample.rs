@@ -4,7 +4,7 @@
 
 //! Sample operator for time-based stream processing.
 
-use crate::ChronoTimestamped;
+use crate::InstantTimestamped;
 use fluxion_core::StreamItem;
 use futures::Stream;
 use pin_project::pin_project;
@@ -16,9 +16,9 @@ use tokio::time::{sleep_until, Instant, Sleep};
 
 /// Extension trait providing the `sample` operator for streams.
 ///
-/// This trait allows any stream of `StreamItem<ChronoTimestamped<T>>` to sample emissions
+/// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to sample emissions
 /// at periodic intervals.
-pub trait SampleExt<T>: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Sized
+pub trait SampleExt<T>: Stream<Item = StreamItem<InstantTimestamped<T>>> + Sized
 where
     T: Send + Clone,
 {
@@ -38,7 +38,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_time::{SampleExt, ChronoTimestamped};
+    /// use fluxion_stream_time::{SampleExt, InstantTimestamped};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
     /// use futures::stream::StreamExt;
@@ -54,8 +54,8 @@ where
     /// let mut sampled = source.sample(Duration::from_millis(10));
     ///
     /// // Emit Alice and Bob immediately
-    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
-    /// tx.send(ChronoTimestamped::now(person_bob())).unwrap();
+    /// tx.send(InstantTimestamped::now(person_alice())).unwrap();
+    /// tx.send(InstantTimestamped::now(person_bob())).unwrap();
     ///
     /// // Wait for sample duration
     /// tokio::time::sleep(Duration::from_millis(20)).await;
@@ -68,18 +68,18 @@ where
     fn sample(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send;
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send;
 }
 
 impl<S, T> SampleExt<T> for S
 where
-    S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send,
+    S: Stream<Item = StreamItem<InstantTimestamped<T>>> + Send,
     T: Send + Clone,
 {
     fn sample(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send {
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send {
         SampleStream {
             stream: self,
             duration,
@@ -105,10 +105,10 @@ where
 
 impl<S, T> Stream for SampleStream<S>
 where
-    S: Stream<Item = StreamItem<ChronoTimestamped<T>>>,
+    S: Stream<Item = StreamItem<InstantTimestamped<T>>>,
     T: Send + Clone,
 {
-    type Item = StreamItem<ChronoTimestamped<T>>;
+    type Item = StreamItem<InstantTimestamped<T>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();

@@ -4,7 +4,7 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::recv_timeout, test_channel_with_errors, test_data::person_alice, TestData,
 };
@@ -18,7 +18,7 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel_with_errors::<InstantTimestamped<TestData>>();
     let timeout_duration = Duration::from_millis(100);
     let timed_out = stream.timeout(timeout_duration);
 
@@ -45,7 +45,7 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
     );
 
     advance(Duration::from_millis(50)).await;
-    tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
+    tx.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 100)
             .await

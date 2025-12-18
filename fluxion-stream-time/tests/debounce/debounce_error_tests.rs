@@ -4,7 +4,7 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel_with_errors,
@@ -19,12 +19,12 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel_with_errors::<InstantTimestamped<TestData>>();
     let debounce_duration = Duration::from_millis(500);
     let mut debounced = stream.debounce(debounce_duration);
 
     // Act & Assert
-    tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
+    tx.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
     assert_no_element_emitted(&mut debounced, 0).await; // Poll the stream to let debounce see the value
 
     advance(Duration::from_millis(300)).await;
@@ -39,7 +39,7 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
     advance(Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    tx.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;
+    tx.send(StreamItem::Value(InstantTimestamped::now(person_bob())))?;
     assert_no_element_emitted(&mut debounced, 0).await; // Poll the stream to let debounce see the value
 
     advance(Duration::from_millis(300)).await;
@@ -59,15 +59,15 @@ async fn test_debounce_error_discards_pending() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel_with_errors::<InstantTimestamped<TestData>>();
     let debounce_duration = Duration::from_millis(500);
     let mut debounced = stream.debounce(debounce_duration);
 
     // Act & Assert
-    tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
+    tx.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
 
     advance(Duration::from_millis(200)).await;
-    tx.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;
+    tx.send(StreamItem::Value(InstantTimestamped::now(person_bob())))?;
 
     advance(Duration::from_millis(200)).await;
     tx.send(StreamItem::Error(FluxionError::stream_error("test error")))?;

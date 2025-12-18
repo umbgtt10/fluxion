@@ -4,7 +4,7 @@
 
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     person::Person,
@@ -22,7 +22,7 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
     let throttle_duration = Duration::from_millis(100);
 
     // Map then Throttle
@@ -33,7 +33,7 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
             } else {
                 x.value
             };
-            ChronoTimestamped::new(val, x.timestamp)
+            InstantTimestamped::new(val, x.timestamp)
         })
         .throttle(throttle_duration);
 
@@ -47,16 +47,16 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(ChronoTimestamped::now(person_alice()))?;
+    tx.send(InstantTimestamped::now(person_alice()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         TestData::Person(Person::new("Alice".to_string(), 50))
     );
 
-    tx.send(ChronoTimestamped::now(person_bob()))?;
+    tx.send(InstantTimestamped::now(person_bob()))?;
     assert_no_recv(&mut result_rx, 100).await;
 
-    tx.send(ChronoTimestamped::now(person_charlie()))?;
+    tx.send(InstantTimestamped::now(person_charlie()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         TestData::Person(Person::new("Charlie".to_string(), 70))
@@ -70,7 +70,7 @@ async fn test_throttle_chained_with_throttle() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
 
     let throttled = stream
         .throttle(Duration::from_millis(100))
@@ -86,22 +86,22 @@ async fn test_throttle_chained_with_throttle() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(ChronoTimestamped::now(person_alice()))?;
+    tx.send(InstantTimestamped::now(person_alice()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
     advance(Duration::from_millis(49)).await;
-    tx.send(ChronoTimestamped::now(person_bob()))?;
+    tx.send(InstantTimestamped::now(person_bob()))?;
     assert_no_recv(&mut result_rx, 50).await;
 
     advance(Duration::from_millis(10)).await;
-    tx.send(ChronoTimestamped::now(person_charlie()))?;
+    tx.send(InstantTimestamped::now(person_charlie()))?;
     assert_no_recv(&mut result_rx, 50).await;
 
     advance(Duration::from_millis(50)).await;
-    tx.send(ChronoTimestamped::now(person_diane()))?;
+    tx.send(InstantTimestamped::now(person_diane()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_diane()
@@ -115,8 +115,8 @@ async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
-    let (filter_tx, filter_stream) = test_channel::<ChronoTimestamped<bool>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
+    let (filter_tx, filter_stream) = test_channel::<InstantTimestamped<bool>>();
 
     let throttle_duration = Duration::from_millis(100);
 
@@ -134,26 +134,26 @@ async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    filter_tx.send(ChronoTimestamped::now(true))?;
-    tx.send(ChronoTimestamped::now(person_alice()))?;
+    filter_tx.send(InstantTimestamped::now(true))?;
+    tx.send(InstantTimestamped::now(person_alice()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
-    tx.send(ChronoTimestamped::now(person_bob()))?;
+    tx.send(InstantTimestamped::now(person_bob()))?;
     assert_no_recv(&mut result_rx, 50).await;
 
     advance(Duration::from_millis(100)).await;
-    tx.send(ChronoTimestamped::now(person_charlie()))?;
+    tx.send(InstantTimestamped::now(person_charlie()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_charlie()
     );
 
-    filter_tx.send(ChronoTimestamped::now(false))?;
+    filter_tx.send(InstantTimestamped::now(false))?;
     advance(Duration::from_millis(100)).await;
-    tx.send(ChronoTimestamped::now(person_diane()))?;
+    tx.send(InstantTimestamped::now(person_diane()))?;
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())

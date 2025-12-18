@@ -4,7 +4,7 @@
 
 //! Delay operator for time-based stream processing.
 
-use crate::ChronoTimestamped;
+use crate::InstantTimestamped;
 use fluxion_core::StreamItem;
 use futures::stream::FuturesOrdered;
 use futures::{Stream, StreamExt};
@@ -17,9 +17,9 @@ use tokio::time::{sleep, Sleep};
 
 /// Extension trait providing the `delay` operator for streams.
 ///
-/// This trait allows any stream of `StreamItem<ChronoTimestamped<T>>` to delay emissions
+/// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to delay emissions
 /// by a specified duration.
-pub trait DelayExt<T>: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Sized
+pub trait DelayExt<T>: Stream<Item = StreamItem<InstantTimestamped<T>>> + Sized
 where
     T: Send,
 {
@@ -36,7 +36,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_time::{DelayExt, ChronoTimestamped};
+    /// use fluxion_stream_time::{DelayExt, InstantTimestamped};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::person_alice;
     /// use futures::stream::StreamExt;
@@ -51,7 +51,7 @@ where
     ///
     /// let mut delayed = source.delay(Duration::from_millis(10));
     ///
-    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
+    /// tx.send(InstantTimestamped::now(person_alice())).unwrap();
     ///
     /// let item = delayed.next().await.unwrap().unwrap();
     /// assert_eq!(&*item, &person_alice());
@@ -60,18 +60,18 @@ where
     fn delay(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send;
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send;
 }
 
 impl<S, T> DelayExt<T> for S
 where
-    S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send,
+    S: Stream<Item = StreamItem<InstantTimestamped<T>>> + Send,
     T: Send,
 {
     fn delay(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send {
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send {
         DelayStream {
             stream: self,
             duration,
@@ -85,11 +85,11 @@ where
 struct DelayFuture<T> {
     #[pin]
     delay: Sleep,
-    value: Option<ChronoTimestamped<T>>,
+    value: Option<InstantTimestamped<T>>,
 }
 
 impl<T> Future for DelayFuture<T> {
-    type Output = StreamItem<ChronoTimestamped<T>>;
+    type Output = StreamItem<InstantTimestamped<T>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
@@ -118,10 +118,10 @@ struct DelayStream<S, T> {
 
 impl<S, T> Stream for DelayStream<S, T>
 where
-    S: Stream<Item = StreamItem<ChronoTimestamped<T>>>,
+    S: Stream<Item = StreamItem<InstantTimestamped<T>>>,
     T: Send,
 {
-    type Item = StreamItem<ChronoTimestamped<T>>;
+    type Item = StreamItem<InstantTimestamped<T>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();

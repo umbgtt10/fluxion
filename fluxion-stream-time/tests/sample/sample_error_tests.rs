@@ -4,7 +4,7 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{helpers::recv_timeout, test_channel_with_errors, TestData};
 use futures::StreamExt;
 use std::time::Duration;
@@ -16,7 +16,7 @@ async fn test_sample_propagates_errors() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel_with_errors::<InstantTimestamped<TestData>>();
     let sample_duration = Duration::from_millis(100);
     let sampled = stream.sample(sample_duration);
 

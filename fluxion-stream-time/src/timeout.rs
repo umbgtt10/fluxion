@@ -4,7 +4,7 @@
 
 //! Timeout operator for time-based stream processing.
 
-use crate::ChronoTimestamped;
+use crate::InstantTimestamped;
 use fluxion_core::{FluxionError, StreamItem};
 use futures::Stream;
 use pin_project::pin_project;
@@ -16,9 +16,9 @@ use tokio::time::{sleep_until, Instant, Sleep};
 
 /// Extension trait providing the `timeout` operator for streams.
 ///
-/// This trait allows any stream of `StreamItem<ChronoTimestamped<T>>` to enforce a timeout
+/// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to enforce a timeout
 /// between emissions.
-pub trait TimeoutExt<T>: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Sized {
+pub trait TimeoutExt<T>: Stream<Item = StreamItem<InstantTimestamped<T>>> + Sized {
     /// Errors if the stream does not emit any value within the specified duration.
     ///
     /// The timeout operator monitors the time interval between emissions from the source stream.
@@ -36,7 +36,7 @@ pub trait TimeoutExt<T>: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Sized
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_time::{TimeoutExt, ChronoTimestamped};
+    /// use fluxion_stream_time::{TimeoutExt, InstantTimestamped};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::person_alice;
     /// use futures::stream::StreamExt;
@@ -51,7 +51,7 @@ pub trait TimeoutExt<T>: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Sized
     ///
     /// let mut timed_out = source.timeout(Duration::from_millis(100));
     ///
-    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
+    /// tx.send(InstantTimestamped::now(person_alice())).unwrap();
     ///
     /// let item = timed_out.next().await.unwrap().unwrap();
     /// assert_eq!(&*item, &person_alice());
@@ -60,17 +60,17 @@ pub trait TimeoutExt<T>: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Sized
     fn timeout(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send;
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send;
 }
 
 impl<S, T> TimeoutExt<T> for S
 where
-    S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send,
+    S: Stream<Item = StreamItem<InstantTimestamped<T>>> + Send,
 {
     fn timeout(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send {
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send {
         TimeoutStream {
             stream: self,
             duration,
@@ -91,9 +91,9 @@ struct TimeoutStream<S> {
 
 impl<S, T> Stream for TimeoutStream<S>
 where
-    S: Stream<Item = StreamItem<ChronoTimestamped<T>>>,
+    S: Stream<Item = StreamItem<InstantTimestamped<T>>>,
 {
-    type Item = StreamItem<ChronoTimestamped<T>>;
+    type Item = StreamItem<InstantTimestamped<T>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.project();

@@ -2,35 +2,35 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use chrono::{DateTime, Utc};
 use fluxion_core::{HasTimestamp, Timestamped};
 use std::cmp::Ordering;
 use std::ops::Deref;
+use std::time::Instant;
 
-/// A timestamped value using chrono's DateTime for real-world time operations.
+/// A timestamped value using std::time::Instant for monotonic time operations.
 ///
-/// This type wraps a value with a UTC timestamp, implementing the `Timestamped` trait
-/// with chrono's `DateTime<Utc>` as the timestamp type. This enables time-based
-/// operators like `delay`.
+/// This type wraps a value with an `Instant` timestamp, implementing the `Timestamped` trait
+/// with `std::time::Instant` as the timestamp type. This enables time-based
+/// operators like `delay`, `debounce`, and `throttle`.
 ///
 /// # Example
 ///
 /// ```rust
-/// use fluxion_stream_time::ChronoTimestamped;
-/// use chrono::Utc;
+/// use fluxion_stream_time::InstantTimestamped;
+/// use std::time::Instant;
 ///
-/// let item = ChronoTimestamped::new(42, Utc::now());
-/// let another = ChronoTimestamped::now("hello");
+/// let item = InstantTimestamped::new(42, Instant::now());
+/// let another = InstantTimestamped::now("hello");
 /// ```
 #[derive(Debug, Clone)]
-pub struct ChronoTimestamped<T> {
+pub struct InstantTimestamped<T> {
     pub value: T,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Instant,
 }
 
-impl<T> ChronoTimestamped<T> {
+impl<T> InstantTimestamped<T> {
     /// Creates a new timestamped value with the given timestamp.
-    pub fn new(value: T, timestamp: DateTime<Utc>) -> Self {
+    pub fn new(value: T, timestamp: Instant) -> Self {
         Self { value, timestamp }
     }
 
@@ -38,20 +38,20 @@ impl<T> ChronoTimestamped<T> {
     pub fn now(value: T) -> Self {
         Self {
             value,
-            timestamp: Utc::now(),
+            timestamp: Instant::now(),
         }
     }
 }
 
-impl<T> HasTimestamp for ChronoTimestamped<T> {
-    type Timestamp = DateTime<Utc>;
+impl<T> HasTimestamp for InstantTimestamped<T> {
+    type Timestamp = Instant;
 
     fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
     }
 }
 
-impl<T> Timestamped for ChronoTimestamped<T>
+impl<T> Timestamped for InstantTimestamped<T>
 where
     T: Clone,
 {
@@ -66,7 +66,7 @@ where
     }
 }
 
-impl<T> PartialEq for ChronoTimestamped<T>
+impl<T> PartialEq for InstantTimestamped<T>
 where
     T: PartialEq,
 {
@@ -75,9 +75,9 @@ where
     }
 }
 
-impl<T> Eq for ChronoTimestamped<T> where T: Eq {}
+impl<T> Eq for InstantTimestamped<T> where T: Eq {}
 
-impl<T> PartialOrd for ChronoTimestamped<T>
+impl<T> PartialOrd for InstantTimestamped<T>
 where
     T: PartialOrd,
 {
@@ -86,7 +86,7 @@ where
     }
 }
 
-impl<T> Ord for ChronoTimestamped<T>
+impl<T> Ord for InstantTimestamped<T>
 where
     T: Ord,
 {
@@ -95,7 +95,7 @@ where
     }
 }
 
-impl<T> Deref for ChronoTimestamped<T> {
+impl<T> Deref for InstantTimestamped<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {

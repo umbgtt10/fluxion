@@ -6,7 +6,7 @@ use fluxion_core::IntoStream;
 use fluxion_stream::prelude::*;
 use fluxion_stream::MergedStream;
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -21,24 +21,24 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
     let delay_duration = Duration::from_secs(1);
 
     // Chain map_ordered then delay - transform the data before delaying
     let mut processed = stream
-        .map_ordered(|item: ChronoTimestamped<_>| {
+        .map_ordered(|item: InstantTimestamped<_>| {
             // Transform Alice to Bob
             let transformed = if item.value == person_alice() {
                 person_bob()
             } else {
                 item.value.clone()
             };
-            ChronoTimestamped::new(transformed, item.timestamp)
+            InstantTimestamped::new(transformed, item.timestamp)
         })
         .delay(delay_duration);
 
     // Act & Assert
-    tx.send(ChronoTimestamped::now(person_alice()))?;
+    tx.send(InstantTimestamped::now(person_alice()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
@@ -48,7 +48,7 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
         person_bob()
     );
 
-    tx.send(ChronoTimestamped::now(person_charlie()))?;
+    tx.send(InstantTimestamped::now(person_charlie()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
@@ -66,7 +66,7 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
     let delay_duration = Duration::from_secs(1);
 
     // Chain filter_ordered then delay - keep only Alice and Charlie
@@ -75,7 +75,7 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
         .delay(delay_duration);
 
     // Act & Assert
-    tx.send(ChronoTimestamped::now(person_alice()))?;
+    tx.send(InstantTimestamped::now(person_alice()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
@@ -85,8 +85,8 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
         person_alice()
     );
 
-    tx.send(ChronoTimestamped::now(person_bob()))?;
-    tx.send(ChronoTimestamped::now(person_charlie()))?;
+    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(InstantTimestamped::now(person_charlie()))?;
 
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
@@ -105,13 +105,13 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx1, stream1) = test_channel::<ChronoTimestamped<TestData>>();
-    let (tx2, stream2) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx1, stream1) = test_channel::<InstantTimestamped<TestData>>();
+    let (tx2, stream2) = test_channel::<InstantTimestamped<TestData>>();
     let delay_duration = Duration::from_millis(200);
 
     // Merge streams with state (count emissions)
     // We use MergedStream to merge two streams and then apply delay
-    let mut processed = MergedStream::seed::<ChronoTimestamped<TestData>>(0)
+    let mut processed = MergedStream::seed::<InstantTimestamped<TestData>>(0)
         .merge_with(stream1, |value, state| {
             *state += 1;
             value // Pass through
@@ -124,13 +124,13 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
         .delay(delay_duration);
 
     // Act & Assert
-    tx1.send(ChronoTimestamped::now(person_alice()))?;
+    tx1.send(InstantTimestamped::now(person_alice()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    tx2.send(ChronoTimestamped::now(person_bob()))?;
+    tx2.send(InstantTimestamped::now(person_bob()))?;
     advance(Duration::from_millis(100)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,

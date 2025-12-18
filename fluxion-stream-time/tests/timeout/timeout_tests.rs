@@ -4,7 +4,7 @@
 
 use fluxion_core::StreamItem;
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     test_channel,
@@ -21,7 +21,7 @@ async fn test_timeout_no_emission() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (_tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (_tx, stream) = test_channel::<InstantTimestamped<TestData>>();
     let timeout_duration = Duration::from_millis(100);
     let timed_out = stream.timeout(timeout_duration);
 
@@ -56,7 +56,7 @@ async fn test_timeout_with_emissions() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
     let timeout_duration = Duration::from_millis(100);
     let timed_out = stream.timeout(timeout_duration);
 
@@ -72,14 +72,14 @@ async fn test_timeout_with_emissions() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(ChronoTimestamped::now(person_alice()))?;
+    tx.send(InstantTimestamped::now(person_alice()))?;
     advance(Duration::from_millis(50)).await;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
-    tx.send(ChronoTimestamped::now(person_bob()))?;
+    tx.send(InstantTimestamped::now(person_bob()))?;
     advance(Duration::from_millis(50)).await;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),

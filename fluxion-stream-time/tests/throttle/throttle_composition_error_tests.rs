@@ -5,7 +5,7 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::recv_timeout, person::Person, test_channel_with_errors, test_data::person_alice,
     TestData,
@@ -20,7 +20,7 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel_with_errors::<InstantTimestamped<TestData>>();
     let throttle_duration = Duration::from_millis(100);
 
     // Map then Throttle
@@ -31,7 +31,7 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
             } else {
                 x.value
             };
-            ChronoTimestamped::new(val, x.timestamp)
+            InstantTimestamped::new(val, x.timestamp)
         })
         .throttle(throttle_duration);
 
@@ -58,7 +58,7 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
         error.to_string()
     );
 
-    tx.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
+    tx.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await

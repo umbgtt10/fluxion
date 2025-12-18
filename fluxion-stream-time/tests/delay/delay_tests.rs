@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     person::Person,
@@ -21,12 +21,12 @@ async fn test_delay_with_chrono_timestamped() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
     let delay_duration = Duration::from_secs(1);
     let mut delayed = stream.delay(delay_duration);
 
     // Act & Assert
-    tx.send(ChronoTimestamped::now(person_alice()))?;
+    tx.send(InstantTimestamped::now(person_alice()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
@@ -36,7 +36,7 @@ async fn test_delay_with_chrono_timestamped() -> anyhow::Result<()> {
         person_alice()
     );
 
-    tx.send(ChronoTimestamped::now(person_bob()))?;
+    tx.send(InstantTimestamped::now(person_bob()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
@@ -54,7 +54,7 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
     let delay_duration = Duration::from_millis(10);
     let delayed = stream.delay(delay_duration);
 
@@ -71,7 +71,7 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
 
     // Act
     for i in 0..count {
-        tx.send(ChronoTimestamped::now(TestData::Person(Person::new(
+        tx.send(InstantTimestamped::now(TestData::Person(Person::new(
             format!("Person_{}", i),
             i as u32,
         ))))?;

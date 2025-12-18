@@ -5,7 +5,7 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::helpers::assert_no_recv;
 use fluxion_test_utils::{helpers::recv_timeout, test_channel_with_errors, TestData};
 use futures::StreamExt;
@@ -18,11 +18,11 @@ async fn test_timeout_chained_error_propagation() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel_with_errors::<InstantTimestamped<TestData>>();
     let timeout_duration = Duration::from_millis(100);
 
     let pipeline = stream
-        .map_ordered(|item| ChronoTimestamped::new(item.value, item.timestamp))
+        .map_ordered(|item| InstantTimestamped::new(item.value, item.timestamp))
         .timeout(timeout_duration);
 
     let (result_tx, mut result_rx) = unbounded_channel();

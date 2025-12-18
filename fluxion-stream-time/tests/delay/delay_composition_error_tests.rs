@@ -5,7 +5,7 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel_with_errors,
@@ -20,8 +20,8 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx_source, source) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let (tx_filter, filter) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
+    let (tx_source, source) = test_channel_with_errors::<InstantTimestamped<TestData>>();
+    let (tx_filter, filter) = test_channel_with_errors::<InstantTimestamped<TestData>>();
     let delay_duration = Duration::from_millis(200);
 
     // Chain emit_when then delay
@@ -29,8 +29,8 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
     let mut processed = source.emit_when(filter, |_| true).delay(delay_duration);
 
     // Act & Assert
-    tx_filter.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;
-    tx_source.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
+    tx_filter.send(StreamItem::Value(InstantTimestamped::now(person_bob())))?;
+    tx_source.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     let error = FluxionError::stream_error("filter error");

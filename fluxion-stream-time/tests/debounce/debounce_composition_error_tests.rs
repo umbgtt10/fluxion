@@ -5,7 +5,7 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel_with_errors,
@@ -20,8 +20,8 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
     // Arrange
     pause();
 
-    let (tx_source, source) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
-    let (tx_trigger, trigger) = test_channel_with_errors::<ChronoTimestamped<TestData>>();
+    let (tx_source, source) = test_channel_with_errors::<InstantTimestamped<TestData>>();
+    let (tx_trigger, trigger) = test_channel_with_errors::<InstantTimestamped<TestData>>();
     let debounce_duration = Duration::from_millis(500);
 
     // Chain take_latest_when then debounce
@@ -31,7 +31,7 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
         .debounce(debounce_duration);
 
     // Act & Assert
-    tx_source.send(StreamItem::Value(ChronoTimestamped::now(person_alice())))?;
+    tx_source.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
     let error = FluxionError::stream_error("trigger error");
     tx_trigger.send(StreamItem::Error(error.clone()))?;
 
@@ -44,7 +44,7 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
         error.to_string()
     );
 
-    tx_trigger.send(StreamItem::Value(ChronoTimestamped::now(person_bob())))?;
+    tx_trigger.send(StreamItem::Value(InstantTimestamped::now(person_bob())))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(500)).await;

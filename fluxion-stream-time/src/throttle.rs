@@ -4,7 +4,7 @@
 
 //! Throttle operator for time-based stream processing.
 
-use crate::ChronoTimestamped;
+use crate::InstantTimestamped;
 use fluxion_core::StreamItem;
 use futures::Stream;
 use pin_project::pin_project;
@@ -16,9 +16,9 @@ use tokio::time::{sleep, Instant, Sleep};
 
 /// Extension trait providing the `throttle` operator for streams.
 ///
-/// This trait allows any stream of `StreamItem<ChronoTimestamped<T>>` to throttle emissions
+/// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to throttle emissions
 /// by a specified duration.
-pub trait ThrottleExt<T>: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Sized
+pub trait ThrottleExt<T>: Stream<Item = StreamItem<InstantTimestamped<T>>> + Sized
 where
     T: Send,
 {
@@ -46,7 +46,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_time::{ThrottleExt, ChronoTimestamped};
+    /// use fluxion_stream_time::{ThrottleExt, InstantTimestamped};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
     /// use futures::stream::StreamExt;
@@ -62,8 +62,8 @@ where
     /// let mut throttled = source.throttle(Duration::from_millis(100));
     ///
     /// // Alice and Bob emitted immediately. Bob should be throttled (dropped).
-    /// tx.send(ChronoTimestamped::now(person_alice())).unwrap();
-    /// tx.send(ChronoTimestamped::now(person_bob())).unwrap();
+    /// tx.send(InstantTimestamped::now(person_alice())).unwrap();
+    /// tx.send(InstantTimestamped::now(person_bob())).unwrap();
     ///
     /// // Only Alice should remain (leading throttle)
     /// let item = throttled.next().await.unwrap().unwrap();
@@ -73,18 +73,18 @@ where
     fn throttle(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send;
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send;
 }
 
 impl<S, T> ThrottleExt<T> for S
 where
-    S: Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send,
+    S: Stream<Item = StreamItem<InstantTimestamped<T>>> + Send,
     T: Send,
 {
     fn throttle(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<ChronoTimestamped<T>>> + Send {
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send {
         ThrottleStream {
             stream: self,
             duration,
@@ -105,10 +105,10 @@ struct ThrottleStream<S: Stream> {
 
 impl<S, T> Stream for ThrottleStream<S>
 where
-    S: Stream<Item = StreamItem<ChronoTimestamped<T>>>,
+    S: Stream<Item = StreamItem<InstantTimestamped<T>>>,
     T: Send,
 {
-    type Item = StreamItem<ChronoTimestamped<T>>;
+    type Item = StreamItem<InstantTimestamped<T>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();

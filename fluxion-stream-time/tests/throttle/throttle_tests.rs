@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::ChronoTimestamped;
+use fluxion_stream_time::InstantTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     person::Person,
@@ -21,7 +21,7 @@ async fn test_throttle_with_chrono_timestamped() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
     let throttle_duration = Duration::from_secs(1);
     let throttled = stream.throttle(throttle_duration);
 
@@ -35,18 +35,18 @@ async fn test_throttle_with_chrono_timestamped() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(ChronoTimestamped::now(person_alice()))?;
+    tx.send(InstantTimestamped::now(person_alice()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
-    tx.send(ChronoTimestamped::now(person_bob()))?;
+    tx.send(InstantTimestamped::now(person_bob()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_recv(&mut result_rx, 100).await;
 
     advance(Duration::from_millis(900)).await;
-    tx.send(ChronoTimestamped::now(person_charlie()))?;
+    tx.send(InstantTimestamped::now(person_charlie()))?;
 
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
@@ -61,7 +61,7 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
     // Arrange
     pause();
 
-    let (tx, stream) = test_channel::<ChronoTimestamped<TestData>>();
+    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
     let throttle_duration = Duration::from_millis(100);
     let throttled = stream.throttle(throttle_duration);
 
@@ -76,12 +76,12 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(ChronoTimestamped::now(TestData::Person(Person::new(
+    tx.send(InstantTimestamped::now(TestData::Person(Person::new(
         "Alice".to_string(),
         0,
     ))))?;
     for i in 1..10 {
-        tx.send(ChronoTimestamped::now(TestData::Person(Person::new(
+        tx.send(InstantTimestamped::now(TestData::Person(Person::new(
             "Alice".to_string(),
             i,
         ))))?;
@@ -94,7 +94,7 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
     advance(Duration::from_millis(100)).await;
 
     // Send 10 - emitted
-    tx.send(ChronoTimestamped::now(TestData::Person(Person::new(
+    tx.send(InstantTimestamped::now(TestData::Person(Person::new(
         "Alice".to_string(),
         10,
     ))))?;
