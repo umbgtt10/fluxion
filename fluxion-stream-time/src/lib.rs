@@ -48,7 +48,7 @@
 //! ```
 
 mod debounce;
-//mod delay;
+mod delay;
 mod instant_timestamped;
 //mod sample;
 //mod throttle;
@@ -59,7 +59,7 @@ pub mod timer;
 pub mod prelude;
 
 pub use debounce::DebounceExt;
-//pub use delay::DelayExt;
+pub use delay::DelayExt;
 pub use instant_timestamped::InstantTimestamped;
 //pub use sample::SampleExt;
 //pub use throttle::ThrottleExt;

@@ -6,6 +6,7 @@ use fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::DelayExt;
 use fluxion_stream_time::InstantTimestamped;
 use fluxion_stream_time::TokioTimer;
 use fluxion_stream_time::TokioTimestamped;
@@ -126,7 +127,7 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
 
     Ok(())
 }
-/*
+
 #[tokio::test]
 async fn test_debounce_then_delay() -> anyhow::Result<()> {
     // Arrange
@@ -136,7 +137,7 @@ async fn test_debounce_then_delay() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut processed = stream
         .debounce(Duration::from_millis(300), timer.clone())
-        .delay(Duration::from_millis(200));
+        .delay(Duration::from_millis(200), timer.clone());
 
     // Act & Assert
     tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
@@ -168,11 +169,9 @@ async fn test_delay_then_debounce() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
-    let delay_duration = Duration::from_millis(200);
-    let debounce_duration = Duration::from_millis(300);
-
-    // Chain delay then debounce
-    let mut processed = stream.delay(delay_duration).debounce(debounce_duration);
+    let mut processed = stream
+        .delay(Duration::from_millis(200), timer.clone())
+        .debounce(Duration::from_millis(300), timer.clone());
 
     // Act & Assert
     tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
@@ -195,7 +194,6 @@ async fn test_delay_then_debounce() -> anyhow::Result<()> {
 
     Ok(())
 }
-*/
 
 #[tokio::test]
 async fn test_combine_latest_then_debounce() -> anyhow::Result<()> {

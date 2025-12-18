@@ -4,6 +4,7 @@
 
 //! Delay operator for time-based stream processing.
 
+use crate::timer::Timer;
 use crate::InstantTimestamped;
 use fluxion_core::StreamItem;
 use futures::stream::FuturesOrdered;
@@ -13,15 +14,15 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
-use tokio::time::{sleep, Sleep};
 
 /// Extension trait providing the `delay` operator for streams.
 ///
 /// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to delay emissions
 /// by a specified duration.
-pub trait DelayExt<T>: Stream<Item = StreamItem<InstantTimestamped<T>>> + Sized
+pub trait DelayExt<T, TM>: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Sized
 where
     T: Send,
+    TM: Timer,
 {
     /// Delays each emission by the specified duration.
     ///
@@ -60,21 +61,25 @@ where
     fn delay(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send;
+        timer: TM,
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send;
 }
 
-impl<S, T> DelayExt<T> for S
+impl<S, T, TM> DelayExt<T, TM> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T>>> + Send,
     T: Send,
+    TM: Timer,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send,
 {
     fn delay(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send {
+        timer: TM,
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send {
         DelayStream {
             stream: self,
             duration,
+            timer,
             in_flight: FuturesOrdered::new(),
             upstream_done: false,
         }
@@ -82,14 +87,14 @@ where
 }
 
 #[pin_project]
-struct DelayFuture<T> {
+struct DelayFuture<T, TM: Timer> {
     #[pin]
-    delay: Sleep,
-    value: Option<InstantTimestamped<T>>,
+    delay: TM::Sleep,
+    value: Option<InstantTimestamped<T, TM>>,
 }
 
-impl<T> Future for DelayFuture<T> {
-    type Output = StreamItem<InstantTimestamped<T>>;
+impl<T, TM: Timer> Future for DelayFuture<T, TM> {
+    type Output = StreamItem<InstantTimestamped<T, TM>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
@@ -108,20 +113,22 @@ impl<T> Future for DelayFuture<T> {
 }
 
 #[pin_project]
-struct DelayStream<S, T> {
+struct DelayStream<S, T, TM: Timer> {
     #[pin]
     stream: S,
     duration: Duration,
-    in_flight: FuturesOrdered<DelayFuture<T>>,
+    timer: TM,
+    in_flight: FuturesOrdered<DelayFuture<T, TM>>,
     upstream_done: bool,
 }
 
-impl<S, T> Stream for DelayStream<S, T>
+impl<S, T, TM> Stream for DelayStream<S, T, TM>
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T>>>,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
     T: Send,
+    TM: Timer,
 {
-    type Item = StreamItem<InstantTimestamped<T>>;
+    type Item = StreamItem<InstantTimestamped<T, TM>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
@@ -132,7 +139,7 @@ where
                 match this.stream.as_mut().poll_next(cx) {
                     Poll::Ready(Some(StreamItem::Value(value))) => {
                         let future = DelayFuture {
-                            delay: sleep(*this.duration),
+                            delay: this.timer.sleep_future(*this.duration),
                             value: Some(value),
                         };
                         this.in_flight.push_back(future);

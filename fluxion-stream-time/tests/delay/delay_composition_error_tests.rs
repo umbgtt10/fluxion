@@ -4,8 +4,10 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::DelayExt;
+use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel_with_errors,
@@ -18,19 +20,24 @@ use tokio::time::{advance, pause};
 #[tokio::test]
 async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx_source, source) = test_channel_with_errors::<InstantTimestamped<TestData>>();
-    let (tx_filter, filter) = test_channel_with_errors::<InstantTimestamped<TestData>>();
-    let delay_duration = Duration::from_millis(200);
-
-    // Chain emit_when then delay
-    // emit_when gates source emissions based on filter state
-    let mut processed = source.emit_when(filter, |_| true).delay(delay_duration);
+    let (tx_source, source) = test_channel_with_errors::<TokioTimestamped<TestData>>();
+    let (tx_filter, filter) = test_channel_with_errors::<TokioTimestamped<TestData>>();
+    let mut processed = source
+        .emit_when(filter, |_| true)
+        .delay(Duration::from_millis(200), timer.clone());
 
     // Act & Assert
-    tx_filter.send(StreamItem::Value(InstantTimestamped::now(person_bob())))?;
-    tx_source.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
+    tx_filter.send(StreamItem::Value(TokioTimestamped::new(
+        person_bob(),
+        timer.now(),
+    )))?;
+    tx_source.send(StreamItem::Value(TokioTimestamped::new(
+        person_alice(),
+        timer.now(),
+    )))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     let error = FluxionError::stream_error("filter error");

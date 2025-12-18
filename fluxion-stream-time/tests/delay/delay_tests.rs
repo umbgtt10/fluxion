@@ -2,8 +2,10 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::DelayExt;
+use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::TokioTimestamped;
+use fluxion_stream_time::timer::Timer;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     person::Person,
@@ -19,14 +21,14 @@ use tokio::{spawn, sync::mpsc::unbounded_channel};
 #[tokio::test]
 async fn test_delay_with_instant_timestamped() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let delay_duration = Duration::from_secs(1);
-    let mut delayed = stream.delay(delay_duration);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let mut delayed = stream.delay(Duration::from_secs(1), timer.clone());
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
@@ -36,7 +38,7 @@ async fn test_delay_with_instant_timestamped() -> anyhow::Result<()> {
         person_alice()
     );
 
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
@@ -52,11 +54,11 @@ async fn test_delay_with_instant_timestamped() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_delay_preserves_order() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let delay_duration = Duration::from_millis(10);
-    let delayed = stream.delay(delay_duration);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let delayed = stream.delay(Duration::from_millis(10), timer.clone());
 
     let count = 100;
     let (result_tx, mut result_rx) = unbounded_channel();
@@ -71,10 +73,10 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
 
     // Act
     for i in 0..count {
-        tx.send(InstantTimestamped::now(TestData::Person(Person::new(
+        tx.send(TokioTimestamped::new(TestData::Person(Person::new(
             format!("Person_{}", i),
             i as u32,
-        ))))?;
+        )), timer.now()))?;
     }
     // Drop tx to signal end of stream
     drop(tx);
