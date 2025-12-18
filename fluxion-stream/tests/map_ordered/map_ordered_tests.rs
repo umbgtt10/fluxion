@@ -96,12 +96,16 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
     );
 
     tx.send(Sequenced::new(person_alice()))?; // Age 25 again
-    let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value;
-    assert_eq!(val, AgeComparison::new(Some(30), 25));
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        AgeComparison::new(Some(30), 25)
+    );
 
     tx.send(Sequenced::new(person_charlie()))?; // Age 35
-    let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value;
-    assert_eq!(val, AgeComparison::new(Some(25), 35));
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        AgeComparison::new(Some(25), 35)
+    );
 
     Ok(())
 }

@@ -131,7 +131,7 @@ async fn test_merge_with_errors_interleaved_with_values() -> anyhow::Result<()> 
         })
         .merge_with(stream2, |item: TestData, state| {
             if let TestData::Person(p) = item {
-                state.age += p.age *  2;
+                state.age += p.age * 2;
             }
             state.clone()
         });
