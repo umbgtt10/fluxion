@@ -67,7 +67,6 @@ pub trait IntoFluxionStream<T> {
     ///     type Inner = Self;
     ///     fn into_inner(self) -> Self { self }
     ///     fn with_timestamp(value: Self, _timestamp: u64) -> Self { value }
-    ///     fn with_fresh_timestamp(value: Self) -> Self { value }
     /// }
     ///
     /// #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -88,7 +87,6 @@ pub trait IntoFluxionStream<T> {
     ///     type Inner = Self;
     ///     fn into_inner(self) -> Self { self }
     ///     fn with_timestamp(value: Self, _timestamp: u64) -> Self { value }
-    ///     fn with_fresh_timestamp(value: Self) -> Self { value }
     /// }
     ///
     /// # #[tokio::main]

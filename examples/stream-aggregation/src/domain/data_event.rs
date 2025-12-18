@@ -35,10 +35,6 @@ impl Timestamped for DataEvent {
         value // Just return the value since it already has the timestamp
     }
 
-    fn with_fresh_timestamp(value: Self) -> Self {
-        value
-    }
-
     fn into_inner(self) -> Self::Inner {
         self
     }

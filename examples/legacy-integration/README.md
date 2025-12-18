@@ -31,9 +31,21 @@ Legacy File Watcher (CSV) → Inventory Adapter  → TimestampedInventory ─┘
 Each adapter adds timestamps at the system boundary:
 
 ```rust
-impl Timestamped for TimestampedUser {
-    fn with_fresh_timestamp(user: User) -> Self {
+impl TimestampedUser {
+    fn new(user: User) -> Self {
         let timestamp = chrono::Utc::now().timestamp_millis() as u64;
+        Self { timestamp, user }
+    }
+}
+
+impl Timestamped for TimestampedUser {
+    type Inner = User;
+
+    fn into_inner(self) -> Self::Inner {
+        self.user
+    }
+
+    fn with_timestamp(user: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self { timestamp, user }
     }
 }

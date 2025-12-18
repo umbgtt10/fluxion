@@ -47,14 +47,6 @@ fn test_timestamped_with_timestamp() {
 }
 
 #[test]
-fn test_timestamped_with_fresh_timestamp() {
-    let _original = TestWrapper::new(42, 100);
-    let fresh_wrapper = TestWrapper::with_fresh_timestamp(42);
-    assert_eq!(fresh_wrapper.value(), &42);
-    assert_eq!(fresh_wrapper.timestamp(), 999999);
-}
-
-#[test]
 fn test_clone() {
     let original = TestWrapper::new(42, 100);
     let cloned = original.clone();
@@ -164,15 +156,6 @@ fn test_with_timestamp_preserves_value() {
 
     assert_eq!(updated.value(), "test");
     assert_eq!(updated.timestamp(), 200);
-}
-
-#[test]
-fn test_with_fresh_timestamp_preserves_value() {
-    let _original = TestWrapper::new(vec![1, 2, 3], 100);
-    let fresh = TestWrapper::with_fresh_timestamp(vec![1, 2, 3]);
-
-    assert_eq!(fresh.value(), &vec![1, 2, 3]);
-    assert_eq!(fresh.timestamp(), 999999);
 }
 
 #[test]

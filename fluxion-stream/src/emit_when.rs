@@ -165,8 +165,9 @@ where
                                             timestamp,
                                         );
                                         if filter(&combined_state) {
-                                            Some(StreamItem::Value(T::with_fresh_timestamp(
+                                            Some(StreamItem::Value(T::with_timestamp(
                                                 src.clone(),
+                                                *src_ts,
                                             )))
                                         } else {
                                             None
@@ -195,8 +196,9 @@ where
                                             timestamp,
                                         );
                                         if filter(&combined_state) {
-                                            Some(StreamItem::Value(T::with_fresh_timestamp(
+                                            Some(StreamItem::Value(T::with_timestamp(
                                                 src.clone(),
+                                                *filt_ts,
                                             )))
                                         } else {
                                             None

@@ -55,10 +55,6 @@ impl Timestamped for TimestampedEvent {
     fn with_timestamp(event: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self::with_timestamp(event, timestamp)
     }
-
-    fn with_fresh_timestamp(event: Self::Inner) -> Self {
-        Self::new(event)
-    }
 }
 
 impl PartialOrd for TimestampedEvent {

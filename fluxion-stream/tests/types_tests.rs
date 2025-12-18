@@ -33,13 +33,6 @@ impl<T: Clone + Send + Sync + 'static> Timestamped for TestItem<T> {
         Self { value, timestamp }
     }
 
-    fn with_fresh_timestamp(value: Self::Inner) -> Self {
-        Self {
-            value,
-            timestamp: 0, // Simple implementation for testing
-        }
-    }
-
     fn into_inner(self) -> Self::Inner {
         self.value
     }
@@ -142,14 +135,6 @@ fn test_with_previous_timestamped_with_timestamp() {
     assert_eq!(wp.previous, None);
     assert_eq!(wp.current.timestamp(), 123u64);
     assert_eq!(wp.current.into_inner(), 999);
-}
-
-#[test]
-fn test_with_previous_timestamped_with_fresh_timestamp() {
-    let wp = WithPrevious::<TestItem<String>>::with_fresh_timestamp("test".to_string());
-
-    assert_eq!(wp.previous, None);
-    assert_eq!(wp.current.into_inner(), "test");
 }
 
 #[test]
@@ -268,16 +253,6 @@ fn test_combined_state_timestamped_with_timestamp() {
 
     assert_eq!(new_state.values(), vec![1, 2, 3]);
     assert_eq!(new_state.timestamp(), 200u64);
-}
-
-#[test]
-fn test_combined_state_timestamped_with_fresh_timestamp() {
-    let original = CombinedState::new(vec![("a", 100u64), ("b", 100u64)], 100u64);
-    let new_state = CombinedState::with_fresh_timestamp(original.clone());
-
-    // with_fresh_timestamp recycles the timestamp for CombinedState
-    assert_eq!(new_state.values(), original.values());
-    assert_eq!(new_state.timestamp(), 100u64);
 }
 
 #[test]

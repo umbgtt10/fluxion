@@ -56,13 +56,6 @@ impl<T: Timestamped> Timestamped for WithPrevious<T> {
         }
     }
 
-    fn with_fresh_timestamp(value: Self::Inner) -> Self {
-        Self {
-            previous: None,
-            current: T::with_fresh_timestamp(value),
-        }
-    }
-
     fn into_inner(self) -> Self::Inner {
         self.current.into_inner()
     }
@@ -164,12 +157,6 @@ where
             state: value.state,
             timestamp,
         }
-    }
-
-    fn with_fresh_timestamp(value: Self::Inner) -> Self {
-        // For now, recycle the timestamp from the value itself
-        // Later we can discuss whether to create a fresh one or use one from aggregated events
-        value
     }
 
     fn into_inner(self) -> Self::Inner {

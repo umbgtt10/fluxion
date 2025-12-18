@@ -44,11 +44,4 @@ where
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self { value, timestamp }
     }
-
-    fn with_fresh_timestamp(value: Self::Inner) -> Self {
-        Self {
-            value,
-            timestamp: 999999, // Use a dummy timestamp for tests
-        }
-    }
 }

@@ -178,10 +178,6 @@ where
         StreamItem::Value(T::with_timestamp(value, timestamp))
     }
 
-    fn with_fresh_timestamp(value: Self::Inner) -> Self {
-        StreamItem::Value(T::with_fresh_timestamp(value))
-    }
-
     fn into_inner(self) -> Self::Inner {
         match self {
             StreamItem::Value(v) => v.into_inner(),

@@ -49,11 +49,6 @@ use crate::HasTimestamp;
 ///         TimestampedEvent { value, timestamp }
 ///     }
 ///
-///     fn with_fresh_timestamp(value: T) -> Self {
-///         // In real implementation, get current timestamp
-///         TimestampedEvent { value, timestamp: 0 }
-///     }
-///
 ///     fn into_inner(self) -> Self::Inner {
 ///         self.value
 ///     }
@@ -82,10 +77,6 @@ use crate::HasTimestamp;
 /// impl<T: Clone> Timestamped for SequenceNumbered<T> {
 ///     type Inner = T;
 ///     fn with_timestamp(value: T, seq: u64) -> Self { Self { value, seq } }
-///     fn with_fresh_timestamp(value: T) -> Self {
-///         // Use atomic counter in production
-///         Self { value, seq: 0 }
-///     }
 ///     fn into_inner(self) -> T { self.value }
 /// }
 /// ```
@@ -109,9 +100,6 @@ use crate::HasTimestamp;
 /// impl<T: Clone> Timestamped for TimedEvent<T> {
 ///     type Inner = T;
 ///     fn with_timestamp(value: T, time: Instant) -> Self { Self { value, time } }
-///     fn with_fresh_timestamp(value: T) -> Self {
-///         Self { value, time: Instant::now() }
-///     }
 ///     fn into_inner(self) -> T { self.value }
 /// }
 /// ```
@@ -121,12 +109,6 @@ pub trait Timestamped: HasTimestamp + Clone {
 
     /// Creates a new instance wrapping the given value with the specified timestamp.
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self;
-
-    /// Creates a new instance wrapping the given value with a fresh timestamp.
-    /// This is called by operators when emitting new values.
-    /// Each implementation determines how to generate fresh timestamps
-    /// (e.g., Utc::now() for chrono, atomic counter for u64, etc.)
-    fn with_fresh_timestamp(value: Self::Inner) -> Self;
 
     /// Consumes self and returns the inner value.
     /// For wrapper types like `Sequenced<T>`, this extracts `T`.

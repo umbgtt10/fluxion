@@ -74,10 +74,6 @@ where
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self::with_timestamp(value, timestamp)
     }
-
-    fn with_fresh_timestamp(value: Self::Inner) -> Self {
-        Self::new(value)
-    }
 }
 
 impl<T> PartialOrd for Sequenced<T>

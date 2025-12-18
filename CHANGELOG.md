@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - Not Published (Internal Release)
+
+**Goal:** Prepare for runtime abstraction by removing wall-clock time dependencies
+
+### Changed
+- **Breaking:** Removed `with_fresh_timestamp()` method from `Timestamped` trait (`fluxion-core`)
+  - Removes implicit wall-clock time dependency from core trait
+  - Wrapper types should provide their own `new()` or similar constructors
+  - Prepares for runtime abstraction and deterministic time in tests
+  - Migration: Replace `T::with_fresh_timestamp(value)` with custom constructors
+
+### Fixed
+- **`emit_when` operator** (`fluxion-stream`)
+  - Now uses correct timestamps based on which stream triggered the emission
+  - Source triggers: Uses source event timestamp (preserves temporal ordering)
+  - Filter triggers: Uses filter event timestamp (preserves causality)
+  - Previously created synthetic "now" timestamps, breaking ordering guarantees
+
 ## [0.6.0] - 2025-12-18
 
 **Goal:** Stream composition, multi-consumer support, and sampling operators

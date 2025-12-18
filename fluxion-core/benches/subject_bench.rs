@@ -46,10 +46,6 @@ impl<T: Clone> Timestamped for BenchValue<T> {
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self { value, timestamp }
     }
-
-    fn with_fresh_timestamp(value: Self::Inner) -> Self {
-        Self::new(value)
-    }
 }
 
 pub fn bench_subject(c: &mut Criterion) {

@@ -215,6 +215,27 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - ✅ Benchmarks for sampling operators
 - ✅ CI green
 
+## 🚀 Version 0.6.1 - Preparation for Runtime Abstraction
+
+**Status:** Internal release (not published to crates.io)
+
+**Goal:** Prepare for time abstraction and runtime flexibility
+
+**Essential Features:**
+- ✅ Remove `with_fresh_timestamp` method from Timestamped trait in order to no longer be dependant on wall-clock time
+- ✅ Fixed `emit_when` operator to use correct timestamps based on triggering stream (source or filter)
+- [ ] Migrate the time operators from chrono-based timestamps to std:Duration-based timestamps in order to prepare for runtime abstraction: Chrono is no longer a dependency
+
+**Documentation:**
+- ✅ Updated legacy-integration example README to reflect new timestamp handling patterns
+
+**Quality Gates:**
+- ✅ All tests passing
+- ✅ Zero clippy warnings
+- ✅ Zero compiler warnings
+- ✅ Doc tests for all operators
+- ✅ CI green
+
 ## 🚀 Version 0.7.0 - WASM & Runtime Abstraction
 
 **Status:** Planned
@@ -428,4 +449,4 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - Breaking changes are only introduced in major versions (post-1.0)
 - Security fixes may be backported to previous minor versions
 
-**Last Updated:** December 4, 2025
+**Last Updated:** December 18, 2025

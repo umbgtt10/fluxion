@@ -206,10 +206,6 @@ impl Timestamped for TimestampedEvent {
         Self { timestamp, ..value }
     }
 
-    fn with_fresh_timestamp(value: Self::Inner) -> Self {
-        Self::from_external(value.event)
-    }
-
     fn into_inner(self) -> Self::Inner {
         self
     }

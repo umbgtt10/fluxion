@@ -234,11 +234,6 @@ where
         value
     }
 
-    fn with_fresh_timestamp(value: Self::Inner) -> Self {
-        // Items already have timestamps from their wrapped values
-        value
-    }
-
     fn into_inner(self) -> Self::Inner {
         self
     }

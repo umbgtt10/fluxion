@@ -64,10 +64,6 @@ where
     fn with_timestamp(inner: Self::Inner, timestamp: Self::Timestamp) -> Self {
         Self::new(inner, timestamp)
     }
-
-    fn with_fresh_timestamp(inner: Self::Inner) -> Self {
-        Self::now(inner)
-    }
 }
 
 impl<T> PartialEq for ChronoTimestamped<T>

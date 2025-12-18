@@ -11,7 +11,7 @@
 ///
 /// `HasTimestamp` is a minimal trait for reading timestamps,
 /// while `Timestamped` extends it with an `Inner` type and construction methods
-/// (`with_timestamp`, `with_fresh_timestamp`, `into_inner`).
+/// (`with_timestamp`, `into_inner`).
 ///
 /// Use `HasTimestamp` when you only need to read timestamps (e.g., ordering, comparison).
 /// Use `Timestamped` when you need to construct new timestamped values or access inner values.

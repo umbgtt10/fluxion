@@ -36,9 +36,6 @@ mod no_coverage_helpers {
         fn with_timestamp(value: Self, _order: Self::Timestamp) -> Self {
             value
         }
-        fn with_fresh_timestamp(value: Self) -> Self {
-            value
-        }
     }
 
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -61,9 +58,6 @@ mod no_coverage_helpers {
             self
         }
         fn with_timestamp(value: Self, _timestamp: Self::Timestamp) -> Self {
-            value
-        }
-        fn with_fresh_timestamp(value: Self) -> Self {
             value
         }
     }
@@ -93,9 +87,6 @@ mod no_coverage_helpers {
         fn with_timestamp(value: Self, _order: Self::Timestamp) -> Self {
             value
         }
-        fn with_fresh_timestamp(value: Self) -> Self {
-            value
-        }
     }
 
     #[cfg(test)]
@@ -120,22 +111,18 @@ mod no_coverage_helpers {
             sensor_reading.clone().into_inner();
             sensor_reading.timestamp();
             SensorReading::with_timestamp(sensor_reading.clone(), 0);
-            SensorReading::with_fresh_timestamp(sensor_reading.clone());
 
             status_update.clone().into_inner();
             status_update.timestamp();
             StatusUpdate::with_timestamp(status_update.clone(), 0);
-            StatusUpdate::with_fresh_timestamp(status_update.clone());
 
             combined_sensor.timestamp();
             combined_sensor.clone().into_inner();
             CombinedEvent::with_timestamp(combined_sensor.clone(), 0);
-            CombinedEvent::with_fresh_timestamp(combined_sensor.clone());
 
             combined_status.timestamp();
             combined_status.clone().into_inner();
             CombinedEvent::with_timestamp(combined_status.clone(), 0);
-            CombinedEvent::with_fresh_timestamp(combined_status.clone());
         }
     }
 }

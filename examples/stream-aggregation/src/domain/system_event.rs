@@ -28,10 +28,6 @@ impl Timestamped for SystemEvent {
         Self { timestamp, ..inner }
     }
 
-    fn with_fresh_timestamp(value: Self) -> Self {
-        value
-    }
-
     fn into_inner(self) -> Self::Inner {
         self
     }
