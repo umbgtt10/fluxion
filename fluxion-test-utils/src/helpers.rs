@@ -5,6 +5,7 @@
 use fluxion_core::StreamItem;
 use futures::stream::StreamExt;
 use futures::Stream;
+use std::fmt::Debug;
 use std::time::Duration;
 use tokio::select;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
@@ -178,7 +179,7 @@ pub fn test_channel_with_errors<T: Send + 'static>() -> (
 pub async fn assert_no_element_emitted<S, T>(stream: &mut S, timeout_ms: u64)
 where
     S: Stream<Item = T> + Unpin,
-    T: std::fmt::Debug,
+    T: Debug,
 {
     select! {
         state = stream.next() => {

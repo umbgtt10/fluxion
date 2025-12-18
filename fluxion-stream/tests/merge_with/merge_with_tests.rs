@@ -30,15 +30,20 @@ async fn test_merge_with_empty_streams() -> anyhow::Result<()> {
     drop(tx2);
 
     // Act
-    let mut result_stream = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(empty_stream1, |_item: TestData, state: &mut i32| {
-            *state += 1;
-            *state
-        })
-        .merge_with(empty_stream2, |_item: TestData, state: &mut i32| {
-            *state += 1;
-            *state
-        });
+    let mut result_stream =
+        MergedStream::seed::<Sequenced<Person>>(Person::new("Initial".to_string(), 0))
+            .merge_with(empty_stream1, |item: TestData, state: &mut Person| {
+                if let TestData::Person(p) = item {
+                    state.age += p.age;
+                }
+                state.clone()
+            })
+            .merge_with(empty_stream2, |item: TestData, state: &mut Person| {
+                if let TestData::Person(p) = item {
+                    state.age += p.age;
+                }
+                state.clone()
+            });
 
     // Assert
     assert_stream_ended(&mut result_stream, 500).await;
@@ -64,35 +69,16 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
             *state
         });
 
-    // Act
+    // Act & Assert
     non_empty_tx.send(Sequenced::new(person_alice()))?;
+    assert_eq!(unwrap_stream(&mut result, 100).await.into_inner(), 1,);
 
-    // Assert
-    assert_eq!(
-        unwrap_stream(&mut result, 100).await.into_inner(),
-        1,
-        "First emission should increment counter to 1"
-    );
-
-    // Act
     non_empty_tx.send(Sequenced::new(person_bob()))?;
+    assert_eq!(unwrap_stream(&mut result, 100).await.into_inner(), 2,);
 
-    // Assert
-    assert_eq!(
-        unwrap_stream(&mut result, 100).await.into_inner(),
-        2,
-        "Second emission should increment counter to 2"
-    );
-
-    // Act
     non_empty_tx.send(Sequenced::new(person_charlie()))?;
+    assert_eq!(unwrap_stream(&mut result, 100).await.into_inner(), 3,);
 
-    // Assert
-    assert_eq!(
-        unwrap_stream(&mut result, 100).await.into_inner(),
-        3,
-        "Third emission should increment counter to 3"
-    );
     Ok(())
 }
 
@@ -110,56 +96,43 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
             state.from_testdata(item)
         });
 
-    // Act
+    // Act & Assert
     tx1.send(Sequenced::new(person_alice()))?;
-
-    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100)
             .await
             .into_inner()
             .person_name,
         Some("Alice".to_string()),
-        "Repository should contain Alice after first emission"
     );
 
-    // Act
     tx2.send(Sequenced::new(person_bob()))?;
-
-    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100)
             .await
             .into_inner()
             .person_name,
         Some("Bob".to_string()),
-        "Repository should contain Bob after second emission"
     );
 
     // Act
     tx1.send(Sequenced::new(person_charlie()))?;
-
-    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100)
             .await
             .into_inner()
             .person_name,
         Some("Charlie".to_string()),
-        "Repository should contain Charlie after third emission"
     );
 
     // Act
     tx2.send(Sequenced::new(person_dave()))?;
-
-    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100)
             .await
             .into_inner()
             .person_name,
         Some("Dave".to_string()),
-        "Repository should contain Dave after fourth emission"
     );
 
     Ok(())
@@ -199,16 +172,8 @@ async fn test_merge_with_parallel_processing() -> anyhow::Result<()> {
     }
 
     let last = last.expect("Should have received at least one emission");
-    assert_eq!(
-        last.person_name,
-        Some("Charlie".to_string()),
-        "Final repository should have Charlie as last person"
-    );
-    assert_eq!(
-        last.animal_species,
-        Some("Spider".to_string()),
-        "Final repository should have Spider as last animal"
-    );
+    assert_eq!(last.person_name, Some("Charlie".to_string()),);
+    assert_eq!(last.animal_species, Some("Spider".to_string()),);
 
     Ok(())
 }
@@ -219,24 +184,24 @@ async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
     let (tx1, large_stream1) = test_channel::<Sequenced<TestData>>();
     let (tx2, large_stream2) = test_channel::<Sequenced<TestData>>();
 
-    let mut result = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(large_stream1, |item: TestData, state: &mut i32| {
-            let num: i32 = match item {
-                TestData::Person(p) => p.age as i32,
-                TestData::Animal(a) => a.legs as i32,
-                TestData::Plant(pl) => pl.height as i32,
+    let mut result = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(large_stream1, |item: TestData, state: &mut Person| {
+            let num = match item {
+                TestData::Person(p) => p.age,
+                TestData::Animal(a) => a.legs,
+                TestData::Plant(pl) => pl.height,
             };
-            *state += num;
-            *state
+            state.age += num;
+            state.clone()
         })
-        .merge_with(large_stream2, |item: TestData, state: &mut i32| {
-            let num: i32 = match item {
-                TestData::Person(p) => p.age as i32,
-                TestData::Animal(a) => a.legs as i32,
-                TestData::Plant(pl) => pl.height as i32,
+        .merge_with(large_stream2, |item: TestData, state: &mut Person| {
+            let num = match item {
+                TestData::Person(p) => p.age,
+                TestData::Animal(a) => a.legs,
+                TestData::Plant(pl) => pl.height,
             };
-            *state += num;
-            *state
+            state.age += num;
+            state.clone()
         });
 
     // Act
@@ -255,12 +220,301 @@ async fn test_merge_with_large_streams_emits() -> anyhow::Result<()> {
         count += 1;
         final_state = Some(state.into_inner());
     }
-    assert_eq!(count, 20000, "Should have processed all 20000 emissions");
-    assert_eq!(
-        final_state,
-        Some(199990000),
-        "Final accumulated sum should be correct"
+    assert_eq!(count, 20000);
+    assert_eq!(final_state.as_ref().map(|p| p.age), Some(199990000));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[should_panic(expected = "User closure panicked on purpose")]
+async fn test_merge_with_user_closure_panics() {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    // Create a merge_with stream where the closure panics on the second emission
+    let mut result = MergedStream::seed::<Sequenced<usize>>(0usize).merge_with(
+        stream,
+        |_item: TestData, state: &mut usize| {
+            *state += 1;
+            if *state == 2 {
+                panic!("User closure panicked on purpose");
+            }
+            *state
+        },
     );
+
+    // Act: First emission should succeed
+    tx.send(Sequenced::new(person_alice())).unwrap();
+    assert_eq!(
+        unwrap_stream(&mut result, 100).await.into_inner(),
+        1,
+        "First emission should increment state to 1"
+    );
+
+    // Act: Second emission triggers panic
+    tx.send(Sequenced::new(person_bob())).unwrap();
+    let _second = unwrap_stream(&mut result, 100).await; // This will panic
+}
+
+#[tokio::test]
+async fn test_merge_with_into_fluxion_stream_standalone() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
+        });
+
+    // Act & Assert
+    let mut fluxion_stream = merged.into_stream();
+    tx.send(Sequenced::new(person_alice()))?;
+    assert_eq!(
+        unwrap_stream(&mut fluxion_stream, 100)
+            .await
+            .into_inner()
+            .age,
+        25
+    );
+
+    tx.send(Sequenced::new(person_bob()))?;
+    assert_eq!(
+        unwrap_stream(&mut fluxion_stream, 100)
+            .await
+            .into_inner()
+            .age,
+        55
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_merge_with_into_fluxion_stream_empty() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
+        });
+
+    // Act: Convert empty stream to FluxionStream
+    let mut fluxion_stream = merged.into_stream();
+
+    // Drop sender immediately to end stream
+    drop(tx);
+
+    // Assert: Stream should end without errors
+    assert_stream_ended(&mut fluxion_stream, 500).await;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_merge_with_single_stream_interleaved_emissions() -> anyhow::Result<()> {
+    // Arrange
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let mut merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
+        });
+
+    // Act & Assert: Send and verify one at a time
+    tx.send(Sequenced::new(person("A".to_string(), 5)))?;
+    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 5);
+
+    tx.send(Sequenced::new(person("B".to_string(), 10)))?;
+    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 15);
+
+    tx.send(Sequenced::new(person("C".to_string(), 7)))?;
+    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 22);
+    drop(tx);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_merge_with_state_mutation_complex() -> anyhow::Result<()> {
+    // Arrange
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+    struct ComplexState {
+        sum: u32,
+        count: usize,
+        last_person: Option<Person>,
+    }
+
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
+
+    let initial_state = ComplexState {
+        sum: 0,
+        count: 0,
+        last_person: None,
+    };
+
+    let mut merged = MergedStream::seed::<Sequenced<ComplexState>>(initial_state).merge_with(
+        stream,
+        |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.sum += p.age;
+                state.count += 1;
+                state.last_person = Some(p.clone());
+            }
+            ComplexState {
+                sum: state.sum,
+                count: state.count,
+                last_person: state.last_person.clone(),
+            }
+        },
+    );
+
+    // Act & Assert
+    tx.send(Sequenced::new(person("Alice".to_string(), 10)))?;
+    assert_eq!(
+        unwrap_stream(&mut merged, 100).await.into_inner(),
+        ComplexState {
+            sum: 10,
+            count: 1,
+            last_person: Some(Person::new("Alice".to_string(), 10)),
+        }
+    );
+
+    tx.send(Sequenced::new(person("Bob".to_string(), 20)))?;
+    assert_eq!(
+        unwrap_stream(&mut merged, 100).await.into_inner(),
+        ComplexState {
+            sum: 30,
+            count: 2,
+            last_person: Some(Person::new("Bob".to_string(), 20)),
+        }
+    );
+
+    tx.send(Sequenced::new(person("Charlie".to_string(), 5)))?;
+    assert_eq!(
+        unwrap_stream(&mut merged, 100).await.into_inner(),
+        ComplexState {
+            sum: 35,
+            count: 3,
+            last_person: Some(Person::new("Charlie".to_string(), 5)),
+        }
+    );
+
+    drop(tx);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_merge_with_timestamp_ordering_preserved() -> anyhow::Result<()> {
+    // Arrange
+    let (tx1, stream1) = test_channel::<Sequenced<TestData>>();
+    let (tx2, stream2) = test_channel::<Sequenced<TestData>>();
+
+    let mut merged = MergedStream::seed::<Sequenced<Vec<(String, u64)>>>(Vec::new())
+        .merge_with(stream1, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.push((p.name.clone(), 1));
+            }
+            state.clone()
+        })
+        .merge_with(stream2, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.push((p.name.clone(), 2));
+            }
+            state.clone()
+        });
+
+    // Act: Send with specific timestamps
+    tx1.send(Sequenced::with_timestamp(person_alice(), 1))?;
+    tx2.send(Sequenced::with_timestamp(person("Bob".to_string(), 20), 2))?;
+    tx1.send(Sequenced::with_timestamp(
+        person("Charlie".to_string(), 30),
+        3,
+    ))?;
+    tx2.send(Sequenced::with_timestamp(person("Dave".to_string(), 40), 4))?;
+
+    // Assert: Items should be processed in timestamp order
+    let r1 = unwrap_stream(&mut merged, 100).await;
+    assert_eq!(r1.clone().into_inner(), vec![("Alice".to_string(), 1)]);
+    assert_eq!(r1.timestamp(), 1);
+
+    let r2 = unwrap_stream(&mut merged, 100).await;
+    assert_eq!(
+        r2.clone().into_inner(),
+        vec![("Alice".to_string(), 1), ("Bob".to_string(), 2)]
+    );
+    assert_eq!(r2.timestamp(), 2);
+
+    let r3 = unwrap_stream(&mut merged, 100).await;
+    assert_eq!(
+        r3.clone().into_inner(),
+        vec![
+            ("Alice".to_string(), 1),
+            ("Bob".to_string(), 2),
+            ("Charlie".to_string(), 1)
+        ]
+    );
+    assert_eq!(r3.timestamp(), 3);
+
+    let r4 = unwrap_stream(&mut merged, 100).await;
+    assert_eq!(
+        r4.clone().into_inner(),
+        vec![
+            ("Alice".to_string(), 1),
+            ("Bob".to_string(), 2),
+            ("Charlie".to_string(), 1),
+            ("Dave".to_string(), 2)
+        ]
+    );
+    assert_eq!(r4.timestamp(), 4);
+
+    drop(tx1);
+    drop(tx2);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_merge_with_clone_closure() -> anyhow::Result<()> {
+    // Arrange
+    let (tx1, stream1) = test_channel::<Sequenced<TestData>>();
+    let (tx2, stream2) = test_channel::<Sequenced<TestData>>();
+
+    let multiplier = 2;
+    let mut merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream1, move |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age * multiplier;
+            }
+            state.clone()
+        })
+        .merge_with(stream2, move |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age * multiplier;
+            }
+            state.clone()
+        });
+
+    // Act & Assert
+    tx1.send(Sequenced::new(person_alice()))?;
+    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 50); // 25 * 2
+
+    tx2.send(Sequenced::new(person_bob()))?;
+    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 110); // 50 + (30 * 2)
+
+    drop(tx1);
+    drop(tx2);
 
     Ok(())
 }
@@ -514,258 +768,4 @@ impl Repository {
         let out = self.from_testdata(ts.into_inner());
         Sequenced::with_timestamp(out, seq)
     }
-}
-
-#[tokio::test]
-#[should_panic(expected = "User closure panicked on purpose")]
-async fn test_merge_with_user_closure_panics() {
-    // Arrange
-    let (tx, stream) = test_channel::<Sequenced<TestData>>();
-
-    // Create a merge_with stream where the closure panics on the second emission
-    let mut result = MergedStream::seed::<Sequenced<usize>>(0usize).merge_with(
-        stream,
-        |_item: TestData, state: &mut usize| {
-            *state += 1;
-            if *state == 2 {
-                panic!("User closure panicked on purpose");
-            }
-            *state
-        },
-    );
-
-    // Act: First emission should succeed
-    tx.send(Sequenced::new(person_alice())).unwrap();
-    assert_eq!(
-        unwrap_stream(&mut result, 100).await.into_inner(),
-        1,
-        "First emission should increment state to 1"
-    );
-
-    // Act: Second emission triggers panic
-    tx.send(Sequenced::new(person_bob())).unwrap();
-    let _second = unwrap_stream(&mut result, 100).await; // This will panic
-}
-
-#[tokio::test]
-async fn test_merge_with_into_fluxion_stream_standalone() -> anyhow::Result<()> {
-    // Arrange
-    let (tx, stream) = test_channel::<Sequenced<i32>>();
-
-    let merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
-        *state += value;
-        *state
-    });
-
-    // Act: Convert to FluxionStream without chaining
-    let mut fluxion_stream = merged.into_stream();
-
-    // Assert: Can still use as stream
-    tx.send(Sequenced::with_timestamp(10, 1))?;
-    assert_eq!(
-        unwrap_stream(&mut fluxion_stream, 100).await.into_inner(),
-        10
-    );
-
-    tx.send(Sequenced::with_timestamp(20, 2))?;
-    assert_eq!(
-        unwrap_stream(&mut fluxion_stream, 100).await.into_inner(),
-        30
-    );
-
-    drop(tx);
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_merge_with_into_fluxion_stream_empty() -> anyhow::Result<()> {
-    // Arrange
-    let (tx, stream) = test_channel::<Sequenced<i32>>();
-
-    let merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
-        *state += value;
-        *state
-    });
-
-    // Act: Convert empty stream to FluxionStream
-    let mut fluxion_stream = merged.into_stream();
-
-    // Drop sender immediately to end stream
-    drop(tx);
-
-    // Assert: Stream should end without errors
-    assert_stream_ended(&mut fluxion_stream, 500).await;
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_merge_with_single_stream_interleaved_emissions() -> anyhow::Result<()> {
-    // Arrange
-    let (tx, stream) = test_channel::<Sequenced<i32>>();
-
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
-        *state += value;
-        *state
-    });
-
-    // Act & Assert: Send and verify one at a time
-    tx.send(Sequenced::with_timestamp(5, 1))?;
-    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner(), 5);
-
-    tx.send(Sequenced::with_timestamp(10, 2))?;
-    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner(), 15);
-
-    tx.send(Sequenced::with_timestamp(7, 3))?;
-    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner(), 22);
-    drop(tx);
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_merge_with_state_mutation_complex() -> anyhow::Result<()> {
-    // Arrange
-    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
-    struct ComplexState {
-        sum: i32,
-        count: usize,
-        last_value: Option<i32>,
-    }
-
-    let (tx, stream) = test_channel::<Sequenced<i32>>();
-
-    let initial_state = ComplexState {
-        sum: 0,
-        count: 0,
-        last_value: None,
-    };
-
-    let mut merged = MergedStream::seed::<Sequenced<ComplexState>>(initial_state).merge_with(
-        stream,
-        |value, state| {
-            state.sum += value;
-            state.count += 1;
-            state.last_value = Some(value);
-            ComplexState {
-                sum: state.sum,
-                count: state.count,
-                last_value: state.last_value,
-            }
-        },
-    );
-
-    // Act & Assert
-    tx.send(Sequenced::with_timestamp(10, 1))?;
-    assert_eq!(
-        unwrap_stream(&mut merged, 100).await.into_inner(),
-        ComplexState {
-            sum: 10,
-            count: 1,
-            last_value: Some(10),
-        }
-    );
-
-    tx.send(Sequenced::with_timestamp(20, 2))?;
-    assert_eq!(
-        unwrap_stream(&mut merged, 100).await.into_inner(),
-        ComplexState {
-            sum: 30,
-            count: 2,
-            last_value: Some(20),
-        }
-    );
-
-    tx.send(Sequenced::with_timestamp(5, 3))?;
-    assert_eq!(
-        unwrap_stream(&mut merged, 100).await.into_inner(),
-        ComplexState {
-            sum: 35,
-            count: 3,
-            last_value: Some(5),
-        }
-    );
-
-    drop(tx);
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_merge_with_timestamp_ordering_preserved() -> anyhow::Result<()> {
-    // Arrange
-    let (tx1, stream1) = test_channel::<Sequenced<i32>>();
-    let (tx2, stream2) = test_channel::<Sequenced<i32>>();
-
-    let mut merged = MergedStream::seed::<Sequenced<Vec<(i32, u64)>>>(Vec::new())
-        .merge_with(stream1, |value, state| {
-            state.push((value, 1));
-            state.clone()
-        })
-        .merge_with(stream2, |value, state| {
-            state.push((value, 2));
-            state.clone()
-        });
-
-    // Act: Send with specific timestamps
-    tx1.send(Sequenced::with_timestamp(10, 1))?;
-    tx2.send(Sequenced::with_timestamp(20, 2))?;
-    tx1.send(Sequenced::with_timestamp(30, 3))?;
-    tx2.send(Sequenced::with_timestamp(40, 4))?;
-
-    // Assert: Items should be processed in timestamp order
-    let r1 = unwrap_stream(&mut merged, 100).await;
-    assert_eq!(r1.clone().into_inner(), vec![(10, 1)]);
-    assert_eq!(r1.timestamp(), 1);
-
-    let r2 = unwrap_stream(&mut merged, 100).await;
-    assert_eq!(r2.clone().into_inner(), vec![(10, 1), (20, 2)]);
-    assert_eq!(r2.timestamp(), 2);
-
-    let r3 = unwrap_stream(&mut merged, 100).await;
-    assert_eq!(r3.clone().into_inner(), vec![(10, 1), (20, 2), (30, 1)]);
-    assert_eq!(r3.timestamp(), 3);
-
-    let r4 = unwrap_stream(&mut merged, 100).await;
-    assert_eq!(
-        r4.clone().into_inner(),
-        vec![(10, 1), (20, 2), (30, 1), (40, 2)]
-    );
-    assert_eq!(r4.timestamp(), 4);
-
-    drop(tx1);
-    drop(tx2);
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_merge_with_clone_closure() -> anyhow::Result<()> {
-    // Arrange: Test that closure cloning works correctly
-    let (tx1, stream1) = test_channel::<Sequenced<i32>>();
-    let (tx2, stream2) = test_channel::<Sequenced<i32>>();
-
-    let multiplier = 2;
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(stream1, move |value, state| {
-            *state += value * multiplier;
-            *state
-        })
-        .merge_with(stream2, move |value, state| {
-            *state += value * multiplier;
-            *state
-        });
-
-    // Act
-    tx1.send(Sequenced::with_timestamp(5, 1))?;
-    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner(), 10); // 5 * 2
-
-    tx2.send(Sequenced::with_timestamp(7, 2))?;
-    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner(), 24); // 10 + (7 * 2)
-
-    drop(tx1);
-    drop(tx2);
-
-    Ok(())
 }

@@ -9,48 +9,46 @@
 
 use fluxion_core::{into_stream::IntoStream, FluxionError, StreamItem};
 use fluxion_stream::MergedStream;
-use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors, unwrap_stream, Sequenced};
+use fluxion_test_utils::{
+    assert_no_element_emitted, assert_stream_ended,
+    person::Person,
+    test_channel_with_errors,
+    test_data::{person, person_alice, person_bob, person_diane, TestData},
+    unwrap_stream, unwrap_value, Sequenced,
+};
 use futures::StreamExt;
 
 #[tokio::test]
 async fn test_merge_with_propagates_errors_from_first_stream() -> anyhow::Result<()> {
-    // Arrange: merge_with doesn't directly handle StreamItem, so we filter_map errors
-    let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
-    let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
+    // Arrange
+    let (tx1, stream1) = test_channel_with_errors::<Sequenced<TestData>>();
+    let (tx2, stream2) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(stream1, |value, state| {
-            *state += value;
-            *state
+    let mut merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream1, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
         })
-        .merge_with(stream2, |value, state| {
-            *state += value;
-            *state
+        .merge_with(stream2, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age - 5;
+            }
+            state.clone()
         });
 
-    // Act: Send value from stream1
-    tx1.send(StreamItem::Value(Sequenced::with_timestamp(5, 1)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 5);
+    // Act & Assert
+    tx1.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
-    // Send error - will pass through
     tx1.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    let StreamItem::Error(err) = merged.next().await.unwrap() else {
-        panic!("Expected Error");
-    };
-    assert_eq!(err.to_string(), "Stream processing error: Error");
+    assert!(
+        matches!(merged.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string() == "Stream processing error: Error")
+    );
 
-    // Send value from stream2 - should still work
-    tx2.send(StreamItem::Value(Sequenced::with_timestamp(10, 2)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 15);
-
-    drop(tx1);
-    drop(tx2);
+    tx2.send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 50);
 
     Ok(())
 }
@@ -58,29 +56,24 @@ async fn test_merge_with_propagates_errors_from_first_stream() -> anyhow::Result
 #[tokio::test]
 async fn test_merge_with_error_at_start_filtered() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
-        *state += value;
-        *state
-    });
+    let mut merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
+        });
 
-    // Act: Send error before any values - passes through
+    // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
-    let StreamItem::Error(err) = merged.next().await.unwrap() else {
-        panic!("Expected Error");
-    };
-    assert_eq!(err.to_string(), "Stream processing error: Early error");
+    assert!(
+        matches!(merged.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string() == "Stream processing error: Early error")
+    );
 
-    // Send value after error
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
-
-    // Assert: Stream should process value
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 10);
-
+    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
     drop(tx);
 
     Ok(())
@@ -89,42 +82,36 @@ async fn test_merge_with_error_at_start_filtered() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_merge_with_multiple_streams_error_filtering() -> anyhow::Result<()> {
     // Arrange
-    let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
-    let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx1, stream1) = test_channel_with_errors::<Sequenced<TestData>>();
+    let (tx2, stream2) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(stream1, |value, state| {
-            *state += value;
-            *state
+    let mut merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream1, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
         })
-        .merge_with(stream2, |value, state| {
-            *state += value;
-            *state
+        .merge_with(stream2, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
         });
 
-    // Act: Send errors from both streams - should pass through
+    // Act & Assert
     tx1.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     tx2.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
 
-    // Errors should be emitted in order
-    let StreamItem::Error(err1) = merged.next().await.unwrap() else {
-        panic!("Expected Error");
-    };
-    let StreamItem::Error(err2) = merged.next().await.unwrap() else {
-        panic!("Expected Error");
-    };
-    assert!(err1.to_string().contains("Error"));
-    assert!(err2.to_string().contains("Error"));
+    assert!(
+        matches!(merged.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string().contains("Error"))
+    );
+    assert!(
+        matches!(merged.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string().contains("Error"))
+    );
 
-    // Send values
-    tx1.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 10);
-
-    drop(tx1);
-    drop(tx2);
+    tx1.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
     Ok(())
 }
@@ -132,52 +119,38 @@ async fn test_merge_with_multiple_streams_error_filtering() -> anyhow::Result<()
 #[tokio::test]
 async fn test_merge_with_errors_interleaved_with_values() -> anyhow::Result<()> {
     // Arrange
-    let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
-    let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx1, stream1) = test_channel_with_errors::<Sequenced<TestData>>();
+    let (tx2, stream2) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(stream1, |value, state| {
-            *state += value;
-            *state
+    let mut merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream1, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
         })
-        .merge_with(stream2, |value, state| {
-            *state += value;
-            *state
+        .merge_with(stream2, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age *  2;
+            }
+            state.clone()
         });
 
-    // Act & Assert: Value
-    tx1.send(StreamItem::Value(Sequenced::with_timestamp(5, 1)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 5);
+    // Act & Assert
+    tx1.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
-    // Error - passes through
     tx2.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
-    let StreamItem::Error(_) = merged.next().await.unwrap() else {
-        panic!("Expected Error");
-    };
+    assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
-    // Value
-    tx1.send(StreamItem::Value(Sequenced::with_timestamp(10, 2)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 15);
+    tx1.send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 55);
 
-    // Error - passes through
     tx1.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
-    let StreamItem::Error(_) = merged.next().await.unwrap() else {
-        panic!("Expected Error");
-    };
+    assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
-    // Value
-    tx2.send(StreamItem::Value(Sequenced::with_timestamp(20, 3)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 35);
-
+    tx2.send(StreamItem::Value(Sequenced::new(person_diane())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 135);
     drop(tx1);
     drop(tx2);
 
@@ -187,40 +160,28 @@ async fn test_merge_with_errors_interleaved_with_values() -> anyhow::Result<()> 
 #[tokio::test]
 async fn test_merge_with_state_preserved_despite_filtered_errors() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
-        *state += value;
-        *state
-    });
+    let mut merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
+        });
 
-    // Act: Process values to build state
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 10);
+    // Act & Assert
+    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 30);
+    tx.send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 55);
 
-    // Send error - passes through
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    let StreamItem::Error(_) = merged.next().await.unwrap() else {
-        panic!("Expected Error");
-    };
+    assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
-    // Process more values - state should be preserved
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 35);
-
-    drop(tx);
+    tx.send(StreamItem::Value(Sequenced::new(person_diane())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 95);
 
     Ok(())
 }
@@ -228,31 +189,24 @@ async fn test_merge_with_state_preserved_despite_filtered_errors() -> anyhow::Re
 #[tokio::test]
 async fn test_merge_with_error_before_stream_ends() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
-        *state += value;
-        *state
-    });
+    let mut merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
+        });
 
-    // Act: Send value
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 10);
+    // Act & Assert
+    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
-    // Send error - passes through
     tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    let StreamItem::Error(_) = merged.next().await.unwrap() else {
-        panic!("Expected Error");
-    };
+    assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
-    // Drop transmitter to end stream
-    drop(tx);
-
-    // Assert: Stream should end cleanly
-    assert_stream_ended(&mut merged, 100).await;
+    assert_no_element_emitted(&mut merged, 100).await;
 
     Ok(())
 }
@@ -260,28 +214,24 @@ async fn test_merge_with_error_before_stream_ends() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_merge_with_empty_stream_with_only_errors() -> anyhow::Result<()> {
     // Arrange
-    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
-        *state += value;
-        *state
-    });
+    let mut merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
+        });
 
-    // Act: Send only errors, no values - all pass through
+    // Act & Assert
     tx.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     tx.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
 
-    // Expect both errors
-    let StreamItem::Error(_) = merged.next().await.unwrap() else {
-        panic!("Expected Error 1");
-    };
-    let StreamItem::Error(_) = merged.next().await.unwrap() else {
-        panic!("Expected Error 2");
-    };
+    assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
+    assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
     drop(tx);
-
-    // Stream should end after errors
     assert_stream_ended(&mut merged, 100).await;
 
     Ok(())
@@ -290,88 +240,69 @@ async fn test_merge_with_empty_stream_with_only_errors() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_merge_with_three_streams_with_filtered_errors() -> anyhow::Result<()> {
     // Arrange
-    let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
-    let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
-    let (tx3, stream3) = test_channel_with_errors::<Sequenced<i32>>();
+    let (tx1, stream1) = test_channel_with_errors::<Sequenced<TestData>>();
+    let (tx2, stream2) = test_channel_with_errors::<Sequenced<TestData>>();
+    let (tx3, stream3) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(stream1, |value, state| {
-            *state += value;
-            *state
+    let mut merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream1, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
         })
-        .merge_with(stream2, |value, state| {
-            *state += value;
-            *state
+        .merge_with(stream2, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age * 2;
+            }
+            state.clone()
         })
-        .merge_with(stream3, |value, state| {
-            *state += value;
-            *state
+        .merge_with(stream3, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age * 3;
+            }
+            state.clone()
         });
 
-    // Act: Send values from all streams with errors interspersed
-    tx1.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 10);
+    // Act & Assert
+    tx1.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
-    tx2.send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 30);
+    tx2.send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 85);
 
-    // Error from stream 2 - passes through
     tx2.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    let StreamItem::Error(_) = merged.next().await.unwrap() else {
-        panic!("Expected Error");
-    };
+    assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
-    tx3.send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
-    let StreamItem::Value(result) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(result.into_inner(), 35);
-
-    drop(tx1);
-    drop(tx2);
-    drop(tx3);
+    tx3.send(StreamItem::Value(Sequenced::new(person_diane())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 205);
 
     Ok(())
 }
 
 #[tokio::test]
 async fn test_merge_with_into_fluxion_stream_error_handling() -> anyhow::Result<()> {
-    // Arrange: Test error handling through into_fluxion_stream() chain
-    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    // Arrange
+    let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Create a MergedStream that returns raw Sequenced values, wrap in FluxionStream
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0)
-        .merge_with(stream, |value, state| {
-            *state += value;
-            *state
+    let mut merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
         })
         .into_stream();
 
-    // Act: Send value (error will be filtered by filter_map above)
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
-    let StreamItem::Value(v) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(v.into_inner(), 10);
+    // Act & Assert
+    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
-    // Send error - will pass through, stream continues
     tx.send(StreamItem::Error(FluxionError::stream_error("Filtered")))?;
-    let StreamItem::Error(_) = merged.next().await.unwrap() else {
-        panic!("Expected Error");
-    };
+    assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
-    // Send another value
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
-    let StreamItem::Value(v) = merged.next().await.unwrap() else {
-        panic!("Expected Value");
-    };
-    assert_eq!(v.into_inner(), 30);
+    tx.send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    assert_eq!(unwrap_value(merged.next().await).into_inner().age, 55);
 
     drop(tx);
 
@@ -380,31 +311,35 @@ async fn test_merge_with_into_fluxion_stream_error_handling() -> anyhow::Result<
 
 #[tokio::test]
 async fn test_merge_with_poll_pending_simulation() -> anyhow::Result<()> {
-    // Arrange: Test that stream handles Poll::Pending correctly
+    // Arrange
+    let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
+    let mut merged = MergedStream::seed::<Sequenced<Person>>(Person::new("Sum".to_string(), 0))
+        .merge_with(stream, |item: TestData, state| {
+            if let TestData::Person(p) = item {
+                state.age += p.age;
+            }
+            state.clone()
+        });
 
-    let mut merged = MergedStream::seed::<Sequenced<i32>>(0).merge_with(stream, |value, state| {
-        *state += value;
-        *state
-    });
-
-    // Act: Try to poll before data is available (will return Poll::Pending)
-    // Then send data
+    // Act & Assert
     tokio::select! {
         _ = tokio::time::sleep(tokio::time::Duration::from_millis(10)) => {
-            tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
+            tx.send(StreamItem::Value(Sequenced::new(person("A".to_string(), 10))))?;
         }
         result = merged.next() => {
-            // If we get here, stream returned something (unlikely)
             if let Some(StreamItem::Value(v)) = result {
-                assert_eq!(v.into_inner(), 10);
+                assert_eq!(v.into_inner().age, 10);
             }
         }
     }
 
     assert_eq!(
-        unwrap_stream(&mut merged, 100).await.unwrap().into_inner(),
+        unwrap_stream(&mut merged, 100)
+            .await
+            .unwrap()
+            .into_inner()
+            .age,
         10
     );
 
