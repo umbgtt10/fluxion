@@ -8,10 +8,10 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use crate::ordered_merge::ordered_merge_with_index;
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{Fluxion, StreamItem, Timestamped};
-use fluxion_ordered_merge::OrderedMergeExt;
 
 /// Extension trait providing the `combine_latest` operator for timestamped streams.
 ///
@@ -116,7 +116,7 @@ where
             Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>;
 }
 
-type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>>;
+type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>>;
 
 impl<T, S> CombineLatestExt<T> for S
 where
@@ -141,18 +141,16 @@ where
         use StreamItem;
         let mut streams: PinnedStreams<T> = vec![];
 
-        streams.push(Box::pin(self.map(move |item| (item, 0))));
-        for (index, into_stream) in others.into_iter().enumerate() {
-            let idx = index + 1;
+        streams.push(Box::pin(self));
+        for into_stream in others {
             let stream = into_stream.into_stream();
-            streams.push(Box::pin(stream.map(move |item| (item, idx))));
+            streams.push(Box::pin(stream));
         }
 
         let num_streams = streams.len();
         let state = Arc::new(Mutex::new(IntermediateState::new(num_streams)));
 
-        let combined_stream = streams
-            .ordered_merge()
+        let combined_stream = ordered_merge_with_index(streams)
             .filter_map({
                 let state = Arc::clone(&state);
 

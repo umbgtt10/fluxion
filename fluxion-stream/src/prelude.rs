@@ -36,7 +36,10 @@
 //! - [`StartWithExt`] - Prepend initial values
 //! - [`TakeItemsExt`] - Take first n items
 //! - [`TakeLatestWhenExt`] - Sample on trigger events
-//! - [`TakeWhileExt`] - Take while condition holds/// - [`TapExt`] - Side-effect observation for debugging//! - [`WithLatestFromExt`] - Combine with latest from secondary streams
+//! - [`TakeWhileExt`] - Take while condition holds
+//! - [`TapExt`] - Side-effect observation for debugging
+//! - [`WindowByCountExt`] - Batch items into fixed-size windows
+//! - [`WithLatestFromExt`] - Combine with latest from secondary streams
 //! - [`IntoFluxionStream`] - Convert receivers to streams
 //!
 //! ## Types

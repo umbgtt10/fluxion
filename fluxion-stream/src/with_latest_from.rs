@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::ordered_merge::OrderedMergeExt;
+use crate::ordered_merge::ordered_merge_with_index;
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{Fluxion, StreamItem};
@@ -136,16 +136,13 @@ where
         R::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
         R::Timestamp: From<T::Timestamp> + Debug + Ord + Send + Sync + Copy + 'static,
     {
-        let streams: Vec<PinnedStream<T>> = vec![
-            Box::pin(self.map(move |item| (item, 0))),
-            Box::pin(other.into_stream().map(move |item| (item, 1))),
-        ];
+        let streams: Vec<PinnedStream<T>> = vec![Box::pin(self), Box::pin(other.into_stream())];
 
         let num_streams = streams.len();
         let state = Arc::new(Mutex::new(IntermediateState::new(num_streams)));
         let selector = Arc::new(result_selector);
 
-        let combined_stream = streams.ordered_merge().filter_map({
+        let combined_stream = ordered_merge_with_index(streams).filter_map({
             let state = Arc::clone(&state);
             let selector = Arc::clone(&selector);
 
@@ -196,7 +193,7 @@ where
     }
 }
 
-type PinnedStream<T> = Pin<Box<dyn Stream<Item = (StreamItem<T>, usize)> + Send + Sync>>;
+type PinnedStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>;
 
 #[derive(Clone)]
 struct IntermediateState<T> {

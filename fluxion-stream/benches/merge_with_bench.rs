@@ -3,18 +3,23 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use criterion::{BenchmarkId, Criterion, Throughput};
+use fluxion_core::StreamItem;
 use fluxion_stream::merge_with::MergedStream;
 use fluxion_test_utils::Sequenced;
-use futures::stream::{self, StreamExt};
+use futures::{
+    stream::{self, StreamExt},
+    Stream,
+};
 use std::hint::black_box;
 use tokio::runtime::Runtime;
 
 fn make_stream(
     size: usize,
     payload_size: usize,
-) -> impl futures::Stream<Item = Sequenced<Vec<u8>>> {
-    let items: Vec<Sequenced<Vec<u8>>> = (0..size)
+) -> impl Stream<Item = StreamItem<Sequenced<Vec<u8>>>> {
+    let items: Vec<StreamItem<Sequenced<Vec<u8>>>> = (0..size)
         .map(|_i| Sequenced::new(vec![0u8; payload_size]))
+        .map(StreamItem::Value)
         .collect();
     stream::iter(items)
 }

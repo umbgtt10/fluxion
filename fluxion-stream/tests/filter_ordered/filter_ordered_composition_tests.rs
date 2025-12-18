@@ -5,7 +5,7 @@
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{StreamItem, Timestamped};
 use fluxion_stream::prelude::*;
-use fluxion_stream::{CombinedState, MergedStream};
+use fluxion_stream::MergedStream;
 use fluxion_test_utils::{
     assert_no_element_emitted,
     helpers::unwrap_stream,
@@ -16,9 +16,6 @@ use fluxion_test_utils::{
     },
     Sequenced,
 };
-use tokio::sync::mpsc;
-
-static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;
 
 #[tokio::test]
 async fn test_ordered_merge_filter_ordered() -> anyhow::Result<()> {
@@ -60,7 +57,7 @@ async fn test_combine_latest_filter_ordered() -> anyhow::Result<()> {
     let (a_tx, a_rx) = test_channel::<Sequenced<TestData>>();
 
     let mut stream = p_rx
-        .combine_latest(vec![a_rx], COMBINE_FILTER)
+        .combine_latest(vec![a_rx], |_| true)
         .filter_ordered(|wrapper| {
             // Filter: only emit when first item is a person with age > 30
             let state = &wrapper.clone().into_inner();
@@ -99,8 +96,7 @@ async fn test_combine_latest_filter_ordered() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_merge_with_chaining_filter_ordered() -> anyhow::Result<()> {
     // Arrange
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-    let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
+    let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     // Act: Chain merge_with with filter_ordered (only values > 2)
     let mut result = MergedStream::seed::<Sequenced<usize>>(0)

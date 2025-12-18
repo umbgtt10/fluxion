@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-12-18
+
+**Goal:** Stream composition, multi-consumer support, and sampling operators
+
 ### Added
 - **`tap` Operator** (`fluxion-stream`)
   - Perform side-effects without transforming items (logging, debugging, metrics)
@@ -64,6 +68,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enables panic-free production code
 
 ### Changed
+- **Test Refactoring** (`fluxion-stream`)
+  - All `merge_with` tests converted from primitive types (i32/Person) to use `TestData`
+  - Standardized test data usage with packaged helpers (`person_alice()`, `person_bob()`, etc.)
+  - Replaced verbose multi-line assertions with single compact assertions
+  - Consistent use of `Sequenced::new()` for auto-timestamping, `with_timestamp()` only where explicit control needed
+  - All error propagation tests now use `TestData` for consistency
+  - Improved test readability and maintainability across all test files
+
 - **BREAKING**: Removed `FluxionStream` wrapper type
   - Extension traits now work directly on any `Stream<Item = StreamItem<T>>`
   - Use `IntoFluxionStream` trait to convert `UnboundedReceiver` to fluxion streams
@@ -80,7 +92,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `partition.rs` - `unwrap_or_else(|_| unreachable!())` for subscription
   - `delay.rs` - Pattern matching for future completion
 
-- **Documentation**: Updated operator count to 26 (was 25)
+- **Documentation**: Updated operator count to 29 (includes all stream, time, and exec operators)
+  - **Note**: `window_by_count` operator was previously undocumented; now fully documented in operator summary
 - **Documentation**: Updated test count to 800+ (was 730)
 - **Documentation**: Improved `FluxionSubject` documentation
   - Added comprehensive module-level documentation with examples
@@ -592,7 +605,8 @@ See [Error Handling Guide](docs/ERROR-HANDLING.md) for comprehensive patterns.
 
 ---
 
-[Unreleased]: https://github.com/umbgtt10/fluxion/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/umbgtt10/fluxion/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/umbgtt10/fluxion/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/umbgtt10/fluxion/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/umbgtt10/fluxion/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/umbgtt10/fluxion/compare/v0.2.2...v0.3.0

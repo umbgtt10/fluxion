@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::{Fluxion, HasTimestamp, Timestamped};
-use fluxion_ordered_merge::OrderedMergeExt;
+use crate::ordered_merge::ordered_merge_with_index;
+use fluxion_core::{Fluxion, HasTimestamp, StreamItem, Timestamped};
 use futures::stream::{empty, Empty, Stream, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
@@ -25,7 +25,7 @@ pub struct MergedStream<S, State, Item> {
     _marker: PhantomData<Item>,
 }
 
-impl<State> MergedStream<Empty<()>, State, ()>
+impl<State> MergedStream<Empty<StreamItem<()>>, State, ()>
 where
     State: Send + 'static,
 {
@@ -41,13 +41,13 @@ where
     /// ```
     pub fn seed<OutWrapper>(
         initial_state: State,
-    ) -> MergedStream<Empty<OutWrapper>, State, OutWrapper>
+    ) -> MergedStream<Empty<StreamItem<OutWrapper>>, State, OutWrapper>
     where
         State: Send + 'static,
         OutWrapper: Send + Unpin + 'static,
     {
         MergedStream {
-            inner: empty(),
+            inner: empty::<StreamItem<OutWrapper>>(),
             state: Arc::new(Mutex::new(initial_state)),
             _marker: PhantomData,
         }
@@ -56,7 +56,7 @@ where
 
 impl<S, State, Item> MergedStream<S, State, Item>
 where
-    S: Stream + Send + Sync + 'static,
+    S: Stream<Item = StreamItem<Item>> + Send + Sync + 'static,
     State: Send + Sync + 'static,
     Item: Fluxion,
     <Item as Timestamped>::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
@@ -73,22 +73,17 @@ where
     /// # Parameters
     /// - `new_stream`: The new Timestamped stream to merge
     /// - `process_fn`: Function to process inner values with mutable access to shared state
-    pub fn merge_with<NewStream, F>(
+    pub fn merge_with<NewStream, NewItem, F>(
         self,
         new_stream: NewStream,
         process_fn: F,
-    ) -> MergedStream<impl Stream<Item = Item>, State, Item>
+    ) -> MergedStream<impl Stream<Item = StreamItem<Item>>, State, Item>
     where
-        S::Item: Into<Item>,
-        NewStream: Stream + Send + Sync + 'static,
-        NewStream::Item: Fluxion,
-        <NewStream::Item as Timestamped>::Inner:
-            Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-        <NewStream::Item as HasTimestamp>::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
-        F: FnMut(
-                <NewStream::Item as Timestamped>::Inner,
-                &mut State,
-            ) -> <Item as Timestamped>::Inner
+        NewStream: Stream<Item = StreamItem<NewItem>> + Send + Sync + 'static,
+        NewItem: Fluxion,
+        <NewItem as Timestamped>::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+        <NewItem as HasTimestamp>::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
+        F: FnMut(<NewItem as Timestamped>::Inner, &mut State) -> <Item as Timestamped>::Inner
             + Send
             + Sync
             + Clone
@@ -96,29 +91,39 @@ where
         Item: Fluxion,
         <Item as Timestamped>::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
         <Item as HasTimestamp>::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
-        <NewStream::Item as HasTimestamp>::Timestamp:
-            Into<<Item as HasTimestamp>::Timestamp> + Copy,
+        <NewItem as HasTimestamp>::Timestamp: Into<<Item as HasTimestamp>::Timestamp> + Copy,
     {
         let shared_state = Arc::clone(&self.state);
-        let new_stream_mapped = new_stream.then(move |timestamped_item| {
+        let new_stream_mapped = new_stream.then(move |stream_item| {
             let shared_state = Arc::clone(&shared_state);
             let mut process_fn = process_fn.clone();
             async move {
-                let timestamp = timestamped_item.timestamp();
-                let inner_value = timestamped_item.into_inner();
-                let mut state = shared_state.lock().await;
-                let result_value = process_fn(inner_value, &mut *state);
-                Item::with_timestamp(result_value, timestamp.into())
+                match stream_item {
+                    StreamItem::Value(timestamped_item) => {
+                        let timestamp = timestamped_item.timestamp();
+                        let inner_value = timestamped_item.into_inner();
+                        let mut state = shared_state.lock().await;
+                        let result_value = process_fn(inner_value, &mut *state);
+                        StreamItem::Value(Item::with_timestamp(result_value, timestamp.into()))
+                    }
+                    StreamItem::Error(e) => StreamItem::Error(e),
+                }
             }
         });
 
-        let self_stream_mapped = self.inner.map(Into::into);
+        // self.inner already yields `StreamItem<Item>`; pass through values unchanged
+        let self_stream_mapped = self.inner;
 
-        let merged_stream = vec![
-            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = Item> + Send + Sync>>,
-            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = Item> + Send + Sync>>,
-        ]
-        .ordered_merge();
+        let streams = vec![
+            Box::pin(self_stream_mapped)
+                as Pin<Box<dyn Stream<Item = StreamItem<Item>> + Send + Sync>>,
+            Box::pin(new_stream_mapped)
+                as Pin<Box<dyn Stream<Item = StreamItem<Item>> + Send + Sync>>,
+        ];
+
+        // Use ordered_merge_with_index for immediate error emission (Rx semantics)
+        // Discard the index since we don't need to track which stream emitted
+        let merged_stream = ordered_merge_with_index(streams).map(|(item, _index)| item);
 
         MergedStream {
             inner: merged_stream,
@@ -130,15 +135,11 @@ where
 
 impl<S, State, Item> Stream for MergedStream<S, State, Item>
 where
-    S: Stream<Item = Item>,
+    S: Stream<Item = StreamItem<Item>>,
 {
-    type Item = fluxion_core::StreamItem<Item>;
+    type Item = StreamItem<Item>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        match self.project().inner.poll_next(cx) {
-            Poll::Ready(Some(item)) => Poll::Ready(Some(fluxion_core::StreamItem::Value(item))),
-            Poll::Ready(None) => Poll::Ready(None),
-            Poll::Pending => Poll::Pending,
-        }
+        self.project().inner.poll_next(cx)
     }
 }

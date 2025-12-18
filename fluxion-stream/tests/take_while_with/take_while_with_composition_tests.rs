@@ -39,13 +39,17 @@ async fn test_take_latest_when_take_while_with() -> anyhow::Result<()> {
     latest_filter_tx
         .send(Sequenced::new(person_alice()))
         .unwrap();
-    let element = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    assert_eq!(&element.value, &person_alice());
+    assert_eq!(
+        &unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
+        &person_alice()
+    );
 
     source_tx.send(Sequenced::new(person_bob()))?;
     latest_filter_tx.send(Sequenced::new(person_bob()))?;
-    let element = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    assert_eq!(&element.value, &person_bob());
+    assert_eq!(
+        &unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
+        &person_bob()
+    );
 
     while_filter_tx.send(Sequenced::new(false))?;
     source_tx.send(Sequenced::new(person_charlie()))?;
@@ -77,21 +81,20 @@ async fn test_combine_latest_take_while_with() -> anyhow::Result<()> {
     person_tx.send(Sequenced::new(person_alice()))?;
     animal_tx.send(Sequenced::new(animal_dog()))?;
     plant_tx.send(Sequenced::new(plant_rose()))?;
-    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    let inner = result.clone().into_inner();
-    let state = inner.values();
-    assert_eq!(state.len(), 3);
-    assert_eq!(&state[0], &person_alice());
-    assert_eq!(&state[1], &animal_dog());
-    assert_eq!(&state[2], &plant_rose());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await))
+            .into_inner()
+            .values(),
+        &[person_alice(), animal_dog(), plant_rose()]
+    );
 
     person_tx.send(Sequenced::new(person_bob()))?;
-    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    let inner = result.clone().into_inner();
-    let state = inner.values();
-    assert_eq!(&state[0], &person_bob());
-    assert_eq!(&state[1], &animal_dog());
-    assert_eq!(&state[2], &plant_rose());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await))
+            .into_inner()
+            .values(),
+        &[person_bob(), animal_dog(), plant_rose()]
+    );
 
     filter_tx.send(Sequenced::new(false))?;
     person_tx.send(Sequenced::new(person_charlie()))?;
@@ -111,7 +114,6 @@ async fn test_ordered_merge_filter_ordered_take_while_with() -> anyhow::Result<(
     let other_stream = other_rx;
     let predicate_stream = predicate_rx;
 
-    // Chain ordered operations, then take_while_with at the end
     let mut stream = source_stream
         .ordered_merge(vec![other_stream])
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
@@ -121,12 +123,16 @@ async fn test_ordered_merge_filter_ordered_take_while_with() -> anyhow::Result<(
     predicate_tx.send(Sequenced::new(person_alice()))?;
     source_tx.send(Sequenced::new(animal_dog()))?; // Filtered by filter_ordered
     source_tx.send(Sequenced::new(person_bob()))?; // Kept
-    other_tx.send(Sequenced::new(person_charlie()))?; // Kept
-    let result1 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    let result2 = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        person_bob()
+    );
 
-    assert_eq!(&result1.value, &person_bob());
-    assert_eq!(&result2.value, &person_charlie());
+    other_tx.send(Sequenced::new(person_charlie()))?; // Kept
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        person_charlie()
+    );
 
     Ok(())
 }
@@ -148,22 +154,22 @@ async fn test_ordered_merge_take_while_with() -> anyhow::Result<()> {
     // Act & Assert
     filter_tx.send(Sequenced::new(true))?;
     person_tx.send(Sequenced::new(person_alice()))?;
-    {
-        let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-        assert_eq!(&val.value, &person_alice());
-    }
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
+        person_alice()
+    );
 
     animal_tx.send(Sequenced::new(animal_dog()))?;
-    {
-        let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-        assert_eq!(&val.value, &animal_dog());
-    }
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
+        animal_dog()
+    );
 
     person_tx.send(Sequenced::new(person_bob()))?;
-    {
-        let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-        assert_eq!(&val.value, &person_bob());
-    }
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
+        person_bob()
+    );
 
     filter_tx.send(Sequenced::new(false))?;
     person_tx.send(Sequenced::new(person_charlie()))?;

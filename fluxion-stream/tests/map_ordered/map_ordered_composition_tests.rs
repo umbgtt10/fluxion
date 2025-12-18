@@ -3,7 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream::prelude::*;
-use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
     assert_no_element_emitted,
     helpers::unwrap_stream,
@@ -172,10 +171,8 @@ async fn test_combine_latest_combine_with_previous_map_ordered() -> anyhow::Resu
     let person_stream = person_rx;
     let animal_stream = animal_rx;
 
-    static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;
-
     let mut stream = person_stream
-        .combine_latest(vec![animal_stream], COMBINE_FILTER)
+        .combine_latest(vec![animal_stream], |_| true)
         .combine_with_previous()
         .map_ordered(|stream_item| {
             let item = stream_item;

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use fluxion_core::stream_item::StreamItem;
 use fluxion_core::IntoStream;
 use fluxion_stream::prelude::*;
-use futures::Stream;
+use futures::{Stream, StreamExt};
 
 use super::{
     events::UnifiedEvent,
@@ -93,19 +93,19 @@ impl Repository {
         };
 
         MergedStream::seed::<TimestampedEvent>(initial_state)
-            .merge_with(user_stream, |event, repo| {
+            .merge_with(user_stream.map(StreamItem::Value), |event, repo| {
                 if let UnifiedEvent::UserAdded(user) = &event {
                     repo.users.insert(user.id, user.clone());
                 }
                 event
             })
-            .merge_with(order_stream, |event, repo| {
+            .merge_with(order_stream.map(StreamItem::Value), |event, repo| {
                 if let UnifiedEvent::OrderReceived(order) = &event {
                     repo.orders.insert(order.id, order.clone());
                 }
                 event
             })
-            .merge_with(inventory_stream, |event, repo| {
+            .merge_with(inventory_stream.map(StreamItem::Value), |event, repo| {
                 if let UnifiedEvent::InventoryUpdated(inventory) = &event {
                     repo.inventory
                         .insert(inventory.product_id, inventory.clone());

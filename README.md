@@ -21,7 +21,7 @@ Fluxion is 100% Rust-idiomatic reactive streams library in with temporal orderin
 
 ## Features
 
-- 🔄 **Rx-Style Operators**: 27 implemented operators (32 planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, `share`, `partition`, `tap`, etc.)
+- 🔄 **Rx-Style Operators**: 29 implemented operators (32 planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, `share`, `partition`, `tap`, etc.)
 - ⏱️ **Temporal Ordering**: Guaranteed ordering semantics via `Timestamped` trait
 - ⚡ **Async Execution**: Efficient async processing with `subscribe` and `subscribe_latest`
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
@@ -36,8 +36,7 @@ Fluxion is 100% Rust-idiomatic reactive streams library in with temporal orderin
 
 ### 📋 Other Assesssments
 
-- **[Unwrap](assessments/UNWRAP_EXPECT_ASSESSMENT.md)**
-- **[Mutex](assessments/RWLOCK_VS_MUTEX_ASSESSMENT.md)**
+- **[Ordering](assessments/ORDERED-MERGE-VS-SELECT-ALL-PERFORMANCE-COMPARISON.md)**
 
 ### 📋 Benchmarks
 
@@ -121,8 +120,8 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.5.0"
-fluxion-test-utils = "0.5.0"
+fluxion-rx = "0.6.0"
+fluxion-test-utils = "0.6.0"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -196,8 +195,8 @@ The `merge_with` operator enables elegant stateful stream processing by merging 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.5.0"
-fluxion-test-utils = "0.5.0"
+fluxion-rx = "0.6.0"
+fluxion-test-utils = "0.6.0"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -357,7 +356,7 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.5.0"
+fluxion-exec = "0.6.0"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = "0.7.17"
@@ -460,7 +459,7 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.5.0"
+fluxion-exec = "0.6.0"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = "0.7.17"
@@ -644,7 +643,7 @@ See individual crate READMEs for detailed documentation.
 
 ## Project Status
 
-**Current Version:** 0.5.0
+**Current Version:** 0.6.0
 
 - ✅ Published to crates.io
 - ✅ Core functionality complete

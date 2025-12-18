@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use crate::ordered_merge::ordered_merge_with_index;
 use crate::types::CombinedState;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{Fluxion, StreamItem};
-use fluxion_ordered_merge::OrderedMergeExt;
 use futures::{Stream, StreamExt};
 use parking_lot::Mutex;
 use std::fmt::Debug;
@@ -115,9 +115,6 @@ where
         IS::Stream: Send + Sync + 'static;
 }
 
-type IndexedStream<T> =
-    Pin<Box<dyn Stream<Item = (fluxion_core::StreamItem<T>, usize)> + Send + Sync>>;
-
 type SharedState<V, TS> = Arc<Mutex<Option<(V, TS)>>>;
 
 impl<T, S> EmitWhenExt<T> for S
@@ -136,16 +133,14 @@ where
         IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
     {
-        let source_stream = Box::pin(self.map(|item| (item, 0)));
-        let filter_stream = Box::pin(filter_stream.into_stream().map(|item| (item, 1)));
-
-        let streams: Vec<IndexedStream<T>> = vec![source_stream, filter_stream];
+        let streams: Vec<Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>> =
+            vec![Box::pin(self), Box::pin(filter_stream.into_stream())];
 
         let source_value: SharedState<T::Inner, T::Timestamp> = Arc::new(Mutex::new(None));
         let filter_value: SharedState<T::Inner, T::Timestamp> = Arc::new(Mutex::new(None));
         let filter = Arc::new(filter);
 
-        let combined_stream = streams.ordered_merge().filter_map(move |(item, index)| {
+        let combined_stream = ordered_merge_with_index(streams).filter_map(move |(item, index)| {
             let source_value = Arc::clone(&source_value);
             let filter_value = Arc::clone(&filter_value);
             let filter = Arc::clone(&filter);

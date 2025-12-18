@@ -21,14 +21,18 @@ async fn test_filter_ordered_basic_predicate() -> anyhow::Result<()> {
 
     // Act & Assert
     tx.send(Sequenced::new(person_alice()))?;
-    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(&value.value, &person_alice());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_alice()
+    );
 
     tx.send(Sequenced::new(animal_dog()))?;
     tx.send(Sequenced::new(person_bob()))?;
 
-    let value = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(&value.value, &person_bob()); // Animal filtered out
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_bob()
+    );
 
     Ok(())
 }
@@ -48,12 +52,12 @@ async fn test_filter_ordered_age_threshold() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_charlie()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_charlie()
     );
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_diane()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_diane()
     );
 
     Ok(())
@@ -105,16 +109,16 @@ async fn test_filter_ordered_none_filtered() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_alice()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_alice()
     );
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &animal_dog()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        animal_dog()
     );
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &plant_rose()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        plant_rose()
     );
 
     Ok(())
@@ -143,9 +147,9 @@ async fn test_filter_ordered_preserves_ordering() -> anyhow::Result<()> {
     let r2 = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     let r3 = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
 
-    assert_eq!(&r1.value, &person_bob());
-    assert_eq!(&r2.value, &person_diane());
-    assert_eq!(&r3.value, &person_dave());
+    assert_eq!(r1.value, person_bob());
+    assert_eq!(r2.value, person_diane());
+    assert_eq!(r3.value, person_dave());
 
     // Verify sequence numbers are in order
     assert!(r1.timestamp() < r2.timestamp());
@@ -169,12 +173,12 @@ async fn test_filter_ordered_multiple_types() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &animal_dog()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        animal_dog()
     );
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &animal_spider()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        animal_spider()
     );
 
     Ok(())
@@ -199,16 +203,16 @@ async fn test_filter_ordered_complex_predicate() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_bob()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_bob()
     );
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &animal_dog()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        animal_dog()
     );
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_diane()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_diane()
     );
 
     Ok(())
@@ -226,8 +230,8 @@ async fn test_filter_ordered_single_item() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_alice()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_alice()
     );
     assert_stream_ended(&mut result, 500).await;
 
@@ -252,16 +256,16 @@ async fn test_filter_ordered_with_pattern_matching() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_alice()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_alice()
     );
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_dave()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_dave()
     );
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_diane()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_diane()
     );
 
     Ok(())
@@ -291,12 +295,12 @@ async fn test_filter_ordered_alternating_pattern() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_alice()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_alice()
     );
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_charlie()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_charlie()
     );
 
     Ok(())

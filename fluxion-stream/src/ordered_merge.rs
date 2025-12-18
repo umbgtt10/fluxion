@@ -3,12 +3,12 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{into_stream::IntoStream, Fluxion, StreamItem};
-use fluxion_ordered_merge::OrderedMerge;
-use futures::Stream;
+use futures::task::{Context, Poll};
+use futures::{Stream, StreamExt};
 use std::fmt::Debug;
 use std::pin::Pin;
 
-// Re-export low-level types from fluxion-ordered-merge
+// Re-export for backwards compatibility with modules that use it
 pub use fluxion_ordered_merge::OrderedMergeExt;
 
 /// Extension trait providing high-level ordered merge for `Timestamped` streams.
@@ -122,6 +122,114 @@ where
             all_streams.push(Box::pin(stream));
         }
 
-        OrderedMerge::new(all_streams)
+        // Use the indexed version internally and discard the index
+        StreamExt::map(
+            OrderedMergeWithImmediateErrorsIndexed::new(all_streams),
+            |(item, _index)| item,
+        )
+    }
+}
+
+/// Helper function to create an ordered merge stream with immediate error emission
+/// and stream indexing for operators that need to track which stream emitted each item.
+///
+/// This is used internally by operators like `combine_latest`, `with_latest_from`, etc.
+/// that need both temporal ordering of values AND immediate error propagation.
+pub(crate) fn ordered_merge_with_index<T>(
+    streams: Vec<Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>>,
+) -> impl Stream<Item = (StreamItem<T>, usize)> + Send + Sync
+where
+    T: Fluxion + Unpin,
+    T::Inner: Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
+{
+    OrderedMergeWithImmediateErrorsIndexed::new(streams)
+}
+
+/// Stream that merges multiple timestamped streams in temporal order with stream indices.
+///
+/// Like OrderedMergeWithImmediateErrors but also tracks which stream each item came from.
+struct OrderedMergeWithImmediateErrorsIndexed<T>
+where
+    T: Fluxion,
+    T::Inner: Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
+{
+    streams: Vec<Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>>,
+    buffered: Vec<Option<T>>,
+}
+
+impl<T> OrderedMergeWithImmediateErrorsIndexed<T>
+where
+    T: Fluxion,
+    T::Inner: Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
+{
+    fn new(streams: Vec<Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>>) -> Self {
+        let count = streams.len();
+        let buffered = (0..count).map(|_| None).collect();
+        Self { streams, buffered }
+    }
+}
+
+impl<T> Stream for OrderedMergeWithImmediateErrorsIndexed<T>
+where
+    T: Fluxion + Unpin,
+    T::Inner: Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
+{
+    type Item = (StreamItem<T>, usize);
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        // Poll streams to fill empty buffer slots - emit errors immediately with their index
+        let mut any_pending = false;
+
+        for i in 0..self.streams.len() {
+            if self.buffered[i].is_none() {
+                match self.streams[i].as_mut().poll_next(cx) {
+                    Poll::Ready(Some(StreamItem::Error(e))) => {
+                        // Rx fail-fast: emit error immediately with stream index
+                        return Poll::Ready(Some((StreamItem::Error(e), i)));
+                    }
+                    Poll::Ready(Some(StreamItem::Value(item))) => {
+                        self.buffered[i] = Some(item);
+                    }
+                    Poll::Ready(None) => {
+                        // Stream is done, leave as None
+                    }
+                    Poll::Pending => {
+                        any_pending = true;
+                    }
+                }
+            }
+        }
+
+        // Find the minimum timestamped value among all buffered values
+        let mut min_idx = None;
+        let mut min_val: Option<&T> = None;
+
+        for (i, item) in self.buffered.iter().enumerate() {
+            if let Some(val) = item {
+                let should_update = min_val.is_none_or(|curr_val| val < curr_val);
+
+                if should_update {
+                    min_idx = Some(i);
+                    min_val = Some(val);
+                }
+            }
+        }
+
+        // Return the minimum value if found, with its stream index
+        if let Some(idx) = min_idx {
+            if let Some(item) = self.buffered[idx].take() {
+                Poll::Ready(Some((StreamItem::Value(item), idx)))
+            } else {
+                unreachable!("min_idx is only Some when buffered[idx] is Some")
+            }
+        } else if any_pending {
+            Poll::Pending
+        } else {
+            Poll::Ready(None)
+        }
     }
 }

@@ -14,6 +14,7 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 | [`with_latest_from`](#with_latest_from) | Combining | Sample secondary on primary | Primary only |
 | [`start_with`](#start_with) | Combining | Prepend initial values | Source |
 | [`combine_with_previous`](#combine_with_previous) | Windowing | Pair consecutive values | Source |
+| [`window_by_count`](#window_by_count) | Windowing | Batch items into fixed-size windows | Source |
 | [`scan_ordered`](#scan_ordered) | Transformation | Accumulate state, emit intermediate results | Source |
 | [`map_ordered`](#map_ordered) | Transformation | Transform items | Source |
 | [`filter_ordered`](#filter_ordered) | Filtering | Filter items | Source |
@@ -51,6 +52,7 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 
 ### 🪟 Windowing & Pairing
 - [`combine_with_previous`](#combine_with_previous) - Pair consecutive values
+- [`window_by_count`](#window_by_count) - Batch items into fixed-size windows
 
 ### 🔄 Transformation
 - [`scan_ordered`](#scan_ordered) - Accumulate state, emit intermediate results
@@ -202,6 +204,23 @@ let paired = stream.combine_with_previous();
 - First emission has `previous = None`
 - Subsequent emissions pair consecutive values
 - Useful for delta calculation and change detection
+- See API docs for detailed examples
+
+---
+
+#### `window_by_count`
+**Batch stream items into fixed-size windows**
+
+```rust
+let windowed = stream.window_by_count(3);
+// Emits: vec![item1, item2, item3], vec![item4, item5, item6], ...
+```
+
+- Collects items into windows (batches) of specified size
+- Emits complete window when size is reached
+- Emits partial window on stream completion
+- Errors pass through immediately (not included in windows)
+- Useful for batch processing, aggregating metrics, reducing API calls
 - See API docs for detailed examples
 
 ---
@@ -530,6 +549,7 @@ Every item in a Fluxion stream has a `timestamp` attribute (accessed via `.times
 | `on_error` | Original source timestamp | Error handling preserves timing |
 | `start_with` | User-provided timestamp | Initial values have their own timestamps |
 | `combine_with_previous` | Current value's timestamp | Window driven by current item |
+| `window_by_count` | Latest item's timestamp | Window emitted when full or stream completes |
 | `combine_latest` | Triggering stream's timestamp | Event occurred when any stream updated |
 | `with_latest_from` | **Primary stream's timestamp** | Emission driven by primary |
 | `take_latest_when` | **Trigger stream's timestamp** | Emission driven by trigger |
