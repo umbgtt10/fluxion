@@ -170,19 +170,6 @@ assert_eq!(item.value, 42);
 // Timestamp uses chrono::Utc::now()
 ```
 
-### Lock Utilities
-
-Safe mutex lock acquisition with error propagation:
-
-```rust
-use fluxion_core::lock_utilities::lock_or_error;
-use std::sync::{Arc, Mutex};
-
-let mutex = Arc::new(Mutex::new(vec![1, 2, 3]));
-let mut guard = lock_or_error(&mutex)?;
-guard.push(4);
-```
-
 ## Architecture Notes
 
 ### Why FluxionSubject Uses Arc<Mutex<>>
@@ -228,7 +215,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-core = "0.5.0"
+fluxion-core = "0.6.0"
 ```
 
 ## License

@@ -398,6 +398,28 @@ let pairs = stream.combine_with_previous();
 
 [Full documentation](src/combine_with_previous.rs) | [Tests](tests/combine_with_previous_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#combine_with_previous---sliding-window-pairing)
 
+#### `window_by_count`
+Batches stream items into fixed-size windows.
+
+**Use case:** Batch processing, aggregating metrics, reducing API calls
+
+```rust
+use fluxion_stream::WindowByCountExt;
+
+let windowed = stream.window_by_count(3);
+
+// Emits: vec![item1, item2, item3], vec![item4, item5, item6], ...
+```
+
+**Behavior:**
+- Collects items into windows of specified size
+- Emits complete window when size is reached
+- Emits partial window on stream completion
+- Errors pass through immediately (not batched)
+- Useful for batch processing and reducing downstream operations
+
+[Full documentation](src/window_by_count.rs) | [Tests](tests/window_by_count_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#window_by_count---batching-items-into-windows)
+
 ### Utility Operators
 
 #### `map_ordered`

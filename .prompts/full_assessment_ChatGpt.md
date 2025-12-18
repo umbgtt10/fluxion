@@ -8,6 +8,6 @@ When counting unwrap() and expect() usages, highlight in the report whether thes
 For those in productive code highlight whether they are justified or should be replaced with proper error handling.
 
 Add this on top:
-Reviewer: ChatGpt 5.1 Copilot
+Reviewer: ChatGpt 5.2 Copilot
 Date: <date>
 Scope: Entire workspace (multi-crate) + comparison with RxRust (https://github.com/rxRust/rxRust)

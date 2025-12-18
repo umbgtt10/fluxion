@@ -188,7 +188,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 
 ## 🚀 Version 0.6.0 - Stream Composition & Sampling
 
-**Status:** Being implemented
+**Status:** Published to crates.io
 
 **Goal:** Enable stream sharing across multiple consumers and add sampling/batching operators
 
@@ -199,21 +199,21 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - ✅ `sample_ratio(ratio, seed)` operator - Probabilistic downsampling (0.0 to 1.0) with deterministic seeding
 - ✅ `tap` operator - Perform side-effects for debugging/observing stream values
 - ✅ `window_by_count(n)` operator - Count-based batching into Vec<T>
-- [ ] `merge_with` can handle errors
+- ✅ `merge_with` can handle errors
 
 **Documentation:**
-- [ ] Stream sharing patterns and examples
-- [ ] FluxionSubject usage guide
-- [ ] Sampling strategies documentation
-- [ ] Performance characteristics of each operator
+- ✅ Stream sharing patterns and examples
+- ✅ FluxionSubject usage guide
+- ✅ Sampling strategies documentation
+- ✅ Performance characteristics of each operator
 
 **Quality Gates:**
-- [ ] All tests passing
-- [ ] Zero clippy warnings
-- [ ] Zero compiler warnings
-- [ ] Doc tests for all new operators
-- [ ] Benchmarks for sampling operators
-- [ ] CI green
+- ✅ All tests passing
+- ✅ Zero clippy warnings
+- ✅ Zero compiler warnings
+- ✅ Doc tests for all new operators
+- ✅ Benchmarks for sampling operators
+- ✅ CI green
 
 ## 🚀 Version 0.7.0 - WASM & Runtime Abstraction
 
