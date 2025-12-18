@@ -3,13 +3,54 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use criterion::{BenchmarkId, Criterion, Throughput};
-use fluxion_core::FluxionSubject;
 use fluxion_core::StreamItem;
-use fluxion_test_utils::Sequenced;
+use fluxion_core::{FluxionSubject, HasTimestamp, Timestamped};
 use futures::StreamExt;
 use std::hint::black_box;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::runtime::Runtime;
+
+// Simple timestamped wrapper for benchmarks (no test-utils dependency)
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct BenchValue<T> {
+    value: T,
+    timestamp: u64,
+}
+
+impl<T> BenchValue<T> {
+    fn new(value: T) -> Self {
+        static COUNTER: AtomicU64 = AtomicU64::new(1);
+        Self {
+            value,
+            timestamp: COUNTER.fetch_add(1, Ordering::Relaxed),
+        }
+    }
+}
+
+impl<T> HasTimestamp for BenchValue<T> {
+    type Timestamp = u64;
+
+    fn timestamp(&self) -> Self::Timestamp {
+        self.timestamp
+    }
+}
+
+impl<T: Clone> Timestamped for BenchValue<T> {
+    type Inner = T;
+
+    fn into_inner(self) -> Self::Inner {
+        self.value
+    }
+
+    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
+        Self { value, timestamp }
+    }
+
+    fn with_fresh_timestamp(value: Self::Inner) -> Self {
+        Self::new(value)
+    }
+}
 
 pub fn bench_subject(c: &mut Criterion) {
     let mut group = c.benchmark_group("subject");
@@ -17,7 +58,7 @@ pub fn bench_subject(c: &mut Criterion) {
     // Subscriber counts to test scalability
     let subscriber_counts = [1usize, 8, 64, 256];
 
-    // Scenario 1: small numeric payload (Sequenced<u64>)
+    // Scenario 1: small numeric payload (BenchValue<u64>)
     for &subs in &subscriber_counts {
         group.throughput(Throughput::Elements(subs as u64));
         let id = BenchmarkId::from_parameter(format!("simple_subs_{subs}"));
@@ -25,7 +66,8 @@ pub fn bench_subject(c: &mut Criterion) {
             bencher.iter(|| {
                 let rt = Runtime::new().unwrap();
                 rt.block_on(async {
-                    let subj: Arc<FluxionSubject<Sequenced<u64>>> = Arc::new(FluxionSubject::new());
+                    let subj: Arc<FluxionSubject<BenchValue<u64>>> =
+                        Arc::new(FluxionSubject::new());
 
                     // Spawn subscriber tasks that await a single item
                     let mut handles = Vec::with_capacity(subs);
@@ -39,7 +81,8 @@ pub fn bench_subject(c: &mut Criterion) {
                     }
 
                     // Send a small numeric value (no test fixtures used)
-                    subj.send(StreamItem::Value(Sequenced::new(42u64))).unwrap();
+                    subj.send(StreamItem::Value(BenchValue::new(42u64)))
+                        .unwrap();
 
                     // Wait for subscribers
                     for h in handles {
@@ -60,7 +103,7 @@ pub fn bench_subject(c: &mut Criterion) {
                 bencher.iter(|| {
                     let rt = Runtime::new().unwrap();
                     rt.block_on(async {
-                        let subj: Arc<FluxionSubject<Sequenced<Vec<u8>>>> =
+                        let subj: Arc<FluxionSubject<BenchValue<Vec<u8>>>> =
                             Arc::new(FluxionSubject::new());
 
                         let mut handles = Vec::with_capacity(subs);
@@ -74,7 +117,7 @@ pub fn bench_subject(c: &mut Criterion) {
                         }
 
                         let payload = vec![0u8; size];
-                        subj.send(StreamItem::Value(Sequenced::new(payload)))
+                        subj.send(StreamItem::Value(BenchValue::new(payload)))
                             .unwrap();
 
                         for h in handles {

@@ -36,7 +36,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Run all benchmarks (all packages)
-        run: cargo bench -p fluxion-stream -p fluxion-stream-time -p fluxion-ordered-merge
+        run: cargo bench -p fluxion-core -p fluxion-stream -p fluxion-stream-time -p fluxion-ordered-merge
 
       # --------------------------------------------------------------
       # 1. ALWAYS create/update baseline from this run (before comparison)

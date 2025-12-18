@@ -26,7 +26,6 @@ tracing = ["dep:tracing"]
 
 [dev-dependencies]
 tokio = { workspace = true }
-fluxion-test-utils = { workspace = true }
 criterion = { workspace = true }
 
 [[bench]]

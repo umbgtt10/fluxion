@@ -157,19 +157,6 @@ pub enum StreamItem<T> {
 
 Enables error propagation through operator chains without terminating the stream. See the [Error Handling Guide](../docs/ERROR-HANDLING.md) for details.
 
-### Sequenced<T> (Test Utils)
-
-A ready-to-use implementation of `Timestamped` using monotonically growing sequence numbers (available in `fluxion-test-utils`):
-
-```rust
-use fluxion_test_utils::Sequenced;
-use fluxion_core::Timestamped;
-
-let item = Sequenced::new(42);
-assert_eq!(item.value, 42);
-// Timestamp uses chrono::Utc::now()
-```
-
 ## Architecture Notes
 
 ### Why FluxionSubject Uses Arc<Mutex<>>

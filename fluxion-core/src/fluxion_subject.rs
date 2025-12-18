@@ -36,27 +36,6 @@
 //! assert_eq!(stream.next().await, Some(StreamItem::Value(2)));
 //! assert_eq!(stream.next().await, None); // Subject closed
 //! # }
-//! ```
-//!
-//! ## Integration with FluxionStream
-//!
-//! To use operators like `filter_ordered` or `map_ordered`, wrap the subscription
-//! in a `FluxionStream` from the `fluxion-stream` crate:
-//!
-//! ```rust
-//! use fluxion_core::{FluxionSubject, StreamItem};
-//! use fluxion_test_utils::Sequenced;
-//!
-//! # async fn example() {
-//! let subject: FluxionSubject<Sequenced<i32>> = FluxionSubject::new();
-//!
-//! let _processed = subject.subscribe().unwrap();
-//!
-//! // Send timestamped values
-//! subject.send(StreamItem::Value(Sequenced::new(5))).unwrap();
-//! subject.send(StreamItem::Value(Sequenced::new(15))).unwrap();
-//! # }
-//! ```
 
 use crate::{FluxionError, StreamItem, SubjectError};
 use futures::channel::mpsc::{self, UnboundedReceiver, UnboundedSender};
