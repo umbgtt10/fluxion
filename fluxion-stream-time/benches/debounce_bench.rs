@@ -4,7 +4,8 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::IntoFluxionStream;
-use fluxion_stream_time::{DebounceExt, InstantTimestamped};
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::{DebounceExt, InstantTimestamped, TokioTimer};
 use futures::stream::StreamExt;
 use std::hint::black_box;
 use std::time::Duration;
@@ -34,13 +35,14 @@ pub fn bench_debounce(c: &mut Criterion) {
                         .unwrap();
 
                     rt.block_on(async {
+                        let timer = TokioTimer;
                         // 2. Create stream and operator
                         let (tx, rx) = mpsc::unbounded_channel();
-                        let stream = rx.into_fluxion_stream().debounce(duration);
+                        let stream = rx.into_fluxion_stream().debounce(duration, timer.clone());
                         let mut stream = Box::pin(stream);
 
                         // 3. Emit value
-                        tx.send(InstantTimestamped::now(1)).unwrap();
+                        tx.send(InstantTimestamped::new(1, timer.now())).unwrap();
 
                         // 4. Advance time instantly (0 wall-clock time, pure CPU cost)
                         advance(duration).await;

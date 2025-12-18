@@ -236,6 +236,28 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - ✅ Doc tests for all operators
 - ✅ CI green
 
+## 🚀 Version 0.6.2 - Introduce Time Abstraction and Implement the First Runtime: Tokio
+
+**Status:** Internal release (not published to crates.io)
+
+**Goal:** Prepare for time abstraction and runtime flexibility
+
+**Essential Features:**
+- [ ] Introduce Timer trait abstracting: sleep and now functions
+- [ ] Implement TokioTimer as default Timer using tokio::time functions
+- [ ] Adapt all existing time-based operators to use Timer trait instead of direct tokio::time calls
+- [ ] Add feature flag for runtime abstraction (default: tokio)
+
+**Documentation:**
+- [ ] Update time-based operators documentation to explain Timer abstraction and usage patterns with rationales
+
+**Quality Gates:**
+- [ ] All tests passing
+- [ ] Zero clippy warnings
+- [ ] Zero compiler warnings
+- [ ] Doc tests for all operators
+- [ ] CI green
+
 ## 🚀 Version 0.7.0 - WASM & Runtime Abstraction
 
 **Status:** Planned

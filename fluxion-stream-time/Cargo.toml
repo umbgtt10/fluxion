@@ -20,7 +20,8 @@ tracing = { workspace = true, optional = true }
 pin-project = { workspace = true }
 
 [features]
-default = []
+default = ["time-tokio"]
+time-tokio = ["tokio/time"]
 tracing = ["dep:tracing", "fluxion-core/tracing"]
 
 [dev-dependencies]

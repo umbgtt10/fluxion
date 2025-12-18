@@ -2,8 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::runtimes::TokioTimer;
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::{prelude::*, TokioTimestamped};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -16,14 +17,14 @@ use tokio::time::{advance, pause};
 #[tokio::test]
 async fn test_debounce_emits_after_quiet_period() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let debounce_duration = Duration::from_millis(500);
-    let mut debounced = stream.debounce(debounce_duration);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let mut debounced = stream.debounce(Duration::from_millis(500), timer.clone());
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut debounced, 0).await;
 
     advance(Duration::from_millis(100)).await;
@@ -44,18 +45,18 @@ async fn test_debounce_emits_after_quiet_period() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_debounce_resets_on_new_value() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let debounce_duration = Duration::from_millis(500);
-    let mut debounced = stream.debounce(debounce_duration);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let mut debounced = stream.debounce(Duration::from_millis(500), timer.clone());
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_element_emitted(&mut debounced, 0).await;
 
     advance(Duration::from_millis(300)).await;
@@ -73,20 +74,20 @@ async fn test_debounce_resets_on_new_value() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_debounce_multiple_resets() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let debounce_duration = Duration::from_millis(500);
-    let mut debounced = stream.debounce(debounce_duration);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let mut debounced = stream.debounce(Duration::from_millis(500), timer.clone());
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
 
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
 
-    tx.send(InstantTimestamped::now(person_charlie()))?;
+    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
@@ -102,14 +103,14 @@ async fn test_debounce_multiple_resets() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_debounce_emits_pending_on_stream_end() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let debounce_duration = Duration::from_millis(500);
-    let mut debounced = stream.debounce(debounce_duration);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let mut debounced = stream.debounce(Duration::from_millis(500), timer.clone());
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(200)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 

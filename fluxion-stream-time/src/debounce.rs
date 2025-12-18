@@ -4,6 +4,7 @@
 
 //! Debounce operator for time-based stream processing.
 
+use crate::timer::Timer;
 use crate::InstantTimestamped;
 use fluxion_core::StreamItem;
 use futures::Stream;
@@ -12,15 +13,15 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
-use tokio::time::{sleep, Instant, Sleep};
 
 /// Extension trait providing the `debounce` operator for streams.
 ///
-/// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to debounce emissions
+/// This trait allows any stream of `StreamItem<InstantTimestamped<T, TM>>` to debounce emissions
 /// by a specified duration.
-pub trait DebounceExt<T>: Stream<Item = StreamItem<InstantTimestamped<T>>> + Sized
+pub trait DebounceExt<T, TM>: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Sized
 where
     T: Send,
+    TM: Timer,
 {
     /// Debounces the stream by the specified duration.
     ///
@@ -45,7 +46,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_time::{DebounceExt, InstantTimestamped};
+    /// use fluxion_stream_time::{DebounceExt, InstantTimestamped, TokioTimer};
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
     /// use futures::stream::StreamExt;
@@ -58,11 +59,12 @@ where
     /// let (tx, rx) = mpsc::unbounded_channel();
     /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
     ///
-    /// let mut debounced = source.debounce(Duration::from_millis(100));
+    /// let timer = TokioTimer;
+    /// let mut debounced = source.debounce(Duration::from_millis(100), timer.clone());
     ///
     /// // Alice and Bob emitted immediately. Alice should be debounced (dropped).
-    /// tx.send(InstantTimestamped::now(person_alice())).unwrap();
-    /// tx.send(InstantTimestamped::now(person_bob())).unwrap();
+    /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
+    /// tx.send(InstantTimestamped::new(person_bob(), timer.now())).unwrap();
     ///
     /// // Only Bob should remain (trailing debounce)
     /// let item = debounced.next().await.unwrap().unwrap();
@@ -72,44 +74,51 @@ where
     fn debounce(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send;
+        timer: TM,
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send;
 }
 
-impl<S, T> DebounceExt<T> for S
+impl<S, T, TM> DebounceExt<T, TM> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T>>> + Send,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send,
     T: Send,
+    TM: Timer,
 {
     fn debounce(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send {
-        DebounceStream {
+        timer: TM,
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send {
+        Box::pin(DebounceStream {
             stream: self,
             duration,
-            sleep: Box::pin(sleep(Duration::from_millis(0))),
+            timer,
             pending_value: None,
+            sleep: None,
             stream_ended: false,
-        }
+        })
     }
 }
 
 #[pin_project]
-struct DebounceStream<S: Stream> {
+struct DebounceStream<S: Stream, TM: Timer> {
     #[pin]
     stream: S,
-    duration: std::time::Duration,
-    sleep: Pin<Box<Sleep>>,
+    duration: Duration,
+    timer: TM,
     pending_value: Option<S::Item>,
+    #[pin]
+    sleep: Option<TM::Sleep>,
     stream_ended: bool,
 }
 
-impl<S, T> Stream for DebounceStream<S>
+impl<S, T, TM> Stream for DebounceStream<S, TM>
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T>>>,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
     T: Send,
+    TM: Timer,
 {
-    type Item = StreamItem<InstantTimestamped<T>>;
+    type Item = StreamItem<InstantTimestamped<T, TM>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
@@ -125,14 +134,17 @@ where
 
             // Check if we have a pending debounced value and its timer
             if this.pending_value.is_some() {
-                match this.sleep.as_mut().poll(cx) {
-                    Poll::Ready(_) => {
-                        // Timer expired, emit the pending value
-                        let item = this.pending_value.take();
-                        return Poll::Ready(item);
-                    }
-                    Poll::Pending => {
-                        // Timer still running, check for new values
+                if let Some(sleep) = this.sleep.as_mut().as_pin_mut() {
+                    match sleep.poll(cx) {
+                        Poll::Ready(_) => {
+                            // Timer expired, emit the pending value
+                            this.sleep.set(None);
+                            let item = this.pending_value.take();
+                            return Poll::Ready(item);
+                        }
+                        Poll::Pending => {
+                            // Timer still running, check for new values
+                        }
                     }
                 }
             }
@@ -140,9 +152,9 @@ where
             // Poll the source stream for the next item
             match this.stream.as_mut().poll_next(cx) {
                 Poll::Ready(Some(StreamItem::Value(value))) => {
-                    // New value arrived - reset the debounce timer
-                    let deadline = Instant::now() + *this.duration;
-                    this.sleep.as_mut().reset(deadline);
+                    // New value arrived - reset the debounce timer by creating a new sleep future
+                    let sleep_future = this.timer.sleep_future(*this.duration);
+                    this.sleep.set(Some(sleep_future));
 
                     // Replace any pending value with this new one
                     *this.pending_value = Some(StreamItem::Value(value));
@@ -153,6 +165,7 @@ where
                 Poll::Ready(Some(StreamItem::Error(err))) => {
                     // Errors pass through immediately, discarding any pending value
                     *this.pending_value = None;
+                    this.sleep.set(None);
                     return Poll::Ready(Some(StreamItem::Error(err)));
                 }
                 Poll::Ready(None) => {

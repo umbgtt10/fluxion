@@ -48,17 +48,25 @@
 //! ```
 
 mod debounce;
-mod delay;
+//mod delay;
 mod instant_timestamped;
-mod sample;
-mod throttle;
-mod timeout;
+//mod sample;
+//mod throttle;
+//mod timeout;
+pub mod runtimes;
+pub mod timer;
 
 pub mod prelude;
 
 pub use debounce::DebounceExt;
-pub use delay::DelayExt;
+//pub use delay::DelayExt;
 pub use instant_timestamped::InstantTimestamped;
-pub use sample::SampleExt;
-pub use throttle::ThrottleExt;
-pub use timeout::TimeoutExt;
+//pub use sample::SampleExt;
+//pub use throttle::ThrottleExt;
+//pub use timeout::TimeoutExt;
+
+#[cfg(feature = "time-tokio")]
+pub use runtimes::TokioTimer;
+
+#[cfg(feature = "time-tokio")]
+pub type TokioTimestamped<T> = InstantTimestamped<T, TokioTimer>;

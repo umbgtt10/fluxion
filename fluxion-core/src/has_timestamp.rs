@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use std::fmt::Debug;
+
 /// A minimal trait for types that have an intrinsic timestamp for stream ordering.
 ///
 /// This trait provides read-only access to a timestamp value,
@@ -77,7 +79,7 @@
 /// ```
 pub trait HasTimestamp {
     /// The type representing the timestamp
-    type Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug;
+    type Timestamp: Ord + Copy + Send + Sync + Debug;
 
     /// Returns the timestamp value for this item.
     /// Stream operators use this to determine the order of items.
