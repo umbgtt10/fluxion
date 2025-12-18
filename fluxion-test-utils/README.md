@@ -25,7 +25,7 @@ Shared test utilities and fixtures used across the fluxion workspace. This crate
 
 ## Why Sequenced<T>?
 
-Unlike `ChronoTimestamped<T>` in `fluxion-stream-time` (which uses real wall-clock time), `Sequenced<T>` provides:
+Unlike `InstantTimestamped<T>` in `fluxion-stream-time` (which uses real monotonic time), `Sequenced<T>` provides:
 
 - ✅ **Deterministic behavior**: Tests always produce same results
 - ✅ **No time dependencies**: No `tokio::time::sleep()` needed
@@ -116,17 +116,17 @@ async fn test_error_handling() {
 }
 ```
 
-## Sequenced vs ChronoTimestamped
+## Sequenced vs InstantTimestamped
 
-| Feature | `Sequenced<T>` (this crate) | `ChronoTimestamped<T>` (stream-time) |
+| Feature | `Sequenced<T>` (this crate) | `InstantTimestamped<T>` (stream-time) |
 |---------|----------------------------|-------------------------------------|
-| **Timestamp Type** | `u64` (counter) | `DateTime<Utc>` |
+| **Timestamp Type** | `u64` (counter) | `std::time::Instant` |
 | **Purpose** | Testing, simulation | Production, real time |
-| **Deterministic** | ✅ Always | ❌ Wall-clock dependent |
+| **Deterministic** | ✅ Always | ❌ Monotonic time dependent |
 | **Time Operators** | ❌ No | ✅ Yes (`delay`, `debounce`, etc.) |
 | **Core Operators** | ✅ Yes (all) | ✅ Yes (all) |
 | **Speed** | ⚡ Instant | 🐌 Real delays |
-| **Dependencies** | None | `chrono`, `tokio::time` |
+| **Dependencies** | None | `std`, `tokio::time` |
 | **Best For** | Unit/integration tests | Production systems |
 
 ## API Overview
@@ -195,7 +195,7 @@ cargo test --package fluxion-test-utils --all-features --all-targets
 
 ## See Also
 
-- **[fluxion-stream-time](../fluxion-stream-time/README.md)** - Time-based operators with `ChronoTimestamped<T>`
+- **[fluxion-stream-time](../fluxion-stream-time/README.md)** - Time-based operators with `InstantTimestamped<T>`
 - **[Fluxion Documentation](../README.md)** - Main project documentation
 
 ## License

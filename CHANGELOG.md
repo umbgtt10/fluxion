@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Prepares for runtime abstraction and deterministic time in tests
   - Migration: Replace `T::with_fresh_timestamp(value)` with custom constructors
 
+- **Breaking:** Removed `chrono` dependency from `fluxion-stream-time`
+  - Migrated from `chrono::DateTime<Utc>` to `std::time::Instant`
+  - Renamed `ChronoTimestamped<T>` to `InstantTimestamped<T>`
+  - Now uses monotonic timestamps instead of wall-clock time
+  - Benefits: Zero external time dependencies, faster compilation, WASM-ready
+  - Migration: Replace `ChronoTimestamped` with `InstantTimestamped` in your code
+
 ### Fixed
 - **`emit_when` operator** (`fluxion-stream`)
   - Now uses correct timestamps based on which stream triggered the emission
@@ -147,7 +154,7 @@ let stream = rx.into_fluxion_stream();
   - `throttle` - Enforces minimum interval between emissions
   - `sample` - Emits most recent value at periodic intervals
   - `timeout` - Errors if no emission within specified duration
-  - All operators support `std::time::Duration` and `chrono::Duration`
+  - All operators use `std::time::Duration` (v0.6.1+ uses `std::time::Instant` timestamps)
   - Heap allocation minimized in debounce and delay implementations
 - **Benchmarks**: Comprehensive benchmarks for all time operators
   - `delay_bench`, `debounce_bench`, `throttle_bench`, `sample_bench`, `timeout_bench`

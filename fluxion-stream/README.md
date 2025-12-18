@@ -100,7 +100,7 @@ Temporal ordering means items are processed based on their intrinsic timestamp, 
 ```
 
 **How it works:**
-1. Each item has a `timestamp()` value (chrono::DateTime, u64 counter, etc.)
+1. Each item has a `timestamp()` value (std::time::Instant, u64 counter, etc.)
 2. Operators buffer items and emit them in order of their `timestamp()` value
 3. Late-arriving items are placed correctly in the sequence
 4. Gaps in timestamps may cause buffering until the sequence is complete

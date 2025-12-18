@@ -6,7 +6,7 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
-description = "Time-based operators extending fluxion-stream with chrono timestamps"
+description = "Time-based operators extending fluxion-stream with monotonic timestamps"
 keywords = ["async", "stream", "time", "debounce", "throttle"]
 categories = ["asynchronous", "concurrency", "date-and-time"]
 readme = "README.md"

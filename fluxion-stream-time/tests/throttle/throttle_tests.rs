@@ -17,7 +17,7 @@ use tokio::time::{advance, pause};
 use tokio::{spawn, sync::mpsc::unbounded_channel};
 
 #[tokio::test]
-async fn test_throttle_with_chrono_timestamped() -> anyhow::Result<()> {
+async fn test_throttle_with_instant_timestamped() -> anyhow::Result<()> {
     // Arrange
     pause();
 

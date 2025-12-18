@@ -165,21 +165,21 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 **Goal:** Introduce time-based reactive operators through optional `fluxion-stream-time` crate
 
 **Essential Features:**
-- ✅ `fluxion-stream-time` crate - Optional time-based operators with chrono dependency
+- ✅ `fluxion-stream-time` crate - Optional time-based operators (migrated to `std::time::Instant` in v0.6.1)
 - ✅ `debounce(duration)` operator - Emit only after silence period (essential for search inputs, API rate limiting)
 - ✅ `throttle(duration)` operator - Rate-limit emissions (critical for scroll/resize handlers)
 - ✅ `timeout(duration)` operator - Error if no emission within duration (network reliability)
 - ✅ `delay(duration)` operator - Shift emissions forward in time
 - ✅ `sample(duration)` operator - Periodic sampling at fixed intervals
-- ✅ `ChronoStreamOps` extension trait for chrono-based `ChronoTimestamped` types
+- ✅ `InstantStreamOps` extension trait for `std::time::Instant`-based `InstantTimestamped` types
 
 **Documentation:**
 - ✅ Time-based operators guide with real-world examples
-- ✅ Chrono integration patterns (ChronoTimestamped wrapper)
+- ✅ Timestamp integration patterns (InstantTimestamped wrapper, originally ChronoTimestamped in v0.5.0)
 - ✅ Performance characteristics of temporal operators (comprehensive test suite)
 
 **Quality Gates:**
-- ✅ All tests passing with both counter and chrono timestamps
+- ✅ All tests passing with both counter and monotonic timestamps
 - ✅ Zero clippy warnings
 - ✅ Zero compiler warnings
 - ✅ Doc tests for all time-based operators
@@ -224,7 +224,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 **Essential Features:**
 - ✅ Remove `with_fresh_timestamp` method from Timestamped trait in order to no longer be dependant on wall-clock time
 - ✅ Fixed `emit_when` operator to use correct timestamps based on triggering stream (source or filter)
-- [ ] Migrate the time operators from chrono-based timestamps to std:Duration-based timestamps in order to prepare for runtime abstraction: Chrono is no longer a dependency
+- ✅ Migrate the time operators from chrono-based timestamps to std::time::Instant-based timestamps in order to prepare for runtime abstraction: Chrono is no longer a dependency
 
 **Documentation:**
 - ✅ Updated legacy-integration example README to reflect new timestamp handling patterns

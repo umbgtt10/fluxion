@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Time-based operators for streams using chrono timestamps.
+//! Time-based operators for streams using std::time::Instant timestamps.
 //!
 //! This crate provides time-based operators for delaying and debouncing stream emissions,
 //! along with the `InstantTimestamped<T>` wrapper type that uses `std::time::Instant` for timestamps.

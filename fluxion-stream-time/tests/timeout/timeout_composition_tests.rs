@@ -64,7 +64,7 @@ async fn test_timeout_chained_with_combine_with_previous() -> anyhow::Result<()>
     let timeout_duration = Duration::from_millis(100);
 
     // Chain: combine_with_previous -> map -> timeout
-    // We need to map back to ChronoTimestamped for timeout to work
+    // We need to map back to InstantTimestamped for timeout to work
     let pipeline = stream
         .combine_with_previous()
         .map_ordered(|wp| {

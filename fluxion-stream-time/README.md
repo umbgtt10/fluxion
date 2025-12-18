@@ -2,7 +2,7 @@
 
 Time-based operators for [fluxion-stream](https://crates.io/crates/fluxion-stream) using real-world time.
 
-This crate provides specialized time-based operators (`delay`, `debounce`, `throttle`, `sample`, `timeout`) and the `ChronoTimestamped<T>` wrapper for working with real-world timestamps using `chrono::DateTime<Utc>`.
+This crate provides specialized time-based operators (`delay`, `debounce`, `throttle`, `sample`, `timeout`) and the `InstantTimestamped<T>` wrapper for working with monotonic timestamps using `std::time::Instant`.
 
 ## Why This Crate Exists
 
@@ -19,28 +19,28 @@ However, **time-based operators** like `delay`, `debounce`, `throttle`, and `tim
 - **Advantage**: Deterministic, no time dependencies, fast
 
 **2. Real-Time Based (fluxion-stream-time)**
-- **Type**: `ChronoTimestamped<T>` with `DateTime<Utc>` timestamps
-- **Use case**: Production systems, real-world scheduling, wall-clock time
+- **Type**: `InstantTimestamped<T>` with `std::time::Instant` timestamps
+- **Use case**: Production systems, real-world scheduling, monotonic time
 - **Operators**: Time-based operators (`delay`, `debounce`, `throttle`, `sample`, `timeout`)
-- **Advantage**: Real calendar time, duration arithmetic, timezone-aware
+- **Advantage**: Monotonic time, duration arithmetic, no system clock dependencies
 
 ### Why Not Merge These?
 
 Keeping `fluxion-stream` timestamp-agnostic means:
-- ✅ **Zero dependencies** on `chrono` for users who don't need time-based operators
+- ✅ **Minimal dependencies**: Only `std` and `tokio` for time-based operators
 - ✅ **Flexible timestamp types**: You can use custom timestamp representations
-- ✅ **Faster compile times**: `chrono` is only pulled in when you need time operators
+- ✅ **Faster compile times**: Time operators are optional and lightweight
 - ✅ **Testing independence**: Counter-based timestamps for deterministic tests
 
 ## Features
 
-- **`ChronoTimestamped<T>`** - Wrapper type with `DateTime<Utc>` timestamps
+- **`InstantTimestamped<T>`** - Wrapper type with `std::time::Instant` timestamps
 - **`delay(duration)`** - Delays each emission by a specified duration
 - **`debounce(duration)`** - Emits values only after a quiet period
 - **`throttle(duration)`** - Emits a value and then ignores subsequent values for a duration
 - **`sample(duration)`** - Emits the most recent value within periodic time intervals
 - **`timeout(duration)`** - Errors if no emission within duration
-- **`ChronoStreamOps`** - Extension trait for `FluxionStream` with chrono-timestamped items
+- **`InstantStreamOps`** - Extension trait for `FluxionStream` with Instant-timestamped items
 
 ## Quick Reference Table
 
@@ -129,12 +129,12 @@ The only requirement is that your stream items implement `HasTimestamp` with a c
 
 ```rust
 use fluxion_stream::{IntoFluxionStream, FilterOrderedExt, MapOrderedExt, DistinctUntilChangedExt};
-use fluxion_stream_time::{ChronoTimestamped, DelayExt, DebounceExt};
+use fluxion_stream_time::{InstantTimestamped, DelayExt, DebounceExt};
 use std::time::Duration;
 
 // Start with time-based stream
 let stream = source_stream
-    // Time operator (requires DateTime<Utc>)
+    // Time operator (requires std::time::Instant)
     .debounce(Duration::from_millis(100))
 
     // Core operators work seamlessly
@@ -149,10 +149,10 @@ let stream = source_stream
 ```
 
 **This works because:**
-1. `debounce` returns `impl Stream<Item = StreamItem<ChronoTimestamped<T>>>`
+1. `debounce` returns `impl Stream<Item = StreamItem<InstantTimestamped<T>>>`
 2. Core operators like `filter_ordered` accept **any** stream where items implement `HasTimestamp`
-3. The timestamp type (`DateTime<Utc>`) is preserved through the chain
-4. `delay` can then use it again because the type is still `ChronoTimestamped<T>`
+3. The timestamp type (`std::time::Instant`) is preserved through the chain
+4. `delay` can then use it again because the type is still `InstantTimestamped<T>`
 
 ### When to Use Each Crate
 
@@ -163,8 +163,8 @@ let stream = source_stream
 
 **Use `fluxion-stream-time` (time operators) when:**
 - You need real-world time-based behavior (`delay`, `debounce`, etc.)
-- You're working with production event streams with wall-clock timestamps
-- You need duration arithmetic or timezone handling
+- You're working with production event streams requiring monotonic time
+- You need duration arithmetic without system clock dependencies
 
 **Use both together when:**
 - You need time-based rate limiting **plus** complex stream transformations
@@ -174,7 +174,7 @@ let stream = source_stream
 ## Usage
 
 ```rust
-use fluxion_stream_time::{ChronoTimestamped, DelayExt, DebounceExt, SampleExt};
+use fluxion_stream_time::{InstantTimestamped, DelayExt, DebounceExt, SampleExt};
 use std::time::Duration;
 
 // Delay all emissions by 100ms
@@ -190,22 +190,22 @@ let sampled_stream = source_stream
     .sample(Duration::from_millis(100));
 ```
 
-## ChronoTimestamped vs Sequenced
+## InstantTimestamped vs Sequenced
 
-| Feature | `Sequenced<T>` (test-utils) | `ChronoTimestamped<T>` (stream-time) |
+| Feature | `Sequenced<T>` (test-utils) | `InstantTimestamped<T>` (stream-time) |
 |---------|----------------------------|-------------------------------------|
-| **Timestamp Type** | `u64` (counter) | `DateTime<Utc>` |
+| **Timestamp Type** | `u64` (counter) | `std::time::Instant` |
 | **Crate** | `fluxion-test-utils` | `fluxion-stream-time` |
 | **Use Case** | Testing, simulation | Production, real time |
 | **Time Operators** | ❌ No | ✅ Yes |
 | **Core Operators** | ✅ Yes | ✅ Yes |
-| **Deterministic** | ✅ Yes | ❌ No (wall-clock) |
+| **Deterministic** | ✅ Yes | ❌ No (monotonic) |
 | **Duration Math** | ❌ No | ✅ Yes |
-| **Dependencies** | None | `chrono` |
+| **Dependencies** | None | `std`, `tokio` |
 
 ## Requirements
 
-This crate uses `std::time::Duration` for time operations, `chrono` for timestamps, and `tokio` for async delays.
+This crate uses `std::time::{Duration, Instant}` for time operations and `tokio` for async delays. No external time dependencies required.
 
 ## License
 
