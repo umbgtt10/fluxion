@@ -39,7 +39,8 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_time::{TimeoutExt, InstantTimestamped};
+    /// use fluxion_stream_time::{TimeoutExt, InstantTimestamped, TokioTimer};
+    /// use fluxion_stream_time::timer::Timer;
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::person_alice;
     /// use futures::stream::StreamExt;
@@ -52,9 +53,10 @@ where
     /// let (tx, rx) = mpsc::unbounded_channel();
     /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
     ///
-    /// let mut timed_out = source.timeout(Duration::from_millis(100));
+    /// let timer = TokioTimer;
+    /// let mut timed_out = source.timeout(Duration::from_millis(100), timer.clone());
     ///
-    /// tx.send(InstantTimestamped::now(person_alice())).unwrap();
+    /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
     ///
     /// let item = timed_out.next().await.unwrap().unwrap();
     /// assert_eq!(&*item, &person_alice());
@@ -77,13 +79,13 @@ where
         duration: Duration,
         timer: TM,
     ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send {
-        TimeoutStream {
+        Box::pin(TimeoutStream {
             stream: self,
             duration,
             timer: timer.clone(),
-            sleep: Box::pin(timer.sleep_future(duration)),
+            sleep: Some(timer.sleep_future(duration)),
             is_done: false,
-        }
+        })
     }
 }
 
@@ -93,7 +95,8 @@ struct TimeoutStream<S, TM: Timer> {
     stream: S,
     duration: Duration,
     timer: TM,
-    sleep: Pin<Box<TM::Sleep>>,
+    #[pin]
+    sleep: Option<TM::Sleep>,
     is_done: bool,
 }
 
@@ -105,7 +108,7 @@ where
     type Item = StreamItem<InstantTimestamped<T, TM>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.project();
+        let mut this = self.project();
 
         if *this.is_done {
             return Poll::Ready(None);
@@ -114,20 +117,9 @@ where
         // 1. Poll the stream
         match this.stream.poll_next(cx) {
             Poll::Ready(Some(item)) => {
-                // Reset the timer
-                this.sleep.set(this.timer.sleep_future(*this.duration));
-                // We need to poll the sleep to register the new waker, but we can't do it easily here without potentially blocking?
-                // Actually, `reset` just updates the deadline. We need to ensure the waker is registered.
-                // However, since we are returning Ready, the consumer will likely poll us again soon?
-                // But if the consumer processes the item and takes a long time, the timer should be running.
-                // `sleep` is a future. If we don't poll it, it might not wake us up?
-                // Tokio's `Sleep` needs to be polled to register the waker.
-                // But we just got an item, so we are returning.
-                // The next time `poll_next` is called, we will poll the sleep again.
-                // This is fine because the timeout is "between emissions".
-                // If we return an item, the "clock" for the next timeout starts now.
-                // If `poll_next` isn't called for a while, that's backpressure, and usually timeout applies to "time waiting for upstream".
-                // If downstream is slow, that's not an upstream timeout.
+                // Reset the timer for the next timeout period
+                this.sleep
+                    .set(Some(this.timer.sleep_future(*this.duration)));
                 return Poll::Ready(Some(item));
             }
             Poll::Ready(None) => {
@@ -140,15 +132,19 @@ where
         }
 
         // 2. Poll the timer
-        match this.sleep.as_mut().poll(cx) {
-            Poll::Ready(_) => {
-                // Timer fired, emit error and terminate
-                *this.is_done = true;
-                Poll::Ready(Some(StreamItem::Error(FluxionError::timeout_error(
-                    "Timeout",
-                ))))
+        if let Some(sleep) = this.sleep.as_mut().as_pin_mut() {
+            match sleep.poll(cx) {
+                Poll::Ready(_) => {
+                    // Timer fired, emit error and terminate
+                    *this.is_done = true;
+                    Poll::Ready(Some(StreamItem::Error(FluxionError::timeout_error(
+                        "Timeout",
+                    ))))
+                }
+                Poll::Pending => Poll::Pending,
             }
-            Poll::Pending => Poll::Pending,
+        } else {
+            unreachable!("sleep future should always be Some after initialization");
         }
     }
 }

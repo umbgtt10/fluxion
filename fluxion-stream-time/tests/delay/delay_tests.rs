@@ -1,11 +1,11 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_stream_time::timer::Timer;
 use fluxion_stream_time::DelayExt;
 use fluxion_stream_time::TokioTimer;
 use fluxion_stream_time::TokioTimestamped;
-use fluxion_stream_time::timer::Timer;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     person::Person,
@@ -73,10 +73,10 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
 
     // Act
     for i in 0..count {
-        tx.send(TokioTimestamped::new(TestData::Person(Person::new(
-            format!("Person_{}", i),
-            i as u32,
-        )), timer.now()))?;
+        tx.send(TokioTimestamped::new(
+            TestData::Person(Person::new(format!("Person_{}", i), i as u32)),
+            timer.now(),
+        ))?;
     }
     // Drop tx to signal end of stream
     drop(tx);

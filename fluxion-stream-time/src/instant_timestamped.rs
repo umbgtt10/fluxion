@@ -21,7 +21,7 @@ use std::ops::Deref;
 /// use fluxion_stream_time::timer::Timer;
 ///
 /// let timer = TokioTimer;
-/// let item = InstantTimestamped::new(42, timer.now());
+/// let item: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, timer.now());
 /// ```
 #[derive(Debug, Clone)]
 pub struct InstantTimestamped<T, TM: Timer> {

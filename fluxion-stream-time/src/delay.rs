@@ -37,7 +37,8 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_time::{DelayExt, InstantTimestamped};
+    /// use fluxion_stream_time::{DelayExt, InstantTimestamped, TokioTimer};
+    /// use fluxion_stream_time::timer::Timer;
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::person_alice;
     /// use futures::stream::StreamExt;
@@ -50,9 +51,10 @@ where
     /// let (tx, rx) = mpsc::unbounded_channel();
     /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
     ///
-    /// let mut delayed = source.delay(Duration::from_millis(10));
+    /// let timer = TokioTimer;
+    /// let mut delayed = source.delay(Duration::from_millis(10), timer.clone());
     ///
-    /// tx.send(InstantTimestamped::now(person_alice())).unwrap();
+    /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
     ///
     /// let item = delayed.next().await.unwrap().unwrap();
     /// assert_eq!(&*item, &person_alice());

@@ -1,14 +1,29 @@
 # fluxion-stream-time
 
-Time-based operators for [fluxion-stream](https://crates.io/crates/fluxion-stream) using real-world time.
+Runtime-agnostic time-based operators for [fluxion-stream](https://crates.io/crates/fluxion-stream).
 
-This crate provides specialized time-based operators (`delay`, `debounce`, `throttle`, `sample`, `timeout`) and the `InstantTimestamped<T>` wrapper for working with monotonic timestamps using `std::time::Instant`.
+This crate provides specialized time-based operators (`delay`, `debounce`, `throttle`, `sample`, `timeout`) that work with any async runtime through the `Timer` trait abstraction. The `InstantTimestamped<T, TM>` wrapper provides timestamping with the runtime's monotonic instant type.
+
+## Runtime Support
+
+fluxion-stream-time supports multiple async runtimes through feature flags:
+
+- **`time-tokio`** (default) - Tokio runtime with `TokioTimer`
+- **`time-async-std`** - async-std runtime (planned)
+- **`time-smol`** - smol runtime (planned)
+
+All operators are fully runtime-agnostic thanks to the `Timer` trait abstraction.
 
 ## Why This Crate Exists
 
 Fluxion's core design is **timestamp-agnostic**: operators in `fluxion-stream` work with any type implementing the `HasTimestamp` trait, regardless of the underlying timestamp representation (u64 counters, DateTime, custom types, etc.). This flexibility is a core strength.
 
-However, **time-based operators** like `delay`, `debounce`, `throttle`, and `timeout` inherently need to perform **arithmetic on timestamps** (e.g., "add 100ms to this timestamp"). This requires a specific timestamp type that supports duration arithmetic.
+However, **time-based operators** like `delay`, `debounce`, `throttle`, and `timeout` inherently need to:
+1. **Perform arithmetic on timestamps** (e.g., "add 100ms to this timestamp")
+2. **Sleep asynchronously** for specific durations
+3. **Support different async runtimes** (Tokio, async-std, smol)
+
+The `Timer` trait abstraction solves all three requirements, enabling operators that work with any runtime while maintaining zero-cost performance.
 
 ### The Two Timestamp Approaches
 
@@ -19,28 +34,34 @@ However, **time-based operators** like `delay`, `debounce`, `throttle`, and `tim
 - **Advantage**: Deterministic, no time dependencies, fast
 
 **2. Real-Time Based (fluxion-stream-time)**
-- **Type**: `InstantTimestamped<T>` with `std::time::Instant` timestamps
+- **Type**: `InstantTimestamped<T, TM: Timer>` with runtime's `Instant` type
 - **Use case**: Production systems, real-world scheduling, monotonic time
 - **Operators**: Time-based operators (`delay`, `debounce`, `throttle`, `sample`, `timeout`)
-- **Advantage**: Monotonic time, duration arithmetic, no system clock dependencies
+- **Advantage**: Monotonic time, duration arithmetic, runtime flexibility
 
 ### Why Not Merge These?
 
 Keeping `fluxion-stream` timestamp-agnostic means:
-- ✅ **Minimal dependencies**: Only `std` and `tokio` for time-based operators
+- ✅ **Minimal dependencies**: Core stream operators have no runtime dependencies
 - ✅ **Flexible timestamp types**: You can use custom timestamp representations
 - ✅ **Faster compile times**: Time operators are optional and lightweight
 - ✅ **Testing independence**: Counter-based timestamps for deterministic tests
+- ✅ **Runtime flexibility**: Choose your async runtime via feature flags
 
 ## Features
 
-- **`InstantTimestamped<T>`** - Wrapper type with `std::time::Instant` timestamps
-- **`delay(duration)`** - Delays each emission by a specified duration
-- **`debounce(duration)`** - Emits values only after a quiet period
-- **`throttle(duration)`** - Emits a value and then ignores subsequent values for a duration
-- **`sample(duration)`** - Emits the most recent value within periodic time intervals
-- **`timeout(duration)`** - Errors if no emission within duration
-- **`InstantStreamOps`** - Extension trait for `FluxionStream` with Instant-timestamped items
+### Core Types
+- **`Timer` trait** - Runtime-agnostic timer abstraction with `sleep_future()` and `now()`
+- **`TokioTimer`** - Zero-cost Tokio implementation (when `time-tokio` enabled)
+- **`InstantTimestamped<T, TM>`** - Generic wrapper with timer's `Instant` type
+- **`TokioTimestamped<T>`** - Type alias for `InstantTimestamped<T, TokioTimer>`
+
+### Operators
+- **`delay(duration, timer)`** - Delays each emission by a specified duration
+- **`debounce(duration, timer)`** - Emits values only after a quiet period
+- **`throttle(duration, timer)`** - Emits a value and then ignores subsequent values for a duration
+- **`sample(duration, timer)`** - Emits the most recent value within periodic time intervals
+- **`timeout(duration, timer)`** - Errors if no emission within duration
 
 ## Quick Reference Table
 
@@ -58,7 +79,8 @@ Keeping `fluxion-stream` timestamp-agnostic means:
 **Delays each emission by a specified duration**
 
 ```rust
-let delayed = stream.delay(Duration::from_millis(100));
+let timer = TokioTimer;
+let delayed = stream.delay(Duration::from_millis(100), timer);
 ```
 
 - Each item delayed independently
@@ -70,7 +92,8 @@ let delayed = stream.delay(Duration::from_millis(100));
 **Emits only after a period of inactivity (trailing)**
 
 ```rust
-let debounced = stream.debounce(Duration::from_millis(500));
+let timer = TokioTimer;
+let debounced = stream.debounce(Duration::from_millis(500), timer);
 ```
 
 - Emits latest value after quiet period
@@ -83,7 +106,8 @@ let debounced = stream.debounce(Duration::from_millis(500));
 **Rate-limits emissions (leading)**
 
 ```rust
-let throttled = stream.throttle(Duration::from_millis(100));
+let timer = TokioTimer;
+let throttled = stream.throttle(Duration::from_millis(100), timer);
 ```
 
 - Emits first value immediately
@@ -96,7 +120,8 @@ let throttled = stream.throttle(Duration::from_millis(100));
 **Samples stream at periodic intervals**
 
 ```rust
-let sampled = stream.sample(Duration::from_millis(100));
+let timer = TokioTimer;
+let sampled = stream.sample(Duration::from_millis(100), timer);
 ```
 
 - Emits most recent value within each interval
@@ -108,14 +133,44 @@ let sampled = stream.sample(Duration::from_millis(100));
 **Errors if no emission within duration**
 
 ```rust
-let with_timeout = stream.timeout(Duration::from_secs(30));
+let timer = TokioTimer;
+let with_timeout = stream.timeout(Duration::from_secs(30), timer);
 ```
 
 - Monitors time between emissions
-- Emits `FluxionError::StreamProcessingError("Timeout")` if exceeded
+- Emits `FluxionError::TimeoutError("Timeout")` if exceeded
 - Timer resets on each emission (value or error)
 - Stream terminates on timeout
 - **Use when**: Watchdog timers, network reliability, health checks
+
+## Quick Start Example
+
+```rust
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::{TokioTimer, TokioTimestamped};
+use fluxion_stream_time::timer::Timer;
+use fluxion_core::StreamItem;
+use futures::stream::StreamExt;
+use std::time::Duration;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
+
+#[tokio::main]
+async fn main() {
+    let (tx, rx) = mpsc::unbounded_channel();
+    let timer = TokioTimer;
+
+    // Create timestamped stream with runtime-aware delays
+    let stream = UnboundedReceiverStream::new(rx)
+        .map(StreamItem::Value)
+        .debounce(Duration::from_millis(100), timer.clone())
+        .throttle(Duration::from_millis(200), timer.clone());
+
+    // Send timestamped data
+    tx.send(TokioTimestamped::new(42, timer.now())).unwrap();
+    tx.send(TokioTimestamped::new(100, timer.now())).unwrap();
+}
+```
 
 ## Seamless Operator Chaining
 
@@ -123,36 +178,38 @@ let with_timeout = stream.timeout(Duration::from_secs(30));
 
 The only requirement is that your stream items implement `HasTimestamp` with a compatible timestamp type:
 - **Core operators** (`map_ordered`, `filter_ordered`, `combine_latest`, etc.) work with **any** timestamp type
-- **Time operators** (`delay`, `debounce`, etc.) **only** work with `DateTime<Utc>` timestamps
+- **Time operators** (`delay`, `debounce`, etc.) work with `InstantTimestamped<T, TM: Timer>` types
 
 ### Example: Mixing Operators
 
 ```rust
 use fluxion_stream::{IntoFluxionStream, FilterOrderedExt, MapOrderedExt, DistinctUntilChangedExt};
-use fluxion_stream_time::{InstantTimestamped, DelayExt, DebounceExt};
+use fluxion_stream_time::{TokioTimer, TokioTimestamped, DelayExt, DebounceExt};
 use std::time::Duration;
+
+let timer = TokioTimer;
 
 // Start with time-based stream
 let stream = source_stream
-    // Time operator (requires std::time::Instant)
-    .debounce(Duration::from_millis(100))
+    // Time operator (requires Timer)
+    .debounce(Duration::from_millis(100), timer.clone())
 
     // Core operators work seamlessly
     .filter_ordered(|item| *item > 50)
     .map_ordered(|item| item * 2)
 
     // Back to time operator
-    .delay(Duration::from_millis(50))
+    .delay(Duration::from_millis(50), timer.clone())
 
     // More core operators
     .distinct_until_changed();
 ```
 
 **This works because:**
-1. `debounce` returns `impl Stream<Item = StreamItem<InstantTimestamped<T>>>`
+1. `debounce` returns `impl Stream<Item = StreamItem<TokioTimestamped<T>>>`
 2. Core operators like `filter_ordered` accept **any** stream where items implement `HasTimestamp`
-3. The timestamp type (`std::time::Instant`) is preserved through the chain
-4. `delay` can then use it again because the type is still `InstantTimestamped<T>`
+3. The timestamp type (Timer's `Instant`) is preserved through the chain
+4. `delay` can then use it again because the type is still `InstantTimestamped<T, TM>`
 
 ### When to Use Each Crate
 
@@ -171,41 +228,153 @@ let stream = source_stream
 - You want to debounce user input, then combine it with other streams
 - You're building real-world reactive systems with temporal constraints
 
-## Usage
+## Usage with Different Runtimes
+
+### Tokio (default)
 
 ```rust
-use fluxion_stream_time::{InstantTimestamped, DelayExt, DebounceExt, SampleExt};
+use fluxion_stream_time::{TokioTimer, TokioTimestamped, DelayExt, DebounceExt};
+use fluxion_stream_time::timer::Timer;
 use std::time::Duration;
+
+let timer = TokioTimer;
 
 // Delay all emissions by 100ms
 let delayed_stream = source_stream
-    .delay(Duration::from_millis(100));
+    .delay(Duration::from_millis(100), timer.clone());
 
 // Debounce emissions
 let debounced_stream = source_stream
-    .debounce(Duration::from_millis(100));
+    .debounce(Duration::from_millis(100), timer.clone());
 
-// Sample emissions
-let sampled_stream = source_stream
-    .sample(Duration::from_millis(100));
+// Create timestamped values
+let timestamped = TokioTimestamped::new(my_value, timer.now());
+```
+
+### async-std (planned)
+
+```rust
+use fluxion_stream_time::{AsyncStdTimer, DelayExt};
+use std::time::Duration;
+
+let timer = AsyncStdTimer;
+let delayed = source_stream.delay(Duration::from_millis(100), timer);
+```
+
+### smol (planned)
+
+```rust
+use fluxion_stream_time::{SmolTimer, DelayExt};
+use std::time::Duration;
+
+let timer = SmolTimer;
+let delayed = source_stream.delay(Duration::from_millis(100), timer);
+```
+
+## Timer Trait Implementation
+
+To add support for a custom runtime, implement the `Timer` trait:
+
+```rust
+use fluxion_stream_time::timer::Timer;
+use std::time::{Duration, Instant};
+
+#[derive(Clone, Debug)]
+pub struct MyCustomTimer;
+
+impl Timer for MyCustomTimer {
+    type Sleep = MyRuntimeSleep;
+    type Instant = Instant;
+
+    fn sleep_future(&self, duration: Duration) -> Self::Sleep {
+        my_runtime::sleep(duration)
+    }
+
+    fn now(&self) -> Self::Instant {
+        Instant::now()
+    }
+}
 ```
 
 ## InstantTimestamped vs Sequenced
 
-| Feature | `Sequenced<T>` (test-utils) | `InstantTimestamped<T>` (stream-time) |
-|---------|----------------------------|-------------------------------------|
-| **Timestamp Type** | `u64` (counter) | `std::time::Instant` |
+| Feature | `Sequenced<T>` (test-utils) | `InstantTimestamped<T, TM>` (stream-time) |
+|---------|----------------------------|------------------------------------------|
+| **Timestamp Type** | `u64` (counter) | `TM::Instant` (runtime's instant) |
 | **Crate** | `fluxion-test-utils` | `fluxion-stream-time` |
 | **Use Case** | Testing, simulation | Production, real time |
 | **Time Operators** | ❌ No | ✅ Yes |
 | **Core Operators** | ✅ Yes | ✅ Yes |
 | **Deterministic** | ✅ Yes | ❌ No (monotonic) |
 | **Duration Math** | ❌ No | ✅ Yes |
-| **Dependencies** | None | `std`, `tokio` |
+| **Runtime Support** | N/A | Tokio, async-std, smol |
+
+## Future Platform Support
+
+### no_std Feasibility
+
+The `Timer` trait abstraction makes **no_std support architecturally feasible**. The trait design deliberately avoids std-specific dependencies, enabling potential embedded system support.
+
+#### What's Already Compatible
+
+- ✅ **Timer trait** - Uses only `core::future::Future` and `core::time::Duration`
+- ✅ **Generic operators** - Work with any Timer implementation
+- ✅ **Pin projection** - pin-project supports no_std
+- ✅ **Type-safe instant arithmetic** - Generic over `Timer::Instant`
+
+#### Challenges for no_std
+
+1. **`std::time::Instant` unavailable**
+   - Embedded systems need platform-specific tick counters
+   - Solution: Custom `Instant` type based on hardware timers
+
+2. **`alloc` requirement**
+   - Operators use `Box::pin()` for stream composition
+   - Requires heap allocation (minimal: one box per operator)
+   - Some embedded environments may not have allocators
+
+3. **Async runtime dependency**
+   - Tokio requires std
+   - Potential alternatives: **Embassy** (async for embedded), **RTIC** (real-time)
+   - Would require separate Timer implementations per runtime
+
+#### Implementation Paths
+
+**Embassy Support** (recommended for async embedded):
+```rust
+// Future: EmbassyTimer implementation
+use embassy_time::{Duration, Instant, Timer as EmbassyDelay};
+
+impl Timer for EmbassyTimer {
+    type Sleep = EmbassyDelay;
+    type Instant = Instant;  // u64 tick counter
+    // ...
+}
+```
+
+**Bare Metal** (custom hardware timers):
+- Custom tick-based Instant type
+- Manual future polling against hardware timer registers
+- More complex but possible with current architecture
+
+#### Trade-offs
+
+The Timer abstraction **enables** no_std support without forcing it:
+- std users get ergonomic APIs (Tokio, async-std)
+- Embedded users can implement custom timers when needed
+- No compromise in type safety or performance for either
+
+**Status**: Architecturally sound, implementation work required. The generic design means no_std support won't break existing std code.
+
+### WASM Support
+
+WASM support is planned via `WasmTimer` using `wasm-timer` or `gloo-timers` crates. The Timer trait abstraction makes this straightforward - operators require no changes.
 
 ## Requirements
 
-This crate uses `std::time::{Duration, Instant}` for time operations and `tokio` for async delays. No external time dependencies required.
+- Rust 1.70+
+- Choose runtime via feature flags (`time-tokio` enabled by default)
+- No external time dependencies beyond the chosen async runtime
 
 ## License
 

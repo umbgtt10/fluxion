@@ -7,6 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - Not Published (Internal Release)
+
+**Goal:** Runtime abstraction for time-based operators enabling multi-runtime support
+
+### Added
+- **Timer Trait** (`fluxion-stream-time`)
+  - Runtime-agnostic timer abstraction with `sleep_future()` and `now()` methods
+  - Generic over `Sleep: Future<Output = ()>` and `Instant: Copy + Ord + Add + Sub`
+  - Zero-cost abstraction with no runtime overhead
+  - Enables support for multiple async runtimes (Tokio, async-std, smol, WASM, Embassy)
+  - Maintains type safety: each timer brings its own Instant type
+
+- **TokioTimer Implementation** (`fluxion-stream-time`)
+  - Zero-sized type implementing Timer trait using `tokio::time` primitives
+  - Default timer when `time-tokio` feature is enabled
+  - Uses `tokio::time::Sleep` and `std::time::Instant`
+
+- **Feature Flags** (`fluxion-stream-time`)
+  - `time-tokio` (default) - Tokio runtime support with TokioTimer
+  - Prepared for future runtime features: `time-async-std`, `time-smol`, `time-wasm`
+
+- **Type Alias** (`fluxion-stream-time`)
+  - `TokioTimestamped<T>` - Convenience alias for `InstantTimestamped<T, TokioTimer>`
+
+### Changed
+- **Breaking:** `InstantTimestamped<T>` is now generic over Timer type (`fluxion-stream-time`)
+  - Changed from `InstantTimestamped<T>` to `InstantTimestamped<T, TM: Timer>`
+  - Generic parameter `TM` represents the Timer type (not the timestamp type)
+  - Internally stores `TM::Instant` as the timestamp
+  - Migration: Use `TokioTimestamped<T>` type alias or explicitly specify timer type
+
+- **Breaking:** All time-based operators now require a `timer` parameter (`fluxion-stream-time`)
+  - `debounce(duration, timer)` - Added timer parameter
+  - `throttle(duration, timer)` - Added timer parameter
+  - `delay(duration, timer)` - Added timer parameter
+  - `sample(duration, timer)` - Added timer parameter
+  - `timeout(duration, timer)` - Added timer parameter
+  - Migration: Create `TokioTimer` instance and pass to operators
+
+- **Operator Implementation Patterns** (`fluxion-stream-time`)
+  - Standardized on `#[pin] sleep: Option<TM::Sleep>` pattern for debounce, throttle, sample, timeout
+  - Eliminates heap allocations (no more `Pin<Box<>>`)
+  - Improved performance and consistency across operators
+  - Delay operator uses `FuturesOrdered<DelayFuture<T, TM>>` (correct for multiple concurrent delays)
+
+### Fixed
+- **Documentation Examples** (`fluxion-stream-time`)
+  - All operator doc examples updated to include timer parameter
+  - Fixed type inference issues with explicit type annotations
+  - All doc tests now compile and pass
+
+- **Prelude Module** (`fluxion-stream-time`)
+  - Uncommented all operator trait exports (DelayExt, SampleExt, ThrottleExt, TimeoutExt)
+  - Enables `use fluxion_stream_time::prelude::*` to work correctly
+
+### Documentation
+- **Comprehensive Timer Documentation** (`fluxion-stream-time`)
+  - Module-level docs explain Timer abstraction and multi-runtime strategy
+  - Runtime Support section documenting feature flags
+  - Updated all code examples to show timer usage pattern
+  - Added Quick Start Example with complete working code
+
+- **README Updates** (`fluxion-stream-time`)
+  - Completely rewritten to emphasize runtime abstraction
+  - Multi-Runtime Support section with Tokio, async-std (planned), smol (planned)
+  - Timer Trait Implementation guide for custom runtimes
+  - Usage examples for different runtimes
+  - Future Platform Support section covering no_std feasibility and WASM support
+
+- **Platform Considerations** (`fluxion-stream-time` README)
+  - **no_std feasibility**: Detailed analysis of what's compatible and challenges (no std::time::Instant, alloc requirement, async runtime dependency)
+  - Implementation paths for Embassy (embedded async) and bare metal scenarios
+  - **WASM support**: Planned via WasmTimer with wasm-timer or gloo-timers crates
+  - Architecture validated for multi-platform expansion
+
+### Technical Details
+- All 5 time-based operators successfully abstracted over Timer trait
+- Zero compilation errors, zero clippy warnings
+- 41 integration tests passing, 7 doc tests passing
+- CI passing with comprehensive test coverage
+- Pattern consistency: Option<TM::Sleep> with #[pin] for optimal performance
+- Type-safe instant arithmetic preserved through generic design
+
 ## [0.6.1] - Not Published (Internal Release)
 
 **Goal:** Prepare for runtime abstraction by removing wall-clock time dependencies

@@ -47,7 +47,8 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_time::{ThrottleExt, InstantTimestamped};
+    /// use fluxion_stream_time::{ThrottleExt, InstantTimestamped, TokioTimer};
+    /// use fluxion_stream_time::timer::Timer;
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
     /// use futures::stream::StreamExt;
@@ -60,11 +61,12 @@ where
     /// let (tx, rx) = mpsc::unbounded_channel();
     /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
     ///
-    /// let mut throttled = source.throttle(Duration::from_millis(100));
+    /// let timer = TokioTimer;
+    /// let mut throttled = source.throttle(Duration::from_millis(100), timer.clone());
     ///
     /// // Alice and Bob emitted immediately. Bob should be throttled (dropped).
-    /// tx.send(InstantTimestamped::now(person_alice())).unwrap();
-    /// tx.send(InstantTimestamped::now(person_bob())).unwrap();
+    /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
+    /// tx.send(InstantTimestamped::new(person_bob(), timer.now())).unwrap();
     ///
     /// // Only Alice should remain (leading throttle)
     /// let item = throttled.next().await.unwrap().unwrap();

@@ -39,7 +39,8 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_time::{SampleExt, InstantTimestamped};
+    /// use fluxion_stream_time::{SampleExt, InstantTimestamped, TokioTimer};
+    /// use fluxion_stream_time::timer::Timer;
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
     /// use futures::stream::StreamExt;
@@ -52,11 +53,12 @@ where
     /// let (tx, rx) = mpsc::unbounded_channel();
     /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
     ///
-    /// let mut sampled = source.sample(Duration::from_millis(10));
+    /// let timer = TokioTimer;
+    /// let mut sampled = source.sample(Duration::from_millis(10), timer.clone());
     ///
     /// // Emit Alice and Bob immediately
-    /// tx.send(InstantTimestamped::now(person_alice())).unwrap();
-    /// tx.send(InstantTimestamped::now(person_bob())).unwrap();
+    /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
+    /// tx.send(InstantTimestamped::new(person_bob(), timer.now())).unwrap();
     ///
     /// // Wait for sample duration
     /// tokio::time::sleep(Duration::from_millis(20)).await;
@@ -143,16 +145,6 @@ where
                 }
                 Poll::Ready(None) => {
                     *this.is_done = true;
-                    // If stream ends, we stop collecting.
-                    // We might still have a pending value waiting for the timer,
-                    // or we might want to emit it immediately?
-                    // RxJS sample: "If the source Observable completes, the result Observable also completes."
-                    // It does NOT emit the last value if the timer hasn't fired.
-                    // However, some implementations do "sample(period, emitLast: true)".
-                    // Let's stick to strict sampling: only emit on tick.
-                    // But if the stream is done, we can't wait for more values.
-                    // If we just return None, we drop the pending value.
-                    // Let's follow the standard: if source completes, we complete.
                     return Poll::Ready(None);
                 }
                 Poll::Pending => {

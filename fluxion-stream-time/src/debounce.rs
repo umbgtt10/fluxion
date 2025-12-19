@@ -46,7 +46,8 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_time::{DebounceExt, InstantTimestamped, TokioTimer};
+    /// use fluxion_stream_time::{DebounceExt, TokioTimestamped, TokioTimer};
+    /// use fluxion_stream_time::timer::Timer;
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
     /// use futures::stream::StreamExt;
@@ -63,8 +64,8 @@ where
     /// let mut debounced = source.debounce(Duration::from_millis(100), timer.clone());
     ///
     /// // Alice and Bob emitted immediately. Alice should be debounced (dropped).
-    /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
-    /// tx.send(InstantTimestamped::new(person_bob(), timer.now())).unwrap();
+    /// tx.send(TokioTimestamped::new(person_alice(), timer.now())).unwrap();
+    /// tx.send(TokioTimestamped::new(person_bob(), timer.now())).unwrap();
     ///
     /// // Only Bob should remain (trailing debounce)
     /// let item = debounced.next().await.unwrap().unwrap();
