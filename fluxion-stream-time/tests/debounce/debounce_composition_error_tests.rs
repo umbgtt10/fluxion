@@ -5,9 +5,9 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::timer::Timer;
 use fluxion_stream_time::TokioTimer;
 use fluxion_stream_time::TokioTimestamped;
-use fluxion_stream_time::timer::Timer;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel_with_errors,
@@ -25,9 +25,6 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
 
     let (tx_source, source) = test_channel_with_errors::<TokioTimestamped<TestData>>();
     let (tx_trigger, trigger) = test_channel_with_errors::<TokioTimestamped<TestData>>();
-
-    // Chain take_latest_when then debounce
-    // take_latest_when emits the latest source value when trigger emits
     let mut processed = source
         .take_latest_when(trigger, |_| true)
         .debounce(Duration::from_millis(500), timer.clone());

@@ -26,10 +26,8 @@ async fn test_throttle_propagates_errors_immediately() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
     let throttled = stream.throttle(Duration::from_secs(1), timer.clone());
-
     let (result_tx, mut result_rx) = unbounded_channel();
 
-    // Spawn a task to drive the stream
     spawn(async move {
         let mut stream = throttled;
         while let Some(item) = stream.next().await {
@@ -54,7 +52,6 @@ async fn test_throttle_propagates_errors_immediately() -> anyhow::Result<()> {
         person_alice(),
         timer.now(),
     )))?;
-
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await
@@ -76,7 +73,6 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
 
     let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
     let throttled = stream.throttle(Duration::from_secs(1), timer.clone());
-
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
@@ -95,7 +91,6 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
 
     let error = FluxionError::stream_error("error during throttle");
     tx.send(StreamItem::Error(error.clone()))?;
-
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await

@@ -203,8 +203,6 @@ async fn test_combine_latest_then_debounce() -> anyhow::Result<()> {
 
     let (tx1, stream1) = test_channel::<TokioTimestamped<TestData>>();
     let (tx2, stream2) = test_channel::<TokioTimestamped<TestData>>();
-
-    // Chain combine_latest then debounce
     let mut processed = stream1
         .combine_latest(vec![stream2], |_| true)
         .map_ordered(|state| {

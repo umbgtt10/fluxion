@@ -84,14 +84,14 @@ where
         duration: Duration,
         timer: TM,
     ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send {
-        SampleStream {
+        Box::pin(SampleStream {
             stream: self,
             duration,
             timer: timer.clone(),
-            sleep: Box::pin(timer.sleep_future(duration)),
+            sleep: Some(timer.sleep_future(duration)),
             pending_value: None,
             is_done: false,
-        }
+        })
     }
 }
 
@@ -105,7 +105,8 @@ where
     stream: S,
     duration: Duration,
     timer: TM,
-    sleep: Pin<Box<TM::Sleep>>,
+    #[pin]
+    sleep: Option<TM::Sleep>,
     pending_value: Option<S::Item>,
     is_done: bool,
 }
@@ -161,31 +162,23 @@ where
         }
 
         // 2. Check the timer
-        match this.sleep.as_mut().poll(cx) {
-            Poll::Ready(_) => {
-                // Timer fired.
-                this.sleep.set(this.timer.sleep_future(*this.duration));
+        if let Some(sleep) = this.sleep.as_mut().as_pin_mut() {
+            match sleep.poll(cx) {
+                Poll::Ready(_) => {
+                    // Timer fired.
+                    this.sleep
+                        .set(Some(this.timer.sleep_future(*this.duration)));
 
-                if let Some(value) = this.pending_value.take() {
-                    Poll::Ready(Some(value))
-                } else {
-                    // Timer fired but no value.
-                    // We need to register the timer again (reset above does not register waker automatically if we don't poll it or return Pending)
-                    // But we are in a loop effectively (poll_next).
-                    // If we return Pending, we need to make sure we are woken up by the timer or the stream.
-                    // The stream returned Pending above.
-                    // The timer returned Ready, so we reset it.
-                    // We need to poll the timer again to register the waker for the new deadline.
-                    match this.sleep.as_mut().poll(cx) {
-                        Poll::Pending => Poll::Pending,
-                        Poll::Ready(_) => {
-                            // This shouldn't happen immediately unless duration is 0
-                            Poll::Pending
-                        }
+                    if let Some(value) = this.pending_value.take() {
+                        Poll::Ready(Some(value))
+                    } else {
+                        Poll::Pending
                     }
                 }
+                Poll::Pending => Poll::Pending,
             }
-            Poll::Pending => Poll::Pending,
+        } else {
+            unreachable!("sleep future should always be Some after initialization")
         }
     }
 }

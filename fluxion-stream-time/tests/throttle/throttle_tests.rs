@@ -28,7 +28,6 @@ async fn test_throttle_with_instant_timestamped() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let throttled = stream.throttle(Duration::from_secs(1), timer.clone());
-
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
@@ -70,7 +69,6 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
     let mut throttled = stream.throttle(Duration::from_millis(100), timer.clone());
 
     // Act & Assert
-    // Send first value - should emit immediately (leading throttle)
     tx.send(TokioTimestamped::new(
         TestData::Person(Person::new("Alice".to_string(), 0)),
         timer.now(),

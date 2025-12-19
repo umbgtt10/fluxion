@@ -26,7 +26,6 @@ async fn test_timeout_no_emission() -> anyhow::Result<()> {
 
     let (_tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let timed_out = stream.timeout(Duration::from_millis(100), timer.clone());
-
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
@@ -61,7 +60,6 @@ async fn test_timeout_with_emissions() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let timed_out = stream.timeout(Duration::from_millis(100), timer.clone());
-
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {

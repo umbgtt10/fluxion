@@ -24,7 +24,6 @@ async fn test_timeout_chained_error_propagation() -> anyhow::Result<()> {
     let pipeline = stream
         .map_ordered(|item| TokioTimestamped::new(item.value, item.timestamp))
         .timeout(Duration::from_millis(100), timer.clone());
-
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {

@@ -23,7 +23,6 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
     let timed_out = stream.timeout(Duration::from_millis(100), timer.clone());
-
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
