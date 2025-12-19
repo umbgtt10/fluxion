@@ -65,19 +65,19 @@ try {
   Write-Output "Note: Doc tests reference TokioTimer and will fail on wasm32 (expected)"
   Write-Output "Doc tests are validated in tokio_tests.ps1 for native/Tokio usage"
   Write-Output ""
-  
+
   # Temporarily disable error action to capture output even if wasm-pack returns non-zero
   $previousErrorAction = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
-  
+
   # Run wasm-pack test - doc tests will fail (expected), but we check that WASM tests pass
   $output = & wasm-pack test --node --features time-wasm 2>&1 | Out-String
   $exitCode = $LASTEXITCODE
-  
+
   $ErrorActionPreference = $previousErrorAction
-  
+
   Write-Output $output
-  
+
   # Check if actual WASM tests passed (tests/all_tests.rs)
   # Look for the line "test result: ok. 1 passed; 0 failed" from all_tests.rs
   if ($output -match "test result: ok\. 1 passed; 0 failed; 0 ignored") {
