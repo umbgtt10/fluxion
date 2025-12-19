@@ -52,7 +52,7 @@ mod delay;
 mod instant_timestamped;
 mod sample;
 mod throttle;
-//mod timeout;
+mod timeout;
 pub mod runtimes;
 pub mod timer;
 
@@ -63,7 +63,7 @@ pub use delay::DelayExt;
 pub use instant_timestamped::InstantTimestamped;
 pub use sample::SampleExt;
 pub use throttle::ThrottleExt;
-//pub use timeout::TimeoutExt;
+pub use timeout::TimeoutExt;
 
 #[cfg(feature = "time-tokio")]
 pub use runtimes::TokioTimer;

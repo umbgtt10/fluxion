@@ -4,6 +4,7 @@
 
 //! Timeout operator for time-based stream processing.
 
+use crate::timer::Timer;
 use crate::InstantTimestamped;
 use fluxion_core::{FluxionError, StreamItem};
 use futures::Stream;
@@ -12,13 +13,15 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
-use tokio::time::{sleep_until, Instant, Sleep};
 
 /// Extension trait providing the `timeout` operator for streams.
 ///
 /// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to enforce a timeout
 /// between emissions.
-pub trait TimeoutExt<T>: Stream<Item = StreamItem<InstantTimestamped<T>>> + Sized {
+pub trait TimeoutExt<T, TM>: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Sized
+where
+    TM: Timer,
+{
     /// Errors if the stream does not emit any value within the specified duration.
     ///
     /// The timeout operator monitors the time interval between emissions from the source stream.
@@ -60,40 +63,46 @@ pub trait TimeoutExt<T>: Stream<Item = StreamItem<InstantTimestamped<T>>> + Size
     fn timeout(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send;
+        timer: TM,
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send;
 }
 
-impl<S, T> TimeoutExt<T> for S
+impl<S, T, TM> TimeoutExt<T, TM> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T>>> + Send,
+    TM: Timer,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send,
 {
     fn timeout(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send {
+        timer: TM,
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send {
         TimeoutStream {
             stream: self,
             duration,
-            sleep: Box::pin(sleep_until(Instant::now() + duration)),
+            timer: timer.clone(),
+            sleep: Box::pin(timer.sleep_future(duration)),
             is_done: false,
         }
     }
 }
 
 #[pin_project]
-struct TimeoutStream<S> {
+struct TimeoutStream<S, TM: Timer> {
     #[pin]
     stream: S,
     duration: Duration,
-    sleep: Pin<Box<Sleep>>,
+    timer: TM,
+    sleep: Pin<Box<TM::Sleep>>,
     is_done: bool,
 }
 
-impl<S, T> Stream for TimeoutStream<S>
+impl<S, T, TM> Stream for TimeoutStream<S, TM>
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T>>>,
+    TM: Timer,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
 {
-    type Item = StreamItem<InstantTimestamped<T>>;
+    type Item = StreamItem<InstantTimestamped<T, TM>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.project();
@@ -106,8 +115,7 @@ where
         match this.stream.poll_next(cx) {
             Poll::Ready(Some(item)) => {
                 // Reset the timer
-                let next_deadline = Instant::now() + *this.duration;
-                this.sleep.as_mut().reset(next_deadline);
+                this.sleep.set(this.timer.sleep_future(*this.duration));
                 // We need to poll the sleep to register the new waker, but we can't do it easily here without potentially blocking?
                 // Actually, `reset` just updates the deadline. We need to ensure the waker is registered.
                 // However, since we are returning Ready, the consumer will likely poll us again soon?

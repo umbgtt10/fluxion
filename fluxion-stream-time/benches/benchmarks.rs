@@ -14,7 +14,7 @@ use debounce_bench::bench_debounce;
 use delay_bench::bench_delay;
 use sample_bench::bench_sample;
 use throttle_bench::bench_throttle;
-//use timeout_bench::bench_timeout;
+use timeout_bench::bench_timeout;
 
 criterion_group!(
     benches,
@@ -22,6 +22,6 @@ criterion_group!(
     bench_delay,
     bench_sample,
     bench_throttle,
-    //    bench_timeout
+    bench_timeout
 );
 criterion_main!(benches);
