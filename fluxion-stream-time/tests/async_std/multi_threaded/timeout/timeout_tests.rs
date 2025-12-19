@@ -2,9 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-#[path = "../../helpers.rs"]
-mod helpers;
-use helpers::{person_alice, test_channel, Person};
+use crate::async_std::helpers::{person_alice, test_channel, Person};
 
 use fluxion_stream_time::runtimes::AsyncStdTimer;
 use fluxion_stream_time::timer::Timer;

@@ -2,6 +2,17 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+//! ⚠️ **DEPRECATED**: async-std has been discontinued and is no longer maintained.
+//!
+//! **Warning**: unmaintained
+//! **Title**: async-std has been discontinued
+//! **Date**: 2024-08-24
+//! **Advisory**: RUSTSEC-2025-0052
+//! **URL**: <https://rustsec.org/advisories/RUSTSEC-2025-0052>
+//!
+//! This implementation is kept for compatibility with existing projects using async-std,
+//! but new projects should consider using tokio or smol runtimes instead.
+
 #[cfg(all(feature = "time-async-std", not(target_arch = "wasm32")))]
 pub mod async_std_implementation {
     use crate::timer::Timer;

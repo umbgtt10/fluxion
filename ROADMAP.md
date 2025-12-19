@@ -307,29 +307,33 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - Browser-specific optimizations
 - Deterministic time control (WASM doesn't support time mocking like Tokio)
 
-## 🚀 Version 0.6.4 - Support async-std Runtime
+## 🚀 Version 0.6.4 - Support async-std Runtime ⚠️ **DEPRECATED**
 
-**Status:** Planned
+**Status:** Completed (Unmaintained Runtime)
+
+**⚠️ WARNING**: async-std has been discontinued (RUSTSEC-2025-0052, 2024-08-24).
+This implementation is kept for compatibility with existing projects only.
+New projects should use tokio or smol runtimes instead.
 
 **Goal:** Enable time-based operators with async-std runtime through Timer abstraction
 
 **Essential Features:**
-- [ ] Implement AsyncStdTimer for async-std targets using `async-std::task::sleep` and `async_io::Timer`
-- [ ] Add `time-async-std` feature flag (alternative to `time-tokio`)
-- [ ] All 5 time-based operators compile and run with AsyncStdTimer
-- [ ] Comprehensive async-std tests (5 tests: debounce, delay, sample, throttle, timeout)
-- [ ] CI integration for async-std tests
+- [x] Implement AsyncStdTimer for async-std targets using `async-std::task::sleep` and `async_io::Timer`
+- [x] Add `time-async-std` feature flag (alternative to `time-tokio`)
+- [x] All 5 time-based operators compile and run with AsyncStdTimer
+- [x] Comprehensive async-std tests (10 tests: 5 operators × 2 threading models)
+- [x] CI integration for async-std tests
 
 **Documentation:**
-- [ ] Update README with async-std usage example
-- [ ] Document async-std implementation details (async-std::task, async_io::Timer)
+- [x] Document async-std implementation details (async-std::task, async_io::Timer)
+- [x] Add deprecation warning about unmaintained status
 - [ ] Added async-std section to fluxion-stream-time README
 - [ ] Runtime selection guide comparing Tokio vs async-std tradeoffs
 
 **Quality Gates:**
 - [ ] All existing Tokio tests still passing
 - [ ] async-std target compiles without errors
-- [ ] 5 async-std tests passing with real async delays
+- [ ] 10 async-std tests passing with real async delays
 - [ ] Zero clippy warnings
 - [ ] Zero compiler warnings
 - [ ] CI green (Tokio, async-std, and WASM targets)

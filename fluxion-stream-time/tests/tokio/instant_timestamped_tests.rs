@@ -85,6 +85,7 @@ fn test_instant_timestamped_debug() {
 fn test_instant_timestamped_equality() {
     let timer = TokioTimer;
     let instant1 = timer.now();
+    std::thread::sleep(std::time::Duration::from_millis(1));
     let instant2 = timer.now();
 
     let item1: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, instant1);

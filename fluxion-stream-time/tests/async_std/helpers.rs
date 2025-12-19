@@ -26,6 +26,7 @@ pub fn person_alice() -> Person {
     }
 }
 
+#[allow(dead_code)]
 pub async fn unwrap_stream<S, T>(
     stream: &mut S,
     _timeout_ms: u64,

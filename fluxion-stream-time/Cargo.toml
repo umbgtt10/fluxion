@@ -34,7 +34,7 @@ tracing = ["dep:tracing", "fluxion-core/tracing"]
 
 [dev-dependencies]
 anyhow = { workspace = true }
-async-std = { version = "1.13", features = ["attributes"] }
+async-std = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 fluxion-stream = { workspace = true }
