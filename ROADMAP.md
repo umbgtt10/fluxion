@@ -268,7 +268,37 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - Pattern consistency: `Option<TM::Sleep>` with `#[pin]` for optimal performance
 - Architecture validated for no_std feasibility
 
-## 🚀 Version 0.7.0 - WASM & Runtime Abstraction
+## 🚀 Version 0.6.3 - Support WASM Runtime
+
+**Status:** Planned
+
+**Goal:** Enable time-based operators in WASM environments through Timer abstraction
+
+**Essential Features:**
+- [ ] Implement WasmTimer for WASM targets using `wasm-timer` crate
+- [ ] Add `time-wasm` feature flag (conditionally compiled for wasm32 target)
+- [ ] Ensure all 5 time-based operators compile with WasmTimer
+- [ ] Add WasmTimestamped<T> type alias for ergonomics
+- [ ] Basic smoke tests using wasm-bindgen-test (compilation + instantiation)
+
+**Documentation:**
+- [ ] Update README with WASM usage example
+- [ ] Document WASM limitations (no deterministic time control in tests)
+- [ ] Add conditional compilation notes for target-specific code
+
+**Quality Gates:**
+- [ ] All existing Tokio tests still passing (41 integration + 7 doc)
+- [ ] WASM target compiles without errors (cargo check --target wasm32-unknown-unknown)
+- [ ] Basic WASM smoke test passes (wasm-bindgen-test)
+- [ ] Zero clippy warnings
+- [ ] Zero compiler warnings
+- [ ] CI green (both native and WASM targets)
+
+**Out of Scope:**
+- Comprehensive WASM integration tests (WASM can't pause/advance time deterministically)
+- Browser-specific optimizations
+
+## 🚀 Version 0.7.0 - Full Runtime Abstraction
 
 **Status:** Planned
 
