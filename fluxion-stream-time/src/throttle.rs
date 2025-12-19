@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Throttle operator for time-based stream processing.
-
 use crate::timer::Timer;
 use crate::InstantTimestamped;
 use fluxion_core::StreamItem;
@@ -77,7 +75,7 @@ where
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send;
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>>;
 }
 
 impl<S, T, TM> ThrottleExt<T, TM> for S
@@ -90,7 +88,7 @@ where
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send {
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> {
         Box::pin(ThrottleStream {
             stream: self,
             duration,

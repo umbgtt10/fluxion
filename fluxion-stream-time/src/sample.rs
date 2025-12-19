@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Sample operator for time-based stream processing.
-
 use crate::timer::Timer;
 use crate::InstantTimestamped;
 use fluxion_core::StreamItem;
@@ -72,20 +70,20 @@ where
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send;
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>>;
 }
 
 impl<S, T, TM> SampleExt<T, TM> for S
 where
     T: Send + Clone,
     TM: Timer,
-    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
 {
     fn sample(
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send {
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> {
         Box::pin(SampleStream {
             stream: self,
             duration,

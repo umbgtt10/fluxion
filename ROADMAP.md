@@ -270,33 +270,42 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 
 ## 🚀 Version 0.6.3 - Support WASM Runtime
 
-**Status:** Planned
+**Status:** ✅ Completed (not published to crates.io)
 
 **Goal:** Enable time-based operators in WASM environments through Timer abstraction
 
 **Essential Features:**
-- [ ] Implement WasmTimer for WASM targets using `wasm-timer` crate
-- [ ] Add `time-wasm` feature flag (conditionally compiled for wasm32 target)
-- [ ] Ensure all 5 time-based operators compile with WasmTimer
-- [ ] Add WasmTimestamped<T> type alias for ergonomics
-- [ ] Basic smoke tests using wasm-bindgen-test (compilation + instantiation)
+- ✅ Implement WasmTimer for WASM targets using `gloo-timers` crate
+- ✅ Custom WasmInstant implementation using `js-sys::Date.now()` for monotonic time
+- ✅ Add `time-wasm` feature flag (conditionally compiled for wasm32 target)
+- ✅ All 5 time-based operators compile and run with WasmTimer
+- ✅ Comprehensive WASM tests (5 passing tests: debounce, delay, sample, throttle, timeout)
+- ✅ CI integration for WASM tests with wasm-pack
 
 **Documentation:**
-- [ ] Update README with WASM usage example
-- [ ] Document WASM limitations (no deterministic time control in tests)
-- [ ] Add conditional compilation notes for target-specific code
+- ✅ Update README with comprehensive WASM usage example
+- ✅ Document WASM implementation details (gloo-timers, WasmInstant with js-sys)
+- ✅ Added WASM section to fluxion-stream-time README
+- ✅ Conditional compilation documented for target-specific code
 
 **Quality Gates:**
-- [ ] All existing Tokio tests still passing (41 integration + 7 doc)
-- [ ] WASM target compiles without errors (cargo check --target wasm32-unknown-unknown)
-- [ ] Basic WASM smoke test passes (wasm-bindgen-test)
-- [ ] Zero clippy warnings
-- [ ] Zero compiler warnings
-- [ ] CI green (both native and WASM targets)
+- ✅ All existing Tokio tests still passing
+- ✅ WASM target compiles without errors (cargo check --target wasm32-unknown-unknown)
+- ✅ 5 WASM tests passing (wasm-bindgen-test with Node.js runtime in 0.82s)
+- ✅ Zero clippy warnings
+- ✅ Zero compiler warnings
+- ✅ CI green (both native and WASM targets)
+
+**Key Achievements:**
+- Single-threaded WASM tests with real async delays (gloo_timers::future::sleep)
+- WasmInstant provides monotonic time via js-sys::Date.now() returning u64 milliseconds
+- Helper functions for test ergonomics (test_channel, unwrap_stream, person_alice)
+- Output parsing in CI validates WASM tests while ignoring expected doc test failures
+- Zero operator changes required (Timer trait abstraction enabled WASM support)
 
 **Out of Scope:**
-- Comprehensive WASM integration tests (WASM can't pause/advance time deterministically)
 - Browser-specific optimizations
+- Deterministic time control (WASM doesn't support time mocking like Tokio)
 
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 

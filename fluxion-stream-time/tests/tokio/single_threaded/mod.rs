@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
-pub mod tokio;
-
-#[cfg(all(feature = "time-wasm", target_arch = "wasm32"))]
-pub mod wasm;
+pub mod debounce;
+pub mod delay;
+pub mod sample;
+pub mod throttle;
+pub mod timeout;

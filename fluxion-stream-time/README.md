@@ -9,6 +9,7 @@ This crate provides specialized time-based operators (`delay`, `debounce`, `thro
 fluxion-stream-time supports multiple async runtimes through feature flags:
 
 - **`time-tokio`** (default) - Tokio runtime with `TokioTimer`
+- **`time-wasm`** - WebAssembly with `WasmTimer` (Node.js and browser)
 - **`time-async-std`** - async-std runtime (planned)
 - **`time-smol`** - smol runtime (planned)
 
@@ -271,6 +272,34 @@ let timer = SmolTimer;
 let delayed = source_stream.delay(Duration::from_millis(100), timer);
 ```
 
+### WASM (WebAssembly)
+
+```rust
+use fluxion_stream_time::runtimes::wasm_implementation::WasmTimer;
+use fluxion_stream_time::{DelayExt, DebounceExt, InstantTimestamped};
+use fluxion_stream_time::timer::Timer;
+use std::time::Duration;
+
+let timer = WasmTimer::new();
+
+// Delay all emissions by 100ms
+let delayed_stream = source_stream
+    .delay(Duration::from_millis(100), timer.clone());
+
+// Debounce emissions
+let debounced_stream = source_stream
+    .debounce(Duration::from_millis(100), timer.clone());
+
+// Create timestamped values
+let timestamped = InstantTimestamped::new(my_value, timer.now());
+```
+
+**WASM Notes:**
+- Uses `gloo-timers` for async sleep (compatible with Node.js and browsers)
+- Custom `WasmInstant` based on `js-sys::Date.now()` for monotonic time
+- Tests run with `wasm-pack test --node` or `--headless --chrome`
+- 5 comprehensive tests validate all time-based operators in WASM environments
+
 ## Timer Trait Implementation
 
 To add support for a custom runtime, implement the `Timer` trait:
@@ -307,7 +336,7 @@ impl Timer for MyCustomTimer {
 | **Core Operators** | ✅ Yes | ✅ Yes |
 | **Deterministic** | ✅ Yes | ❌ No (monotonic) |
 | **Duration Math** | ❌ No | ✅ Yes |
-| **Runtime Support** | N/A | Tokio, async-std, smol |
+| **Runtime Support** | N/A | Tokio, WASM (async-std, smol planned) |
 
 ## Future Platform Support
 
@@ -368,7 +397,25 @@ The Timer abstraction **enables** no_std support without forcing it:
 
 ### WASM Support
 
-WASM support is planned via `WasmTimer` using `wasm-timer` or `gloo-timers` crates. The Timer trait abstraction makes this straightforward - operators require no changes.
+WASM support is **fully implemented** via `WasmTimer` using `gloo-timers` and `js-sys`. The Timer trait abstraction enabled this with zero operator changes.
+
+**Implementation Details:**
+- **`WasmTimer`** - Zero-cost WASM implementation using `gloo_timers::future::sleep`
+- **`WasmInstant`** - Custom instant type based on `js-sys::Date.now()` (returns milliseconds since epoch)
+- **Arithmetic support** - Implements `Add<Duration>`, `Sub<Duration>`, and `Sub<Self>` for duration calculations
+- **Runtime compatibility** - Works in both Node.js and browser environments
+
+**Testing:**
+- Integration tests in `tests/wasm/single_threaded/`
+- Tests use real delays with `gloo_timers::future::sleep` (no time control like Tokio)
+- Run with `wasm-pack test --node --features time-wasm`
+- See [WASM_TESTING.md](WASM_TESTING.md) for complete testing guide
+
+**Platform Support:**
+- ✅ Node.js (v14+)
+- ✅ Modern browsers (Chrome, Firefox, Safari, Edge)
+- ✅ GitHub Actions CI with wasm-pack
+- ✅ Single-threaded execution model
 
 ## Requirements
 

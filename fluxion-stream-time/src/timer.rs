@@ -1,10 +1,14 @@
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
 use core::future::Future;
 use core::ops::{Add, Sub};
 use core::time::Duration;
 use std::fmt::Debug;
 
 pub trait Timer: Clone + Send + Sync + Debug + 'static {
-    type Sleep: Future<Output = ()> + Send;
+    type Sleep: Future<Output = ()>;
 
     type Instant: Copy
         + Debug
@@ -12,6 +16,7 @@ pub trait Timer: Clone + Send + Sync + Debug + 'static {
         + Send
         + Sync
         + Add<Duration, Output = Self::Instant>
+        + Sub<Duration, Output = Self::Instant>
         + Sub<Self::Instant, Output = Duration>;
 
     /// Creates a future that sleeps for the specified duration.

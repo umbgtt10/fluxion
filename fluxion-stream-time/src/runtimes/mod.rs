@@ -1,5 +1,15 @@
-#[cfg(feature = "time-tokio")]
-pub use tokio_impl::implementation::TokioTimer;
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 
-#[cfg(feature = "time-tokio")]
+#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
+pub use tokio_impl::tokio_implementation::TokioTimer;
+
+#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
 mod tokio_impl;
+
+#[cfg(all(feature = "time-wasm", target_arch = "wasm32"))]
+pub use wasm_impl::wasm_implementation;
+
+#[cfg(all(feature = "time-wasm", target_arch = "wasm32"))]
+mod wasm_impl;
