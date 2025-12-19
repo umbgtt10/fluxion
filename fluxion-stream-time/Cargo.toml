@@ -29,14 +29,16 @@ js-sys = { workspace = true, optional = true }
 default = ["time-tokio"]
 time-tokio = []
 time-async-std = ["dep:async-io"]
+time-smol = ["dep:async-io"]
 time-wasm = ["dep:gloo-timers", "dep:js-sys"]
 tracing = ["dep:tracing", "fluxion-core/tracing"]
 
 [dev-dependencies]
 anyhow = { workspace = true }
-async-std = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+async-std = { workspace = true }
+smol = { workspace = true }
 fluxion-stream = { workspace = true }
 fluxion-test-utils = { workspace = true }
 tokio-stream = { workspace = true }

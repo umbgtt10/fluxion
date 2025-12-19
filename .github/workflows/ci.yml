@@ -183,6 +183,9 @@ jobs:
       - name: Run async-std tests
         run: cargo test --package fluxion-stream-time --features time-async-std --no-default-features --test all_tests --verbose
 
+      - name: Run smol tests
+        run: cargo test --package fluxion-stream-time --features time-smol --no-default-features --test all_tests --verbose
+
       - name: Install cargo-audit
         run: cargo install --locked cargo-audit
 

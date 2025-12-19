@@ -14,6 +14,12 @@ pub use async_std_impl::async_std_implementation::AsyncStdTimer;
 #[cfg(all(feature = "time-async-std", not(target_arch = "wasm32")))]
 mod async_std_impl;
 
+#[cfg(all(feature = "time-smol", not(target_arch = "wasm32")))]
+pub use smol_impl::smol_implementation::SmolTimer;
+
+#[cfg(all(feature = "time-smol", not(target_arch = "wasm32")))]
+mod smol_impl;
+
 #[cfg(all(feature = "time-wasm", target_arch = "wasm32"))]
 pub use wasm_impl::wasm_implementation;
 

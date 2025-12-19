@@ -15,7 +15,8 @@ Behaviour:
 Test scripts called:
   - .\.ci\tokio_tests.ps1 (native Tokio tests with nextest)
   - .\.ci\wasm_tests.ps1 (WASM tests with wasm-pack)
-  - .\.ci\async_std_tests.ps1 (async-std tests)
+  - .\.ci\smol_tests.ps1 (smol runtime tests)
+  - .\.ci\async_std_tests.ps1 (async-std tests - deprecated runtime)
 
 Warning:
   This will modify `Cargo.toml` files. Run in a branch so you can review diffs and CI results.
@@ -168,6 +169,15 @@ Write-Color "=== Running WASM tests ===" Cyan
 $rc = $LASTEXITCODE
 if ($rc -ne 0) {
   Write-Color "WASM tests failed (exit code $rc)" Red
+  exit $rc
+}
+
+# Run smol tests
+Write-Color "=== Running smol tests ===" Cyan
+& .\.ci\smol_tests.ps1
+$rc = $LASTEXITCODE
+if ($rc -ne 0) {
+  Write-Color "smol tests failed (exit code $rc)" Red
   exit $rc
 }
 

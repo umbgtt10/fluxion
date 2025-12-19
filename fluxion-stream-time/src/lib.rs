@@ -22,11 +22,11 @@
 //!
 //! Enable runtime-specific features in your `Cargo.toml`:
 //! - `time-tokio` (default) - Tokio runtime support with `TokioTimer`
-//! - `time-async-std` - async-std runtime ⚠️ **DEPRECATED** (unmaintained, RUSTSEC-2025-0052)
+//! - `time-smol` - smol runtime support with `SmolTimer`
 //! - `time-wasm` - WebAssembly support with `WasmTimer`
-//! - `time-smol` - smol runtime support (planned)
+//! - `time-async-std` - async-std runtime ⚠️ **DEPRECATED** (unmaintained, RUSTSEC-2025-0052)
 //!
-//! ⚠️ **Note**: async-std is discontinued. Use tokio for new projects.
+//! ⚠️ **Note**: async-std is discontinued. Use tokio or smol for new projects.
 //!
 //! # Example
 //!
@@ -90,3 +90,9 @@ pub use runtimes::AsyncStdTimer;
 
 #[cfg(all(feature = "time-async-std", not(target_arch = "wasm32")))]
 pub type AsyncStdTimestamped<T> = InstantTimestamped<T, AsyncStdTimer>;
+
+#[cfg(all(feature = "time-smol", not(target_arch = "wasm32")))]
+pub use runtimes::SmolTimer;
+
+#[cfg(all(feature = "time-smol", not(target_arch = "wasm32")))]
+pub type SmolTimestamped<T> = InstantTimestamped<T, SmolTimer>;

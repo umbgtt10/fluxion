@@ -39,7 +39,7 @@
 #### 2. **Comprehensive Test Suite (900+ tests)**
 
 Breaking down our 900+ tests:
-- **800+ integration tests** - Real-world usage validation across all crates (Tokio + WASM)
+- **800+ integration tests** - Real-world usage validation across all crates (Tokio, smol, WASM, async-std)
 - **98 doc tests** - Ensures all code examples compile and run
 - **100% pass rate** - Zero failures, zero warnings
 

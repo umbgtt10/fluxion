@@ -9,15 +9,15 @@ This crate provides specialized time-based operators (`delay`, `debounce`, `thro
 fluxion-stream-time supports multiple async runtimes through feature flags:
 
 - **`time-tokio`** (default) - Tokio runtime with `TokioTimer`
+- **`time-smol`** - smol runtime with `SmolTimer`
 - **`time-wasm`** - WebAssembly with `WasmTimer` (Node.js and browser)
 - **`time-async-std`** - async-std runtime ⚠️ **DEPRECATED** (unmaintained)
-- **`time-smol`** - smol runtime (planned)
 
 All operators are fully runtime-agnostic thanks to the `Timer` trait abstraction.
 
 > ⚠️ **Note:** async-std has been discontinued (RUSTSEC-2025-0052, Aug 2024).
 > The implementation is kept for compatibility with existing projects only.
-> New projects should use tokio or consider smol runtime instead.
+> New projects should use tokio or smol runtimes instead.
 
 ## Why This Crate Exists
 
@@ -287,15 +287,35 @@ let timestamped = InstantTimestamped::new(my_value, timer.now());
 - Multi-threaded tests use `async_std::task::spawn` for true concurrency
 - Tests run with `cargo test --features time-async-std --no-default-features`
 
-### smol (planned)
+### smol
 
 ```rust
-use fluxion_stream_time::{SmolTimer, DelayExt};
+use fluxion_stream_time::runtimes::SmolTimer;
+use fluxion_stream_time::{DelayExt, DebounceExt, SmolTimestamped};
+use fluxion_stream_time::timer::Timer;
 use std::time::Duration;
 
 let timer = SmolTimer;
-let delayed = source_stream.delay(Duration::from_millis(100), timer);
+
+// Delay all emissions by 100ms
+let delayed_stream = source_stream
+    .delay(Duration::from_millis(100), timer.clone());
+
+// Debounce emissions
+let debounced_stream = source_stream
+    .debounce(Duration::from_millis(100), timer.clone());
+
+// Create timestamped values
+let timestamped = SmolTimestamped::new(my_value, timer.now());
 ```
+
+**smol Notes:**
+- Uses `async-io` for timer implementation (shared with async-std)
+- Custom `SmolTimer` based on `async_io::Timer` for sleep operations
+- Standard `std::time::Instant` for monotonic time tracking
+- Tests run with `cargo test --features time-smol --no-default-features`
+- 10 comprehensive tests validate all time-based operators in single & multi-threaded modes
+- Supports both `smol::block_on()` (single-threaded) and `smol::Executor` (multi-threaded)
 
 ### WASM (WebAssembly)
 
@@ -395,7 +415,7 @@ impl Timer for MyCustomTimer {
 | **Core Operators** | ✅ Yes | ✅ Yes |
 | **Deterministic** | ✅ Yes | ❌ No (monotonic) |
 | **Duration Math** | ❌ No | ✅ Yes |
-| **Runtime Support** | N/A | Tokio, async-std (deprecated), WASM (smol planned) |
+| **Runtime Support** | N/A | Tokio, smol, WASM, async-std (deprecated) |
 
 > ⚠️ **Note**: async-std support is deprecated due to discontinuation (RUSTSEC-2025-0052).
 

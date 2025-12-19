@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.5] - Not Published (Internal Release)
+
+**Goal:** Enable time-based operators with smol runtime through Timer abstraction
+
+### Added
+- **SmolTimer Implementation** (`fluxion-stream-time`)
+  - Zero-sized type implementing Timer trait using `async-io::Timer`
+  - Wraps `async_io::Timer::after(duration)` for async sleep operations
+  - Uses `std::time::Instant` for monotonic timestamp tracking
+  - Compatible with smol's executor patterns (both single and multi-threaded)
+  - Supports both single-threaded (`smol::block_on`) and multi-threaded (`smol::Executor`) execution models
+
+- **Feature Flag** (`fluxion-stream-time`)
+  - `time-smol` - smol runtime support via SmolTimer
+  - Mutually exclusive with other runtime features
+
+- **smol Test Suite** (`fluxion-stream-time/tests/smol/`)
+  - 10 comprehensive tests (5 operators × 2 threading models)
+  - Single-threaded: debounce, delay, sample, throttle, timeout (with `smol::block_on`)
+  - Multi-threaded: Same 5 operators with `smol::Executor` for concurrency
+  - Uses real async delays via `smol::Timer::after`
+  - Helper functions: test_channel, timestamped_person, person_alice
+  - All tests passing in 0.15-0.16s execution time
+
+- **CI Integration**
+  - New smol test script (`.ci/smol_tests.ps1`)
+  - Tests validate all 10 tests with verbose output
+
+- **Public API** (`fluxion-stream-time`)
+  - `SmolTimer` - Timer implementation for smol runtime
+  - `SmolTimestamped<T>` - Type alias for `InstantTimestamped<T, SmolTimer>`
+  - Exported via `runtimes` module with feature gating
+
+### Documentation
+- **Runtime Support** (`fluxion-stream-time`)
+  - smol added to supported runtimes list
+  - Usage examples with SmolTimer
+  - Implementation notes and platform support details
+
+### Technical Details
+- All 5 time-based operators (debounce, throttle, delay, sample, timeout) work with smol
+- Zero operator changes required (Timer trait abstraction enabled smol support)
+- 10 tests passing (5 single-threaded + 5 multi-threaded)
+- Zero compilation errors, zero clippy warnings for smol feature
+- Pattern: Uses async-io conditionally compiled for non-WASM targets
+- Shared dependency with async-std implementation (async-io 2.6.0)
+
+### Why smol?
+
+smol provides:
+1. **Lightweight Alternative** - Smaller runtime footprint than tokio
+2. **Multi-threading Support** - Unlike WASM, supports concurrent execution
+3. **Active Maintenance** - Unlike async-std (discontinued), actively maintained
+4. **Architecture Validation** - Further proves Timer trait abstraction works across diverse runtimes
+5. **Ecosystem Choice** - Gives users another production-ready option
+
+**Recommendation**: Use `time-tokio` (default) for maximum ecosystem compatibility, or `time-smol` for lightweight async applications.
+
 ## [0.6.4] - Not Published (Internal Release) ⚠️ **DEPRECATED RUNTIME**
 
 **Goal:** Enable time-based operators with async-std runtime through Timer abstraction

@@ -307,6 +307,34 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - Browser-specific optimizations
 - Deterministic time control (WASM doesn't support time mocking like Tokio)
 
+## 🚀 Version 0.6.5 - smol Runtime Support
+
+**Status:** Completed (Not yet published)
+
+**Goal:** Enable time-based operators with smol runtime through Timer abstraction
+
+### Essential Features
+- ✅ **SmolTimer Implementation** - Zero-sized type implementing Timer trait using async-io
+- ✅ **Feature Flag** - `time-smol` for smol runtime support
+- ✅ **Test Suite** - 10 comprehensive tests (5 operators × 2 threading models)
+- ✅ **CI Integration** - Automated testing with `.ci/smol_tests.ps1`
+- ✅ **Documentation** - Usage examples and implementation details
+- ✅ **Public API** - `SmolTimer` and `SmolTimestamped<T>` exports
+
+### Documentation
+- ✅ smol usage examples with SmolTimer
+- ✅ Implementation notes and platform support details
+- ✅ Updated runtime support lists across all READMEs
+
+### Quality Gates
+- ✅ All tests passing (10/10 smol tests)
+- ✅ Zero compilation errors for smol feature
+- ✅ Zero clippy warnings
+- ✅ CI green
+
+### Why smol?
+smol provides a lightweight, actively-maintained alternative to tokio with full multi-threading support, unlike WASM. This validates the Timer trait abstraction works across diverse runtime architectures.
+
 ## 🚀 Version 0.6.4 - Support async-std Runtime ⚠️ **DEPRECATED**
 
 **Status:** Completed (Unmaintained Runtime)
@@ -346,7 +374,6 @@ New projects should use tokio or smol runtimes instead.
 - Users can choose between Tokio and async-std based on project needs
 
 **Out of Scope:**
-- smol runtime support (planned for 0.6.5)
 - Runtime performance benchmarking
 
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
