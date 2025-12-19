@@ -48,8 +48,8 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.6.0"
-fluxion-test-utils = "0.6.0"
+fluxion-rx = "0.6.2"
+fluxion-test-utils = "0.6.2"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -120,8 +120,8 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.6.0"
-fluxion-test-utils = "0.6.0"
+fluxion-rx = "0.6.2"
+fluxion-test-utils = "0.6.2"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -195,8 +195,8 @@ The `merge_with` operator enables elegant stateful stream processing by merging 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.6.0"
-fluxion-test-utils = "0.6.0"
+fluxion-rx = "0.6.2"
+fluxion-test-utils = "0.6.2"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -356,7 +356,7 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.6.0"
+fluxion-exec = "0.6.2"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = "0.7.17"
@@ -459,7 +459,7 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.6.0"
+fluxion-exec = "0.6.2"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = "0.7.17"
