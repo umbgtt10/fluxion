@@ -2,10 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
-use fluxion_stream_time::runtimes::TokioTimer;
-
 use fluxion_core::{HasTimestamp, Timestamped};
+use fluxion_stream_time::runtimes::TokioTimer;
 use fluxion_stream_time::timer::Timer;
 use fluxion_stream_time::InstantTimestamped;
 use std::cmp::Ordering;

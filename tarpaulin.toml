@@ -9,5 +9,6 @@ out = ["Html", "Xml"]
 fail-under = 88
 exclude-files = [
   "examples/**",
-  "fluxion-stream-time/tests/wasm/**"
+  "fluxion-stream-time/tests/wasm/**",
+  "fluxion-stream-time/tests/async_std/**"
 ]

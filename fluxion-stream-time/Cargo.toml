@@ -19,6 +19,7 @@ pin-project = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { workspace = true }
+async-io = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 gloo-timers = { workspace = true, optional = true, features = ["futures"] }
@@ -27,11 +28,13 @@ js-sys = { workspace = true, optional = true }
 [features]
 default = ["time-tokio"]
 time-tokio = []
+time-async-std = ["dep:async-io"]
 time-wasm = ["dep:gloo-timers", "dep:js-sys"]
 tracing = ["dep:tracing", "fluxion-core/tracing"]
 
 [dev-dependencies]
 anyhow = { workspace = true }
+async-std = { version = "1.13", features = ["attributes"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 fluxion-stream = { workspace = true }

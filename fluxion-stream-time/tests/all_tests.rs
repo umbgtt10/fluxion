@@ -5,5 +5,8 @@
 #[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
 pub mod tokio;
 
+#[cfg(all(feature = "time-async-std", not(target_arch = "wasm32")))]
+pub mod async_std;
+
 #[cfg(all(feature = "time-wasm", target_arch = "wasm32"))]
 pub mod wasm;
