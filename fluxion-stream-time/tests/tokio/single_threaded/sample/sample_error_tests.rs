@@ -3,8 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream_time::SampleExt;
-use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{helpers::recv_timeout, test_channel_with_errors, TestData};
 use futures::StreamExt;
@@ -15,11 +14,10 @@ use tokio::{spawn, sync::mpsc::unbounded_channel};
 #[tokio::test]
 async fn test_sample_propagates_errors() -> anyhow::Result<()> {
     // Arrange
-    let timer = TokioTimer;
     pause();
 
     let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
-    let sampled = stream.sample(Duration::from_millis(100), timer.clone());
+    let sampled = stream.sample(Duration::from_millis(100));
 
     let (result_tx, mut result_rx) = unbounded_channel();
 

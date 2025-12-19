@@ -12,7 +12,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-/// Extension trait providing the `timeout` operator for streams.
+/// Extension trait providing the `timeout_with_timer` operator for streams.
 ///
 /// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to enforce a timeout
 /// between emissions.
@@ -52,7 +52,7 @@ where
     /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
     ///
     /// let timer = TokioTimer;
-    /// let mut timed_out = source.timeout(Duration::from_millis(100), timer.clone());
+    /// let mut timed_out = source.timeout_with_timer(Duration::from_millis(100), timer.clone());
     ///
     /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
     ///
@@ -60,7 +60,7 @@ where
     /// assert_eq!(&*item, &person_alice());
     /// # }
     /// ```
-    fn timeout(
+    fn timeout_with_timer(
         self,
         duration: Duration,
         timer: TM,
@@ -72,7 +72,7 @@ where
     TM: Timer,
     S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
 {
-    fn timeout(
+    fn timeout_with_timer(
         self,
         duration: Duration,
         timer: TM,
@@ -144,5 +144,79 @@ where
         } else {
             unreachable!("sleep future should always be Some after initialization");
         }
+    }
+}
+
+// =============================================================================
+// Convenience extension trait with default timer
+// =============================================================================
+
+/// Extension trait for timeout with a default timer.
+///
+/// This trait provides a `timeout()` method that automatically uses the
+/// appropriate timer for the active runtime feature.
+pub trait TimeoutWithDefaultTimerExt<T>: Sized {
+    /// Errors if the stream does not emit any value within the specified duration,
+    /// using the default timer for the active runtime.
+    ///
+    /// This convenience method is available when exactly one runtime feature is enabled.
+    /// It automatically uses the correct timer without requiring an explicit timer parameter.
+    fn timeout(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>>;
+
+    /// The timestamped type for this runtime.
+    type Timestamped;
+}
+
+#[cfg(feature = "time-tokio")]
+impl<S, T> TimeoutWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>>,
+{
+    type Timestamped = crate::TokioTimestamped<T>;
+
+    fn timeout(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        TimeoutExt::timeout_with_timer(self, duration, crate::TokioTimer)
+    }
+}
+
+#[cfg(feature = "time-smol")]
+impl<S, T> TimeoutWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>>,
+{
+    type Timestamped = crate::SmolTimestamped<T>;
+
+    fn timeout(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        TimeoutExt::timeout_with_timer(self, duration, crate::SmolTimer)
+    }
+}
+
+#[cfg(feature = "time-wasm")]
+impl<S, T> TimeoutWithDefaultTimerExt<T> for S
+where
+    S: Stream<
+        Item = StreamItem<InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>>,
+    >,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>;
+
+    fn timeout(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        TimeoutExt::timeout_with_timer(
+            self,
+            duration,
+            crate::runtimes::wasm_implementation::WasmTimer::new(),
+        )
+    }
+}
+
+#[cfg(feature = "time-async-std")]
+impl<S, T> TimeoutWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>>,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::AsyncStdTimer>;
+
+    fn timeout(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        TimeoutExt::timeout_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
     }
 }

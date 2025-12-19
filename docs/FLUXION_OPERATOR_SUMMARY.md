@@ -90,11 +90,13 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 - [`subscribe_latest`](#subscribe_latest) - Latest-value processing with cancellation
 
 ### ⏱️ Time-Based Operators (fluxion-stream-time)
-- `debounce` - Emit only after silence period
-- `throttle` - Emit at most once per time window
-- `delay` - Delay all emissions by duration
-- `sample` - Sample at regular intervals
-- `timeout` - Emit error if no items within duration
+- `debounce` - Emit only after silence period (use `.debounce(duration)` convenience method or `.debounce_with_timer(duration, timer)` for explicit control)
+- `throttle` - Emit at most once per time window (use `.throttle(duration)` convenience method or `.throttle_with_timer(duration, timer)` for explicit control)
+- `delay` - Delay all emissions by duration (use `.delay(duration)` convenience method or `.delay_with_timer(duration, timer)` for explicit control)
+- `sample` - Sample at regular intervals (use `.sample(duration)` convenience method or `.sample_with_timer(duration, timer)` for explicit control)
+- `timeout` - Emit error if no items within duration (use `.timeout(duration)` convenience method or `.timeout_with_timer(duration, timer)` for explicit control)
+
+**Note:** All time operators now provide ergonomic convenience methods (no timer parameter) when using `fluxion_stream_time::prelude::*`. Explicit `*_with_timer` methods remain available for advanced use cases.
 
 **See [fluxion-stream-time documentation](../fluxion-stream-time/README.md) for details**
 

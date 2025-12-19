@@ -16,7 +16,7 @@ async fn test_timeout_basic() {
     // Arrange
     let timer = WasmTimer::new();
     let (tx, stream) = test_channel::<WasmTimestamped<Person>>();
-    let mut timed = stream.timeout(Duration::from_millis(200), timer.clone());
+    let mut timed = stream.timeout(Duration::from_millis(200));
 
     // Act
     tx.unbounded_send(WasmTimestamped::new(person_alice(), timer.now()))

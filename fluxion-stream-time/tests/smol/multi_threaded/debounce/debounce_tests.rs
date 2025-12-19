@@ -3,7 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::smol::helpers::{person_alice, test_channel, timestamped_person};
-use fluxion_stream_time::{DebounceExt, SmolTimer};
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::SmolTimer;
 use futures::StreamExt;
 use std::time::Duration;
 
@@ -14,7 +15,7 @@ fn test_debounce_smol_multi_threaded() {
         let (tx, rx) = test_channel();
         let timer = SmolTimer;
 
-        let mut debounced = rx.debounce(Duration::from_millis(100), timer);
+        let mut debounced = rx.debounce(Duration::from_millis(100));
 
         executor
             .spawn(async move {

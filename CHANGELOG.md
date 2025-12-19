@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Ergonomic Convenience Methods** (`fluxion-stream-time`)
+  - New convenience methods for all 5 time operators: `debounce()`, `delay()`, `throttle()`, `sample()`, `timeout()`
+  - No timer parameter required - automatically uses runtime's default timer
+  - Available via `prelude` module: `use fluxion_stream_time::prelude::*;`
+  - Feature-gated implementations for each runtime (time-tokio, time-smol, time-wasm, time-async-std)
+  - Example: `.debounce(Duration::from_millis(100))` vs `.debounce_with_timer(duration, timer)`
+
+### Changed  
+- **API Enhancement** (`fluxion-stream-time`)
+  - Renamed base operator methods to `*_with_timer` pattern (e.g., `debounce` → `debounce_with_timer`)
+  - Added `*WithDefaultTimerExt` traits providing convenience methods (e.g., `DebounceWithDefaultTimerExt`)
+  - Both traits exported: `*Ext` (explicit timer) and `*WithDefaultTimerExt` (convenience)
+  - Pattern applied consistently across all 5 time operators
+  - Prelude exports both trait variants for maximum flexibility
+  - Original explicit API retained for advanced use cases requiring custom timer control
+
+### Updated
+- **Tests** (~40 test files)
+  - All time operator tests migrated to convenience methods
+  - Import pattern changed to `use fluxion_stream_time::prelude::*;`
+  - Timer parameters removed from operator calls
+  - All tests passing across all runtimes (Tokio: 57, Smol: 10, Async-std: 10)
+
+- **Benchmarks** (5 benchmark files)
+  - `debounce_bench`, `delay_bench`, `throttle_bench`, `sample_bench`, `timeout_bench`
+  - All using convenience methods for cleaner benchmark code
+  - All compiling successfully with new API
+
+- **Documentation**
+  - Updated `fluxion-stream-time/README.md` to show convenience methods as primary API
+  - All operator examples now demonstrate both convenience and explicit APIs
+  - Runtime-specific sections updated with convenience method examples
+  - Quick reference table updated to reflect new method signatures
+
 ## [0.6.5] - Not Published (Internal Release)
 
 **Goal:** Enable time-based operators with smol runtime through Timer abstraction

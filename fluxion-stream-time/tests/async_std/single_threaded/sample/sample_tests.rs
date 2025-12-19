@@ -16,7 +16,7 @@ async fn test_sample_basic() {
     // Arrange
     let timer = AsyncStdTimer;
     let (tx, stream) = test_channel::<AsyncStdTimestamped<Person>>();
-    let mut sampled = stream.sample(Duration::from_millis(100), timer.clone());
+    let mut sampled = stream.sample(Duration::from_millis(100));
 
     // Act
     tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))

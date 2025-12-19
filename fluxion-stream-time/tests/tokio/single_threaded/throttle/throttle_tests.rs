@@ -2,10 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::ThrottleExt;
-use fluxion_stream_time::TokioTimer;
-use fluxion_stream_time::TokioTimestamped;
+use fluxion_stream_time::{TokioTimer, TokioTimestamped};
 use fluxion_test_utils::assert_no_element_emitted;
 use fluxion_test_utils::unwrap_stream;
 use fluxion_test_utils::{
@@ -27,7 +26,7 @@ async fn test_throttle_with_instant_timestamped() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
-    let throttled = stream.throttle(Duration::from_secs(1), timer.clone());
+    let throttled = stream.throttle(Duration::from_secs(1));
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
@@ -66,7 +65,7 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
-    let mut throttled = stream.throttle(Duration::from_millis(100), timer.clone());
+    let mut throttled = stream.throttle(Duration::from_millis(100));
 
     // Act & Assert
     tx.send(TokioTimestamped::new(

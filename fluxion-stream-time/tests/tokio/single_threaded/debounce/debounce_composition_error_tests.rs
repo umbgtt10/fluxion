@@ -27,7 +27,7 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
     let (tx_trigger, trigger) = test_channel_with_errors::<TokioTimestamped<TestData>>();
     let mut processed = source
         .take_latest_when(trigger, |_| true)
-        .debounce(Duration::from_millis(500), timer.clone());
+        .debounce(Duration::from_millis(500));
 
     // Act & Assert
     tx_source.send(StreamItem::Value(TokioTimestamped::new(

@@ -23,7 +23,7 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
-    let mut debounced = stream.debounce(Duration::from_millis(500), timer.clone());
+    let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act & Assert
     tx.send(StreamItem::Value(TokioTimestamped::new(
@@ -69,7 +69,7 @@ async fn test_debounce_error_discards_pending() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
-    let mut debounced = stream.debounce(Duration::from_millis(500), timer.clone());
+    let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act & Assert
     tx.send(StreamItem::Value(TokioTimestamped::new(

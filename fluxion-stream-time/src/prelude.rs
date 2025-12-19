@@ -30,10 +30,11 @@
 //!
 //! - [`InstantTimestamped`] - Wrapper with monotonic Instant timestamp
 
-pub use crate::debounce::DebounceExt;
-pub use crate::delay::DelayExt;
-pub use crate::sample::SampleExt;
-pub use crate::throttle::ThrottleExt;
-pub use crate::timeout::TimeoutExt;
+// For debounce, export both traits - they don't conflict since methods have different names
+pub use crate::debounce::{DebounceExt, DebounceWithDefaultTimerExt};
+pub use crate::delay::{DelayExt, DelayWithDefaultTimerExt};
+pub use crate::sample::{SampleExt, SampleWithDefaultTimerExt};
+pub use crate::throttle::{ThrottleExt, ThrottleWithDefaultTimerExt};
+pub use crate::timeout::{TimeoutExt, TimeoutWithDefaultTimerExt};
 
 pub use crate::InstantTimestamped;

@@ -12,7 +12,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-/// Extension trait providing the `sample` operator for streams.
+/// Extension trait providing the `sample_with_timer` operator for streams.
 ///
 /// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to sample emissions
 /// at periodic intervals.
@@ -52,7 +52,7 @@ where
     /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
     ///
     /// let timer = TokioTimer;
-    /// let mut sampled = source.sample(Duration::from_millis(10), timer.clone());
+    /// let mut sampled = source.sample_with_timer(Duration::from_millis(10), timer.clone());
     ///
     /// // Emit Alice and Bob immediately
     /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
@@ -66,7 +66,7 @@ where
     /// assert_eq!(&*item, &person_bob());
     /// # }
     /// ```
-    fn sample(
+    fn sample_with_timer(
         self,
         duration: Duration,
         timer: TM,
@@ -79,7 +79,7 @@ where
     TM: Timer,
     S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
 {
-    fn sample(
+    fn sample_with_timer(
         self,
         duration: Duration,
         timer: TM,
@@ -170,5 +170,85 @@ where
         } else {
             unreachable!("sleep future should always be Some after initialization")
         }
+    }
+}
+
+// =============================================================================
+// Convenience extension trait with default timer
+// =============================================================================
+
+/// Extension trait for sampling with a default timer.
+///
+/// This trait provides a `sample()` method that automatically uses the
+/// appropriate timer for the active runtime feature.
+pub trait SampleWithDefaultTimerExt<T>: Sized
+where
+    T: Send + Clone,
+{
+    /// Samples the stream using the default timer for the active runtime.
+    ///
+    /// This convenience method is available when exactly one runtime feature is enabled.
+    /// It automatically uses the correct timer without requiring an explicit timer parameter.
+    fn sample(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>>;
+
+    /// The timestamped type for this runtime.
+    type Timestamped;
+}
+
+#[cfg(feature = "time-tokio")]
+impl<S, T> SampleWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>>,
+    T: Send + Clone,
+{
+    type Timestamped = crate::TokioTimestamped<T>;
+
+    fn sample(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        SampleExt::sample_with_timer(self, duration, crate::TokioTimer)
+    }
+}
+
+#[cfg(feature = "time-smol")]
+impl<S, T> SampleWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>>,
+    T: Send + Clone,
+{
+    type Timestamped = crate::SmolTimestamped<T>;
+
+    fn sample(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        SampleExt::sample_with_timer(self, duration, crate::SmolTimer)
+    }
+}
+
+#[cfg(feature = "time-wasm")]
+impl<S, T> SampleWithDefaultTimerExt<T> for S
+where
+    S: Stream<
+        Item = StreamItem<InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>>,
+    >,
+    T: Send + Clone,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>;
+
+    fn sample(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        SampleExt::sample_with_timer(
+            self,
+            duration,
+            crate::runtimes::wasm_implementation::WasmTimer::new(),
+        )
+    }
+}
+
+#[cfg(feature = "time-async-std")]
+impl<S, T> SampleWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>>,
+    T: Send + Clone,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::AsyncStdTimer>;
+
+    fn sample(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        SampleExt::sample_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
     }
 }

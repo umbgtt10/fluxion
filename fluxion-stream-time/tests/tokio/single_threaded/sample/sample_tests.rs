@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::SampleExt;
 use fluxion_stream_time::TokioTimer;
 use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
@@ -24,7 +24,7 @@ async fn test_sample_emits_latest_in_window() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
-    let sampled = stream.sample(Duration::from_millis(100), timer.clone());
+    let sampled = stream.sample(Duration::from_millis(100));
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
@@ -56,7 +56,7 @@ async fn test_sample_no_emission_if_no_value() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
-    let sampled = stream.sample(Duration::from_millis(100), timer.clone());
+    let sampled = stream.sample(Duration::from_millis(100));
 
     let (result_tx, mut result_rx) = unbounded_channel();
 

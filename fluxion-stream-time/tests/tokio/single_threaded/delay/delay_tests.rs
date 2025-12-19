@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::DelayExt;
 use fluxion_stream_time::TokioTimer;
 use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
@@ -25,7 +25,7 @@ async fn test_delay_with_instant_timestamped() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
-    let mut delayed = stream.delay(Duration::from_secs(1), timer.clone());
+    let mut delayed = stream.delay(Duration::from_secs(1));
 
     // Act & Assert
     tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
@@ -58,7 +58,7 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
-    let delayed = stream.delay(Duration::from_millis(10), timer.clone());
+    let delayed = stream.delay(Duration::from_millis(10));
 
     let count = 100;
     let (result_tx, mut result_rx) = unbounded_channel();

@@ -3,7 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::smol::helpers::{person_alice, test_channel, timestamped_person};
-use fluxion_stream_time::{SampleExt, SmolTimer};
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::SmolTimer;
 use futures::StreamExt;
 use std::time::Duration;
 
@@ -13,7 +14,7 @@ fn test_sample_smol_single_threaded() {
         let (tx, rx) = test_channel();
         let timer = SmolTimer;
 
-        let mut sampled = rx.sample(Duration::from_millis(100), timer);
+        let mut sampled = rx.sample(Duration::from_millis(100));
 
         // Send one item
         tx.unbounded_send(timestamped_person(person_alice()))

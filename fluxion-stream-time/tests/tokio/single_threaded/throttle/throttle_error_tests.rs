@@ -3,10 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
+use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::ThrottleExt;
-use fluxion_stream_time::TokioTimer;
-use fluxion_stream_time::TokioTimestamped;
+use fluxion_stream_time::{TokioTimer, TokioTimestamped};
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     test_channel_with_errors,
@@ -25,7 +24,7 @@ async fn test_throttle_propagates_errors_immediately() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
-    let throttled = stream.throttle(Duration::from_secs(1), timer.clone());
+    let throttled = stream.throttle(Duration::from_secs(1));
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
@@ -72,7 +71,7 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
     pause();
 
     let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
-    let throttled = stream.throttle(Duration::from_secs(1), timer.clone());
+    let throttled = stream.throttle(Duration::from_secs(1));
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {

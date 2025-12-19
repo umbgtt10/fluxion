@@ -60,7 +60,7 @@ where
     /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
     ///
     /// let timer = TokioTimer;
-    /// let mut throttled = source.throttle(Duration::from_millis(100), timer.clone());
+    /// let mut throttled = source.throttle_with_timer(Duration::from_millis(100), timer.clone());
     ///
     /// // Alice and Bob emitted immediately. Bob should be throttled (dropped).
     /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
@@ -71,7 +71,7 @@ where
     /// assert_eq!(&*item, &person_alice());
     /// # }
     /// ```
-    fn throttle(
+    fn throttle_with_timer(
         self,
         duration: Duration,
         timer: TM,
@@ -84,7 +84,7 @@ where
     TM: Timer,
     S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send,
 {
-    fn throttle(
+    fn throttle_with_timer(
         self,
         duration: Duration,
         timer: TM,
@@ -166,5 +166,87 @@ where
                 }
             }
         }
+    }
+}
+
+// =============================================================================
+// Convenience extension trait with default timer
+// =============================================================================
+
+/// Extension trait for throttling with a default timer.
+///
+/// This trait provides a `throttle()` method that automatically uses the
+/// appropriate timer for the active runtime feature.
+pub trait ThrottleWithDefaultTimerExt<T>: Sized
+where
+    T: Send,
+{
+    /// Throttles the stream using the default timer for the active runtime.
+    ///
+    /// This convenience method is available when exactly one runtime feature is enabled.
+    /// It automatically uses the correct timer without requiring an explicit timer parameter.
+    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>>;
+
+    /// The timestamped type for this runtime.
+    type Timestamped;
+}
+
+#[cfg(feature = "time-tokio")]
+impl<S, T> ThrottleWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>> + Send,
+    T: Send,
+{
+    type Timestamped = crate::TokioTimestamped<T>;
+
+    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        ThrottleExt::throttle_with_timer(self, duration, crate::TokioTimer)
+    }
+}
+
+#[cfg(feature = "time-smol")]
+impl<S, T> ThrottleWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>> + Send,
+    T: Send,
+{
+    type Timestamped = crate::SmolTimestamped<T>;
+
+    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        ThrottleExt::throttle_with_timer(self, duration, crate::SmolTimer)
+    }
+}
+
+#[cfg(feature = "time-wasm")]
+impl<S, T> ThrottleWithDefaultTimerExt<T> for S
+where
+    S: Stream<
+            Item = StreamItem<
+                InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>,
+            >,
+        > + Send,
+    T: Send,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>;
+
+    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        ThrottleExt::throttle_with_timer(
+            self,
+            duration,
+            crate::runtimes::wasm_implementation::WasmTimer::new(),
+        )
+    }
+}
+
+#[cfg(feature = "time-async-std")]
+impl<S, T> ThrottleWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>> + Send,
+    T: Send,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::AsyncStdTimer>;
+
+    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        ThrottleExt::throttle_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
     }
 }

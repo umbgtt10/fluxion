@@ -44,20 +44,19 @@
 //! let (tx, rx) = mpsc::unbounded_channel::<TokioTimestamped<i32>>();
 //! let timer = TokioTimer;
 //!
-//! // Delay all emissions by 100ms
+//! // Delay all emissions by 100ms (convenience method)
 //! let delayed = UnboundedReceiverStream::new(rx)
 //!     .map(StreamItem::Value)
-//!     .delay(Duration::from_millis(100), timer.clone());
+//!     .delay(Duration::from_millis(100));
 //!
 //! tx.send(TokioTimestamped::new(42, timer.now())).unwrap();
 //! tx.send(TokioTimestamped::new(100, timer.now())).unwrap();
 //!
-//! // Or debounce to emit only after 100ms of quiet time
+//! // Or debounce with convenience method (no timer parameter needed)
 //! # let (tx, rx) = mpsc::unbounded_channel::<TokioTimestamped<i32>>();
-//! # let timer = TokioTimer;
 //! let debounced = UnboundedReceiverStream::new(rx)
 //!     .map(StreamItem::Value)
-//!     .debounce(Duration::from_millis(100), timer);
+//!     .debounce(Duration::from_millis(100));
 //! # }
 //! ```
 
@@ -72,12 +71,12 @@ pub mod timer;
 
 pub mod prelude;
 
-pub use debounce::DebounceExt;
-pub use delay::DelayExt;
+pub use debounce::{DebounceExt, DebounceWithDefaultTimerExt};
+pub use delay::{DelayExt, DelayWithDefaultTimerExt};
 pub use instant_timestamped::InstantTimestamped;
-pub use sample::SampleExt;
-pub use throttle::ThrottleExt;
-pub use timeout::TimeoutExt;
+pub use sample::{SampleExt, SampleWithDefaultTimerExt};
+pub use throttle::{ThrottleExt, ThrottleWithDefaultTimerExt};
+pub use timeout::{TimeoutExt, TimeoutWithDefaultTimerExt};
 
 #[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
 pub use runtimes::TokioTimer;

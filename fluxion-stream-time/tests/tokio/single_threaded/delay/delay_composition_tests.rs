@@ -5,8 +5,8 @@
 use fluxion_core::IntoStream;
 use fluxion_stream::prelude::*;
 use fluxion_stream::MergedStream;
+use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::DelayExt;
 use fluxion_stream_time::TokioTimer;
 use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
@@ -35,7 +35,7 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
             };
             TokioTimestamped::new(transformed, item.timestamp)
         })
-        .delay(Duration::from_secs(1), timer.clone());
+        .delay(Duration::from_secs(1));
 
     // Act & Assert
     tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
@@ -70,7 +70,7 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut processed = stream
         .filter_ordered(|data: &_| *data == person_alice() || *data == person_charlie())
-        .delay(Duration::from_secs(1), timer.clone());
+        .delay(Duration::from_secs(1));
 
     // Act & Assert
     tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
@@ -116,7 +116,7 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
             value // Pass through
         })
         .into_stream()
-        .delay(Duration::from_millis(200), timer.clone());
+        .delay(Duration::from_millis(200));
 
     // Act & Assert
     tx1.send(TokioTimestamped::new(person_alice(), timer.now()))?;

@@ -2,9 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream_time::runtimes::TokioTimer;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::{prelude::*, TokioTimestamped};
+use fluxion_stream_time::{prelude::*, TokioTimer, TokioTimestamped};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -21,7 +20,7 @@ async fn test_debounce_emits_after_quiet_period() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
-    let mut debounced = stream.debounce(Duration::from_millis(500), timer.clone());
+    let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act & Assert
     tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
@@ -49,7 +48,7 @@ async fn test_debounce_resets_on_new_value() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
-    let mut debounced = stream.debounce(Duration::from_millis(500), timer.clone());
+    let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act & Assert
     tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
@@ -78,7 +77,7 @@ async fn test_debounce_multiple_resets() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
-    let mut debounced = stream.debounce(Duration::from_millis(500), timer.clone());
+    let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act & Assert
     tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
@@ -107,7 +106,7 @@ async fn test_debounce_emits_pending_on_stream_end() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
-    let mut debounced = stream.debounce(Duration::from_millis(500), timer.clone());
+    let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act & Assert
     tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;

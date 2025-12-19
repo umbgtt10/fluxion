@@ -62,11 +62,11 @@ Keeping `fluxion-stream` timestamp-agnostic means:
 - **`TokioTimestamped<T>`** - Type alias for `InstantTimestamped<T, TokioTimer>`
 
 ### Operators
-- **`delay(duration, timer)`** - Delays each emission by a specified duration
-- **`debounce(duration, timer)`** - Emits values only after a quiet period
-- **`throttle(duration, timer)`** - Emits a value and then ignores subsequent values for a duration
-- **`sample(duration, timer)`** - Emits the most recent value within periodic time intervals
-- **`timeout(duration, timer)`** - Errors if no emission within duration
+- **`delay(duration)`** - Delays each emission by a specified duration (or `delay_with_timer` for explicit timer control)
+- **`debounce(duration)`** - Emits values only after a quiet period (or `debounce_with_timer` for explicit timer control)
+- **`throttle(duration)`** - Emits a value and then ignores subsequent values for a duration (or `throttle_with_timer` for explicit timer control)
+- **`sample(duration)`** - Emits the most recent value within periodic time intervals (or `sample_with_timer` for explicit timer control)
+- **`timeout(duration)`** - Errors if no emission within duration (or `timeout_with_timer` for explicit timer control)
 
 ## Quick Reference Table
 
@@ -84,8 +84,14 @@ Keeping `fluxion-stream` timestamp-agnostic means:
 **Delays each emission by a specified duration**
 
 ```rust
+use fluxion_stream_time::prelude::*;
+
+// Convenience method (automatically uses default timer for your runtime)
+let delayed = stream.delay(Duration::from_millis(100));
+
+// Or use explicit timer when you need custom control
 let timer = TokioTimer;
-let delayed = stream.delay(Duration::from_millis(100), timer);
+let delayed = stream.delay_with_timer(Duration::from_millis(100), timer);
 ```
 
 - Each item delayed independently
@@ -97,8 +103,14 @@ let delayed = stream.delay(Duration::from_millis(100), timer);
 **Emits only after a period of inactivity (trailing)**
 
 ```rust
+use fluxion_stream_time::prelude::*;
+
+// Convenience method (automatically uses default timer for your runtime)
+let debounced = stream.debounce(Duration::from_millis(500));
+
+// Or use explicit timer when you need custom control
 let timer = TokioTimer;
-let debounced = stream.debounce(Duration::from_millis(500), timer);
+let debounced = stream.debounce_with_timer(Duration::from_millis(500), timer);
 ```
 
 - Emits latest value after quiet period
@@ -111,8 +123,14 @@ let debounced = stream.debounce(Duration::from_millis(500), timer);
 **Rate-limits emissions (leading)**
 
 ```rust
+use fluxion_stream_time::prelude::*;
+
+// Convenience method (automatically uses default timer for your runtime)
+let throttled = stream.throttle(Duration::from_millis(100));
+
+// Or use explicit timer when you need custom control
 let timer = TokioTimer;
-let throttled = stream.throttle(Duration::from_millis(100), timer);
+let throttled = stream.throttle_with_timer(Duration::from_millis(100), timer);
 ```
 
 - Emits first value immediately
@@ -125,8 +143,14 @@ let throttled = stream.throttle(Duration::from_millis(100), timer);
 **Samples stream at periodic intervals**
 
 ```rust
+use fluxion_stream_time::prelude::*;
+
+// Convenience method (automatically uses default timer for your runtime)
+let sampled = stream.sample(Duration::from_millis(100));
+
+// Or use explicit timer when you need custom control
 let timer = TokioTimer;
-let sampled = stream.sample(Duration::from_millis(100), timer);
+let sampled = stream.sample_with_timer(Duration::from_millis(100), timer);
 ```
 
 - Emits most recent value within each interval
@@ -138,8 +162,14 @@ let sampled = stream.sample(Duration::from_millis(100), timer);
 **Errors if no emission within duration**
 
 ```rust
+use fluxion_stream_time::prelude::*;
+
+// Convenience method (automatically uses default timer for your runtime)
+let with_timeout = stream.timeout(Duration::from_secs(30));
+
+// Or use explicit timer when you need custom control
 let timer = TokioTimer;
-let with_timeout = stream.timeout(Duration::from_secs(30), timer);
+let with_timeout = stream.timeout_with_timer(Duration::from_secs(30), timer);
 ```
 
 - Monitors time between emissions
@@ -165,11 +195,11 @@ async fn main() {
     let (tx, rx) = mpsc::unbounded_channel();
     let timer = TokioTimer;
 
-    // Create timestamped stream with runtime-aware delays
+    // Create timestamped stream with runtime-aware delays - convenience methods!
     let stream = UnboundedReceiverStream::new(rx)
         .map(StreamItem::Value)
-        .debounce(Duration::from_millis(100), timer.clone())
-        .throttle(Duration::from_millis(200), timer.clone());
+        .debounce(Duration::from_millis(100))    // No timer parameter needed
+        .throttle(Duration::from_millis(200));   // Automatically uses TokioTimer
 
     // Send timestamped data
     tx.send(TokioTimestamped::new(42, timer.now())).unwrap();
@@ -189,22 +219,21 @@ The only requirement is that your stream items implement `HasTimestamp` with a c
 
 ```rust
 use fluxion_stream::{IntoFluxionStream, FilterOrderedExt, MapOrderedExt, DistinctUntilChangedExt};
-use fluxion_stream_time::{TokioTimer, TokioTimestamped, DelayExt, DebounceExt};
+use fluxion_stream_time::prelude::*;  // Gets convenience methods
+use fluxion_stream_time::{TokioTimer, TokioTimestamped};
 use std::time::Duration;
 
-let timer = TokioTimer;
-
-// Start with time-based stream
+// Start with time-based stream - convenience methods!
 let stream = source_stream
-    // Time operator (requires Timer)
-    .debounce(Duration::from_millis(100), timer.clone())
+    // Time operator (no timer parameter needed!)
+    .debounce(Duration::from_millis(100))
 
     // Core operators work seamlessly
     .filter_ordered(|item| *item > 50)
     .map_ordered(|item| item * 2)
 
     // Back to time operator
-    .delay(Duration::from_millis(50), timer.clone())
+    .delay(Duration::from_millis(50))
 
     // More core operators
     .distinct_until_changed();
@@ -238,19 +267,24 @@ let stream = source_stream
 ### Tokio (default)
 
 ```rust
-use fluxion_stream_time::{TokioTimer, TokioTimestamped, DelayExt, DebounceExt};
+use fluxion_stream_time::prelude::*;  // Convenience methods
+use fluxion_stream_time::{TokioTimer, TokioTimestamped};
 use fluxion_stream_time::timer::Timer;
 use std::time::Duration;
 
 let timer = TokioTimer;
 
-// Delay all emissions by 100ms
+// Delay all emissions by 100ms (convenience method)
 let delayed_stream = source_stream
-    .delay(Duration::from_millis(100), timer.clone());
+    .delay(Duration::from_millis(100));
 
-// Debounce emissions
+// Debounce emissions (convenience method)
 let debounced_stream = source_stream
-    .debounce(Duration::from_millis(100), timer.clone());
+    .debounce(Duration::from_millis(100));
+
+// For explicit timer control, use *_with_timer methods:
+let delayed_custom = source_stream
+    .delay_with_timer(Duration::from_millis(100), timer.clone());
 
 // Create timestamped values
 let timestamped = TokioTimestamped::new(my_value, timer.now());
@@ -262,20 +296,25 @@ let timestamped = TokioTimestamped::new(my_value, timer.now());
 > This implementation is kept for compatibility only. New projects should use tokio or smol.
 
 ```rust
+use fluxion_stream_time::prelude::*;  // Convenience methods
 use fluxion_stream_time::runtimes::AsyncStdTimer;
-use fluxion_stream_time::{DelayExt, DebounceExt, InstantTimestamped};
+use fluxion_stream_time::{InstantTimestamped};
 use fluxion_stream_time::timer::Timer;
 use std::time::Duration;
 
 let timer = AsyncStdTimer;
 
-// Delay all emissions by 100ms
+// Delay all emissions by 100ms (convenience method)
 let delayed_stream = source_stream
-    .delay(Duration::from_millis(100), timer.clone());
+    .delay(Duration::from_millis(100));
 
-// Debounce emissions
+// Debounce emissions (convenience method)
 let debounced_stream = source_stream
-    .debounce(Duration::from_millis(100), timer.clone());
+    .debounce(Duration::from_millis(100));
+
+// For explicit timer control, use *_with_timer methods:
+let delayed_custom = source_stream
+    .delay_with_timer(Duration::from_millis(100), timer.clone());
 
 // Create timestamped values
 let timestamped = InstantTimestamped::new(my_value, timer.now());
@@ -290,20 +329,25 @@ let timestamped = InstantTimestamped::new(my_value, timer.now());
 ### smol
 
 ```rust
+use fluxion_stream_time::prelude::*;  // Convenience methods
 use fluxion_stream_time::runtimes::SmolTimer;
-use fluxion_stream_time::{DelayExt, DebounceExt, SmolTimestamped};
+use fluxion_stream_time::{SmolTimestamped};
 use fluxion_stream_time::timer::Timer;
 use std::time::Duration;
 
 let timer = SmolTimer;
 
-// Delay all emissions by 100ms
+// Delay all emissions by 100ms (convenience method)
 let delayed_stream = source_stream
-    .delay(Duration::from_millis(100), timer.clone());
+    .delay(Duration::from_millis(100));
 
-// Debounce emissions
+// Debounce emissions (convenience method)
 let debounced_stream = source_stream
-    .debounce(Duration::from_millis(100), timer.clone());
+    .debounce(Duration::from_millis(100));
+
+// For explicit timer control, use *_with_timer methods:
+let delayed_custom = source_stream
+    .delay_with_timer(Duration::from_millis(100), timer.clone());
 
 // Create timestamped values
 let timestamped = SmolTimestamped::new(my_value, timer.now());
@@ -320,20 +364,25 @@ let timestamped = SmolTimestamped::new(my_value, timer.now());
 ### WASM (WebAssembly)
 
 ```rust
+use fluxion_stream_time::prelude::*;  // Convenience methods
 use fluxion_stream_time::runtimes::wasm_implementation::WasmTimer;
-use fluxion_stream_time::{DelayExt, DebounceExt, InstantTimestamped};
+use fluxion_stream_time::{InstantTimestamped};
 use fluxion_stream_time::timer::Timer;
 use std::time::Duration;
 
 let timer = WasmTimer::new();
 
-// Delay all emissions by 100ms
+// Delay all emissions by 100ms (convenience method)
 let delayed_stream = source_stream
-    .delay(Duration::from_millis(100), timer.clone());
+    .delay(Duration::from_millis(100));
 
-// Debounce emissions
+// Debounce emissions (convenience method)
 let debounced_stream = source_stream
-    .debounce(Duration::from_millis(100), timer.clone());
+    .debounce(Duration::from_millis(100));
+
+// For explicit timer control, use *_with_timer methods:
+let delayed_custom = source_stream
+    .delay_with_timer(Duration::from_millis(100), timer.clone());
 
 // Create timestamped values
 let timestamped = InstantTimestamped::new(my_value, timer.now());

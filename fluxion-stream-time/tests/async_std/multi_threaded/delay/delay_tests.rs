@@ -21,7 +21,7 @@ async fn test_delay_across_threads() {
     let timer_clone = timer.clone();
     let handle = async_std::task::spawn(async move {
         use futures::StreamExt;
-        let mut delayed = stream.delay(Duration::from_millis(50), timer_clone);
+        let mut delayed = stream.delay(Duration::from_millis(50));
         delayed.next().await
     });
 

@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::smol::helpers::{person_alice, test_channel, timestamped_person};
-use fluxion_stream_time::{SmolTimer, ThrottleExt};
+use fluxion_stream_time::prelude::*;
 use futures::StreamExt;
 use std::time::Duration;
 
@@ -11,9 +11,8 @@ use std::time::Duration;
 fn test_throttle_smol_single_threaded() {
     smol::block_on(async {
         let (tx, rx) = test_channel();
-        let timer = SmolTimer;
 
-        let mut throttled = rx.throttle(Duration::from_millis(50), timer);
+        let mut throttled = rx.throttle(Duration::from_millis(50));
 
         // Send first item
         tx.unbounded_send(timestamped_person(person_alice()))

@@ -16,7 +16,7 @@ async fn test_delay_basic() {
     // Arrange
     let timer = AsyncStdTimer;
     let (tx, stream) = test_channel::<AsyncStdTimestamped<Person>>();
-    let mut delayed = stream.delay(Duration::from_millis(100), timer.clone());
+    let mut delayed = stream.delay(Duration::from_millis(100));
 
     // Act
     let start = timer.now();

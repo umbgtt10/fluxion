@@ -50,7 +50,7 @@ where
     /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
     ///
     /// let timer = TokioTimer;
-    /// let mut delayed = source.delay(Duration::from_millis(10), timer.clone());
+    /// let mut delayed = source.delay_with_timer(Duration::from_millis(10), timer.clone());
     ///
     /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
     ///
@@ -58,7 +58,7 @@ where
     /// assert_eq!(&*item, &person_alice());
     /// # }
     /// ```
-    fn delay(
+    fn delay_with_timer(
         self,
         duration: Duration,
         timer: TM,
@@ -71,7 +71,7 @@ where
     TM: Timer,
     S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
 {
-    fn delay(
+    fn delay_with_timer(
         self,
         duration: Duration,
         timer: TM,
@@ -171,5 +171,85 @@ where
             }
             Poll::Pending => Poll::Pending,
         }
+    }
+}
+
+// =============================================================================
+// Convenience extension trait with default timer
+// =============================================================================
+
+/// Extension trait for delaying with a default timer.
+///
+/// This trait provides a `delay()` method that automatically uses the
+/// appropriate timer for the active runtime feature.
+pub trait DelayWithDefaultTimerExt<T>: Sized
+where
+    T: Send,
+{
+    /// Delays each emission using the default timer for the active runtime.
+    ///
+    /// This convenience method is available when exactly one runtime feature is enabled.
+    /// It automatically uses the correct timer without requiring an explicit timer parameter.
+    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>>;
+
+    /// The timestamped type for this runtime.
+    type Timestamped;
+}
+
+#[cfg(feature = "time-tokio")]
+impl<S, T> DelayWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>>,
+    T: Send,
+{
+    type Timestamped = crate::TokioTimestamped<T>;
+
+    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        DelayExt::delay_with_timer(self, duration, crate::TokioTimer)
+    }
+}
+
+#[cfg(feature = "time-smol")]
+impl<S, T> DelayWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>>,
+    T: Send,
+{
+    type Timestamped = crate::SmolTimestamped<T>;
+
+    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        DelayExt::delay_with_timer(self, duration, crate::SmolTimer)
+    }
+}
+
+#[cfg(feature = "time-wasm")]
+impl<S, T> DelayWithDefaultTimerExt<T> for S
+where
+    S: Stream<
+        Item = StreamItem<InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>>,
+    >,
+    T: Send,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>;
+
+    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        DelayExt::delay_with_timer(
+            self,
+            duration,
+            crate::runtimes::wasm_implementation::WasmTimer::new(),
+        )
+    }
+}
+
+#[cfg(feature = "time-async-std")]
+impl<S, T> DelayWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>>,
+    T: Send,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::AsyncStdTimer>;
+
+    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        DelayExt::delay_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
     }
 }

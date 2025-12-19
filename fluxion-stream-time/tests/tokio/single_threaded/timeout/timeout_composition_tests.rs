@@ -4,8 +4,8 @@
 
 use fluxion_core::StreamItem;
 use fluxion_stream::prelude::*;
+use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::TimeoutExt;
 use fluxion_stream_time::TokioTimer;
 use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
@@ -28,7 +28,7 @@ async fn test_timeout_chained_with_map() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let pipeline = stream
         .map_ordered(|item| TokioTimestamped::new(item.value, item.timestamp))
-        .timeout(Duration::from_millis(100), timer.clone());
+        .timeout(Duration::from_millis(100));
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
@@ -69,7 +69,7 @@ async fn test_timeout_chained_with_combine_with_previous() -> anyhow::Result<()>
             let previous_val = wp.previous.map(|p| p.value);
             TokioTimestamped::new(WithPrevious::new(previous_val, current_val), timestamp)
         })
-        .timeout(Duration::from_millis(100), timer.clone());
+        .timeout(Duration::from_millis(100));
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -120,7 +120,7 @@ async fn test_timeout_chained_with_scan_ordered() -> anyhow::Result<()> {
             *acc += val;
             *acc
         })
-        .timeout(Duration::from_millis(100), timer.clone());
+        .timeout(Duration::from_millis(100));
 
     let (result_tx, mut result_rx) = unbounded_channel::<TokioTimestamped<u32>>();
 

@@ -3,8 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
+use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::DelayExt;
 use fluxion_stream_time::TokioTimer;
 use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
@@ -23,7 +23,7 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
     pause();
 
     let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
-    let mut delayed = stream.delay(Duration::from_secs(1), timer.clone());
+    let mut delayed = stream.delay(Duration::from_secs(1));
 
     // Act & Assert
     tx.send(StreamItem::Value(TokioTimestamped::new(

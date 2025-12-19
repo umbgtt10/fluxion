@@ -20,7 +20,7 @@ async fn test_debounce_across_threads() {
     // Spawn on different thread
     let timer_clone = timer.clone();
     let handle = async_std::task::spawn(async move {
-        let mut debounced = stream.debounce(Duration::from_millis(100), timer_clone);
+        let mut debounced = stream.debounce(Duration::from_millis(100));
         unwrap_stream(&mut debounced, 200).await
     });
 

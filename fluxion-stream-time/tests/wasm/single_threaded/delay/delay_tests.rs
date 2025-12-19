@@ -16,7 +16,7 @@ async fn test_delay_basic() {
     // Arrange
     let timer = WasmTimer::new();
     let (tx, stream) = test_channel::<WasmTimestamped<Person>>();
-    let mut delayed = stream.delay(Duration::from_millis(100), timer.clone());
+    let mut delayed = stream.delay(Duration::from_millis(100));
 
     // Act
     tx.unbounded_send(WasmTimestamped::new(person_alice(), timer.now()))

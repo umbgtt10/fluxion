@@ -4,8 +4,9 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::IntoFluxionStream;
+use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::{ThrottleExt, TokioTimer, TokioTimestamped};
+use fluxion_stream_time::{TokioTimer, TokioTimestamped};
 use futures::stream::StreamExt;
 use std::hint::black_box;
 use std::time::Duration;
@@ -35,8 +36,7 @@ pub fn bench_throttle(c: &mut Criterion) {
                         let timer = TokioTimer;
                         // 2. Create stream and operator
                         let (tx, rx) = mpsc::unbounded_channel();
-                        let mut stream =
-                            Box::pin(rx.into_fluxion_stream().throttle(duration, timer.clone()));
+                        let mut stream = Box::pin(rx.into_fluxion_stream().throttle(duration));
 
                         // 3. Emit value (Throttle emits immediately)
                         tx.send(TokioTimestamped::new(1, timer.now())).unwrap();

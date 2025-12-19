@@ -21,7 +21,7 @@ async fn test_timeout_across_threads() {
     let timer_clone = timer.clone();
     let handle = async_std::task::spawn(async move {
         use futures::StreamExt;
-        let mut timed = stream.timeout(Duration::from_millis(200), timer_clone);
+        let mut timed = stream.timeout(Duration::from_millis(200));
         timed.next().await
     });
 

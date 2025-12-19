@@ -4,8 +4,8 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
+use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::DelayExt;
 use fluxion_stream_time::TokioTimer;
 use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
@@ -27,7 +27,7 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
     let (tx_filter, filter) = test_channel_with_errors::<TokioTimestamped<TestData>>();
     let mut processed = source
         .emit_when(filter, |_| true)
-        .delay(Duration::from_millis(200), timer.clone());
+        .delay(Duration::from_millis(200));
 
     // Act & Assert
     tx_filter.send(StreamItem::Value(TokioTimestamped::new(

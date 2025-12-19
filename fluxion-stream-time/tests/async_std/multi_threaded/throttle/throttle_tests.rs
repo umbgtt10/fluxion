@@ -21,7 +21,7 @@ async fn test_throttle_across_threads() {
     let timer_clone = timer.clone();
     let handle = async_std::task::spawn(async move {
         use futures::StreamExt;
-        let mut throttled = stream.throttle(Duration::from_millis(100), timer_clone);
+        let mut throttled = stream.throttle(Duration::from_millis(100));
         throttled.next().await
     });
 

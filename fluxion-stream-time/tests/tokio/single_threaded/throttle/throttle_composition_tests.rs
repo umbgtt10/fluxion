@@ -3,10 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream::prelude::*;
+use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::ThrottleExt;
-use fluxion_stream_time::TokioTimer;
-use fluxion_stream_time::TokioTimestamped;
+use fluxion_stream_time::{TokioTimer, TokioTimestamped};
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     person::Person,
@@ -35,7 +34,7 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
             };
             TokioTimestamped::new(val, x.timestamp)
         })
-        .throttle(Duration::from_millis(100), timer.clone());
+        .throttle(Duration::from_millis(100));
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -73,8 +72,8 @@ async fn test_throttle_chained_with_throttle() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let throttled = stream
-        .throttle(Duration::from_millis(100), timer.clone())
-        .throttle(Duration::from_millis(200), timer.clone());
+        .throttle(Duration::from_millis(100))
+        .throttle(Duration::from_millis(200));
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -121,7 +120,7 @@ async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
 
     let throttled = stream
         .take_while_with(filter_stream, |&condition| condition)
-        .throttle(Duration::from_millis(100), timer.clone());
+        .throttle(Duration::from_millis(100));
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
