@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-#[cfg(feature = "time-tokio")]
+#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
 pub mod tokio_implementation {
     use crate::timer::Timer;
     use std::time::{Duration, Instant};

@@ -10,7 +10,9 @@ This mirrors the GitHub Actions `ci.yml` steps:
   - cargo check (all targets & features)
   - cargo clippy (deny warnings)
   - cargo build --release
-  - cargo test
+  - .\.ci\build.ps1 (upgrade, build, test)
+    - .\.ci\tokio_tests.ps1 (Tokio tests with nextest)
+    - .\.ci\wasm_tests.ps1 (WASM tests with wasm-pack)
   - cargo doc --no-deps
   - cargo-audit (install if missing)
 
@@ -18,6 +20,8 @@ Notes:
   - This script runs on Windows PowerShell. On Unix/macOS use `.ci/run-ci.sh`.
   - Some commands (clippy with -D warnings) will fail the run if any warnings remain.
   - Running with `--all-features` may take longer but reduces false-positives.
+  - WASM tests require Node.js to be installed.
+  - All test scripts (.ci\tokio_tests.ps1, .ci\wasm_tests.ps1) can be run standalone.
 #>
 
 Set-StrictMode -Version Latest

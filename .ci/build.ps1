@@ -9,7 +9,12 @@ Behaviour:
   - Installs `cargo-edit` if missing (provides `cargo upgrade`).
   - Runs `cargo upgrade --workspace -a` to upgrade manifests to the newest versions.
   - Runs `cargo update` to refresh the lockfile.
-  - Runs formatting check, build, and tests. Any failure aborts the script with a non-zero exit code.
+  - Runs formatting check, build, Tokio tests, WASM tests, and examples.
+  - Any failure aborts the script with a non-zero exit code.
+
+Test scripts called:
+  - .\.ci\tokio_tests.ps1 (native Tokio tests with nextest)
+  - .\.ci\wasm_tests.ps1 (WASM tests with wasm-pack)
 
 Warning:
   This will modify `Cargo.toml` files. Run in a branch so you can review diffs and CI results.
@@ -147,18 +152,23 @@ Invoke-StepAction "Format check" { cargo fmt --all -- --check }
 Invoke-StepAction "Build (all targets & features)" { cargo build --all-targets --all-features --verbose }
 Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-targets --all-features -- -D warnings }
 
-# Ensure cargo-nextest is installed
-if (-not (Get-Command cargo-nextest -ErrorAction SilentlyContinue)) {
-    Write-Color "cargo-nextest not found; installing..." Cyan
-    & cargo install --locked cargo-nextest
-    if ($LASTEXITCODE -ne 0) {
-      Write-Color "Failed to install cargo-nextest" Red
-      exit $LASTEXITCODE
-    }
+# Run Tokio tests
+Write-Color "=== Running Tokio tests ===" Cyan
+& .\.ci\tokio_tests.ps1
+$rc = $LASTEXITCODE
+if ($rc -ne 0) {
+  Write-Color "Tokio tests failed (exit code $rc)" Red
+  exit $rc
 }
 
-Invoke-StepAction "Run tests" { cargo nextest run --all-features --all-targets --verbose }
-Invoke-StepAction "Run doc tests" { cargo test --all-features --doc --verbose }
+# Run WASM tests
+Write-Color "=== Running WASM tests ===" Cyan
+& .\.ci\wasm_tests.ps1
+$rc = $LASTEXITCODE
+if ($rc -ne 0) {
+  Write-Color "WASM tests failed (exit code $rc)" Red
+  exit $rc
+}
 Invoke-StepAction "Run stream-aggregation example" {
   cargo run --release --package rabbitmq-aggregator-example
 }

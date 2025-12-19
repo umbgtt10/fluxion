@@ -76,8 +76,8 @@ pub use sample::SampleExt;
 pub use throttle::ThrottleExt;
 pub use timeout::TimeoutExt;
 
-#[cfg(feature = "time-tokio")]
+#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
 pub use runtimes::TokioTimer;
 
-#[cfg(feature = "time-tokio")]
+#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
 pub type TokioTimestamped<T> = InstantTimestamped<T, TokioTimer>;
