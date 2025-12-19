@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4] - Not Published (Internal Release) ⚠️ **DEPRECATED RUNTIME**
+
+**Goal:** Enable time-based operators with async-std runtime through Timer abstraction
+
+**⚠️ CRITICAL WARNING**: async-std has been discontinued (RUSTSEC-2025-0052, Aug 2024).
+This release adds support for **compatibility only**. New projects should use tokio or smol.
+
+### Added
+- **AsyncStdTimer Implementation** (`fluxion-stream-time`)
+  - Zero-sized type implementing Timer trait using `async-io::Timer`
+  - Wraps `async_io::Timer::after(duration)` for async sleep operations
+  - Uses `std::time::Instant` for monotonic timestamp tracking
+  - Compatible with async-std's multi-threaded work-stealing executor
+  - Supports both single-threaded and multi-threaded execution models
+
+- **Feature Flag** (`fluxion-stream-time`)
+  - `time-async-std` - async-std runtime support via AsyncStdTimer
+  - Mutually exclusive with `time-tokio` and `time-wasm`
+
+- **async-std Test Suite** (`fluxion-stream-time/tests/async_std/`)
+  - 10 comprehensive tests (5 operators × 2 threading models)
+  - Single-threaded: debounce, delay, sample, throttle, timeout (inline async)
+  - Multi-threaded: Same 5 operators with `async_std::task::spawn` for concurrency
+  - Uses real async delays via `async_std::task::sleep`
+  - Helper functions: test_channel, unwrap_stream, person_alice
+  - All tests passing in 0.26-0.28s execution time
+
+- **CI Integration**
+  - New async-std test script (`.ci/async_std_tests.ps1`)
+  - GitHub Actions integration in ci.yml
+  - Tests run after WASM tests, before examples
+  - Validates all 10 tests with verbose output
+
+### Documentation
+- **Deprecation Warnings** (`fluxion-stream-time`)
+  - async-std marked as deprecated with RUSTSEC advisory details
+  - Clear warnings in async_std_impl.rs module documentation
+  - Cargo.toml comments warning about unmaintained status
+  - ROADMAP.md updated with deprecation notice
+
+### Technical Details
+- All 5 time-based operators (debounce, throttle, delay, sample, timeout) work with async-std
+- Zero operator changes required (Timer trait abstraction enabled async-std support)
+- 10 tests passing (5 single-threaded + 5 multi-threaded)
+- Zero compilation errors, zero clippy warnings for async-std feature
+- Pattern: Uses async-io conditionally compiled for non-WASM, non-Tokio targets
+
+### Why Include a Deprecated Runtime?
+
+Despite async-std's discontinuation, this implementation serves important purposes:
+
+1. **Existing Project Support** - Projects already using async-std can now use time operators
+2. **Migration Path** - Provides time operators during async-std → tokio transitions
+3. **Architecture Validation** - Proves Timer trait abstraction works across runtimes
+4. **Zero Maintenance Burden** - async-std is feature-complete; no updates needed
+5. **Educational Value** - Demonstrates multi-runtime support patterns
+
+**Recommendation**: New projects should use `time-tokio` (default) or await `time-smol` support.
+
 ## [0.6.3] - Not Published (Internal Release)
 
 **Goal:** Enable time-based operators in WASM environments
