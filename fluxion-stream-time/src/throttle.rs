@@ -4,6 +4,7 @@
 
 //! Throttle operator for time-based stream processing.
 
+use crate::timer::Timer;
 use crate::InstantTimestamped;
 use fluxion_core::StreamItem;
 use futures::Stream;
@@ -12,15 +13,15 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
-use tokio::time::{sleep, Instant, Sleep};
 
 /// Extension trait providing the `throttle` operator for streams.
 ///
 /// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to throttle emissions
 /// by a specified duration.
-pub trait ThrottleExt<T>: Stream<Item = StreamItem<InstantTimestamped<T>>> + Sized
+pub trait ThrottleExt<T, TM>: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Sized
 where
     T: Send,
+    TM: Timer,
 {
     /// Throttles the stream by the specified duration.
     ///
@@ -73,60 +74,64 @@ where
     fn throttle(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send;
+        timer: TM,
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send;
 }
 
-impl<S, T> ThrottleExt<T> for S
+impl<S, T, TM> ThrottleExt<T, TM> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T>>> + Send,
     T: Send,
+    TM: Timer,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send,
 {
     fn throttle(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send {
-        ThrottleStream {
+        timer: TM,
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send {
+        Box::pin(ThrottleStream {
             stream: self,
             duration,
-            sleep: Box::pin(sleep(Duration::from_millis(0))),
+            timer: timer.clone(),
+            sleep: Some(timer.sleep_future(duration)),
             throttling: false,
-        }
+        })
     }
 }
 
 #[pin_project]
-struct ThrottleStream<S: Stream> {
+struct ThrottleStream<S: Stream, TM: Timer> {
     #[pin]
     stream: S,
-    duration: std::time::Duration,
-    sleep: Pin<Box<Sleep>>,
+    duration: Duration,
+    timer: TM,
+    #[pin]
+    sleep: Option<TM::Sleep>,
     throttling: bool,
 }
 
-impl<S, T> Stream for ThrottleStream<S>
+impl<S, T, TM> Stream for ThrottleStream<S, TM>
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T>>>,
     T: Send,
+    TM: Timer,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
 {
-    type Item = StreamItem<InstantTimestamped<T>>;
+    type Item = StreamItem<InstantTimestamped<T, TM>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
 
         loop {
             // 1. Check timer if throttling
+            // Simplify to just:
             if *this.throttling {
-                // Check if deadline has passed explicitly to handle cases where Sleep poll lags
-                if Instant::now() >= this.sleep.deadline() {
-                    *this.throttling = false;
-                } else {
-                    match this.sleep.as_mut().poll(cx) {
+                if let Some(sleep) = this.sleep.as_mut().as_pin_mut() {
+                    match sleep.poll(cx) {
                         Poll::Ready(_) => {
                             *this.throttling = false;
-                            // Timer expired, we are open to new values.
                         }
                         Poll::Pending => {
-                            // Timer running.
+                            // Timer still running
                         }
                     }
                 }
@@ -137,8 +142,8 @@ where
                 Poll::Ready(Some(StreamItem::Value(value))) => {
                     if !*this.throttling {
                         // Not throttling: Emit value, start timer
-                        let deadline = Instant::now() + *this.duration;
-                        this.sleep.as_mut().reset(deadline);
+                        this.sleep
+                            .set(Some(this.timer.sleep_future(*this.duration)));
                         *this.throttling = true;
                         return Poll::Ready(Some(StreamItem::Value(value)));
                     } else {

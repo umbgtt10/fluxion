@@ -2,8 +2,12 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::ThrottleExt;
+use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::TokioTimestamped;
+use fluxion_test_utils::assert_no_element_emitted;
+use fluxion_test_utils::unwrap_stream;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     person::Person,
@@ -19,11 +23,11 @@ use tokio::{spawn, sync::mpsc::unbounded_channel};
 #[tokio::test]
 async fn test_throttle_with_instant_timestamped() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let throttle_duration = Duration::from_secs(1);
-    let throttled = stream.throttle(throttle_duration);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let throttled = stream.throttle(Duration::from_secs(1), timer.clone());
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -35,18 +39,18 @@ async fn test_throttle_with_instant_timestamped() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_recv(&mut result_rx, 100).await;
 
     advance(Duration::from_millis(900)).await;
-    tx.send(InstantTimestamped::now(person_charlie()))?;
+    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
 
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
@@ -59,66 +63,48 @@ async fn test_throttle_with_instant_timestamped() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let throttle_duration = Duration::from_millis(100);
-    let throttled = stream.throttle(throttle_duration);
-
-    let (result_tx, mut result_rx) = unbounded_channel();
-
-    // Spawn a task to drive the stream
-    spawn(async move {
-        let mut stream = throttled;
-        while let Some(item) = stream.next().await {
-            result_tx.send(item.unwrap().value).unwrap();
-        }
-    });
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let mut throttled = stream.throttle(Duration::from_millis(100), timer.clone());
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(TestData::Person(Person::new(
-        "Alice".to_string(),
-        0,
-    ))))?;
-    for i in 1..10 {
-        tx.send(InstantTimestamped::now(TestData::Person(Person::new(
-            "Alice".to_string(),
-            i,
-        ))))?;
-    }
-
-    // Allow processing of initial items
-    tokio::task::yield_now().await;
-
-    // Advance time past window
-    advance(Duration::from_millis(100)).await;
-
-    // Send 10 - emitted
-    tx.send(InstantTimestamped::now(TestData::Person(Person::new(
-        "Alice".to_string(),
-        10,
-    ))))?;
-
-    // Assert
-    let mut results = Vec::new();
-    // We expect 2 items: 0 and 10.
-
-    // Give time for processing
-    tokio::task::yield_now().await;
-
-    if let Some(item) = recv_timeout(&mut result_rx, 1000).await {
-        results.push(item);
-    }
-    if let Some(item) = recv_timeout(&mut result_rx, 1000).await {
-        results.push(item);
-    }
-
+    // Send first value - should emit immediately (leading throttle)
+    tx.send(TokioTimestamped::new(
+        TestData::Person(Person::new("Alice".to_string(), 0)),
+        timer.now(),
+    ))?;
     assert_eq!(
-        results,
-        vec![
-            TestData::Person(Person::new("Alice".to_string(), 0)),
-            TestData::Person(Person::new("Alice".to_string(), 10))
-        ]
+        unwrap_stream(&mut throttled, 100).await.unwrap().value,
+        TestData::Person(Person::new("Alice".to_string(), 0))
+    );
+
+    // Send intermediate values during throttle period - all should be dropped
+    for i in 1..10 {
+        tx.send(TokioTimestamped::new(
+            TestData::Person(Person::new("Alice".to_string(), i)),
+            timer.now(),
+        ))?;
+        // Verify nothing is emitted (still throttling)
+        assert_no_element_emitted(&mut throttled, 0).await;
+    }
+
+    // Advance 99ms - still throttling
+    advance(Duration::from_millis(99)).await;
+    assert_no_element_emitted(&mut throttled, 0).await;
+
+    // Advance final 1ms - throttle window complete
+    advance(Duration::from_millis(1)).await;
+
+    // Send next value - should be emitted since throttle expired
+    tx.send(TokioTimestamped::new(
+        TestData::Person(Person::new("Alice".to_string(), 10)),
+        timer.now(),
+    ))?;
+    assert_eq!(
+        unwrap_stream(&mut throttled, 100).await.unwrap().value,
+        TestData::Person(Person::new("Alice".to_string(), 10))
     );
 
     Ok(())

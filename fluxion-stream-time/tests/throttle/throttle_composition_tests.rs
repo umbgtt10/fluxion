@@ -3,8 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream::prelude::*;
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::ThrottleExt;
+use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     person::Person,
@@ -20,12 +22,10 @@ use tokio::{spawn, sync::mpsc::unbounded_channel};
 #[tokio::test]
 async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let throttle_duration = Duration::from_millis(100);
-
-    // Map then Throttle
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let throttled = stream
         .map_ordered(|x| {
             let val = if let TestData::Person(p) = x.value {
@@ -33,9 +33,9 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
             } else {
                 x.value
             };
-            InstantTimestamped::new(val, x.timestamp)
+            TokioTimestamped::new(val, x.timestamp)
         })
-        .throttle(throttle_duration);
+        .throttle(Duration::from_millis(100), timer.clone());
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -47,16 +47,16 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         TestData::Person(Person::new("Alice".to_string(), 50))
     );
 
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_recv(&mut result_rx, 100).await;
 
-    tx.send(InstantTimestamped::now(person_charlie()))?;
+    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         TestData::Person(Person::new("Charlie".to_string(), 70))
@@ -68,13 +68,13 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_throttle_chained_with_throttle() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let throttled = stream
-        .throttle(Duration::from_millis(100))
-        .throttle(Duration::from_millis(200));
+        .throttle(Duration::from_millis(100), timer.clone())
+        .throttle(Duration::from_millis(200), timer.clone());
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -86,22 +86,22 @@ async fn test_throttle_chained_with_throttle() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
     advance(Duration::from_millis(49)).await;
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_recv(&mut result_rx, 50).await;
 
     advance(Duration::from_millis(10)).await;
-    tx.send(InstantTimestamped::now(person_charlie()))?;
+    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_no_recv(&mut result_rx, 50).await;
 
     advance(Duration::from_millis(50)).await;
-    tx.send(InstantTimestamped::now(person_diane()))?;
+    tx.send(TokioTimestamped::new(person_diane(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_diane()
@@ -113,16 +113,15 @@ async fn test_throttle_chained_with_throttle() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let (filter_tx, filter_stream) = test_channel::<InstantTimestamped<bool>>();
-
-    let throttle_duration = Duration::from_millis(100);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let (filter_tx, filter_stream) = test_channel::<TokioTimestamped<bool>>();
 
     let throttled = stream
         .take_while_with(filter_stream, |&condition| condition)
-        .throttle(throttle_duration);
+        .throttle(Duration::from_millis(100), timer.clone());
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -134,26 +133,27 @@ async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    filter_tx.send(InstantTimestamped::now(true))?;
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    filter_tx.send(TokioTimestamped::new(true, timer.now()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_recv(&mut result_rx, 50).await;
 
     advance(Duration::from_millis(100)).await;
-    tx.send(InstantTimestamped::now(person_charlie()))?;
+    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_charlie()
     );
 
-    filter_tx.send(InstantTimestamped::now(false))?;
+    filter_tx.send(TokioTimestamped::new(false, timer.now()))?;
     advance(Duration::from_millis(100)).await;
-    tx.send(InstantTimestamped::now(person_diane()))?;
+
+    tx.send(TokioTimestamped::new(person_diane(), timer.now()))?;
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())
