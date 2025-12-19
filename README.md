@@ -7,7 +7,7 @@
 [![Crates.io](https://img.shields.io/crates/v/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
 [![Downloads](https://img.shields.io/crates/d/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
 
-Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal ordering guarantees and a fluent, ergonomic API. It emphasizes correctness and reliability, backed by 952 passing tests, a 7.6:1 test-to-code ratio, zero warnings, zero unwraps, and no unsafe code. The library includes comprehensive performance benchmarks, is published on crates.io, and demonstrates production-quality Rust engineering.
+Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal ordering guarantees and a fluent, ergonomic API. It emphasizes correctness and reliability, backed by 900+ comprehensive tests, a 7.6:1 test-to-code ratio, zero warnings, zero unwraps, and no unsafe code. The library includes comprehensive performance benchmarks, is published on crates.io, and demonstrates production-quality Rust engineering.
 
 **📊 [See why Fluxion sets new standards for quality →](PITCH.md)**
 
@@ -24,9 +24,10 @@ Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal order
 - 🔄 **Rx-Style Operators**: 29 implemented operators (32 planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, `share`, `partition`, `tap`, etc.)
 - ⏱️ **Temporal Ordering**: Guaranteed ordering semantics via `Timestamped` trait
 - ⚡ **Async Execution**: Efficient async processing with `subscribe` and `subscribe_latest`
+- 🌐 **Multi-Runtime Support**: Works with Tokio (default) and WebAssembly (WASM) via Timer trait abstraction
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
-- ✅ **Well Tested**: 800+ tests with comprehensive coverage
+- ✅ **Well Tested**: 900+ tests with comprehensive coverage (Tokio + WASM)
 
 ### 📋 Independent Code Reviews
 
@@ -48,8 +49,8 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.6.2"
-fluxion-test-utils = "0.6.2"
+fluxion-rx = "0.6.3"
+fluxion-test-utils = "0.6.3"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -120,8 +121,8 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.6.2"
-fluxion-test-utils = "0.6.2"
+fluxion-rx = "0.6.3"
+fluxion-test-utils = "0.6.3"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -195,8 +196,8 @@ The `merge_with` operator enables elegant stateful stream processing by merging 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.6.2"
-fluxion-test-utils = "0.6.2"
+fluxion-rx = "0.6.3"
+fluxion-test-utils = "0.6.3"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -356,7 +357,7 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.6.2"
+fluxion-exec = "0.6.3"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = "0.7.17"
@@ -459,7 +460,7 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.6.2"
+fluxion-exec = "0.6.3"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = "0.7.17"

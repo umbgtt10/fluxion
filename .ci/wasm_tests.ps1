@@ -79,8 +79,8 @@ try {
   Write-Output $output
 
   # Check if actual WASM tests passed (tests/all_tests.rs)
-  # Look for the line "test result: ok. 1 passed; 0 failed" from all_tests.rs
-  if ($output -match "test result: ok\. 1 passed; 0 failed; 0 ignored") {
+  # Look for the line "test result: ok. N passed; 0 failed" from all_tests.rs
+  if ($output -match "test result: ok\. \d+ passed; 0 failed; 0 ignored") {
     Write-Output ""
     Write-Output "SUCCESS: WASM tests passed (doc test failures are expected and ignored)"
   } else {

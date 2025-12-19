@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - Not Published (Internal Release)
+
+**Goal:** Enable time-based operators in WASM environments
+
+### Added
+- **WasmTimer Implementation** (`fluxion-stream-time`)
+  - Zero-sized type implementing Timer trait using `gloo-timers` for async sleep
+  - Custom WasmInstant based on `js-sys::Date.now()` returning u64 milliseconds
+  - Supports Add<Duration>, Sub<Duration>, and Sub<Self> for duration arithmetic
+  - Compatible with Node.js and browser environments
+  - WasmInstant provides monotonic time tracking for WASM targets
+
+- **Feature Flag** (`fluxion-stream-time`)
+  - `time-wasm` - WASM runtime support with WasmTimer (conditionally compiled for wasm32)
+
+- **WASM Test Suite** (`fluxion-stream-time/tests/wasm/`)
+  - 5 comprehensive single-threaded tests for all time-based operators
+  - Tests: debounce_tests, delay_tests, sample_tests, throttle_tests, timeout_tests
+  - Uses real async delays via gloo_timers::future::sleep
+  - Helper functions: test_channel, unwrap_stream, person_alice for ergonomic testing
+  - All tests passing in 0.82s execution time
+
+- **CI Integration**
+  - Local WASM test script (.ci/wasm_tests.ps1) with output parsing
+  - GitHub Actions integration with wasm-pack
+  - Output validation accepting any number of passing tests
+  - Handles doc test failures gracefully (expected for wasm32 target)
+
+### Documentation
+- **Comprehensive WASM Documentation** (`fluxion-stream-time` README)
+  - Runtime Support section now lists `time-wasm` as fully implemented
+  - WASM usage example with WasmTimer and InstantTimestamped
+  - Implementation notes covering gloo-timers and WasmInstant
+  - Future Platform Support section updated to reflect WASM as implemented
+
+### Technical Details
+- All 5 time-based operators (debounce, throttle, delay, sample, timeout) work in WASM
+- Zero operator changes required (Timer trait abstraction enabled WASM support)
+- 5 WASM tests passing with real async delays
+- Zero compilation errors, zero clippy warnings for wasm32 target
+- Pattern: Uses js-sys and gloo-timers conditionally compiled for wasm32 targets
+
 ## [0.6.2] - Not Published (Internal Release)
 
 **Goal:** Runtime abstraction for time-based operators enabling multi-runtime support

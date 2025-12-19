@@ -4,6 +4,8 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 
 **Note:** For time-based operators (`delay`, `debounce`, `throttle`, `sample`, `timeout`), see the **[fluxion-stream-time](../fluxion-stream-time/README.md)** crate documentation.
 
+**Runtime Support:** Time-based operators work with Tokio (default) and WASM via the `Timer` trait abstraction. See the fluxion-stream-time documentation for runtime-specific setup details.
+
 ## Quick Reference Table
 
 | Operator | Category | Purpose | Emissions Driven By |
