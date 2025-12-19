@@ -1,0 +1,28 @@
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
+use crate::async_std::helpers::{person_alice, test_channel, unwrap_stream, Person};
+
+use fluxion_stream_time::runtimes::AsyncStdTimer;
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::{prelude::*, InstantTimestamped};
+use std::time::Duration;
+
+type AsyncStdTimestamped<T> = InstantTimestamped<T, AsyncStdTimer>;
+
+#[async_std::test]
+async fn test_timeout_basic() {
+    // Arrange
+    let timer = AsyncStdTimer;
+    let (tx, stream) = test_channel::<AsyncStdTimestamped<Person>>();
+    let mut timed = stream.timeout(Duration::from_millis(200), timer.clone());
+
+    // Act - send before timeout
+    tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
+        .unwrap();
+
+    // Assert
+    let result = unwrap_stream(&mut timed, 300).await;
+    assert_eq!(result.unwrap().value, person_alice());
+}

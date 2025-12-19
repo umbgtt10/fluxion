@@ -10,10 +10,14 @@ fluxion-stream-time supports multiple async runtimes through feature flags:
 
 - **`time-tokio`** (default) - Tokio runtime with `TokioTimer`
 - **`time-wasm`** - WebAssembly with `WasmTimer` (Node.js and browser)
-- **`time-async-std`** - async-std runtime (planned)
+- **`time-async-std`** - async-std runtime ⚠️ **DEPRECATED** (unmaintained)
 - **`time-smol`** - smol runtime (planned)
 
 All operators are fully runtime-agnostic thanks to the `Timer` trait abstraction.
+
+> ⚠️ **Note:** async-std has been discontinued (RUSTSEC-2025-0052, Aug 2024).
+> The implementation is kept for compatibility with existing projects only.
+> New projects should use tokio or consider smol runtime instead.
 
 ## Why This Crate Exists
 
@@ -252,15 +256,36 @@ let debounced_stream = source_stream
 let timestamped = TokioTimestamped::new(my_value, timer.now());
 ```
 
-### async-std (planned)
+### async-std ⚠️ **DEPRECATED**
+
+> ⚠️ **WARNING**: async-std has been discontinued and is unmaintained (RUSTSEC-2025-0052).
+> This implementation is kept for compatibility only. New projects should use tokio or smol.
 
 ```rust
-use fluxion_stream_time::{AsyncStdTimer, DelayExt};
+use fluxion_stream_time::runtimes::AsyncStdTimer;
+use fluxion_stream_time::{DelayExt, DebounceExt, InstantTimestamped};
+use fluxion_stream_time::timer::Timer;
 use std::time::Duration;
 
 let timer = AsyncStdTimer;
-let delayed = source_stream.delay(Duration::from_millis(100), timer);
+
+// Delay all emissions by 100ms
+let delayed_stream = source_stream
+    .delay(Duration::from_millis(100), timer.clone());
+
+// Debounce emissions
+let debounced_stream = source_stream
+    .debounce(Duration::from_millis(100), timer.clone());
+
+// Create timestamped values
+let timestamped = InstantTimestamped::new(my_value, timer.now());
 ```
+
+**async-std Notes:**
+- Uses `async-io::Timer` for async sleep operations
+- Supports both single-threaded and multi-threaded execution
+- Multi-threaded tests use `async_std::task::spawn` for true concurrency
+- Tests run with `cargo test --features time-async-std --no-default-features`
 
 ### smol (planned)
 
@@ -300,6 +325,40 @@ let timestamped = InstantTimestamped::new(my_value, timer.now());
 - Tests run with `wasm-pack test --node` or `--headless --chrome`
 - 5 comprehensive tests validate all time-based operators in WASM environments
 
+### async-std Support ⚠️ **DEPRECATED**
+
+> ⚠️ **CRITICAL**: async-std is no longer maintained (discontinued Aug 2024, RUSTSEC-2025-0052).
+>
+> This implementation is provided for **compatibility with existing projects only**.
+> For new projects, use **tokio** (default) or consider **smol** as an alternative.
+
+async-std support is **fully implemented** via `AsyncStdTimer` using `async-io` for time-based operations. The Timer trait abstraction enabled this with zero operator changes.
+
+**Implementation Details:**
+- **`AsyncStdTimer`** - Zero-cost async-std implementation using `async_io::Timer`
+- **`AsyncStdSleep`** - Future wrapper for `async_io::Timer::after(duration)`
+- **`std::time::Instant`** - Standard monotonic instant type
+- **Arithmetic support** - Standard Duration operations through std::time::Instant
+- **Runtime compatibility** - Works with async-std's multi-threaded executor
+
+**Testing:**
+- Integration tests in `tests/async_std/single_threaded/` and `tests/async_std/multi_threaded/`
+- Tests use real delays with `async_std::task::sleep` and external spawning
+- Run with `cargo test --features time-async-std --no-default-features`
+- See `.ci/async_std_tests.ps1` for CI testing configuration
+
+**Platform Support:**
+- ✅ Single-threaded execution (inline async)
+- ✅ Multi-threaded execution (`async_std::task::spawn`)
+- ✅ GitHub Actions CI integration
+- ✅ 10 comprehensive tests (5 operators × 2 threading models)
+
+**Deprecation Timeline:**
+- **Aug 2024**: async-std discontinued by maintainers
+- **Dec 2024**: Implementation added to Fluxion for compatibility
+- **Status**: Maintained for existing users, not recommended for new projects
+- **Future**: May be removed in v1.0 if ecosystem adoption drops to near-zero
+
 ## Timer Trait Implementation
 
 To add support for a custom runtime, implement the `Timer` trait:
@@ -336,7 +395,9 @@ impl Timer for MyCustomTimer {
 | **Core Operators** | ✅ Yes | ✅ Yes |
 | **Deterministic** | ✅ Yes | ❌ No (monotonic) |
 | **Duration Math** | ❌ No | ✅ Yes |
-| **Runtime Support** | N/A | Tokio, WASM (async-std, smol planned) |
+| **Runtime Support** | N/A | Tokio, async-std (deprecated), WASM (smol planned) |
+
+> ⚠️ **Note**: async-std support is deprecated due to discontinuation (RUSTSEC-2025-0052).
 
 ## Future Platform Support
 

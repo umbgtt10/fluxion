@@ -15,6 +15,7 @@ Behaviour:
 Test scripts called:
   - .\.ci\tokio_tests.ps1 (native Tokio tests with nextest)
   - .\.ci\wasm_tests.ps1 (WASM tests with wasm-pack)
+  - .\.ci\async_std_tests.ps1 (async-std tests)
 
 Warning:
   This will modify `Cargo.toml` files. Run in a branch so you can review diffs and CI results.
@@ -169,6 +170,16 @@ if ($rc -ne 0) {
   Write-Color "WASM tests failed (exit code $rc)" Red
   exit $rc
 }
+
+# Run async-std tests
+Write-Color "=== Running async-std tests ===" Cyan
+& .\.ci\async_std_tests.ps1
+$rc = $LASTEXITCODE
+if ($rc -ne 0) {
+  Write-Color "async-std tests failed (exit code $rc)" Red
+  exit $rc
+}
+
 Invoke-StepAction "Run stream-aggregation example" {
   cargo run --release --package rabbitmq-aggregator-example
 }

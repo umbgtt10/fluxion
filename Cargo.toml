@@ -29,6 +29,10 @@ tokio-util = "0.7.17"
 pin-project = "1.1.10"
 async-trait = "0.1.89"
 async-stream = "0.3.6"
+async-io = "2.6.0"
+# ⚠️ DEPRECATED: async-std is unmaintained (RUSTSEC-2025-0052)
+# Kept for compatibility only; new projects should use tokio or smol
+async-std = { version = "1.13", features = ["attributes"] }
 
 quick-xml = { version = "0.38.4", features = ["serialize"] }
 csv = "1.4"

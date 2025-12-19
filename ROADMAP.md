@@ -307,6 +307,48 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - Browser-specific optimizations
 - Deterministic time control (WASM doesn't support time mocking like Tokio)
 
+## 🚀 Version 0.6.4 - Support async-std Runtime ⚠️ **DEPRECATED**
+
+**Status:** Completed (Unmaintained Runtime)
+
+**⚠️ WARNING**: async-std has been discontinued (RUSTSEC-2025-0052, 2024-08-24).
+This implementation is kept for compatibility with existing projects only.
+New projects should use tokio or smol runtimes instead.
+
+**Goal:** Enable time-based operators with async-std runtime through Timer abstraction
+
+**Essential Features:**
+- ✅ Implement AsyncStdTimer for async-std targets using `async-std::task::sleep` and `async_io::Timer`
+- ✅ Add `time-async-std` feature flag (alternative to `time-tokio`)
+- ✅ All 5 time-based operators compile and run with AsyncStdTimer
+- ✅ Comprehensive async-std tests (10 tests: 5 operators × 2 threading models)
+- ✅ CI integration for async-std tests
+
+**Documentation:**
+- ✅ Document async-std implementation details (async-std::task, async_io::Timer)
+- ✅ Add deprecation warning about unmaintained status
+- ✅ Added async-std section to fluxion-stream-time README
+- ✅ Runtime selection guide comparing Tokio vs async-std tradeoffs (included in deprecation notes)
+
+**Quality Gates:**
+- ✅ All existing Tokio tests still passing
+- ✅ async-std target compiles without errors
+- ✅ 10 async-std tests passing with real async delays
+- ✅ Zero clippy warnings
+- ✅ Zero compiler warnings
+- ✅ CI green (Tokio, async-std, and WASM targets)
+
+**Key Achievements:**
+- Multi-threaded async-std tests with real async delays
+- AsyncStdTimer provides compatible interface with TokioTimer
+- Helper functions adapted for async-std runtime
+- Zero operator changes required (Timer trait abstraction enables async-std support)
+- Users can choose between Tokio and async-std based on project needs
+
+**Out of Scope:**
+- smol runtime support (planned for 0.6.5)
+- Runtime performance benchmarking
+
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 
 **Status:** Planned
