@@ -376,6 +376,43 @@ New projects should use tokio or smol runtimes instead.
 **Out of Scope:**
 - Runtime performance benchmarking
 
+## 🚀 Version 0.6.5 - Support smol Runtime
+
+**Status:** Completed
+
+**Goal:** Enable time-based operators with async-std runtime through Timer abstraction
+
+**Essential Features:**
+- ✅ Implement SmolTimer for smol targets using `smol::Timer::after` and `async_io::Timer`
+- ✅ Add `time-smol` feature flag (alternative to `time-tokio`)
+- ✅ All 5 time-based operators compile and run with SmolTimer
+- ✅ Comprehensive smol tests (10 tests: 5 operators × 2 threading models)
+- ✅ CI integration for smol tests
+
+**Documentation:**
+- ✅ Document smol implementation details (smol::Timer, async_io::Timer)
+- ✅ Add deprecation warning about unmaintained status
+- ✅ Added smol section to fluxion-stream-time README
+- ✅ Runtime selection guide comparing Tokio vs smol tradeoffs (included in deprecation notes)
+
+**Quality Gates:**
+- ✅ All existing Tokio tests still passing
+- ✅ smol target compiles without errors
+- ✅ 10 smol tests passing with real async delays
+- ✅ Zero clippy warnings
+- ✅ Zero compiler warnings
+- ✅ CI green (Tokio, smol, and WASM targets)
+
+**Key Achievements:**
+- Multi-threaded smol tests with real async delays
+- SmolTimer provides compatible interface with TokioTimer
+- Helper functions adapted for smol runtime
+- Zero operator changes required (Timer trait abstraction enables smol support)
+- Users can choose between Tokio and smol based on project needs
+
+**Out of Scope:**
+- Runtime performance benchmarking
+
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 
 **Status:** Planned
