@@ -4,8 +4,10 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::ThrottleExt;
+use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
     helpers::recv_timeout, person::Person, test_channel_with_errors, test_data::person_alice,
     TestData,
@@ -18,10 +20,10 @@ use tokio::{spawn, sync::mpsc::unbounded_channel};
 #[tokio::test]
 async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<InstantTimestamped<TestData>>();
-    let throttle_duration = Duration::from_millis(100);
+    let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
 
     // Map then Throttle
     let throttled = stream
@@ -31,9 +33,9 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
             } else {
                 x.value
             };
-            InstantTimestamped::new(val, x.timestamp)
+            TokioTimestamped::new(val, x.timestamp)
         })
-        .throttle(throttle_duration);
+        .throttle(Duration::from_millis(100), timer.clone());
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -58,7 +60,10 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
         error.to_string()
     );
 
-    tx.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
+    tx.send(StreamItem::Value(TokioTimestamped::new(
+        person_alice(),
+        timer.now(),
+    )))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await

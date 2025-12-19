@@ -5,7 +5,11 @@
 use fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::DelayExt;
 use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -18,30 +22,30 @@ use tokio::time::{advance, pause};
 #[tokio::test]
 async fn test_debounce_chaining_with_map_ordered() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let debounce_duration = Duration::from_millis(500);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
 
     // Chain map_ordered then debounce - transform the data before debouncing
     let mut processed = stream
-        .map_ordered(|item: InstantTimestamped<_>| {
+        .map_ordered(|item: TokioTimestamped<_>| {
             // Transform Alice to Bob
             let transformed = if item.value == person_alice() {
                 person_bob()
             } else {
                 item.value.clone()
             };
-            InstantTimestamped::new(transformed, item.timestamp)
+            TokioTimestamped::new(transformed, item.timestamp)
         })
-        .debounce(debounce_duration);
+        .debounce(Duration::from_millis(500), timer.clone());
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(200)).await;
-    tx.send(InstantTimestamped::now(person_charlie()))?;
+    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(300)).await;
@@ -53,7 +57,7 @@ async fn test_debounce_chaining_with_map_ordered() -> anyhow::Result<()> {
         person_charlie()
     );
 
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(500)).await;
@@ -68,26 +72,26 @@ async fn test_debounce_chaining_with_map_ordered() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let debounce_duration = Duration::from_millis(500);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
 
     // Chain filter_ordered then debounce - keep only Alice and Charlie
     let mut processed = stream
         .filter_ordered(|data: &_| *data == person_alice() || *data == person_charlie())
-        .debounce(debounce_duration);
+        .debounce(Duration::from_millis(500), timer.clone());
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(100)).await;
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(100)).await;
-    tx.send(InstantTimestamped::now(person_charlie()))?;
+    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(300)).await;
@@ -99,11 +103,11 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
         person_charlie()
     );
 
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(200)).await;
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(300)).await;
@@ -112,7 +116,7 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
         person_alice()
     );
 
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(500)).await;
@@ -127,21 +131,20 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_debounce_then_delay() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let debounce_duration = Duration::from_millis(300);
-    let delay_duration = Duration::from_millis(200);
-
-    // Chain debounce then delay
-    let mut processed = stream.debounce(debounce_duration).delay(delay_duration);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let mut processed = stream
+        .debounce(Duration::from_millis(300), timer.clone())
+        .delay(Duration::from_millis(200), timer.clone());
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(100)).await;
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(200)).await;
@@ -162,21 +165,20 @@ async fn test_debounce_then_delay() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_delay_then_debounce() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let delay_duration = Duration::from_millis(200);
-    let debounce_duration = Duration::from_millis(300);
-
-    // Chain delay then debounce
-    let mut processed = stream.delay(delay_duration).debounce(debounce_duration);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let mut processed = stream
+        .delay(Duration::from_millis(200), timer.clone())
+        .debounce(Duration::from_millis(300), timer.clone());
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(100)).await;
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
 
     advance(Duration::from_millis(200)).await;
     assert_no_element_emitted(&mut processed, 0).await;
@@ -196,28 +198,26 @@ async fn test_delay_then_debounce() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_combine_latest_then_debounce() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx1, stream1) = test_channel::<InstantTimestamped<TestData>>();
-    let (tx2, stream2) = test_channel::<InstantTimestamped<TestData>>();
-    let debounce_duration = Duration::from_millis(500);
-
-    // Chain combine_latest then debounce
+    let (tx1, stream1) = test_channel::<TokioTimestamped<TestData>>();
+    let (tx2, stream2) = test_channel::<TokioTimestamped<TestData>>();
     let mut processed = stream1
         .combine_latest(vec![stream2], |_| true)
         .map_ordered(|state| {
             let ts = state.timestamp();
             InstantTimestamped::new(state, ts)
         })
-        .debounce(debounce_duration);
+        .debounce(Duration::from_millis(500), timer.clone());
 
     // Act & Assert
-    tx1.send(InstantTimestamped::now(person_alice()))?;
-    tx2.send(InstantTimestamped::now(person_bob()))?;
+    tx1.send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx2.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(200)).await;
-    tx1.send(InstantTimestamped::now(person_charlie()))?;
+    tx1.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(300)).await;

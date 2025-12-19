@@ -5,7 +5,9 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel_with_errors,
@@ -18,20 +20,20 @@ use tokio::time::{advance, pause};
 #[tokio::test]
 async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx_source, source) = test_channel_with_errors::<InstantTimestamped<TestData>>();
-    let (tx_trigger, trigger) = test_channel_with_errors::<InstantTimestamped<TestData>>();
-    let debounce_duration = Duration::from_millis(500);
-
-    // Chain take_latest_when then debounce
-    // take_latest_when emits the latest source value when trigger emits
+    let (tx_source, source) = test_channel_with_errors::<TokioTimestamped<TestData>>();
+    let (tx_trigger, trigger) = test_channel_with_errors::<TokioTimestamped<TestData>>();
     let mut processed = source
         .take_latest_when(trigger, |_| true)
-        .debounce(debounce_duration);
+        .debounce(Duration::from_millis(500), timer.clone());
 
     // Act & Assert
-    tx_source.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
+    tx_source.send(StreamItem::Value(TokioTimestamped::new(
+        person_alice(),
+        timer.now(),
+    )))?;
     let error = FluxionError::stream_error("trigger error");
     tx_trigger.send(StreamItem::Error(error.clone()))?;
 
@@ -44,7 +46,10 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
         error.to_string()
     );
 
-    tx_trigger.send(StreamItem::Value(InstantTimestamped::now(person_bob())))?;
+    tx_trigger.send(StreamItem::Value(TokioTimestamped::new(
+        person_bob(),
+        timer.now(),
+    )))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(500)).await;

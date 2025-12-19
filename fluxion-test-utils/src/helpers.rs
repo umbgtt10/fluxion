@@ -178,7 +178,7 @@ pub fn test_channel_with_errors<T: Send + 'static>() -> (
 /// Panics if the stream emits an element before the timeout elapses.
 pub async fn assert_no_element_emitted<S, T>(stream: &mut S, timeout_ms: u64)
 where
-    S: Stream<Item = T> + Unpin,
+    S: Stream<Item = T> + Send + Unpin,
     T: Debug,
 {
     select! {

@@ -4,7 +4,8 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::IntoFluxionStream;
-use fluxion_stream_time::{InstantTimestamped, ThrottleExt};
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::{ThrottleExt, TokioTimer, TokioTimestamped};
 use futures::stream::StreamExt;
 use std::hint::black_box;
 use std::time::Duration;
@@ -12,9 +13,6 @@ use tokio::runtime::Builder;
 use tokio::sync::mpsc;
 use tokio::time::advance;
 
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_throttle(c: &mut Criterion) {
     let mut group = c.benchmark_group("throttle_overhead");
     let durations = [Duration::from_millis(10), Duration::from_secs(1)];
@@ -34,13 +32,14 @@ pub fn bench_throttle(c: &mut Criterion) {
                         .unwrap();
 
                     rt.block_on(async {
+                        let timer = TokioTimer;
                         // 2. Create stream and operator
                         let (tx, rx) = mpsc::unbounded_channel();
-                        let stream = rx.into_fluxion_stream().throttle(duration);
-                        let mut stream = Box::pin(stream);
+                        let mut stream =
+                            Box::pin(rx.into_fluxion_stream().throttle(duration, timer.clone()));
 
                         // 3. Emit value (Throttle emits immediately)
-                        tx.send(InstantTimestamped::now(1)).unwrap();
+                        tx.send(TokioTimestamped::new(1, timer.now())).unwrap();
 
                         // 4. Assert result (should be immediate)
                         let item = stream.next().await;

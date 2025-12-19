@@ -2,56 +2,49 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use crate::timer::Timer;
 use fluxion_core::{HasTimestamp, Timestamped};
 use std::cmp::Ordering;
+use std::fmt::Debug;
 use std::ops::Deref;
-use std::time::Instant;
 
-/// A timestamped value using std::time::Instant for monotonic time operations.
+/// A timestamped value using a Timer's Instant type for monotonic time operations.
 ///
-/// This type wraps a value with an `Instant` timestamp, implementing the `Timestamped` trait
-/// with `std::time::Instant` as the timestamp type. This enables time-based
+/// This type wraps a value with a timestamp from the provided Timer implementation,
+/// implementing the `Timestamped` trait. This enables time-based
 /// operators like `delay`, `debounce`, and `throttle`.
 ///
 /// # Example
 ///
 /// ```rust
-/// use fluxion_stream_time::InstantTimestamped;
-/// use std::time::Instant;
+/// use fluxion_stream_time::{InstantTimestamped, TokioTimer};
+/// use fluxion_stream_time::timer::Timer;
 ///
-/// let item = InstantTimestamped::new(42, Instant::now());
-/// let another = InstantTimestamped::now("hello");
+/// let timer = TokioTimer;
+/// let item: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, timer.now());
 /// ```
 #[derive(Debug, Clone)]
-pub struct InstantTimestamped<T> {
+pub struct InstantTimestamped<T, TM: Timer> {
     pub value: T,
-    pub timestamp: Instant,
+    pub timestamp: TM::Instant,
 }
 
-impl<T> InstantTimestamped<T> {
+impl<T, TM: Timer> InstantTimestamped<T, TM> {
     /// Creates a new timestamped value with the given timestamp.
-    pub fn new(value: T, timestamp: Instant) -> Self {
+    pub fn new(value: T, timestamp: TM::Instant) -> Self {
         Self { value, timestamp }
     }
-
-    /// Creates a new timestamped value with the current UTC time.
-    pub fn now(value: T) -> Self {
-        Self {
-            value,
-            timestamp: Instant::now(),
-        }
-    }
 }
 
-impl<T> HasTimestamp for InstantTimestamped<T> {
-    type Timestamp = Instant;
+impl<T, TM: Timer> HasTimestamp for InstantTimestamped<T, TM> {
+    type Timestamp = TM::Instant;
 
     fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
     }
 }
 
-impl<T> Timestamped for InstantTimestamped<T>
+impl<T, TM: Timer> Timestamped for InstantTimestamped<T, TM>
 where
     T: Clone,
 {
@@ -66,7 +59,7 @@ where
     }
 }
 
-impl<T> PartialEq for InstantTimestamped<T>
+impl<T, TM: Timer> PartialEq for InstantTimestamped<T, TM>
 where
     T: PartialEq,
 {
@@ -75,9 +68,9 @@ where
     }
 }
 
-impl<T> Eq for InstantTimestamped<T> where T: Eq {}
+impl<T, TM: Timer> Eq for InstantTimestamped<T, TM> where T: Eq {}
 
-impl<T> PartialOrd for InstantTimestamped<T>
+impl<T, TM: Timer> PartialOrd for InstantTimestamped<T, TM>
 where
     T: PartialOrd,
 {
@@ -86,7 +79,7 @@ where
     }
 }
 
-impl<T> Ord for InstantTimestamped<T>
+impl<T, TM: Timer> Ord for InstantTimestamped<T, TM>
 where
     T: Ord,
 {
@@ -95,7 +88,7 @@ where
     }
 }
 
-impl<T> Deref for InstantTimestamped<T> {
+impl<T, TM: Timer> Deref for InstantTimestamped<T, TM> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {

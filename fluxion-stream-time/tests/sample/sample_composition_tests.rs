@@ -4,8 +4,11 @@
 
 use fluxion_core::StreamItem;
 use fluxion_stream::prelude::*;
-use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::timer::Timer;
 use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::SampleExt;
+use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
     helpers::recv_timeout,
     test_channel,
@@ -20,14 +23,13 @@ use tokio::{spawn, sync::mpsc::unbounded_channel};
 #[tokio::test]
 async fn test_sample_chained_with_map() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let sample_duration = Duration::from_millis(100);
-
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let pipeline = stream
-        .map_ordered(|item| InstantTimestamped::new(item.value, item.timestamp))
-        .sample(sample_duration);
+        .map_ordered(|item| TokioTimestamped::new(item.value, item.timestamp))
+        .sample(Duration::from_millis(100), timer.clone());
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -42,10 +44,10 @@ async fn test_sample_chained_with_map() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
 
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
 
     // Assert
@@ -60,12 +62,10 @@ async fn test_sample_chained_with_map() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let sample_duration = Duration::from_millis(100);
-
-    // Chain: combine_with_previous -> map -> sample
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let pipeline = stream
         .combine_with_previous()
         .map_ordered(|wp| {
@@ -74,7 +74,7 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
             let previous_val = wp.previous.map(|p| p.value);
             InstantTimestamped::new(WithPrevious::new(previous_val, current_val), timestamp)
         })
-        .sample(sample_duration);
+        .sample(Duration::from_millis(100), timer.clone());
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -89,10 +89,10 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
     });
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
     advance(Duration::from_millis(50)).await;
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
@@ -100,7 +100,7 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
     );
 
     advance(Duration::from_millis(50)).await;
-    tx.send(InstantTimestamped::now(person_charlie()))?;
+    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
 
     assert_eq!(
@@ -113,11 +113,10 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
 #[tokio::test]
 async fn test_sample_chained_with_scan_ordered() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let sample_duration = Duration::from_millis(100);
-
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let pipeline = stream
         .scan_ordered(0u32, |acc, item| {
             let val = match item {
@@ -127,9 +126,9 @@ async fn test_sample_chained_with_scan_ordered() -> anyhow::Result<()> {
             *acc += val;
             *acc
         })
-        .sample(sample_duration);
+        .sample(Duration::from_millis(100), timer.clone());
 
-    let (result_tx, mut result_rx) = unbounded_channel::<InstantTimestamped<u32>>();
+    let (result_tx, mut result_rx) = unbounded_channel::<TokioTimestamped<u32>>();
 
     spawn(async move {
         let mut stream = pipeline;
@@ -141,14 +140,14 @@ async fn test_sample_chained_with_scan_ordered() -> anyhow::Result<()> {
     });
 
     // Act and Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
     assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 55);
 
     advance(Duration::from_millis(50)).await;
-    tx.send(InstantTimestamped::now(person_charlie()))?;
+    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
     assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 90);
 

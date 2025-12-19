@@ -2,25 +2,35 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Time-based operators for streams using std::time::Instant timestamps.
+//! Time-based operators for streams with runtime-agnostic timer abstraction.
 //!
-//! This crate provides time-based operators for delaying and debouncing stream emissions,
-//! along with the `InstantTimestamped<T>` wrapper type that uses `std::time::Instant` for timestamps.
+//! This crate provides time-based operators for delaying, debouncing, throttling, sampling,
+//! and timeout handling of stream emissions. Operators work with any async runtime through
+//! the `Timer` trait abstraction.
 //!
 //! # Overview
 //!
-//! - **`InstantTimestamped<T>`** - Wraps a value with a monotonic Instant timestamp
-//! - **`DelayExt`** - Extension trait for `.delay(duration)`
-//! - **`DebounceExt`** - Extension trait for `.debounce(duration)`
-//! - **`ThrottleExt`** - Extension trait for `.throttle(duration)`
-//! - **`SampleExt`** - Extension trait for `.sample(duration)`
-//! - **`TimeoutExt`** - Extension trait for `.timeout(duration)`
+//! - **`Timer` trait** - Runtime-agnostic timer abstraction
+//! - **`InstantTimestamped<T, TM>`** - Wraps a value with a Timer's Instant timestamp
+//! - **`DelayExt`** - Extension trait for `.delay(duration, timer)`
+//! - **`DebounceExt`** - Extension trait for `.debounce(duration, timer)`
+//! - **`ThrottleExt`** - Extension trait for `.throttle(duration, timer)`
+//! - **`SampleExt`** - Extension trait for `.sample(duration, timer)`
+//! - **`TimeoutExt`** - Extension trait for `.timeout(duration, timer)`
+//!
+//! # Runtime Support
+//!
+//! Enable runtime-specific features in your `Cargo.toml`:
+//! - `time-tokio` (default) - Tokio runtime support with `TokioTimer`
+//! - `time-async-std` - async-std runtime support (planned)
+//! - `time-smol` - smol runtime support (planned)
 //!
 //! # Example
 //!
 //! ```rust
 //! use fluxion_stream_time::prelude::*;
-//! use fluxion_stream_time::InstantTimestamped;
+//! use fluxion_stream_time::{TokioTimestamped, TokioTimer};
+//! use fluxion_stream_time::timer::Timer;
 //! use fluxion_core::StreamItem;
 //! use futures::stream::StreamExt;
 //! use std::time::Duration;
@@ -28,31 +38,34 @@
 //! use tokio_stream::wrappers::UnboundedReceiverStream;
 //!
 //! # async fn example() {
-//! let (tx, rx) = mpsc::unbounded_channel();
+//! let (tx, rx) = mpsc::unbounded_channel::<TokioTimestamped<i32>>();
+//! let timer = TokioTimer;
 //!
 //! // Delay all emissions by 100ms
 //! let delayed = UnboundedReceiverStream::new(rx)
 //!     .map(StreamItem::Value)
-//!     .delay(Duration::from_millis(100));
+//!     .delay(Duration::from_millis(100), timer.clone());
 //!
-//! tx.send(InstantTimestamped::now(42)).unwrap();
-//! tx.send(InstantTimestamped::now(100)).unwrap();
+//! tx.send(TokioTimestamped::new(42, timer.now())).unwrap();
+//! tx.send(TokioTimestamped::new(100, timer.now())).unwrap();
 //!
 //! // Or debounce to emit only after 100ms of quiet time
-//! # let (tx, rx) = mpsc::unbounded_channel();
-//! # tx.send(InstantTimestamped::now(42)).unwrap();
+//! # let (tx, rx) = mpsc::unbounded_channel::<TokioTimestamped<i32>>();
+//! # let timer = TokioTimer;
 //! let debounced = UnboundedReceiverStream::new(rx)
 //!     .map(StreamItem::Value)
-//!     .debounce(Duration::from_millis(100));
+//!     .debounce(Duration::from_millis(100), timer);
 //! # }
 //! ```
 
 mod debounce;
 mod delay;
 mod instant_timestamped;
+pub mod runtimes;
 mod sample;
 mod throttle;
 mod timeout;
+pub mod timer;
 
 pub mod prelude;
 
@@ -62,3 +75,9 @@ pub use instant_timestamped::InstantTimestamped;
 pub use sample::SampleExt;
 pub use throttle::ThrottleExt;
 pub use timeout::TimeoutExt;
+
+#[cfg(feature = "time-tokio")]
+pub use runtimes::TokioTimer;
+
+#[cfg(feature = "time-tokio")]
+pub type TokioTimestamped<T> = InstantTimestamped<T, TokioTimer>;

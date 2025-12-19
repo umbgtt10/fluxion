@@ -236,7 +236,69 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - ✅ Doc tests for all operators
 - ✅ CI green
 
-## 🚀 Version 0.7.0 - WASM & Runtime Abstraction
+## 🚀 Version 0.6.2 - Introduce Time Abstraction and Implement the First Runtime: Tokio
+
+**Status:** ✅ Completed (not published to crates.io)
+
+**Goal:** Prepare for time abstraction and runtime flexibility
+
+**Essential Features:**
+- ✅ Introduce Timer trait abstracting: sleep and now functions
+- ✅ Implement TokioTimer as default Timer using tokio::time functions
+- ✅ Adapt all existing time-based operators to use Timer trait instead of direct tokio::time calls
+- ✅ Add feature flag for runtime abstraction (default: tokio)
+
+**Documentation:**
+- ✅ Update time-based operators documentation to explain Timer abstraction and usage patterns with rationales
+- ✅ README updated with Timer trait documentation, runtime support, and multi-runtime examples
+- ✅ All operator doc examples updated to show timer parameter usage
+- ✅ Future platform support section added (no_std feasibility, WASM support)
+
+**Quality Gates:**
+- ✅ All tests passing (41 integration tests + 7 doc tests)
+- ✅ Zero clippy warnings
+- ✅ Zero compiler warnings
+- ✅ Doc tests for all operators
+- ✅ CI green
+
+**Key Achievements:**
+- Runtime-agnostic Timer trait enables multi-runtime support (Tokio, async-std, smol, WASM, Embassy)
+- All 5 time-based operators (debounce, throttle, delay, sample, timeout) migrated to generic Timer pattern
+- Zero-cost abstraction with no runtime overhead
+- Pattern consistency: `Option<TM::Sleep>` with `#[pin]` for optimal performance
+- Architecture validated for no_std feasibility
+
+## 🚀 Version 0.6.3 - Support WASM Runtime
+
+**Status:** Planned
+
+**Goal:** Enable time-based operators in WASM environments through Timer abstraction
+
+**Essential Features:**
+- [ ] Implement WasmTimer for WASM targets using `wasm-timer` crate
+- [ ] Add `time-wasm` feature flag (conditionally compiled for wasm32 target)
+- [ ] Ensure all 5 time-based operators compile with WasmTimer
+- [ ] Add WasmTimestamped<T> type alias for ergonomics
+- [ ] Basic smoke tests using wasm-bindgen-test (compilation + instantiation)
+
+**Documentation:**
+- [ ] Update README with WASM usage example
+- [ ] Document WASM limitations (no deterministic time control in tests)
+- [ ] Add conditional compilation notes for target-specific code
+
+**Quality Gates:**
+- [ ] All existing Tokio tests still passing (41 integration + 7 doc)
+- [ ] WASM target compiles without errors (cargo check --target wasm32-unknown-unknown)
+- [ ] Basic WASM smoke test passes (wasm-bindgen-test)
+- [ ] Zero clippy warnings
+- [ ] Zero compiler warnings
+- [ ] CI green (both native and WASM targets)
+
+**Out of Scope:**
+- Comprehensive WASM integration tests (WASM can't pause/advance time deterministically)
+- Browser-specific optimizations
+
+## 🚀 Version 0.7.0 - Full Runtime Abstraction
 
 **Status:** Planned
 
@@ -279,7 +341,7 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - [ ] Standard error handling operators implemented
 
 **Phase 2: Stream Operator Error Propagation**
-- [ ] All standard Rx operators supported along with chaining and error propagation for both ordering mmodels
+- [ ] All standard Rx operators supported along with chaining and error propagation for both ordering models
 
 **Phase 3: Documentation & Finalization**
 - [ ] Create `docs/error-handling.md` guide
@@ -386,24 +448,9 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - [ ] CQRS pattern support
 - [ ] Distributed stream processing (tentative)
 
-**Breaking Changes (2.0):**
-- [ ] Resolve task lifecycle management for `UnboundedReceiverExt`
-  - Decision: Simple API (orphaned tasks) vs Explicit control (return JoinHandle)
-  - See orphaned task discussion in development notes
-- [ ] API refinements based on 1.x usage patterns
-- [ ] Removal of deprecated APIs from 1.x
-
 ---
 
 ## 📊 Success Metrics
-
-### 0.1.x Achievements ✅
-- ✅ Library compiles and all tests pass
-- ✅ Documentation covers all public APIs
-- ✅ Published to crates.io
-
-### 0.2.x Achievements
-- Example project demonstrate usage
 
 ### 1.0.0 Success Criteria
 - Zero critical bugs for 30+ days

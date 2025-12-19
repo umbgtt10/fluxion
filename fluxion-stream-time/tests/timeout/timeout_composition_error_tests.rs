@@ -4,8 +4,9 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::TimeoutExt;
+use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::helpers::assert_no_recv;
 use fluxion_test_utils::{helpers::recv_timeout, test_channel_with_errors, TestData};
 use futures::StreamExt;
@@ -16,15 +17,13 @@ use tokio::{spawn, sync::mpsc::unbounded_channel};
 #[tokio::test]
 async fn test_timeout_chained_error_propagation() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<InstantTimestamped<TestData>>();
-    let timeout_duration = Duration::from_millis(100);
-
+    let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
     let pipeline = stream
-        .map_ordered(|item| InstantTimestamped::new(item.value, item.timestamp))
-        .timeout(timeout_duration);
-
+        .map_ordered(|item| TokioTimestamped::new(item.value, item.timestamp))
+        .timeout(Duration::from_millis(100), timer.clone());
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {

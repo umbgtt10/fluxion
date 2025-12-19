@@ -5,8 +5,10 @@
 use fluxion_core::IntoStream;
 use fluxion_stream::prelude::*;
 use fluxion_stream::MergedStream;
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::DelayExt;
+use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel,
@@ -19,26 +21,24 @@ use tokio::time::{advance, pause};
 #[tokio::test]
 async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let delay_duration = Duration::from_secs(1);
-
-    // Chain map_ordered then delay - transform the data before delaying
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut processed = stream
-        .map_ordered(|item: InstantTimestamped<_>| {
+        .map_ordered(|item: TokioTimestamped<_>| {
             // Transform Alice to Bob
             let transformed = if item.value == person_alice() {
                 person_bob()
             } else {
                 item.value.clone()
             };
-            InstantTimestamped::new(transformed, item.timestamp)
+            TokioTimestamped::new(transformed, item.timestamp)
         })
-        .delay(delay_duration);
+        .delay(Duration::from_secs(1), timer.clone());
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
@@ -48,7 +48,7 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
         person_bob()
     );
 
-    tx.send(InstantTimestamped::now(person_charlie()))?;
+    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
@@ -64,18 +64,16 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let delay_duration = Duration::from_secs(1);
-
-    // Chain filter_ordered then delay - keep only Alice and Charlie
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut processed = stream
         .filter_ordered(|data: &_| *data == person_alice() || *data == person_charlie())
-        .delay(delay_duration);
+        .delay(Duration::from_secs(1), timer.clone());
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
@@ -85,8 +83,8 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
         person_alice()
     );
 
-    tx.send(InstantTimestamped::now(person_bob()))?;
-    tx.send(InstantTimestamped::now(person_charlie()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
 
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
@@ -103,15 +101,12 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_merge_with_then_delay() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx1, stream1) = test_channel::<InstantTimestamped<TestData>>();
-    let (tx2, stream2) = test_channel::<InstantTimestamped<TestData>>();
-    let delay_duration = Duration::from_millis(200);
-
-    // Merge streams with state (count emissions)
-    // We use MergedStream to merge two streams and then apply delay
-    let mut processed = MergedStream::seed::<InstantTimestamped<TestData>>(0)
+    let (tx1, stream1) = test_channel::<TokioTimestamped<TestData>>();
+    let (tx2, stream2) = test_channel::<TokioTimestamped<TestData>>();
+    let mut processed = MergedStream::seed::<TokioTimestamped<TestData>>(0)
         .merge_with(stream1, |value, state| {
             *state += 1;
             value // Pass through
@@ -121,16 +116,16 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
             value // Pass through
         })
         .into_stream()
-        .delay(delay_duration);
+        .delay(Duration::from_millis(200), timer.clone());
 
     // Act & Assert
-    tx1.send(InstantTimestamped::now(person_alice()))?;
+    tx1.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    tx2.send(InstantTimestamped::now(person_bob()))?;
+    tx2.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,

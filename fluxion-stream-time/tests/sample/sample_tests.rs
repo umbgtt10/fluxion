@@ -2,8 +2,10 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::SampleExt;
+use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     test_channel,
@@ -18,12 +20,11 @@ use tokio::{spawn, sync::mpsc::unbounded_channel};
 #[tokio::test]
 async fn test_sample_emits_latest_in_window() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let sample_duration = Duration::from_millis(100);
-    let sampled = stream.sample(sample_duration);
-
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let sampled = stream.sample(Duration::from_millis(100), timer.clone());
     let (result_tx, mut result_rx) = unbounded_channel();
 
     spawn(async move {
@@ -34,9 +35,9 @@ async fn test_sample_emits_latest_in_window() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(InstantTimestamped::now(person_alice()))?;
+    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
-    tx.send(InstantTimestamped::now(person_bob()))?;
+    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_recv(&mut result_rx, 10).await;
 
     advance(Duration::from_millis(50)).await;
@@ -51,11 +52,11 @@ async fn test_sample_emits_latest_in_window() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_sample_no_emission_if_no_value() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel::<InstantTimestamped<TestData>>();
-    let sample_duration = Duration::from_millis(100);
-    let sampled = stream.sample(sample_duration);
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let sampled = stream.sample(Duration::from_millis(100), timer.clone());
 
     let (result_tx, mut result_rx) = unbounded_channel();
 
@@ -71,7 +72,7 @@ async fn test_sample_no_emission_if_no_value() -> anyhow::Result<()> {
     assert_no_recv(&mut result_rx, 100).await;
 
     advance(Duration::from_millis(50)).await;
-    tx.send(InstantTimestamped::now(person_charlie()))?;
+    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),

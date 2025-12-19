@@ -4,6 +4,7 @@
 
 //! Sample operator for time-based stream processing.
 
+use crate::timer::Timer;
 use crate::InstantTimestamped;
 use fluxion_core::StreamItem;
 use futures::Stream;
@@ -12,15 +13,15 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
-use tokio::time::{sleep_until, Instant, Sleep};
 
 /// Extension trait providing the `sample` operator for streams.
 ///
 /// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to sample emissions
 /// at periodic intervals.
-pub trait SampleExt<T>: Stream<Item = StreamItem<InstantTimestamped<T>>> + Sized
+pub trait SampleExt<T, TM>: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Sized
 where
     T: Send + Clone,
+    TM: Timer,
 {
     /// Samples the stream at periodic intervals.
     ///
@@ -38,7 +39,8 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_time::{SampleExt, InstantTimestamped};
+    /// use fluxion_stream_time::{SampleExt, InstantTimestamped, TokioTimer};
+    /// use fluxion_stream_time::timer::Timer;
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
     /// use futures::stream::StreamExt;
@@ -51,11 +53,12 @@ where
     /// let (tx, rx) = mpsc::unbounded_channel();
     /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
     ///
-    /// let mut sampled = source.sample(Duration::from_millis(10));
+    /// let timer = TokioTimer;
+    /// let mut sampled = source.sample(Duration::from_millis(10), timer.clone());
     ///
     /// // Emit Alice and Bob immediately
-    /// tx.send(InstantTimestamped::now(person_alice())).unwrap();
-    /// tx.send(InstantTimestamped::now(person_bob())).unwrap();
+    /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
+    /// tx.send(InstantTimestamped::new(person_bob(), timer.now())).unwrap();
     ///
     /// // Wait for sample duration
     /// tokio::time::sleep(Duration::from_millis(20)).await;
@@ -68,47 +71,55 @@ where
     fn sample(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send;
+        timer: TM,
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send;
 }
 
-impl<S, T> SampleExt<T> for S
+impl<S, T, TM> SampleExt<T, TM> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T>>> + Send,
     T: Send + Clone,
+    TM: Timer,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send,
 {
     fn sample(
         self,
         duration: Duration,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T>>> + Send {
-        SampleStream {
+        timer: TM,
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send {
+        Box::pin(SampleStream {
             stream: self,
             duration,
-            sleep: Box::pin(sleep_until(Instant::now() + duration)),
+            timer: timer.clone(),
+            sleep: Some(timer.sleep_future(duration)),
             pending_value: None,
             is_done: false,
-        }
+        })
     }
 }
 
 #[pin_project]
-struct SampleStream<S: Stream>
+struct SampleStream<S: Stream, TM>
 where
     S::Item: Clone,
+    TM: Timer,
 {
     #[pin]
     stream: S,
     duration: Duration,
-    sleep: Pin<Box<Sleep>>,
+    timer: TM,
+    #[pin]
+    sleep: Option<TM::Sleep>,
     pending_value: Option<S::Item>,
     is_done: bool,
 }
 
-impl<S, T> Stream for SampleStream<S>
+impl<S, T, TM> Stream for SampleStream<S, TM>
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T>>>,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
     T: Send + Clone,
+    TM: Timer,
 {
-    type Item = StreamItem<InstantTimestamped<T>>;
+    type Item = StreamItem<InstantTimestamped<T, TM>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
@@ -134,16 +145,6 @@ where
                 }
                 Poll::Ready(None) => {
                     *this.is_done = true;
-                    // If stream ends, we stop collecting.
-                    // We might still have a pending value waiting for the timer,
-                    // or we might want to emit it immediately?
-                    // RxJS sample: "If the source Observable completes, the result Observable also completes."
-                    // It does NOT emit the last value if the timer hasn't fired.
-                    // However, some implementations do "sample(period, emitLast: true)".
-                    // Let's stick to strict sampling: only emit on tick.
-                    // But if the stream is done, we can't wait for more values.
-                    // If we just return None, we drop the pending value.
-                    // Let's follow the standard: if source completes, we complete.
                     return Poll::Ready(None);
                 }
                 Poll::Pending => {
@@ -153,32 +154,23 @@ where
         }
 
         // 2. Check the timer
-        match this.sleep.as_mut().poll(cx) {
-            Poll::Ready(_) => {
-                // Timer fired.
-                let next_deadline = Instant::now() + *this.duration;
-                this.sleep.as_mut().reset(next_deadline);
+        if let Some(sleep) = this.sleep.as_mut().as_pin_mut() {
+            match sleep.poll(cx) {
+                Poll::Ready(_) => {
+                    // Timer fired.
+                    this.sleep
+                        .set(Some(this.timer.sleep_future(*this.duration)));
 
-                if let Some(value) = this.pending_value.take() {
-                    Poll::Ready(Some(value))
-                } else {
-                    // Timer fired but no value.
-                    // We need to register the timer again (reset above does not register waker automatically if we don't poll it or return Pending)
-                    // But we are in a loop effectively (poll_next).
-                    // If we return Pending, we need to make sure we are woken up by the timer or the stream.
-                    // The stream returned Pending above.
-                    // The timer returned Ready, so we reset it.
-                    // We need to poll the timer again to register the waker for the new deadline.
-                    match this.sleep.as_mut().poll(cx) {
-                        Poll::Pending => Poll::Pending,
-                        Poll::Ready(_) => {
-                            // This shouldn't happen immediately unless duration is 0
-                            Poll::Pending
-                        }
+                    if let Some(value) = this.pending_value.take() {
+                        Poll::Ready(Some(value))
+                    } else {
+                        Poll::Pending
                     }
                 }
+                Poll::Pending => Poll::Pending,
             }
-            Poll::Pending => Poll::Pending,
+        } else {
+            unreachable!("sleep future should always be Some after initialization")
         }
     }
 }

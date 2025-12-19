@@ -3,8 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::InstantTimestamped;
+use fluxion_stream_time::timer::Timer;
+use fluxion_stream_time::DelayExt;
+use fluxion_stream_time::TokioTimer;
+use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     test_channel_with_errors,
@@ -17,14 +19,17 @@ use tokio::time::{advance, pause};
 #[tokio::test]
 async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
     // Arrange
+    let timer = TokioTimer;
     pause();
 
-    let (tx, stream) = test_channel_with_errors::<InstantTimestamped<TestData>>();
-    let delay_duration = Duration::from_secs(1);
-    let mut delayed = stream.delay(delay_duration);
+    let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
+    let mut delayed = stream.delay(Duration::from_secs(1), timer.clone());
 
     // Act & Assert
-    tx.send(StreamItem::Value(InstantTimestamped::now(person_alice())))?;
+    tx.send(StreamItem::Value(TokioTimestamped::new(
+        person_alice(),
+        timer.now(),
+    )))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
@@ -40,7 +45,10 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
-    tx.send(StreamItem::Value(InstantTimestamped::now(person_bob())))?;
+    tx.send(StreamItem::Value(TokioTimestamped::new(
+        person_bob(),
+        timer.now(),
+    )))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 

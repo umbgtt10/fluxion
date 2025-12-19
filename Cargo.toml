@@ -13,7 +13,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.6.0"
+version = "0.6.2"
 edition = "2021"
 authors = ["umberto.gotti@umbertogotti.dev"]
 license = "Apache-2.0"
@@ -41,7 +41,7 @@ fastrand = "2.3.0"
 parking_lot = "0.12.5"
 
 # Logging
-tracing = "0.1.43"
+tracing = "0.1.44"
 
 # Error handling
 thiserror = "2.0.17"
@@ -54,10 +54,10 @@ criterion = { version = "0.7.0", features = ["async", "html_reports"] }
 windows-sys = "0.61.2"
 
 # Internal workspace dependencies
-fluxion-rx = { version = "0.6.0", path = "fluxion" }
-fluxion-core = { version = "0.6.0", path = "fluxion-core" }
-fluxion-ordered-merge = { version = "0.6.0", path = "fluxion-ordered-merge" }
-fluxion-stream = { version = "0.6.0", path = "fluxion-stream" }
-fluxion-exec = { version = "0.6.0", path = "fluxion-exec" }
-fluxion-test-utils = { version = "0.6.0", path = "fluxion-test-utils" }
-fluxion-stream-time = { version = "0.6.0", path = "fluxion-stream-time" }
+fluxion-rx = { version = "0.6.2", path = "fluxion" }
+fluxion-core = { version = "0.6.2", path = "fluxion-core" }
+fluxion-ordered-merge = { version = "0.6.2", path = "fluxion-ordered-merge" }
+fluxion-stream = { version = "0.6.2", path = "fluxion-stream" }
+fluxion-exec = { version = "0.6.2", path = "fluxion-exec" }
+fluxion-test-utils = { version = "0.6.2", path = "fluxion-test-utils" }
+fluxion-stream-time = { version = "0.6.2", path = "fluxion-stream-time" }
