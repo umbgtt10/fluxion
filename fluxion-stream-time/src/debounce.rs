@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Debounce operator for time-based stream processing.
-
 use crate::timer::Timer;
 use crate::InstantTimestamped;
 use fluxion_core::StreamItem;
@@ -76,12 +74,12 @@ where
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send;
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>>;
 }
 
 impl<S, T, TM> DebounceExt<T, TM> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
     T: Send,
     TM: Timer,
 {
@@ -89,7 +87,7 @@ where
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send {
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> {
         Box::pin(DebounceStream {
             stream: self,
             duration,

@@ -2,22 +2,28 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-#[cfg(feature = "time-tokio")]
-pub mod tokio_implementation {
+#[cfg(feature = "time-wasm")]
+pub mod wasm_implementation {
     use crate::timer::Timer;
     use std::time::{Duration, Instant};
-    use tokio::time::sleep;
+    use gloo_timers::future::TimeoutFuture;
 
     #[derive(Clone, Debug)]
-    pub struct TokioTimer;
+    pub struct WasmTimer;
 
-    impl Timer for TokioTimer {
-        type Sleep = tokio::time::Sleep;
+    impl WasmTimer {
+        #[must_use]
+        pub const fn new() -> Self {
+            Self
+        }
+    }
 
+    impl Timer for WasmTimer {
+        type Sleep = TimeoutFuture;
         type Instant = Instant;
 
         fn sleep_future(&self, duration: Duration) -> Self::Sleep {
-            sleep(duration)
+            TimeoutFuture::new(duration.as_millis() as u32)
         }
 
         fn now(&self) -> Self::Instant {

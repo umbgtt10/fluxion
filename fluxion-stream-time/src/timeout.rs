@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Timeout operator for time-based stream processing.
-
 use crate::timer::Timer;
 use crate::InstantTimestamped;
 use fluxion_core::{FluxionError, StreamItem};
@@ -66,19 +64,19 @@ where
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send;
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>>;
 }
 
 impl<S, T, TM> TimeoutExt<T, TM> for S
 where
     TM: Timer,
-    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
 {
     fn timeout(
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send {
+    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> {
         Box::pin(TimeoutStream {
             stream: self,
             duration,
