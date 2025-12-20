@@ -311,7 +311,7 @@ async fn search_api(query: &str) -> Result<Vec<String>, Box<dyn std::error::Erro
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, rx) = futures::channel::mpsc::unbounded();
     let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
 
     let handle = tokio::spawn(async move {
@@ -364,7 +364,7 @@ impl std::error::Error for ProcessingError {}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, rx) = futures::channel::mpsc::unbounded();
     let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
 
     let error_count = Arc::new(Mutex::new(0));
@@ -409,7 +409,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, rx) = futures::channel::mpsc::unbounded();
     let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
     let cancel_token = CancellationToken::new();
     let cancel_clone = cancel_token.clone();
@@ -876,7 +876,7 @@ tokio::spawn(async move {
 **Solutions**:
 ```rust
 // Add backpressure with bounded channels
-let (tx, rx) = tokio::sync::mpsc::channel(100); // Bounded
+let (tx, rx) = futures::channel::mpsc::channel(100); // Bounded
 
 // Use subscribe_latest to skip items
 stream.subscribe_latest(handler, None, None).await?;

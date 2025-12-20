@@ -43,18 +43,17 @@ where
     /// use fluxion_test_utils::test_data::person_alice;
     /// use futures::stream::StreamExt;
     /// use std::time::Duration;
-    /// use tokio::sync::mpsc;
-    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// use futures::channel::mpsc;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let (tx, rx) = mpsc::unbounded_channel();
-    /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
+    /// let (mut tx, rx) = mpsc::unbounded();
+    /// let source = rx.map(StreamItem::Value);
     ///
     /// let timer = TokioTimer;
     /// let mut timed_out = source.timeout_with_timer(Duration::from_millis(100), timer.clone());
     ///
-    /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
+    /// tx.unbounded_send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
     ///
     /// let item = timed_out.next().await.unwrap().unwrap();
     /// assert_eq!(&*item, &person_alice());

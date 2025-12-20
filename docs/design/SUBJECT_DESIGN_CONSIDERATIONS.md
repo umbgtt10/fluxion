@@ -399,7 +399,7 @@ impl<T> FluxionSubject<T> {
 ```rust
 use fluxion_stream::IntoFluxionStream;
 
-let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+let (tx, rx) = futures::channel::mpsc::unbounded();
 let stream = rx.into_fluxion_stream();
 tx.send(Sequenced::new(value)).unwrap();
 ```

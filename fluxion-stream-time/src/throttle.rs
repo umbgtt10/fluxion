@@ -51,20 +51,19 @@ where
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
     /// use futures::stream::StreamExt;
     /// use std::time::Duration;
-    /// use tokio::sync::mpsc;
-    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// use futures::channel::mpsc;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let (tx, rx) = mpsc::unbounded_channel();
-    /// let source = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
+    /// let (mut tx, rx) = mpsc::unbounded();
+    /// let source = rx.map(StreamItem::Value);
     ///
     /// let timer = TokioTimer;
     /// let mut throttled = source.throttle_with_timer(Duration::from_millis(100), timer.clone());
     ///
     /// // Alice and Bob emitted immediately. Bob should be throttled (dropped).
-    /// tx.send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
-    /// tx.send(InstantTimestamped::new(person_bob(), timer.now())).unwrap();
+    /// tx.unbounded_send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
+    /// tx.unbounded_send(InstantTimestamped::new(person_bob(), timer.now())).unwrap();
     ///
     /// // Only Alice should remain (leading throttle)
     /// let item = throttled.next().await.unwrap().unwrap();

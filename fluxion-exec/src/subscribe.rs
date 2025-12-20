@@ -72,7 +72,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// use futures::stream;
     /// use futures::StreamExt;
     /// use std::sync::Arc;
-    /// use tokio::sync::Mutex;
+    /// use futures::lock::Mutex;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -118,7 +118,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// use futures::stream;
     /// use futures::StreamExt;
     /// use std::sync::Arc;
-    /// use tokio::sync::Mutex;
+    /// use futures::lock::Mutex;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -191,7 +191,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// use futures::StreamExt;
     /// use fluxion_core::CancellationToken;
     /// use std::sync::Arc;
-    /// use tokio::sync::Mutex;
+    /// use futures::lock::Mutex;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -253,7 +253,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// use futures::stream;
     /// use futures::StreamExt;
     /// use std::sync::Arc;
-    /// use tokio::sync::Mutex;
+    /// use futures::lock::Mutex;
     ///
     /// # #[tokio::main]
     /// # async fn main() {

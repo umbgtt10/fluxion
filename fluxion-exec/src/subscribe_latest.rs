@@ -73,7 +73,7 @@ where
     /// use futures::channel::mpsc::unbounded;
     /// use futures::StreamExt;
     /// use std::sync::Arc;
-    /// use tokio::sync::Mutex;
+    /// use futures::lock::Mutex;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -157,7 +157,7 @@ where
     /// use futures::channel::mpsc::unbounded;
     /// use futures::StreamExt;
     /// use std::sync::Arc;
-    /// use tokio::sync::Mutex;
+    /// use futures::lock::Mutex;
     /// use fluxion_core::CancellationToken;
     ///
     /// # #[tokio::main]
@@ -228,7 +228,7 @@ where
     /// use futures::channel::mpsc::unbounded;
     /// use futures::StreamExt;
     /// use std::sync::Arc;
-    /// use tokio::sync::Mutex;
+    /// use futures::lock::Mutex;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -318,7 +318,7 @@ where
     /// use futures::channel::mpsc::unbounded;
     /// use futures::StreamExt;
     /// use std::sync::Arc;
-    /// use tokio::sync::Mutex;
+    /// use futures::lock::Mutex;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
