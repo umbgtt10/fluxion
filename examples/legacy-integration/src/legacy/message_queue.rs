@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -6,7 +6,7 @@
 //! In production, this would consume from RabbitMQ, ActiveMQ, etc.
 
 use fluxion_core::CancellationToken;
-use futures::channel::mpsc::UnboundedSender;
+use futures::{channel::mpsc::UnboundedSender, FutureExt};
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::time::{sleep, Duration};
 
@@ -29,12 +29,12 @@ impl LegacyMessageQueue {
         println!("  📨 Legacy Message Queue: Consuming order events (every 2s)");
 
         loop {
-            tokio::select! {
-                _ = cancel.cancelled() => {
+            futures::select! {
+                _ = cancel.cancelled().fuse() => {
                     println!("  📨 Legacy Message Queue: Shutting down");
                     break;
                 }
-                _ = sleep(Duration::from_secs(2)) => {
+                _ = sleep(Duration::from_secs(2)).fuse() => {
                     let order_id = self.order_id_counter.fetch_add(1, Ordering::SeqCst);
 
                     let order = Order {

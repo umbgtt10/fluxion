@@ -8,6 +8,7 @@
 use crate::domain::models::User;
 use fluxion_core::CancellationToken;
 use futures::channel::mpsc::UnboundedSender;
+use futures::FutureExt;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::time::{sleep, Duration};
 
@@ -36,12 +37,12 @@ impl LegacyDatabase {
         ];
 
         loop {
-            tokio::select! {
-                _ = cancel.cancelled() => {
+            futures::select! {
+                _ = cancel.cancelled().fuse() => {
                     println!("  🗄️  Legacy Database: Shutting down");
                     break;
                 }
-                _ = sleep(Duration::from_secs(3)) => {
+                _ = sleep(Duration::from_secs(3)).fuse() => {
                     let user_id = self.user_id_counter.fetch_add(1, Ordering::SeqCst);
                     let name = names[user_id as usize % names.len()];
 

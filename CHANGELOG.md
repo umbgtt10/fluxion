@@ -18,6 +18,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 19 comprehensive tests covering edge cases and concurrent scenarios
 
 ### Changed
+- **Runtime-Agnostic Primitives** (`fluxion-core`, `fluxion-stream`, `fluxion-exec`, `fluxion-merge`)
+  - **Replaced `tokio::sync::Mutex` → `futures::lock::Mutex`** across all crates
+    - Updated: `merge_with.rs`, `subscribe_latest.rs`, and other operator files
+    - Async fair mutex with identical semantics and performance
+    - Works on ANY async executor (Tokio, smol, async-std, WASM)
+
+  - **Replaced `tokio::sync::Notify` → `event_listener::Event`**
+    - Runtime-agnostic event notification using `event-listener` crate
+    - Zero API changes for end users
+    - Eliminates hard dependency on Tokio runtime
+
+  - **Replaced tokio channels → futures channels** (`mpsc`, `oneshot`)
+    - Migrated from `tokio::sync::mpsc` to `futures::channel::mpsc`
+    - Migrated from `tokio::sync::oneshot` to `futures::channel::oneshot`
+    - Runtime-agnostic channel implementations
+    - All operators and tests updated accordingly
+
 - **CancellationToken Migration** (`fluxion-stream`, `fluxion-exec`)
   - Migrated from `tokio_util::sync::CancellationToken` to `fluxion_core::CancellationToken`
   - Updated files: `partition.rs`, `subscribe.rs`, `subscribe_latest.rs`
@@ -37,6 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - WASM compilation errors when using time-wasm feature
 - Doctest failures due to outdated CancellationToken imports
+
+### Impact
+- **Zero performance impact** - All replacements use equivalent or identical implementations
+- **Zero API changes** - Drop-in replacements maintain exact same interfaces
+- **Massive decoupling** - Reduced hard dependencies on Tokio runtime throughout codebase
+- **Multi-runtime ready** - Foundation laid for full runtime abstraction in v0.7.0
 
 ## [0.6.7] - 2025-12-20
 

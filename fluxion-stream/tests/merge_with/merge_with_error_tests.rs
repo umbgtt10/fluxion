@@ -16,7 +16,7 @@ use fluxion_test_utils::{
     test_data::{person, person_alice, person_bob, person_diane, TestData},
     unwrap_stream, unwrap_value, Sequenced,
 };
-use futures::StreamExt;
+use futures::{FutureExt, StreamExt};
 
 #[tokio::test]
 async fn test_merge_with_propagates_errors_from_first_stream() -> anyhow::Result<()> {
@@ -323,11 +323,11 @@ async fn test_merge_with_poll_pending_simulation() -> anyhow::Result<()> {
         });
 
     // Act & Assert
-    tokio::select! {
-        _ = tokio::time::sleep(tokio::time::Duration::from_millis(10)) => {
+    futures::select! {
+        _ = tokio::time::sleep(tokio::time::Duration::from_millis(10)).fuse() => {
             tx.unbounded_send(StreamItem::Value(Sequenced::new(person("A".to_string(), 10))))?;
         }
-        result = merged.next() => {
+        result = merged.next().fuse() => {
             if let Some(StreamItem::Value(v)) = result {
                 assert_eq!(v.into_inner().age, 10);
             }

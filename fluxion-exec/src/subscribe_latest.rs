@@ -155,7 +155,7 @@ where
     /// ```
     /// use fluxion_exec::SubscribeLatestExt;
     /// use futures::channel::mpsc::unbounded;
-    /// use futures::StreamExt;
+    /// use futures::{StreamExt, FutureExt};
     /// use std::sync::Arc;
     /// use futures::lock::Mutex;
     /// use fluxion_core::CancellationToken;
@@ -189,9 +189,9 @@ where
     ///
     ///                 // Wait for gate or cancellation
     ///                 if let Some(mut rx) = gate.lock().await.take() {
-    ///                     tokio::select! {
-    ///                         _ = rx.next() => {},
-    ///                         _ = token.cancelled() => return Ok(()),
+    ///                     futures::select! {
+    ///                         _ = rx.next().fuse() => {},
+    ///                         _ = token.cancelled().fuse() => return Ok(()),
     ///                     }
     ///                 }
     ///

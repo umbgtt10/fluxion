@@ -62,17 +62,17 @@
 | Component | Tokio Dependency | Usage Frequency | Phase 1 Work |
 |-----------|------------------|-----------------|-------------|
 | **FluxionShared** | `tokio::spawn`, `JoinHandle` | Core feature | Spawn abstraction |
-| **Partition** | `tokio::spawn`, `JoinHandle`, `tokio::select!` | Core feature | Spawn abstraction + select! |
+| **Partition** | `tokio::spawn`, `JoinHandle` | Core feature | Spawn abstraction |
 | **Doc Examples** | `#[tokio::main]` | Documentation | Update examples |
 
 **Completed Migrations:**
 - ✅ `IntoFluxionStream` - Already uses `tokio::sync::mpsc::UnboundedReceiver` (works on all runtimes)
 - ✅ `MergeWith` - Migrated to `futures::lock::Mutex` (runtime-agnostic)
+- ✅ `tokio::select!` → `futures::select!` (partition.rs, tests, examples - runtime-agnostic)
 
 **Remaining Work:**
 - [ ] Abstract `tokio::spawn` → feature-gated spawn
 - [ ] Abstract `JoinHandle` storage/cleanup
-- [ ] Abstract `tokio::select!` in partition.rs
 
 ### fluxion-exec Runtime Surface Area
 
@@ -470,13 +470,13 @@ pub fn share(self) -> FluxionShared<T, S> { /* ... */ }
 // fluxion-stream/src/partition.rs:246
 let routing_task = tokio::spawn(async move {
     loop {
-        tokio::select! {
-            Some(item) = stream.next() => {
+        futures::select! {
+            Some(item) = stream.next().fuse() => {
                 if predicate(&item) { /* route to left */ }
                 else { /* route to right */ }
             }
-            _ = left_done.cancelled() => break,
-            _ = right_done.cancelled() => break,
+            _ = left_done.cancelled().fuse() => break,
+            _ = right_done.cancelled().fuse() => break,
         }
     }
 });
@@ -1961,11 +1961,11 @@ development = ["async-std", "smol"]
 **fluxion-stream Spawn Abstraction:**
 1. [ ] Abstract `tokio::spawn` with feature-gated implementations
 2. [ ] Abstract `JoinHandle` storage and cleanup
-3. [ ] Handle `tokio::select!` in partition.rs
+3. ✅ Handle `tokio::select!` in partition.rs (COMPLETE)
 4. [ ] Conditional compilation for Tokio/smol/async-std
 5. [ ] Update documentation and examples
 
-**Estimated Effort:** 5 days
+**Estimated Effort:** 4.5 days (reduced from 5 days - select! migration complete)
 
 **Deliverable:** Complete runtime abstraction matching fluxion-stream-time's success
 

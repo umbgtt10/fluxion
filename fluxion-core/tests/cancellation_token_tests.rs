@@ -8,6 +8,7 @@
 //! and edge cases that might occur in production use.
 
 use fluxion_core::CancellationToken;
+use futures::FutureExt;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -160,9 +161,9 @@ async fn test_basic_cancellation_flow() {
     let token_worker = token.clone();
 
     let worker = tokio::spawn(async move {
-        tokio::select! {
-            _ = token_worker.cancelled() => "cancelled",
-            _ = tokio::time::sleep(Duration::from_secs(10)) => "timeout",
+        futures::select! {
+            _ = token_worker.cancelled().fuse() => "cancelled",
+            _ = tokio::time::sleep(Duration::from_secs(10)).fuse() => "timeout",
         }
     });
 
@@ -338,11 +339,11 @@ async fn test_cancellation_with_select_macro() {
 
     let worker = tokio::spawn(async move {
         for _i in 0..100 {
-            tokio::select! {
-                _ = token_work.cancelled() => {
+            futures::select! {
+                _ = token_work.cancelled().fuse() => {
                     return "cancelled";
                 }
-                _ = tokio::time::sleep(Duration::from_millis(10)) => {
+                _ = tokio::time::sleep(Duration::from_millis(10)).fuse() => {
                     work_done_clone.fetch_add(1, Ordering::SeqCst);
                 }
             }

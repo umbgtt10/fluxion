@@ -69,7 +69,7 @@
 
 use fluxion_core::CancellationToken;
 use fluxion_core::{Fluxion, FluxionSubject, StreamItem};
-use futures::{Stream, StreamExt};
+use futures::{FutureExt, Stream, StreamExt};
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -246,15 +246,13 @@ where
         let task = tokio::spawn(async move {
             let mut stream = self;
             loop {
-                tokio::select! {
-                    biased;
-
-                    _ = cancel_clone.cancelled() => {
+                futures::select! {
+                    _ = cancel_clone.cancelled().fuse() => {
                         // Graceful shutdown requested
                         break;
                     }
 
-                    item = stream.next() => {
+                    item = stream.next().fuse() => {
                         match item {
                             Some(StreamItem::Value(ref value)) => {
                                 let inner = value.clone().into_inner();

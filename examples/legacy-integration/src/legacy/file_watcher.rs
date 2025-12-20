@@ -5,11 +5,10 @@
 //! Simulates a legacy file watcher producing CSV inventory updates
 //! In production, this would watch a directory for new CSV files
 
-use fluxion_core::CancellationToken;
-use futures::channel::mpsc::UnboundedSender;
-use tokio::time::{sleep, Duration};
-
 use crate::domain::models::Inventory;
+use fluxion_core::CancellationToken;
+use futures::{channel::mpsc::UnboundedSender, FutureExt};
+use tokio::time::{sleep, Duration};
 
 pub struct LegacyFileWatcher;
 
@@ -38,12 +37,12 @@ impl LegacyFileWatcher {
         ];
 
         loop {
-            tokio::select! {
-                _ = cancel.cancelled() => {
+            futures::select! {
+                _ = cancel.cancelled().fuse() => {
                     println!("  📁 Legacy File Watcher: Shutting down");
                     break;
                 }
-                _ = sleep(Duration::from_secs(4)) => {
+                _ = sleep(Duration::from_secs(4)).fuse() => {
                     let (product_id, product_name) = products[fastrand::usize(0..products.len())];
 
                     let inventory = Inventory {

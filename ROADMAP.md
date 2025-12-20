@@ -424,6 +424,7 @@ New projects should use tokio or smol runtimes instead.
 - ✅ Custom CancellationToken (using event-listener)
 - ✅ Replace tokio channels with futures::channel (mpsc, oneshot)
 - ✅ Replace tokio::sync::Notify → event_listener::Event
+- ✅ Replace `tokio::select!` → `futures::select!` (production code + tests)
 
 ### Documentation
 - ✅ Updated docs as appropriate to reflect runtime-agnostic changes
