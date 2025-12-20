@@ -41,7 +41,7 @@ pub trait StartWithExt<T>: Stream<Item = StreamItem<T>> + Sized {
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx, rx) = futures::channel::mpsc::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let initial = vec![
@@ -56,7 +56,7 @@ pub trait StartWithExt<T>: Stream<Item = StreamItem<T>> + Sized {
     /// assert_eq!(stream_with_prefix.next().await.unwrap().unwrap().into_inner(), 2);
     ///
     /// // Then stream values
-    /// tx.send(Sequenced::new(3)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(3)).unwrap();
     /// assert_eq!(stream_with_prefix.next().await.unwrap().unwrap().into_inner(), 3);
     /// # }
     /// ```

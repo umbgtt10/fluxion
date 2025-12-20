@@ -12,7 +12,7 @@ categories = ["asynchronous", "concurrency", "date-and-time"]
 readme = "README.md"
 
 [package.metadata.cargo-udeps.ignore]
-development = ["async-std", "smol"]
+development = ["async-std", "smol", "tokio-stream"]
 
 [dependencies]
 fluxion-core = { workspace = true }
@@ -44,7 +44,7 @@ async-std = { workspace = true }
 smol = { workspace = true }
 fluxion-stream = { workspace = true }
 fluxion-test-utils = { workspace = true }
-tokio-stream = { workspace = true }
+tokio-stream = { workspace = true }  # Used in doc examples
 criterion = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]

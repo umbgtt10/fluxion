@@ -42,12 +42,12 @@ where
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx, rx) = futures::channel::mpsc::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut mapped = stream.map_ordered(|x: Sequenced<i32>| Sequenced::new(x.into_inner() * 2));
     ///
-    /// tx.send(Sequenced::new(5)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(5)).unwrap();
     /// assert_eq!(mapped.next().await.unwrap().unwrap().into_inner(), 10);
     /// # }
     /// ```

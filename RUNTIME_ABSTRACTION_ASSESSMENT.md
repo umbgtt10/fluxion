@@ -322,7 +322,7 @@ use async_lock::Mutex;
 - ✅ `fluxion-exec/src/subscribe_latest.rs` - migrated
 - ✅ All doctests updated
 - ✅ README examples updated
-- ✅ All tests passing (900+ tests)
+- ✅ All tests passing (890+ tests)
 
 ---
 
@@ -686,7 +686,7 @@ impl CancellationToken {
 - ✅ Identical API to `tokio_util::sync::CancellationToken`
 - ✅ Works on ANY executor (Tokio, smol, async-std, WASM)
 - ✅ No API changes (drop-in replacement)
-- ✅ All 900+ tests passing
+- ✅ All 890+ tests passing
 - ✅ 19 dedicated CancellationToken tests
 - Slight memory difference (AtomicBool + Event vs Tokio's optimized version)
 

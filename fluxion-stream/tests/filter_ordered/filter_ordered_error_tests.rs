@@ -15,17 +15,17 @@ async fn test_filter_ordered_propagates_errors() -> anyhow::Result<()> {
     let mut result = stream.filter_ordered(|x| x % 2 == 0);
 
     // Act & Assert: First item (1) filtered out
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
 
     // Error
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Value that passes filter
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
 
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -33,10 +33,10 @@ async fn test_filter_ordered_propagates_errors() -> anyhow::Result<()> {
     ));
 
     // Value filtered out
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
 
     // Value that passes
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 4
@@ -56,30 +56,30 @@ async fn test_filter_ordered_predicate_after_error() -> anyhow::Result<()> {
     let mut result = stream.filter_ordered(|x| *x > 18);
 
     // Values that don't pass
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(15, 2)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(15, 2)))?;
 
     // Error
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Values that pass filter
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(20, 3)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(20, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 20
     ));
 
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(25, 4)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(25, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 25
     ));
 
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(30, 5)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(30, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 30
@@ -98,20 +98,20 @@ async fn test_filter_ordered_error_at_start() -> anyhow::Result<()> {
     let mut result = stream.filter_ordered(|x| *x > 1);
 
     // Act & Assert: Error first
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Filtered values
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 2
     ));
 
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 3
@@ -130,17 +130,17 @@ async fn test_filter_ordered_all_filtered_except_error() -> anyhow::Result<()> {
     let mut result = stream.filter_ordered(|x| x % 2 == 0);
 
     // Act & Assert: Send odd number (filtered)
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
 
     // Error
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // More odd numbers (filtered)
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
 
     // Close stream
     drop(tx);
@@ -163,23 +163,23 @@ async fn test_filter_ordered_chain_with_map_after_error() -> anyhow::Result<()> 
         .map_ordered(|x| Sequenced::new(x.current.value / 10));
 
     // Act & Assert: Send values
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?; // Filtered
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?; // Filtered
 
     // Error
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Values that pass filter
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
     assert!(matches!(result.next().await.unwrap(), StreamItem::Value(ref v) if v.value == 2));
 
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(30, 3)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(30, 3)))?;
     assert!(matches!(result.next().await.unwrap(), StreamItem::Value(ref v) if v.value == 3));
 
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(40, 4)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(40, 4)))?;
     assert!(matches!(result.next().await.unwrap(), StreamItem::Value(ref v) if v.value == 4));
 
     drop(tx);

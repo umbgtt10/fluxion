@@ -33,7 +33,7 @@ pub trait OnErrorExt<T>: Stream<Item = StreamItem<T>> + Sized {
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx, rx) = futures::channel::mpsc::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut stream = stream
@@ -42,7 +42,7 @@ pub trait OnErrorExt<T>: Stream<Item = StreamItem<T>> + Sized {
     ///         true // Consume all errors
     ///     });
     ///
-    /// tx.send(Sequenced::new(1)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(1)).unwrap();
     /// assert_eq!(stream.next().await.unwrap().unwrap().into_inner(), 1);
     /// # }
     /// ```
@@ -55,7 +55,7 @@ pub trait OnErrorExt<T>: Stream<Item = StreamItem<T>> + Sized {
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx, rx) = futures::channel::mpsc::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut stream = stream
@@ -63,7 +63,7 @@ pub trait OnErrorExt<T>: Stream<Item = StreamItem<T>> + Sized {
     ///     .on_error(|err| err.to_string().contains("network"))
     ///     .on_error(|_| true); // Catch-all
     ///
-    /// tx.send(Sequenced::new(1)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(1)).unwrap();
     /// assert_eq!(stream.next().await.unwrap().unwrap().into_inner(), 1);
     /// # }
     /// ```

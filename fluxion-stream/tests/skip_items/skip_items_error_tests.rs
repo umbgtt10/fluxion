@@ -14,10 +14,10 @@ async fn test_skip_propagates_errors() -> anyhow::Result<()> {
     let mut result = stream.skip_items(2);
 
     // Act
-    tx.send(StreamItem::Value(Sequenced::new(1)))?; // Skipped
-    tx.send(StreamItem::Error(FluxionError::stream_error("error")))?; // Skipped
-    tx.send(StreamItem::Value(Sequenced::new(2)))?; // Emitted
-    tx.send(StreamItem::Error(FluxionError::stream_error("error2")))?; // Emitted
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?; // Skipped
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error")))?; // Skipped
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?; // Emitted
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?; // Emitted
 
     // Assert - first 2 items skipped (value + error), rest emitted
     let item1 = unwrap_stream(&mut result, 100).await;
@@ -36,10 +36,10 @@ async fn test_skip_counts_errors_as_items() -> anyhow::Result<()> {
     let mut result = stream.skip_items(3);
 
     // Act - Skip 3 errors
-    tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;
-    tx.send(StreamItem::Error(FluxionError::stream_error("error2")))?;
-    tx.send(StreamItem::Error(FluxionError::stream_error("error3")))?;
-    tx.send(StreamItem::Value(Sequenced::new(1)))?; // This should be emitted
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error3")))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?; // This should be emitted
 
     // Assert - all errors skipped, value emitted
     let item1 = unwrap_stream(&mut result, 100).await;

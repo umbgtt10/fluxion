@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 use futures::future::ready;
@@ -88,8 +88,8 @@ where
     /// );
     ///
     /// // Send values
-    /// tx1.send((1, 1).into()).unwrap();
-    /// tx2.send((2, 2).into()).unwrap();
+    /// tx1.unbounded_send((1, 1).into()).unwrap();
+    /// tx2.unbounded_send((2, 2).into()).unwrap();
     ///
     /// // Assert
     /// let result = unwrap_value(Some(unwrap_stream(&mut combined, 500).await));

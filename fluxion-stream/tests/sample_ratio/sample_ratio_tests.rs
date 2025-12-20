@@ -20,19 +20,19 @@ async fn test_sample_ratio_one_emits_all() -> anyhow::Result<()> {
     let mut result = stream.sample_ratio(1.0, 42);
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
-    tx.send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &animal_dog()
     );
 
-    tx.send(Sequenced::new(plant_rose()))?;
+    tx.unbounded_send(Sequenced::new(plant_rose()))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &plant_rose()
@@ -48,9 +48,9 @@ async fn test_sample_ratio_zero_emits_nothing() -> anyhow::Result<()> {
     let mut result = stream.sample_ratio(0.0, 42);
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(person_bob()))?;
-    tx.send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 500).await;
@@ -100,8 +100,8 @@ async fn test_sample_ratio_deterministic_with_same_seed() -> anyhow::Result<()> 
 
     // Act
     for item in &items {
-        tx1.send(Sequenced::new(item.clone()))?;
-        tx2.send(Sequenced::new(item.clone()))?;
+        tx1.unbounded_send(Sequenced::new(item.clone()))?;
+        tx2.unbounded_send(Sequenced::new(item.clone()))?;
     }
 
     // Assert
@@ -148,8 +148,8 @@ async fn test_sample_ratio_different_seeds_produce_different_results() -> anyhow
 
     // Act
     for item in &items {
-        tx1.send(Sequenced::new(item.clone()))?;
-        tx2.send(Sequenced::new(item.clone()))?;
+        tx1.unbounded_send(Sequenced::new(item.clone()))?;
+        tx2.unbounded_send(Sequenced::new(item.clone()))?;
     }
 
     // Assert
@@ -177,9 +177,9 @@ async fn test_sample_ratio_preserves_item_order() -> anyhow::Result<()> {
     let mut result = stream.sample_ratio(1.0, 42);
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(person_bob()))?;
-    tx.send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     assert_eq!(
@@ -207,8 +207,8 @@ async fn test_sample_ratio_boundary_values() -> anyhow::Result<()> {
     let mut result2 = stream2.sample_ratio(1.0, 42);
 
     // Act
-    tx1.send(Sequenced::new(person_alice()))?;
-    tx2.send(Sequenced::new(person_alice()))?;
+    tx1.unbounded_send(Sequenced::new(person_alice()))?;
+    tx2.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert_no_element_emitted(&mut result1, 500).await;

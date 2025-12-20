@@ -15,7 +15,7 @@ async fn test_combine_with_previous_no_previous_value_emits() -> anyhow::Result<
     let mut result = stream.combine_with_previous();
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     let result = unwrap_stream(&mut result, 500).await.unwrap();
@@ -34,7 +34,7 @@ async fn test_combine_with_previous_single_previous_value() -> anyhow::Result<()
     let mut result = stream.combine_with_previous();
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     let first_result = unwrap_stream(&mut result, 500).await.unwrap();
@@ -47,7 +47,7 @@ async fn test_combine_with_previous_single_previous_value() -> anyhow::Result<()
     );
 
     // Act
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     let second_result = unwrap_stream(&mut result, 500).await.unwrap();
@@ -69,7 +69,7 @@ async fn test_combine_with_previous_multiple_values() -> anyhow::Result<()> {
     let mut result = stream.combine_with_previous();
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     let first_result = unwrap_stream(&mut result, 500).await.unwrap();
@@ -82,7 +82,7 @@ async fn test_combine_with_previous_multiple_values() -> anyhow::Result<()> {
     );
 
     // Act
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     let second_result = unwrap_stream(&mut result, 500).await.unwrap();
@@ -95,7 +95,7 @@ async fn test_combine_with_previous_multiple_values() -> anyhow::Result<()> {
     );
 
     // Act
-    tx.send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     let third_result = unwrap_stream(&mut result, 500).await.unwrap();
@@ -117,7 +117,7 @@ async fn test_combine_with_previous_stream_ends() -> anyhow::Result<()> {
     let mut result = stream.combine_with_previous();
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     let first_result = unwrap_stream(&mut result, 500).await.unwrap();
@@ -130,7 +130,7 @@ async fn test_combine_with_previous_stream_ends() -> anyhow::Result<()> {
     );
 
     // Act
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     let second_result = unwrap_stream(&mut result, 500).await.unwrap();
@@ -158,7 +158,7 @@ async fn test_combine_with_previous_for_types() -> anyhow::Result<()> {
     let mut result = stream.combine_with_previous();
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     let first_result = unwrap_stream(&mut result, 500).await.unwrap();
@@ -171,7 +171,7 @@ async fn test_combine_with_previous_for_types() -> anyhow::Result<()> {
     );
 
     // Act
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     let second_result = unwrap_stream(&mut result, 500).await.unwrap();
@@ -195,9 +195,9 @@ async fn test_combine_with_previous_high_volume_sequential() -> anyhow::Result<(
     // Act: send a sequence of 200 items (mix of known fixtures cycling Alice,Bob,Charlie)
     for i in 0..200 {
         match i % 3 {
-            0 => tx.send(Sequenced::new(person_alice()))?,
-            1 => tx.send(Sequenced::new(person_bob()))?,
-            _ => tx.send(Sequenced::new(person_charlie()))?,
+            0 => tx.unbounded_send(Sequenced::new(person_alice()))?,
+            1 => tx.unbounded_send(Sequenced::new(person_bob()))?,
+            _ => tx.unbounded_send(Sequenced::new(person_charlie()))?,
         }
     }
     // Close input so the stream can finish
@@ -241,7 +241,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() -> anyho
     let mut result = stream.combine_with_previous();
 
     // Act: Send empty string with zero value
-    tx.send(Sequenced::new(person(String::new(), 0)))?;
+    tx.unbounded_send(Sequenced::new(person(String::new(), 0)))?;
 
     // Assert: First emission has no previous
     let item = unwrap_stream(&mut result, 500).await.unwrap();
@@ -251,7 +251,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() -> anyho
     );
 
     // Act: Send another boundary value
-    tx.send(Sequenced::new(person(String::new(), 0)))?;
+    tx.unbounded_send(Sequenced::new(person(String::new(), 0)))?;
 
     // Assert: Second emission has previous with boundary value
     let result2 = unwrap_stream(&mut result, 500).await.unwrap();
@@ -261,7 +261,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() -> anyho
     );
 
     // Act: Transition to normal value
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert: Should track boundary as previous
     let result3 = unwrap_stream(&mut result, 500).await.unwrap();
@@ -285,7 +285,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() -> any
             let mut result = stream.combine_with_previous();
 
             // Act: Send first value
-            tx.send(Sequenced::new(person(format!("Person{i}"), i)))
+            tx.unbounded_send(Sequenced::new(person(format!("Person{i}"), i)))
                 .unwrap();
 
             // Assert: No previous
@@ -296,7 +296,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() -> any
             );
 
             // Act: Send second value
-            tx.send(Sequenced::new(person_alice())).unwrap();
+            tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
 
             // Assert: Has previous
             let result2 = unwrap_stream(&mut result, 500).await.unwrap();
@@ -306,7 +306,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() -> any
             );
 
             // Act: Send third value
-            tx.send(Sequenced::new(person_bob())).unwrap();
+            tx.unbounded_send(Sequenced::new(person_bob())).unwrap();
 
             // Assert: Previous is Alice
             let result3 = unwrap_stream(&mut result, 500).await.unwrap();
@@ -336,7 +336,7 @@ async fn test_combine_with_previous_single_value_stream() -> anyhow::Result<()> 
     let mut result = stream.combine_with_previous();
 
     // Act: Send single value and close
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     drop(tx);
 
     // Assert: Should emit with no previous

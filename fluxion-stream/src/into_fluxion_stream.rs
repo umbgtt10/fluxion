@@ -2,18 +2,17 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Convenience constructors for creating fluxion streams from tokio channels.
+//! Convenience constructors for creating fluxion streams from futures channels.
 
 use fluxion_core::{StreamItem, Timestamped};
+use futures::channel::mpsc::UnboundedReceiver;
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
 use std::pin::Pin;
-use tokio::sync::mpsc::UnboundedReceiver;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
-/// Extension trait to convert tokio channels into fluxion streams.
+/// Extension trait to convert futures channels into fluxion streams.
 ///
-/// This trait provides a simple way to wrap a tokio `UnboundedReceiver` into
+/// This trait provides a simple way to wrap a futures `UnboundedReceiver` into
 /// a stream that emits `StreamItem::Value` for each received item.
 pub trait IntoFluxionStream<T> {
     /// Converts this receiver into a fluxion stream.
@@ -24,9 +23,9 @@ pub trait IntoFluxionStream<T> {
     ///
     /// ```rust
     /// use fluxion_stream::IntoFluxionStream;
-    /// use tokio::sync::mpsc;
+    /// use futures::channel::mpsc;
     ///
-    /// let (tx, rx) = mpsc::unbounded_channel::<i32>();
+    /// let (tx, rx) = mpsc::unbounded::<i32>();
     /// let stream = rx.into_fluxion_stream();
     /// ```
     fn into_fluxion_stream(self) -> impl Stream<Item = StreamItem<T>> + Send + Sync;
@@ -50,7 +49,7 @@ pub trait IntoFluxionStream<T> {
     /// ```
     /// use fluxion_stream::IntoFluxionStream;
     /// use fluxion_core::{HasTimestamp, Timestamped};
-    /// use tokio::sync::mpsc;
+    /// use futures::channel::mpsc;
     ///
     /// #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct SensorReading {
@@ -91,7 +90,7 @@ pub trait IntoFluxionStream<T> {
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let (tx, rx) = mpsc::unbounded_channel::<SensorReading>();
+    /// let (tx, rx) = mpsc::unbounded::<SensorReading>();
     ///
     /// // Transform SensorReading to DataEvent
     /// let stream = rx.into_fluxion_stream_map(|s| DataEvent::Sensor(s.clone()));
@@ -111,7 +110,7 @@ pub trait IntoFluxionStream<T> {
 
 impl<T: Send + 'static> IntoFluxionStream<T> for UnboundedReceiver<T> {
     fn into_fluxion_stream(self) -> impl Stream<Item = StreamItem<T>> + Send + Sync {
-        Box::pin(UnboundedReceiverStream::new(self).map(StreamItem::Value))
+        Box::pin(self.map(StreamItem::Value))
     }
 
     fn into_fluxion_stream_map<U, F>(
@@ -122,8 +121,6 @@ impl<T: Send + 'static> IntoFluxionStream<T> for UnboundedReceiver<T> {
         F: FnMut(T) -> U + Send + Sync + 'static,
         U: Timestamped<Inner = U> + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     {
-        Box::pin(
-            UnboundedReceiverStream::new(self).map(move |value| StreamItem::Value(mapper(value))),
-        )
+        Box::pin(self.map(move |value| StreamItem::Value(mapper(value))))
     }
 }

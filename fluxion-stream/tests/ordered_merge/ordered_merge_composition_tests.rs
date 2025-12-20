@@ -27,10 +27,10 @@ async fn test_ordered_merge_then_filter() -> anyhow::Result<()> {
         .filter_ordered(|item| matches!(item, TestData::Person(_)));
 
     // Act: Mix person and animal data
-    tx1.send(Sequenced::with_timestamp(person_alice(), 1))?;
-    tx2.send(Sequenced::with_timestamp(animal_dog(), 2))?;
-    tx1.send(Sequenced::with_timestamp(person_bob(), 3))?;
-    tx2.send(Sequenced::with_timestamp(animal_spider(), 4))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
+    tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 2))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(person_bob(), 3))?;
+    tx2.unbounded_send(Sequenced::with_timestamp(animal_spider(), 4))?;
 
     // Assert: Only persons should pass through
     assert_eq!(
@@ -69,9 +69,9 @@ async fn test_ordered_merge_then_map() -> anyhow::Result<()> {
         });
 
     // Act
-    tx1.send(Sequenced::with_timestamp(person_alice(), 1))?;
-    tx2.send(Sequenced::with_timestamp(animal_dog(), 2))?;
-    tx1.send(Sequenced::with_timestamp(plant_rose(), 3))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
+    tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 2))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(plant_rose(), 3))?;
 
     // Assert: Values should be mapped to names/species
     assert_eq!(
@@ -104,10 +104,10 @@ async fn test_ordered_merge_then_ordered_merge() -> anyhow::Result<()> {
     let mut result = merged_12.ordered_merge(vec![s3]);
 
     // Act: Send interleaved timestamps
-    tx1.send(Sequenced::with_timestamp(person_alice(), 1))?;
-    tx3.send(Sequenced::with_timestamp(plant_rose(), 2))?;
-    tx2.send(Sequenced::with_timestamp(animal_dog(), 3))?;
-    tx1.send(Sequenced::with_timestamp(person_bob(), 4))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
+    tx3.unbounded_send(Sequenced::with_timestamp(plant_rose(), 2))?;
+    tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 3))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(person_bob(), 4))?;
 
     // Assert: All values emitted in timestamp order
     assert_eq!(
@@ -142,10 +142,10 @@ async fn test_filter_then_ordered_merge() -> anyhow::Result<()> {
     let mut result = filtered1.ordered_merge(vec![filtered2]);
 
     // Act
-    tx1.send(Sequenced::with_timestamp(person_alice(), 1))?; // filtered out
-    tx2.send(Sequenced::with_timestamp(animal_dog(), 2))?; // passes
-    tx1.send(Sequenced::with_timestamp(animal_spider(), 3))?; // passes
-    tx2.send(Sequenced::with_timestamp(plant_rose(), 4))?; // filtered out
+    tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?; // filtered out
+    tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 2))?; // passes
+    tx1.unbounded_send(Sequenced::with_timestamp(animal_spider(), 3))?; // passes
+    tx2.unbounded_send(Sequenced::with_timestamp(plant_rose(), 4))?; // filtered out
 
     // Assert: Only animals should be merged
     assert_eq!(
@@ -190,9 +190,9 @@ async fn test_map_then_ordered_merge() -> anyhow::Result<()> {
     let mut result = mapped1.ordered_merge(vec![mapped2]);
 
     // Act
-    tx1.send(Sequenced::with_timestamp(person_alice(), 1))?;
-    tx2.send(Sequenced::with_timestamp(animal_dog(), 2))?;
-    tx1.send(Sequenced::with_timestamp(person_bob(), 3))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
+    tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 2))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(person_bob(), 3))?;
 
     // Assert: Values should be transformed before merging
     assert_eq!(
@@ -231,10 +231,10 @@ async fn test_ordered_merge_with_complex_pipeline() -> anyhow::Result<()> {
         .filter_ordered(|x| *x > 25);
 
     // Act
-    tx1.send(Sequenced::with_timestamp(person_alice(), 1))?; // age 25, filtered
-    tx2.send(Sequenced::with_timestamp(animal_dog(), 2))?; // legs 4, filtered
-    tx1.send(Sequenced::with_timestamp(person_bob(), 3))?; // age 30, passes
-    tx2.send(Sequenced::with_timestamp(plant_sunflower(), 4))?; // height 180, passes
+    tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?; // age 25, filtered
+    tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 2))?; // legs 4, filtered
+    tx1.unbounded_send(Sequenced::with_timestamp(person_bob(), 3))?; // age 30, passes
+    tx2.unbounded_send(Sequenced::with_timestamp(plant_sunflower(), 4))?; // height 180, passes
 
     // Assert
     assert_eq!(unwrap_stream(&mut result, 200).await.into_inner(), 30);
@@ -254,10 +254,10 @@ async fn test_ordered_merge_mixed_testdata_then_filter() -> anyhow::Result<()> {
         .filter_ordered(|item| matches!(item, TestData::Person(_)));
 
     // Act
-    person_tx.send(Sequenced::with_timestamp(person_alice(), 1))?;
-    animal_tx.send(Sequenced::with_timestamp(animal_dog(), 2))?;
-    person_tx.send(Sequenced::with_timestamp(person_bob(), 3))?;
-    animal_tx.send(Sequenced::with_timestamp(animal_spider(), 4))?;
+    person_tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
+    animal_tx.unbounded_send(Sequenced::with_timestamp(animal_dog(), 2))?;
+    person_tx.unbounded_send(Sequenced::with_timestamp(person_bob(), 3))?;
+    animal_tx.unbounded_send(Sequenced::with_timestamp(animal_spider(), 4))?;
 
     // Assert: Only persons should pass through
     assert_eq!(
@@ -293,10 +293,10 @@ async fn test_ordered_merge_preserves_ordering_through_map() -> anyhow::Result<(
     });
 
     // Act: Send out of order
-    tx1.send(Sequenced::with_timestamp(person("P3".to_string(), 30), 3))?;
-    tx2.send(Sequenced::with_timestamp(person("P1".to_string(), 10), 1))?;
-    tx1.send(Sequenced::with_timestamp(person("P4".to_string(), 40), 4))?;
-    tx2.send(Sequenced::with_timestamp(person("P2".to_string(), 20), 2))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(person("P3".to_string(), 30), 3))?;
+    tx2.unbounded_send(Sequenced::with_timestamp(person("P1".to_string(), 10), 1))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(person("P4".to_string(), 40), 4))?;
+    tx2.unbounded_send(Sequenced::with_timestamp(person("P2".to_string(), 20), 2))?;
 
     // Assert: Should be in timestamp order after mapping
     assert_eq!(unwrap_stream(&mut result, 200).await.into_inner(), "P1");
@@ -321,12 +321,12 @@ async fn test_ordered_merge_three_streams_with_filter() -> anyhow::Result<()> {
     });
 
     // Act
-    tx1.send(Sequenced::with_timestamp(person("P1".to_string(), 1), 1))?;
-    tx2.send(Sequenced::with_timestamp(person("P2".to_string(), 3), 2))?; // divisible by 3
-    tx3.send(Sequenced::with_timestamp(person("P3".to_string(), 5), 3))?;
-    tx1.send(Sequenced::with_timestamp(animal("A1".to_string(), 6), 4))?; // divisible by 3
-    tx2.send(Sequenced::with_timestamp(person("P4".to_string(), 7), 5))?;
-    tx3.send(Sequenced::with_timestamp(person("P5".to_string(), 9), 6))?; // divisible by 3
+    tx1.unbounded_send(Sequenced::with_timestamp(person("P1".to_string(), 1), 1))?;
+    tx2.unbounded_send(Sequenced::with_timestamp(person("P2".to_string(), 3), 2))?; // divisible by 3
+    tx3.unbounded_send(Sequenced::with_timestamp(person("P3".to_string(), 5), 3))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(animal("A1".to_string(), 6), 4))?; // divisible by 3
+    tx2.unbounded_send(Sequenced::with_timestamp(person("P4".to_string(), 7), 5))?;
+    tx3.unbounded_send(Sequenced::with_timestamp(person("P5".to_string(), 9), 6))?; // divisible by 3
 
     // Assert: Only multiples of 3
     let item1 = unwrap_stream(&mut result, 200).await.into_inner();
@@ -358,9 +358,9 @@ async fn test_ordered_merge_empty_after_filter() -> anyhow::Result<()> {
     });
 
     // Act: Send values all below threshold
-    tx1.send(Sequenced::with_timestamp(person("P1".to_string(), 1), 1))?;
-    tx2.send(Sequenced::with_timestamp(person("P2".to_string(), 2), 2))?;
-    tx1.send(Sequenced::with_timestamp(person("P3".to_string(), 3), 3))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(person("P1".to_string(), 1), 1))?;
+    tx2.unbounded_send(Sequenced::with_timestamp(person("P2".to_string(), 2), 2))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(person("P3".to_string(), 3), 3))?;
 
     drop(tx1);
     drop(tx2);
@@ -388,8 +388,8 @@ async fn test_ordered_merge_map_preserves_timestamps() -> anyhow::Result<()> {
     });
 
     // Act
-    tx1.send(Sequenced::with_timestamp(person("P1".to_string(), 10), 5))?;
-    tx2.send(Sequenced::with_timestamp(person("P2".to_string(), 20), 10))?;
+    tx1.unbounded_send(Sequenced::with_timestamp(person("P1".to_string(), 10), 5))?;
+    tx2.unbounded_send(Sequenced::with_timestamp(person("P2".to_string(), 20), 10))?;
 
     // Assert: Timestamps should be preserved after map
     let first = unwrap_stream(&mut result, 200).await;
@@ -438,11 +438,11 @@ async fn test_ordered_merge_filter_map_chain() -> anyhow::Result<()> {
         });
 
     // Act
-    tx1.send(Sequenced::with_timestamp(person("P1".to_string(), 1), 1))?; // odd, filtered
-    tx2.send(Sequenced::with_timestamp(person("P2".to_string(), 2), 2))?; // even -> 1
-    tx1.send(Sequenced::with_timestamp(animal("A1".to_string(), 4), 3))?; // even -> 2
-    tx2.send(Sequenced::with_timestamp(person("P3".to_string(), 5), 4))?; // odd, filtered
-    tx1.send(Sequenced::with_timestamp(person("P4".to_string(), 6), 5))?; // even -> 3
+    tx1.unbounded_send(Sequenced::with_timestamp(person("P1".to_string(), 1), 1))?; // odd, filtered
+    tx2.unbounded_send(Sequenced::with_timestamp(person("P2".to_string(), 2), 2))?; // even -> 1
+    tx1.unbounded_send(Sequenced::with_timestamp(animal("A1".to_string(), 4), 3))?; // even -> 2
+    tx2.unbounded_send(Sequenced::with_timestamp(person("P3".to_string(), 5), 4))?; // odd, filtered
+    tx1.unbounded_send(Sequenced::with_timestamp(person("P4".to_string(), 6), 5))?; // even -> 3
 
     // Assert
     let item1 = unwrap_stream(&mut result, 200).await.into_inner();

@@ -17,10 +17,10 @@ async fn test_take_propagates_errors() -> anyhow::Result<()> {
     let mut result = stream.take_items(3);
 
     // Act
-    tx.send(StreamItem::Value(Sequenced::new(1)))?;
-    tx.send(StreamItem::Error(FluxionError::stream_error("error")))?;
-    tx.send(StreamItem::Value(Sequenced::new(2)))?;
-    tx.send(StreamItem::Value(Sequenced::new(3)))?; // This should not be emitted
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error")))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(3)))?; // This should not be emitted
 
     // Assert - take counts errors as items
     let item1 = unwrap_stream(&mut result, 100).await;
@@ -45,9 +45,9 @@ async fn test_take_counts_errors_as_items() -> anyhow::Result<()> {
     let mut result = stream.take_items(2);
 
     // Act - Send 2 errors, no values
-    tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;
-    tx.send(StreamItem::Error(FluxionError::stream_error("error2")))?;
-    tx.send(StreamItem::Value(Sequenced::new(1)))?; // Should not be emitted
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?; // Should not be emitted
 
     // Assert - both errors emitted, then stream ends
     let item1 = unwrap_stream(&mut result, 100).await;

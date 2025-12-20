@@ -5,9 +5,9 @@
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::{IntoFluxionStream, PartitionExt};
 use fluxion_test_utils::Sequenced;
-use futures::{future::join, StreamExt};
+use futures::{channel::mpsc::unbounded, future::join, StreamExt};
 use std::hint::black_box;
-use tokio::{runtime::Runtime, sync::mpsc::unbounded_channel};
+use tokio::runtime::Runtime;
 
 /// Benchmarks partition with balanced split (50/50).
 pub fn bench_partition_balanced(c: &mut Criterion) {
@@ -26,7 +26,7 @@ pub fn bench_partition_balanced(c: &mut Criterion) {
                     bencher.iter(|| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            let (tx, rx) = unbounded_channel::<Sequenced<Vec<u8>>>();
+                            let (tx, rx) = unbounded::<Sequenced<Vec<u8>>>();
 
                             // Partition by even/odd index (50/50 split)
                             let (true_stream, false_stream) =
@@ -40,7 +40,8 @@ pub fn bench_partition_balanced(c: &mut Criterion) {
 
                             // Send data
                             for i in 0..size {
-                                let _ = tx.send(Sequenced::new(vec![i as u8; payload_size]));
+                                let _ =
+                                    tx.unbounded_send(Sequenced::new(vec![i as u8; payload_size]));
                             }
                             drop(tx);
 
@@ -86,7 +87,7 @@ pub fn bench_partition_imbalanced(c: &mut Criterion) {
                     bencher.iter(|| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            let (tx, rx) = unbounded_channel::<Sequenced<Vec<u8>>>();
+                            let (tx, rx) = unbounded::<Sequenced<Vec<u8>>>();
 
                             // Partition with 90% going to true stream (index < 90% of size)
                             let threshold = (size * 9 / 10) as u8;
@@ -101,11 +102,12 @@ pub fn bench_partition_imbalanced(c: &mut Criterion) {
 
                             // Send data
                             for i in 0..size {
-                                let _ = tx.send(Sequenced::new(vec![i as u8; payload_size]));
+                                let _ =
+                                    tx.unbounded_send(Sequenced::new(vec![i as u8; payload_size]));
                             }
                             drop(tx);
 
-                            // Consume both streams concurrently
+                            // Consume both partitions
                             let consume_true = async {
                                 let mut s = Box::pin(true_stream);
                                 while let Some(v) = s.next().await {
@@ -147,7 +149,7 @@ pub fn bench_partition_single_consumer(c: &mut Criterion) {
                     bencher.iter(|| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            let (tx, rx) = unbounded_channel::<Sequenced<Vec<u8>>>();
+                            let (tx, rx) = unbounded::<Sequenced<Vec<u8>>>();
 
                             // Partition by even/odd (50/50 split)
                             let (true_stream, _false_stream) =
@@ -161,7 +163,8 @@ pub fn bench_partition_single_consumer(c: &mut Criterion) {
 
                             // Send data
                             for i in 0..size {
-                                let _ = tx.send(Sequenced::new(vec![i as u8; payload_size]));
+                                let _ =
+                                    tx.unbounded_send(Sequenced::new(vec![i as u8; payload_size]));
                             }
                             drop(tx);
 

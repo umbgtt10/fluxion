@@ -6,8 +6,9 @@
 
 use crate::domain::AggregatedEvent;
 use fluxion_core::CancellationToken;
+use futures::channel::mpsc;
+use futures::StreamExt;
 use tokio::select;
-use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 pub struct FinalConsumer {
@@ -49,7 +50,7 @@ impl FinalConsumer {
 
         loop {
             select! {
-                Some(event) = rx.recv() => {
+                Some(event) = rx.next() => {
                     let temp_display = event.temperature.map(|t| t as f64 / 10.0).unwrap_or(0.0);
 
                     println!(

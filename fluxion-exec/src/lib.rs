@@ -70,7 +70,7 @@
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
-//! let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
+//! let (tx, rx) = futures::channel::mpsc::unbounded::<i32>();
 //! let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
 //!
 //! // Any Stream can use subscribe
@@ -160,7 +160,7 @@
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
-//! # let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
+//! # let (tx, rx) = futures::channel::mpsc::unbounded::<i32>();
 //! # let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
 //! stream.subscribe(|event| async move {
 //!     // Save to database
@@ -179,7 +179,7 @@
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
-//! # let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
+//! # let (tx, rx) = futures::channel::mpsc::unbounded::<i32>();
 //! # let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
 //! stream.subscribe_latest(|state| async move {
 //!     // Render UI with latest state
@@ -198,7 +198,7 @@
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
-//! # let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
+//! # let (tx, rx) = futures::channel::mpsc::unbounded::<i32>();
 //! # let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
 //! stream
 //!     .chunks(100)  // Batch 100 items
@@ -220,7 +220,7 @@
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
-//! # let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<i32>();
+//! # let (tx, rx) = futures::channel::mpsc::unbounded::<i32>();
 //! # let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
 //! stream.subscribe(|item| async move {
 //!     match process_item(item).await {

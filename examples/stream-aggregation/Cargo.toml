@@ -16,5 +16,4 @@ fluxion-core = { workspace = true }
 fluxion-rx = { workspace = true }
 fluxion-exec = { workspace = true }
 tokio = { workspace = true }
-tokio-util = { workspace = true }
 futures = { workspace = true }

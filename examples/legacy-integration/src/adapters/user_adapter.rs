@@ -6,11 +6,10 @@
 //! This is Pattern 3: Wrapper Ordering from the Integration Guide
 
 use fluxion_core::CancellationToken;
+use futures::channel::mpsc::unbounded;
 use futures::{Stream, StreamExt};
 use tokio::spawn;
-use tokio::sync::mpsc::unbounded_channel;
 use tokio::task::JoinHandle;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::domain::{events::UnifiedEvent, TimestampedEvent};
 use crate::legacy::database::LegacyDatabase;
@@ -31,7 +30,7 @@ impl UserAdapter {
         &mut self,
         cancel_token: CancellationToken,
     ) -> impl Stream<Item = TimestampedEvent> + Send + Unpin {
-        let (user_tx, user_rx) = unbounded_channel();
+        let (user_tx, user_rx) = unbounded();
 
         // Spawn legacy database poller
         let db = LegacyDatabase::new();
@@ -40,8 +39,7 @@ impl UserAdapter {
         self.task_handle = Some(task_handle);
 
         // Create stream that wraps with timestamps
-        UnboundedReceiverStream::new(user_rx)
-            .map(|user| TimestampedEvent::new(UnifiedEvent::UserAdded(user)))
+        user_rx.map(|user| TimestampedEvent::new(UnifiedEvent::UserAdded(user)))
     }
 
     /// Shutdown and wait for task completion

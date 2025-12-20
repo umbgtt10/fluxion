@@ -6,8 +6,8 @@
 
 use crate::domain::SystemEvent;
 use fluxion_core::CancellationToken;
+use futures::channel::mpsc;
 use tokio::select;
-use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
 
@@ -60,7 +60,7 @@ impl EventsProducer {
                         severity: "LOW".to_string(),
                     };
 
-                    if tx.send(event.clone()).is_err() {
+                    if tx.unbounded_send(event.clone()).is_err() {
                         break;
                     }
                     println!("  [Producer<Events>] {} ({}) @ ts {}", event.event_type, event.severity, timestamp);

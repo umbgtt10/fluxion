@@ -43,15 +43,15 @@ async fn test_combine_latest_take_latest_when() -> anyhow::Result<()> {
         );
 
     // Act & Assert: First populate the source stream
-    person_tx.send(Sequenced::new(person_alice()))?;
-    animal_tx.send(Sequenced::new(animal_dog()))?;
+    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
     // No emission yet - waiting for trigger
     assert_no_element_emitted(&mut composed, 100).await;
 
     // Now trigger emission by populating trigger streams
-    trigger_person_tx.send(Sequenced::new(person_bob()))?;
-    trigger_animal_tx.send(Sequenced::new(plant_rose()))?;
+    trigger_person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    trigger_animal_tx.unbounded_send(Sequenced::new(plant_rose()))?;
 
     // Should emit the latest from source stream
     let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
@@ -62,10 +62,10 @@ async fn test_combine_latest_take_latest_when() -> anyhow::Result<()> {
     assert_eq!(&values[1], &animal_dog());
 
     // Update source stream
-    person_tx.send(Sequenced::new(person_charlie()))?;
+    person_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Trigger another emission
-    trigger_person_tx.send(Sequenced::new(person_dave()))?;
+    trigger_person_tx.unbounded_send(Sequenced::new(person_dave()))?;
 
     let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
     let inner = result.clone().into_inner();
@@ -95,29 +95,29 @@ async fn test_ordered_merge_take_latest_when() -> anyhow::Result<()> {
         .take_latest_when(filter_stream, LATEST_FILTER);
 
     // Act & Assert
-    person_tx.send(Sequenced::new(person_alice()))?;
-    filter_tx.send(Sequenced::new(person_alice()))?;
+    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
     {
         let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
         assert_eq!(&val.value, &person_alice());
     }
 
-    animal_tx.send(Sequenced::new(animal_dog()))?;
-    filter_tx.send(Sequenced::new(person_alice()))?;
+    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
     {
         let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
         assert_eq!(&val.value, &animal_dog());
     }
 
-    person_tx.send(Sequenced::new(person_bob()))?;
-    filter_tx.send(Sequenced::new(person_alice()))?;
+    person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
     {
         let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
         assert_eq!(&val.value, &person_bob());
     }
 
     drop(filter_tx);
-    person_tx.send(Sequenced::new(person_charlie()))?;
+    person_tx.unbounded_send(Sequenced::new(person_charlie()))?;
     // After filter stream closes, no more emissions should occur
     assert_no_element_emitted(&mut composed, 100).await;
 
@@ -135,11 +135,11 @@ async fn test_filter_ordered_take_latest_when() -> anyhow::Result<()> {
         .take_latest_when(filter_rx, FILTER);
 
     // Act & Assert
-    source_tx.send(Sequenced::new(person_alice()))?;
-    source_tx.send(Sequenced::new(animal_dog()))?; // Filtered
-    source_tx.send(Sequenced::new(person_bob()))?;
+    source_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    source_tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered
+    source_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
-    filter_tx.send(Sequenced::new(person_alice()))?; // Trigger emission
+    filter_tx.unbounded_send(Sequenced::new(person_alice()))?; // Trigger emission
 
     {
         let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
@@ -147,10 +147,10 @@ async fn test_filter_ordered_take_latest_when() -> anyhow::Result<()> {
         assert_eq!(&val.value, &person_bob());
     }
 
-    source_tx.send(Sequenced::new(person_charlie()))?;
-    source_tx.send(Sequenced::new(plant_rose()))?; // Filtered
+    source_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    source_tx.unbounded_send(Sequenced::new(plant_rose()))?; // Filtered
 
-    filter_tx.send(Sequenced::new(person_bob()))?; // Trigger emission
+    filter_tx.unbounded_send(Sequenced::new(person_bob()))?; // Trigger emission
     {
         let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
         assert_eq!(&val.value, &person_charlie());

@@ -24,9 +24,9 @@ async fn test_fluxion_stream_combine_latest_composition() -> anyhow::Result<()> 
         person_stream.combine_latest(vec![animal_stream, plant_stream], COMBINE_FILTER);
 
     // Act
-    person_tx.send(Sequenced::new(person_alice()))?;
-    animal_tx.send(Sequenced::new(animal_dog()))?;
-    plant_tx.send(Sequenced::new(plant_rose()))?;
+    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    plant_tx.unbounded_send(Sequenced::new(plant_rose()))?;
 
     // Assert
     let element = unwrap_value(Some(unwrap_stream(&mut combined, 500).await));

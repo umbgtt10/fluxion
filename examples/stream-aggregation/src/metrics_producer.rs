@@ -6,8 +6,8 @@
 
 use crate::domain::MetricData;
 use fluxion_core::CancellationToken;
+use futures::channel::mpsc;
 use tokio::select;
-use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
 
@@ -57,7 +57,7 @@ impl MetricsProducer {
                         value,
                     };
 
-                    if tx.send(metric).is_err() {
+                    if tx.unbounded_send(metric).is_err() {
                         break;
                     }
                     println!("  [Producer<Metrics>] {}% @ ts {}", value, timestamp);

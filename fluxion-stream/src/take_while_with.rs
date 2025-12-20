@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -84,8 +84,8 @@ where
     /// );
     ///
     /// // Send values
-    /// tx_gate.send((true, 1).into()).unwrap();
-    /// tx_data.send((1, 2).into()).unwrap();
+    /// tx_gate.unbounded_send((true, 1).into()).unwrap();
+    /// tx_data.unbounded_send((1, 2).into()).unwrap();
     ///
     /// // Assert
     /// assert_eq!(&unwrap_value(Some(unwrap_stream(&mut gated, 500).await)).value, &1);

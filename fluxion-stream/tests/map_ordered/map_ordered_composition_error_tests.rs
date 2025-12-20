@@ -21,31 +21,31 @@ async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<(
         .map_ordered(|x| Sequenced::new(x.current.value * 10));
 
     // Act & Assert Send value (filtered out)
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Send value (passes)
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 20
     ));
 
     // Send error
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Continue
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 40
     ));
 
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 5)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(5, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 50
@@ -72,21 +72,21 @@ async fn test_multiple_errors_through_composition() -> anyhow::Result<()> {
         });
 
     // Send initial values
-    tx1.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
-    tx2.send(StreamItem::Value(Sequenced::with_timestamp(10, 4)))?;
+    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
+    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 4)))?;
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref s) if s.value.contains("Combined"))
     );
 
     // Send error
-    tx1.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Continue
-    tx1.send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
+    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref s) if s.value.contains("Combined"))
     );
@@ -112,21 +112,21 @@ async fn test_scan_ordered_error_propagation_with_map() -> anyhow::Result<()> {
         .map_ordered(|sum: Sequenced<i32>| Sequenced::new(sum.into_inner() * 2));
 
     // Act & Assert
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 20 // sum=10, doubled=20
     ));
 
     // Error doesn't affect accumulator state
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Accumulator continues from previous state
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 30 // sum=15, doubled=30

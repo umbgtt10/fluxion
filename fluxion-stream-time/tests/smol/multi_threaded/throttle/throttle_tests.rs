@@ -12,7 +12,6 @@ fn test_throttle_smol_multi_threaded() {
     let executor = smol::Executor::new();
     futures::executor::block_on(executor.run(async {
         let (tx, rx) = test_channel();
-
         let mut throttled = rx.throttle(Duration::from_millis(50));
 
         executor

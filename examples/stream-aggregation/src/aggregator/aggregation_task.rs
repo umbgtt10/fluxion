@@ -13,8 +13,8 @@ use crate::sensor_producer::SensorProducer;
 use fluxion_core::CancellationToken;
 use fluxion_exec::SubscribeLatestExt;
 use fluxion_rx::prelude::*;
+use futures::channel::mpsc;
 use std::convert::Infallible;
-use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 pub struct Aggregator {
@@ -43,10 +43,10 @@ impl Aggregator {
     pub fn start(&mut self) {
         // Create channels (simulating RabbitMQ queues)
         // Producers send raw data, aggregator handles sequencing
-        let (sensor_tx, sensor_rx) = mpsc::unbounded_channel();
-        let (metrics_tx, metrics_rx) = mpsc::unbounded_channel();
-        let (events_tx, events_rx) = mpsc::unbounded_channel();
-        let (output_tx, output_rx) = mpsc::unbounded_channel();
+        let (sensor_tx, sensor_rx) = mpsc::unbounded();
+        let (metrics_tx, metrics_rx) = mpsc::unbounded();
+        let (events_tx, events_rx) = mpsc::unbounded();
+        let (output_tx, output_rx) = mpsc::unbounded();
 
         // Start all tasks concurrently
         if let Some(producer) = &mut self.sensor_producer {
@@ -147,7 +147,7 @@ impl Aggregator {
                             "\n  [Aggregator] @ {}: Temp={:.1}°C, Metric={:.1}, Alert={}",
                             agg.timestamp, temp_display, metric_display, agg.has_alert
                         );
-                        let _ = tx.send(agg);
+                        let _ = tx.unbounded_send(agg);
                         Ok::<(), Infallible>(())
                     }
                 },

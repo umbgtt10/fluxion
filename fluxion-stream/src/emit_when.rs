@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -68,8 +68,8 @@ where
     /// );
     ///
     /// // Send values
-    /// tx_enable.send((1, 1).into()).unwrap();  // Enabled
-    /// tx_data.send((42, 2).into()).unwrap();
+    /// tx_enable.unbounded_send((1, 1).into()).unwrap();  // Enabled
+    /// tx_data.unbounded_send((42, 2).into()).unwrap();
     ///
     /// // Assert - data emits when enabled
     /// let result = unwrap_value(Some(unwrap_stream(&mut gated, 500).await));
@@ -211,7 +211,7 @@ where
                                 }
                             }
                             _ => {
-                                warn!("emit_when: unexpected stream index {} – ignoring", index);
+                                warn!("emit_when: unexpected stream index {} � ignoring", index);
                                 None
                             }
                         }

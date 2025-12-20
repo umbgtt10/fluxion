@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -30,12 +30,12 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
         .debounce(Duration::from_millis(500));
 
     // Act & Assert
-    tx_source.send(StreamItem::Value(TokioTimestamped::new(
+    tx_source.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
     let error = FluxionError::stream_error("trigger error");
-    tx_trigger.send(StreamItem::Error(error.clone()))?;
+    tx_trigger.unbounded_send(StreamItem::Error(error.clone()))?;
 
     assert_eq!(
         unwrap_stream(&mut processed, 100)
@@ -46,7 +46,7 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
         error.to_string()
     );
 
-    tx_trigger.send(StreamItem::Value(TokioTimestamped::new(
+    tx_trigger.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
     )))?;

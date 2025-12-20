@@ -6,8 +6,8 @@
 //! In production, this would consume from RabbitMQ, ActiveMQ, etc.
 
 use fluxion_core::CancellationToken;
+use futures::channel::mpsc::UnboundedSender;
 use std::sync::atomic::{AtomicU64, Ordering};
-use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::{sleep, Duration};
 
 use crate::domain::models::Order;
@@ -48,7 +48,7 @@ impl LegacyMessageQueue {
                     // Simulate XML deserialization (legacy MQ sends XML)
                     let _xml = quick_xml::se::to_string(&order).unwrap();
 
-                    if tx.send(order).is_err() {
+                    if tx.unbounded_send(order).is_err() {
                         break;
                     }
                 }

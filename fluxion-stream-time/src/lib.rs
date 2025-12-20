@@ -37,24 +37,23 @@
 //! use fluxion_core::StreamItem;
 //! use futures::stream::StreamExt;
 //! use std::time::Duration;
-//! use tokio::sync::mpsc;
-//! use tokio_stream::wrappers::UnboundedReceiverStream;
+//! use futures::channel::mpsc;
 //!
 //! # async fn example() {
-//! let (tx, rx) = mpsc::unbounded_channel::<TokioTimestamped<i32>>();
+//! let (tx, rx) = mpsc::unbounded::<TokioTimestamped<i32>>();
 //! let timer = TokioTimer;
 //!
 //! // Delay all emissions by 100ms (convenience method)
-//! let delayed = UnboundedReceiverStream::new(rx)
+//! let delayed = rx
 //!     .map(StreamItem::Value)
 //!     .delay(Duration::from_millis(100));
 //!
-//! tx.send(TokioTimestamped::new(42, timer.now())).unwrap();
-//! tx.send(TokioTimestamped::new(100, timer.now())).unwrap();
+//! tx.unbounded_send(TokioTimestamped::new(42, timer.now())).unwrap();
+//! tx.unbounded_send(TokioTimestamped::new(100, timer.now())).unwrap();
 //!
 //! // Or debounce with convenience method (no timer parameter needed)
-//! # let (tx, rx) = mpsc::unbounded_channel::<TokioTimestamped<i32>>();
-//! let debounced = UnboundedReceiverStream::new(rx)
+//! # let (tx, rx) = mpsc::unbounded::<TokioTimestamped<i32>>();
+//! let debounced = rx
 //!     .map(StreamItem::Value)
 //!     .debounce(Duration::from_millis(100));
 //! # }

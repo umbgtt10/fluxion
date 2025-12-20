@@ -421,8 +421,8 @@ New projects should use tokio or smol runtimes instead.
 
 ### Essential Features
 - ✅ Replace tokio::sync::Mutex → futures::lock::Mutex
-- [ ] Custom CancellationToken (using event-listener)
-- [ ] Verify tokio channel portability
+- ✅ Custom CancellationToken (using event-listener)
+- [ ] Replace tokio channels with futures::channel (mpsc, oneshot)
 
 ### Documentation
 - [ ] Updated docs as appropriate to reflect runtime-agnostic changes

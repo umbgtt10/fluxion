@@ -62,7 +62,7 @@ Implement `Timestamped` only if you need construction methods and access to an i
 
 ```rust
 use fluxion_rx::prelude::*;
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
 
 #[tokio::main]
 async fn main() {
@@ -115,7 +115,7 @@ let event2 = Sequenced::with_timestamp(Event { data: "second".into() }, 200);
 ```rust
 use fluxion_rx::prelude::*;
 use fluxion_test_utils::Sequenced;
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
 use futures::StreamExt;
 
 #[derive(Clone, Debug)]

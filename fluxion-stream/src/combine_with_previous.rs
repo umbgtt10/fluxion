@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -66,8 +66,8 @@ where
     /// let mut paired = stream.combine_with_previous();
     ///
     /// // Send values
-    /// tx.send((1, 1).into()).unwrap();
-    /// tx.send((2, 2).into()).unwrap();
+    /// tx.unbounded_send((1, 1).into()).unwrap();
+    /// tx.unbounded_send((2, 2).into()).unwrap();
     ///
     /// // Assert - first has no previous
     /// let first = unwrap_value(Some(unwrap_stream(&mut paired, 500).await));
@@ -85,7 +85,7 @@ where
     ///
     /// - Change detection (comparing consecutive values)
     /// - Delta calculation (computing differences)
-    /// - State transitions (analyzing previous → current)
+    /// - State transitions (analyzing previous ? current)
     /// - Duplicate filtering (skip if same as previous)
     fn combine_with_previous(self) -> impl Stream<Item = StreamItem<WithPrevious<T>>> + Send;
 }

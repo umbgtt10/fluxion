@@ -41,14 +41,14 @@ pub trait SkipItemsExt<T>: Stream<Item = StreamItem<T>> + Sized {
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx, rx) = futures::channel::mpsc::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut after_first_two = stream.skip_items(2);
     ///
-    /// tx.send(Sequenced::new(1)).unwrap();
-    /// tx.send(Sequenced::new(2)).unwrap();
-    /// tx.send(Sequenced::new(3)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(1)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(2)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(3)).unwrap();
     ///
     /// // First two are skipped
     /// assert_eq!(after_first_two.next().await.unwrap().unwrap().into_inner(), 3);

@@ -26,7 +26,7 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act & Assert
-    tx.send(StreamItem::Value(TokioTimestamped::new(
+    tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
@@ -35,7 +35,7 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
     advance(Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut debounced, 100).await,
         StreamItem::Error(_)
@@ -44,7 +44,7 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
     advance(Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    tx.send(StreamItem::Value(TokioTimestamped::new(
+    tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
     )))?;
@@ -72,19 +72,19 @@ async fn test_debounce_error_discards_pending() -> anyhow::Result<()> {
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act & Assert
-    tx.send(StreamItem::Value(TokioTimestamped::new(
+    tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
 
     advance(Duration::from_millis(200)).await;
-    tx.send(StreamItem::Value(TokioTimestamped::new(
+    tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
     )))?;
 
     advance(Duration::from_millis(200)).await;
-    tx.send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut debounced, 100).await,
         StreamItem::Error(_)

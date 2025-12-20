@@ -70,28 +70,27 @@ where
     ///
     /// ```
     /// use fluxion_exec::SubscribeLatestExt;
-    /// use tokio::sync::mpsc::unbounded_channel;
-    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// use futures::channel::mpsc::unbounded;
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let (tx, rx) = unbounded_channel();
-    /// let stream = UnboundedReceiverStream::new(rx).map(|x: i32| x);
+    /// let (tx, rx) = unbounded();
+    /// let stream = rx.map(|x: i32| x);
     ///
     /// let processed = Arc::new(Mutex::new(Vec::new()));
     /// let processed_clone = processed.clone();
     ///
     /// // Gate to control when first item completes
-    /// let (gate_tx, gate_rx) = unbounded_channel::<()>();
+    /// let (gate_tx, gate_rx) = unbounded::<()>();
     /// let gate_shared = Arc::new(Mutex::new(Some(gate_rx)));
     ///
     /// // Signal when processing starts and completes
-    /// let (started_tx, mut started_rx) = unbounded_channel::<i32>();
+    /// let (started_tx, mut started_rx) = unbounded::<i32>();
     /// let started_tx = Arc::new(started_tx);
-    /// let (done_tx, mut done_rx) = unbounded_channel::<i32>();
+    /// let (done_tx, mut done_rx) = unbounded::<i32>();
     /// let done_tx = Arc::new(done_tx);
     ///
     /// let handle = tokio::spawn(async move {
@@ -102,15 +101,15 @@ where
     ///             let started = started_tx.clone();
     ///             let done = done_tx.clone();
     ///             async move {
-    ///                 started.send(item).unwrap();
+    ///                 started.unbounded_send(item).unwrap();
     ///                 // First item waits at gate
     ///                 if let Some(mut rx) = gate.lock().await.take() {
-    ///                     let _ = rx.recv().await;
+    ///                     let _ = rx.next().await;
     ///                 }
     ///                 if !token.is_cancelled() {
     ///                     processed.lock().await.push(item);
     ///                 }
-    ///                 done.send(item).unwrap();
+    ///                 done.unbounded_send(item).unwrap();
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
@@ -120,22 +119,22 @@ where
     /// });
     ///
     /// // Send first item and wait for it to start processing
-    /// tx.send(1).unwrap();
-    /// assert_eq!(started_rx.recv().await, Some(1));
+    /// tx.unbounded_send(1).unwrap();
+    /// assert_eq!(started_rx.next().await, Some(1));
     ///
     /// // Send subsequent items while item 1 is blocked
-    /// tx.send(2).unwrap();
-    /// tx.send(3).unwrap();
-    /// tx.send(4).unwrap();
+    /// tx.unbounded_send(2).unwrap();
+    /// tx.unbounded_send(3).unwrap();
+    /// tx.unbounded_send(4).unwrap();
     ///
     /// // Release the gate to let item 1 finish
-    /// gate_tx.send(()).unwrap();
+    /// gate_tx.unbounded_send(()).unwrap();
     ///
     /// // Wait for item 1 to complete
-    /// assert_eq!(done_rx.recv().await, Some(1));
+    /// assert_eq!(done_rx.next().await, Some(1));
     /// // Wait for latest item (4) to start and complete
-    /// assert_eq!(started_rx.recv().await, Some(4));
-    /// assert_eq!(done_rx.recv().await, Some(4));
+    /// assert_eq!(started_rx.next().await, Some(4));
+    /// assert_eq!(done_rx.next().await, Some(4));
     ///
     /// // Now close the stream
     /// drop(tx);
@@ -155,8 +154,7 @@ where
     ///
     /// ```
     /// use fluxion_exec::SubscribeLatestExt;
-    /// use tokio::sync::mpsc::unbounded_channel;
-    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// use futures::channel::mpsc::unbounded;
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
@@ -164,8 +162,8 @@ where
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let (tx, rx) = unbounded_channel();
-    /// let stream = UnboundedReceiverStream::new(rx).map(|x: i32| x);
+    /// let (tx, rx) = unbounded();
+    /// let stream = rx.map(|x: i32| x);
     ///
     /// let completed = Arc::new(Mutex::new(Vec::new()));
     /// let completed_clone = completed.clone();
@@ -173,11 +171,11 @@ where
     /// let token_clone = token.clone();
     ///
     /// // Signal start
-    /// let (started_tx, mut started_rx) = unbounded_channel::<i32>();
+    /// let (started_tx, mut started_rx) = unbounded::<i32>();
     /// let started_tx = Arc::new(started_tx);
     ///
     /// // Gate
-    /// let (gate_tx, mut gate_rx) = unbounded_channel::<()>();
+    /// let (gate_tx, mut gate_rx) = unbounded::<()>();
     /// let gate_shared = Arc::new(Mutex::new(Some(gate_rx)));
     ///
     /// let handle = tokio::spawn(async move {
@@ -187,12 +185,12 @@ where
     ///             let started = started_tx.clone();
     ///             let gate = gate_shared.clone();
     ///             async move {
-    ///                 started.send(item).unwrap();
+    ///                 started.unbounded_send(item).unwrap();
     ///
     ///                 // Wait for gate or cancellation
     ///                 if let Some(mut rx) = gate.lock().await.take() {
     ///                     tokio::select! {
-    ///                         _ = rx.recv() => {},
+    ///                         _ = rx.next() => {},
     ///                         _ = token.cancelled() => return Ok(()),
     ///                     }
     ///                 }
@@ -206,8 +204,8 @@ where
     ///     ).await
     /// });
     ///
-    /// tx.send(1).unwrap();
-    /// assert_eq!(started_rx.recv().await, Some(1));
+    /// tx.unbounded_send(1).unwrap();
+    /// assert_eq!(started_rx.next().await, Some(1));
     ///
     /// // Cancel global token and close stream
     /// token.cancel();
@@ -227,8 +225,7 @@ where
     ///
     /// ```
     /// use fluxion_exec::SubscribeLatestExt;
-    /// use tokio::sync::mpsc::unbounded_channel;
-    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// use futures::channel::mpsc::unbounded;
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
@@ -236,19 +233,19 @@ where
     /// # #[tokio::main]
     /// # async fn main() {
     /// // Gate to control when first item completes
-    /// let (gate_tx, mut gate_rx) = unbounded_channel::<()>();
+    /// let (gate_tx, mut gate_rx) = unbounded::<()>();
     /// let gate_shared = Arc::new(Mutex::new(Some(gate_rx)));
     ///
     /// // Signal when processing starts
-    /// let (started_tx, mut started_rx) = unbounded_channel::<String>();
+    /// let (started_tx, mut started_rx) = unbounded::<String>();
     /// let started_tx = Arc::new(started_tx);
     ///
     /// // Signal when processing completes
-    /// let (done_tx, mut done_rx) = unbounded_channel::<String>();
+    /// let (done_tx, mut done_rx) = unbounded::<String>();
     /// let done_tx = Arc::new(done_tx);
     ///
-    /// let (tx, rx) = unbounded_channel();
-    /// let stream = UnboundedReceiverStream::new(rx);
+    /// let (tx, rx) = unbounded();
+    /// let stream = rx;
     ///
     /// let results = Arc::new(Mutex::new(Vec::new()));
     /// let results_clone = results.clone();
@@ -261,17 +258,17 @@ where
     ///             let started = started_tx.clone();
     ///             let done = done_tx.clone();
     ///             async move {
-    ///                 started.send(query.clone()).unwrap();
+    ///                 started.unbounded_send(query.clone()).unwrap();
     ///
     ///                 // First query waits at gate
     ///                 if let Some(mut rx) = gate.lock().await.take() {
-    ///                     let _ = rx.recv().await;
+    ///                     let _ = rx.next().await;
     ///                 }
     ///
     ///                 if !token.is_cancelled() {
     ///                     results.lock().await.push(format!("result_for_{}", query));
     ///                 }
-    ///                 done.send(query).unwrap();
+    ///                 done.unbounded_send(query).unwrap();
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
@@ -281,25 +278,25 @@ where
     /// });
     ///
     /// // Send first item and wait for it to start processing
-    /// tx.send("r".to_string()).unwrap();
-    /// assert_eq!(started_rx.recv().await, Some("r".to_string()));
+    /// tx.unbounded_send("r".to_string()).unwrap();
+    /// assert_eq!(started_rx.next().await, Some("r".to_string()));
     ///
     /// // While "r" is blocked, send more items rapidly
-    /// tx.send("ru".to_string()).unwrap();
-    /// tx.send("rus".to_string()).unwrap();
-    /// tx.send("rust".to_string()).unwrap();
+    /// tx.unbounded_send("ru".to_string()).unwrap();
+    /// tx.unbounded_send("rus".to_string()).unwrap();
+    /// tx.unbounded_send("rust".to_string()).unwrap();
     ///
     /// // Close the stream to ensure all items are delivered
     /// drop(tx);
     ///
     /// // Release "r" - this allows processing to continue
-    /// gate_tx.send(()).unwrap();
+    /// gate_tx.unbounded_send(()).unwrap();
     ///
     /// // Wait for "r" to complete
-    /// assert_eq!(done_rx.recv().await, Some("r".to_string()));
+    /// assert_eq!(done_rx.next().await, Some("r".to_string()));
     ///
     /// // Wait for "rust" (the latest) to complete
-    /// assert_eq!(done_rx.recv().await, Some("rust".to_string()));
+    /// assert_eq!(done_rx.next().await, Some("rust".to_string()));
     ///
     /// handle.await.unwrap().unwrap();
     ///
@@ -318,8 +315,7 @@ where
     ///
     /// ```
     /// use fluxion_exec::SubscribeLatestExt;
-    /// use tokio::sync::mpsc::unbounded_channel;
-    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// use futures::channel::mpsc::unbounded;
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
@@ -329,18 +325,18 @@ where
     /// #[derive(Clone, Debug, PartialEq)]
     /// struct AppState { counter: u32 }
     ///
-    /// let (tx, rx) = unbounded_channel();
-    /// let stream = UnboundedReceiverStream::new(rx).map(|x: AppState| x);
+    /// let (tx, rx) = unbounded();
+    /// let stream = rx.map(|x: AppState| x);
     ///
     /// let rendered = Arc::new(Mutex::new(Vec::new()));
     /// let rendered_clone = rendered.clone();
     ///
     /// // Gate to control when renders complete (take pattern for first only)
-    /// let (gate_tx, gate_rx) = unbounded_channel::<()>();
+    /// let (gate_tx, gate_rx) = unbounded::<()>();
     /// let gate_rx_shared = Arc::new(Mutex::new(Some(gate_rx)));
     ///
     /// // Signal when processing starts
-    /// let (started_tx, mut started_rx) = unbounded_channel::<u32>();
+    /// let (started_tx, mut started_rx) = unbounded::<u32>();
     /// let started_tx = Arc::new(started_tx);
     ///
     /// let handle = tokio::spawn(async move {
@@ -350,11 +346,11 @@ where
     ///             let gate_rx = gate_rx_shared.clone();
     ///             let started = started_tx.clone();
     ///             async move {
-    ///                 started.send(state.counter).unwrap();
+    ///                 started.unbounded_send(state.counter).unwrap();
     ///
     ///                 // First item waits at gate
     ///                 if let Some(mut rx) = gate_rx.lock().await.take() {
-    ///                     let _ = rx.recv().await;
+    ///                     let _ = rx.next().await;
     ///                 }
     ///
     ///                 if !token.is_cancelled() {
@@ -369,17 +365,17 @@ where
     /// });
     ///
     /// // Send first state and wait for it to start
-    /// tx.send(AppState { counter: 0 }).unwrap();
-    /// assert_eq!(started_rx.recv().await, Some(0));
+    /// tx.unbounded_send(AppState { counter: 0 }).unwrap();
+    /// assert_eq!(started_rx.next().await, Some(0));
     ///
     /// // Rapid state updates (intermediate ones will be skipped)
     /// for i in 1..10 {
-    ///     tx.send(AppState { counter: i }).unwrap();
+    ///     tx.unbounded_send(AppState { counter: i }).unwrap();
     /// }
     /// drop(tx);
     ///
     /// // Release first render - this unblocks item 0, then 9 runs immediately
-    /// gate_tx.send(()).unwrap();
+    /// gate_tx.unbounded_send(()).unwrap();
     ///
     /// handle.await.unwrap().unwrap();
     ///

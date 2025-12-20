@@ -17,9 +17,9 @@ async fn test_skip_skips_initial_items() -> anyhow::Result<()> {
     let mut result = stream.skip_items(2);
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?; // Skipped
-    tx.send(Sequenced::new(person_bob()))?; // Skipped
-    tx.send(Sequenced::new(person_charlie()))?; // Emitted
+    tx.unbounded_send(Sequenced::new(person_alice()))?; // Skipped
+    tx.unbounded_send(Sequenced::new(person_bob()))?; // Skipped
+    tx.unbounded_send(Sequenced::new(person_charlie()))?; // Emitted
     drop(tx);
 
     // Assert - Only third item emitted
@@ -40,8 +40,8 @@ async fn test_skip_more_than_available() -> anyhow::Result<()> {
     let mut result = stream.skip_items(10);
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
     drop(tx);
 
     // Assert - No items emitted (all skipped)

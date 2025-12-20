@@ -4,7 +4,6 @@
 
 use crate::smol::helpers::{person_alice, test_channel, timestamped_person};
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::SmolTimer;
 use futures::StreamExt;
 use std::time::Duration;
 
@@ -13,8 +12,6 @@ fn test_debounce_smol_multi_threaded() {
     let executor = smol::Executor::new();
     futures::executor::block_on(executor.run(async {
         let (tx, rx) = test_channel();
-        let timer = SmolTimer;
-
         let mut debounced = rx.debounce(Duration::from_millis(100));
 
         executor

@@ -4,11 +4,11 @@
 
 use fluxion_core::CancellationToken;
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;
+use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
 use std::sync::Arc;
 use tokio::spawn;
-use tokio::sync::mpsc::unbounded_channel;
-use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_stream::StreamExt as _;
 
 /// Example demonstrating subscribe_latest with automatic substitution
 #[tokio::test]
@@ -17,12 +17,12 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
     #[error("Error")]
     struct Err;
 
-    let (tx, rx) = unbounded_channel::<u32>();
+    let (tx, rx) = unbounded::<u32>();
     let completed = Arc::new(FutureMutex::new(Vec::new()));
-    let (notify_tx, mut notify_rx) = unbounded_channel();
-    let (gate_tx, gate_rx) = unbounded_channel::<()>();
+    let (notify_tx, mut notify_rx) = unbounded();
+    let (gate_tx, gate_rx) = unbounded::<()>();
     let gate_rx_shared = Arc::new(FutureMutex::new(Some(gate_rx)));
-    let (start_tx, mut start_rx) = unbounded_channel::<()>();
+    let (start_tx, mut start_rx) = unbounded::<()>();
     let start_tx_shared = Arc::new(FutureMutex::new(Some(start_tx)));
 
     let process = {
@@ -34,14 +34,14 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
             let start_tx_shared = start_tx_shared.clone();
             async move {
                 if let Some(tx) = start_tx_shared.lock().await.take() {
-                    tx.send(()).ok();
+                    tx.unbounded_send(()).ok();
                 }
                 if let Some(mut rx) = gate_rx_shared.lock().await.take() {
-                    rx.recv().await;
+                    rx.next().await;
                 }
                 if !token.is_cancelled() {
                     completed.lock().await.push(id);
-                    notify_tx.send(()).ok();
+                    notify_tx.unbounded_send(()).ok();
                 }
                 Ok::<(), Err>(())
             }
@@ -49,20 +49,19 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
     };
 
     spawn(async move {
-        UnboundedReceiverStream::new(rx)
-            .subscribe_latest(process, None::<fn(Err)>, None)
+        rx.subscribe_latest(process, None::<fn(Err)>, None)
             .await
             .unwrap();
     });
 
-    tx.send(1)?;
-    start_rx.recv().await.unwrap();
+    tx.unbounded_send(1)?;
+    start_rx.next().await.unwrap();
     for i in 2..=5 {
-        tx.send(i)?;
+        tx.unbounded_send(i)?;
     }
-    gate_tx.send(())?;
-    notify_rx.recv().await.unwrap();
-    notify_rx.recv().await.unwrap();
+    gate_tx.unbounded_send(())?;
+    notify_rx.next().await.unwrap();
+    notify_rx.next().await.unwrap();
 
     let result = completed.lock().await;
     assert_eq!(*result, vec![1, 5]);

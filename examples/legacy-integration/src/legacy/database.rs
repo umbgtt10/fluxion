@@ -7,8 +7,8 @@
 
 use crate::domain::models::User;
 use fluxion_core::CancellationToken;
+use futures::channel::mpsc::UnboundedSender;
 use std::sync::atomic::{AtomicU64, Ordering};
-use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::{sleep, Duration};
 
 pub struct LegacyDatabase {
@@ -54,7 +54,7 @@ impl LegacyDatabase {
                     // Simulate JSON serialization (legacy DB returns JSON strings)
                     let _json = serde_json::to_string(&user).unwrap();
 
-                    if tx.send(user).is_err() {
+                    if tx.unbounded_send(user).is_err() {
                         break;
                     }
                 }

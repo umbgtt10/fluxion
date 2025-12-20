@@ -25,14 +25,14 @@ async fn test_map_ordered_then_distinct_until_changed_by_propagates_error() -> a
         });
 
     // Act
-    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
     // Send error
-    tx.send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

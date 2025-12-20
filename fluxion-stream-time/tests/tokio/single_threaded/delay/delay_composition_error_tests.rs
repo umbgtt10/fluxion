@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -30,18 +30,18 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
         .delay(Duration::from_millis(200));
 
     // Act & Assert
-    tx_filter.send(StreamItem::Value(TokioTimestamped::new(
+    tx_filter.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
     )))?;
-    tx_source.send(StreamItem::Value(TokioTimestamped::new(
+    tx_source.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     let error = FluxionError::stream_error("filter error");
-    tx_filter.send(StreamItem::Error(error.clone()))?;
+    tx_filter.unbounded_send(StreamItem::Error(error.clone()))?;
     assert_eq!(
         unwrap_stream(&mut processed, 100)
             .await

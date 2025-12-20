@@ -49,16 +49,16 @@ where
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx, rx) = futures::channel::mpsc::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// // Filter for even numbers
     /// let mut evens = stream.filter_ordered(|&n| n % 2 == 0);
     ///
-    /// tx.send(Sequenced::new(1)).unwrap();
-    /// tx.send(Sequenced::new(2)).unwrap();
-    /// tx.send(Sequenced::new(3)).unwrap();
-    /// tx.send(Sequenced::new(4)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(1)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(2)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(3)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(4)).unwrap();
     ///
     /// assert_eq!(evens.next().await.unwrap().unwrap().into_inner(), 2);
     /// assert_eq!(evens.next().await.unwrap().unwrap().into_inner(), 4);

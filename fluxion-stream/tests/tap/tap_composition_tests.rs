@@ -29,12 +29,12 @@ async fn test_tap_after_filter_ordered() -> anyhow::Result<()> {
         });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
 
-    tx.send(Sequenced::new(animal_dog()))?; // Filtered out - tap not called
+    tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered out - tap not called
 
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
     unwrap_stream(&mut result, 500).await;
 
     // Assert
@@ -57,11 +57,11 @@ async fn test_tap_before_filter_ordered() -> anyhow::Result<()> {
         .filter_ordered(|item| matches!(item, TestData::Person(_)));
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
 
-    tx.send(Sequenced::new(animal_dog()))?;
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
     unwrap_stream(&mut result, 500).await;
 
     // Assert
@@ -92,7 +92,7 @@ async fn test_tap_after_map_ordered() -> anyhow::Result<()> {
         });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
 
     // Assert
@@ -127,7 +127,7 @@ async fn test_tap_before_map_ordered() -> anyhow::Result<()> {
         });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     let result_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
@@ -166,12 +166,12 @@ async fn test_multiple_taps_in_pipeline() -> anyhow::Result<()> {
         });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
 
-    tx.send(Sequenced::new(animal_dog()))?; // Filtered after first tap
+    tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered after first tap
 
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
     unwrap_stream(&mut result, 500).await;
 
     // Assert
@@ -200,10 +200,10 @@ async fn test_tap_chained_taps() -> anyhow::Result<()> {
         });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
 
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
     unwrap_stream(&mut result, 500).await;
 
     // Assert - both taps called for each item
@@ -227,9 +227,9 @@ async fn test_tap_with_filter_that_blocks_all() -> anyhow::Result<()> {
         });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(person_bob()))?;
-    tx.send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
@@ -267,8 +267,8 @@ async fn test_tap_complex_pipeline() -> anyhow::Result<()> {
 
     // Act - send items and consume results
     // Only Person items pass through filter, others are dropped
-    tx.send(Sequenced::new(person_alice()))?; // passes filter
-    tx.send(Sequenced::new(person_bob()))?; // passes filter
+    tx.unbounded_send(Sequenced::new(person_alice()))?; // passes filter
+    tx.unbounded_send(Sequenced::new(person_bob()))?; // passes filter
     drop(tx); // Close to end stream
 
     // Consume all items that pass the filter

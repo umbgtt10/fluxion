@@ -3,11 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::CancellationToken;
+use futures::channel::mpsc::unbounded;
 use futures::{Stream, StreamExt};
 use tokio::spawn;
-use tokio::sync::mpsc::unbounded_channel;
 use tokio::task::JoinHandle;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::domain::{events::UnifiedEvent, TimestampedEvent};
 use crate::legacy::file_watcher::LegacyFileWatcher;
@@ -28,7 +27,7 @@ impl InventoryAdapter {
         &mut self,
         cancel_token: CancellationToken,
     ) -> impl Stream<Item = TimestampedEvent> + Send + Unpin {
-        let (inventory_tx, inventory_rx) = unbounded_channel();
+        let (inventory_tx, inventory_rx) = unbounded();
 
         // Spawn legacy file watcher
         let fw = LegacyFileWatcher::new();
@@ -39,7 +38,7 @@ impl InventoryAdapter {
         self.task_handle = Some(task_handle);
 
         // Create stream that wraps with timestamps
-        UnboundedReceiverStream::new(inventory_rx)
+        inventory_rx
             .map(|inventory| TimestampedEvent::new(UnifiedEvent::InventoryUpdated(inventory)))
     }
 

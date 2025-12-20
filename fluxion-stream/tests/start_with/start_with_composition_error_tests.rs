@@ -29,14 +29,14 @@ async fn test_map_ordered_then_start_with_propagates_error() -> anyhow::Result<(
     ));
 
     // 2. Send Alice -> Should be emitted
-    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(val) if val.clone().into_inner() == person_alice()
     ));
 
     // 3. Send Error -> Should be propagated
-    tx.send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

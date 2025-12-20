@@ -22,19 +22,19 @@ async fn test_tap_values_pass_through_unchanged() -> anyhow::Result<()> {
     let mut result = stream.tap(|_| {});
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
-    tx.send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &animal_dog()
     );
 
-    tx.send(Sequenced::new(plant_rose()))?;
+    tx.unbounded_send(Sequenced::new(plant_rose()))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &plant_rose()
@@ -55,13 +55,13 @@ async fn test_tap_side_effect_called_for_each_value() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
 
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
     unwrap_stream(&mut result, 500).await;
 
-    tx.send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
     unwrap_stream(&mut result, 500).await;
 
     // Assert - side effect called 3 times
@@ -82,13 +82,13 @@ async fn test_tap_receives_correct_values() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
 
-    tx.send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
     unwrap_stream(&mut result, 500).await;
 
-    tx.send(Sequenced::new(plant_rose()))?;
+    tx.unbounded_send(Sequenced::new(plant_rose()))?;
     unwrap_stream(&mut result, 500).await;
 
     // Assert - correct values observed
@@ -127,7 +127,7 @@ async fn test_tap_preserves_timestamps() -> anyhow::Result<()> {
     // Act & Assert
     let item1 = Sequenced::new(person_alice());
     let timestamp1 = item1.timestamp();
-    tx.send(item1)?;
+    tx.unbounded_send(item1)?;
 
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).timestamp(),
@@ -136,7 +136,7 @@ async fn test_tap_preserves_timestamps() -> anyhow::Result<()> {
 
     let item2 = Sequenced::new(person_bob());
     let timestamp2 = item2.timestamp();
-    tx.send(item2)?;
+    tx.unbounded_send(item2)?;
 
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).timestamp(),
@@ -158,13 +158,13 @@ async fn test_tap_multiple_types() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
 
-    tx.send(Sequenced::new(animal_cat()))?;
+    tx.unbounded_send(Sequenced::new(animal_cat()))?;
     unwrap_stream(&mut result, 500).await;
 
-    tx.send(Sequenced::new(animal_bird()))?;
+    tx.unbounded_send(Sequenced::new(animal_bird()))?;
     unwrap_stream(&mut result, 500).await;
 
     // Assert
@@ -192,9 +192,9 @@ async fn test_tap_maintains_order() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(person_bob()))?;
-    tx.send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Consume all
     unwrap_stream(&mut result, 500).await;

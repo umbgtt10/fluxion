@@ -17,9 +17,9 @@ async fn test_take_limits_items() -> anyhow::Result<()> {
     let mut result = stream.take_items(2);
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(person_bob()))?;
-    tx.send(Sequenced::new(person_charlie()))?; // This won't be emitted
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?; // This won't be emitted
 
     // Assert - Only first 2 items
     assert_eq!(
@@ -45,7 +45,7 @@ async fn test_take_zero_items() -> anyhow::Result<()> {
     let mut result = stream.take_items(0);
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert - No items emitted
     assert_stream_ended(&mut result, 100).await;

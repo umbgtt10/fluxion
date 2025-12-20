@@ -39,15 +39,15 @@ async fn test_merge_with_propagates_errors_from_first_stream() -> anyhow::Result
         });
 
     // Act & Assert
-    tx1.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
-    tx1.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(
         matches!(merged.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string() == "Stream processing error: Error")
     );
 
-    tx2.send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx2.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 50);
 
     Ok(())
@@ -67,12 +67,12 @@ async fn test_merge_with_error_at_start_filtered() -> anyhow::Result<()> {
         });
 
     // Act & Assert
-    tx.send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
     assert!(
         matches!(merged.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string() == "Stream processing error: Early error")
     );
 
-    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
     drop(tx);
 
@@ -100,8 +100,8 @@ async fn test_merge_with_multiple_streams_error_filtering() -> anyhow::Result<()
         });
 
     // Act & Assert
-    tx1.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
-    tx2.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
 
     assert!(
         matches!(merged.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string().contains("Error"))
@@ -110,7 +110,7 @@ async fn test_merge_with_multiple_streams_error_filtering() -> anyhow::Result<()
         matches!(merged.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string().contains("Error"))
     );
 
-    tx1.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
     Ok(())
@@ -137,19 +137,19 @@ async fn test_merge_with_errors_interleaved_with_values() -> anyhow::Result<()> 
         });
 
     // Act & Assert
-    tx1.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
-    tx2.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
-    tx1.send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 55);
 
-    tx1.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
-    tx2.send(StreamItem::Value(Sequenced::new(person_diane())))?;
+    tx2.unbounded_send(StreamItem::Value(Sequenced::new(person_diane())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 135);
     drop(tx1);
     drop(tx2);
@@ -171,16 +171,16 @@ async fn test_merge_with_state_preserved_despite_filtered_errors() -> anyhow::Re
         });
 
     // Act & Assert
-    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
-    tx.send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 55);
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
-    tx.send(StreamItem::Value(Sequenced::new(person_diane())))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_diane())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 95);
 
     Ok(())
@@ -200,10 +200,10 @@ async fn test_merge_with_error_before_stream_ends() -> anyhow::Result<()> {
         });
 
     // Act & Assert
-    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
     assert_no_element_emitted(&mut merged, 100).await;
@@ -225,8 +225,8 @@ async fn test_merge_with_empty_stream_with_only_errors() -> anyhow::Result<()> {
         });
 
     // Act & Assert
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
 
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
@@ -265,16 +265,16 @@ async fn test_merge_with_three_streams_with_filtered_errors() -> anyhow::Result<
         });
 
     // Act & Assert
-    tx1.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
-    tx2.send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx2.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 85);
 
-    tx2.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
-    tx3.send(StreamItem::Value(Sequenced::new(person_diane())))?;
+    tx3.unbounded_send(StreamItem::Value(Sequenced::new(person_diane())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 205);
 
     Ok(())
@@ -295,13 +295,13 @@ async fn test_merge_with_into_fluxion_stream_error_handling() -> anyhow::Result<
         .into_stream();
 
     // Act & Assert
-    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("Filtered")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Filtered")))?;
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
-    tx.send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 55);
 
     drop(tx);
@@ -325,7 +325,7 @@ async fn test_merge_with_poll_pending_simulation() -> anyhow::Result<()> {
     // Act & Assert
     tokio::select! {
         _ = tokio::time::sleep(tokio::time::Duration::from_millis(10)) => {
-            tx.send(StreamItem::Value(Sequenced::new(person("A".to_string(), 10))))?;
+            tx.unbounded_send(StreamItem::Value(Sequenced::new(person("A".to_string(), 10))))?;
         }
         result = merged.next() => {
             if let Some(StreamItem::Value(v)) = result {

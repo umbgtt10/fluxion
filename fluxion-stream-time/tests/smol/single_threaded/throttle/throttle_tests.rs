@@ -11,7 +11,6 @@ use std::time::Duration;
 fn test_throttle_smol_single_threaded() {
     smol::block_on(async {
         let (tx, rx) = test_channel();
-
         let mut throttled = rx.throttle(Duration::from_millis(50));
 
         // Send first item

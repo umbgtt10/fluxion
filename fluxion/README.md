@@ -43,12 +43,12 @@ This solves a fundamental conflict:
 
 ```rust
 use fluxion_rx::prelude::*;
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
 use fluxion_test_utils::Sequenced;
 
 #[tokio::main]
 async fn main() {
-    let (tx, rx) = mpsc::unbounded_channel::<Sequenced<i32>>();
+    let (tx, rx) = mpsc::unbounded::<Sequenced<i32>>();
 
     // Convert channel receiver to a stream
     let stream = rx.into_fluxion_stream();
@@ -66,12 +66,12 @@ Or use `into_fluxion_stream` to transform the channel type:
 
 ```rust
 use fluxion_rx::prelude::*;
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
 use fluxion_test_utils::Sequenced;
 
 #[tokio::main]
 async fn main() {
-    let (tx, rx) = mpsc::unbounded_channel::<i32>();
+    let (tx, rx) = mpsc::unbounded::<i32>();
 
     // Transform raw i32 to Sequenced<i32> during stream creation
     let stream = rx.into_fluxion_stream(|x| Sequenced::new(x));
@@ -89,7 +89,7 @@ When combining multiple channel types, use `into_fluxion_stream` to map them to 
 
 ```rust
 use fluxion_rx::prelude::*;
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum SensorEvent {
@@ -102,8 +102,8 @@ enum SensorEvent {
 
 #[tokio::main]
 async fn main() {
-    let (tx_temp, rx_temp) = mpsc::unbounded_channel::<i32>();
-    let (tx_humid, rx_humid) = mpsc::unbounded_channel::<u32>();
+    let (tx_temp, rx_temp) = mpsc::unbounded::<i32>();
+    let (tx_humid, rx_humid) = mpsc::unbounded::<u32>();
 
     // Map each channel to a common SensorEvent type
     let temp_stream = rx_temp.into_fluxion_stream(|t| SensorEvent::Temperature(t));
@@ -154,13 +154,13 @@ For async processing patterns like `subscribe` and `subscribe_latest`, see the [
 ```rust
 use fluxion_rx::FluxionStream;
 use futures::StreamExt;
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
 
 #[tokio::main]
 async fn main() {
     // Setup channels
-    let (tx_data, rx_data) = mpsc::unbounded_channel::<i32>();
-    let (tx_trigger, rx_trigger) = mpsc::unbounded_channel::<bool>();
+    let (tx_data, rx_data) = mpsc::unbounded::<i32>();
+    let (tx_trigger, rx_trigger) = mpsc::unbounded::<bool>();
 
     // Convert to streams
     let data_stream = rx_data.into_fluxion_stream();

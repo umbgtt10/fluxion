@@ -7,11 +7,11 @@ use fluxion_stream::IntoFluxionStream;
 use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
 use fluxion_stream_time::{TokioTimer, TokioTimestamped};
+use futures::channel::mpsc;
 use futures::stream::StreamExt;
 use std::hint::black_box;
 use std::time::Duration;
 use tokio::runtime::Builder;
-use tokio::sync::mpsc;
 use tokio::time::advance;
 
 pub fn bench_sample(c: &mut Criterion) {
@@ -35,12 +35,13 @@ pub fn bench_sample(c: &mut Criterion) {
                     rt.block_on(async {
                         let timer = TokioTimer;
                         // 2. Create stream and operator
-                        let (tx, rx) = mpsc::unbounded_channel();
+                        let (tx, rx) = mpsc::unbounded();
                         let stream = rx.into_fluxion_stream().sample(duration);
                         let mut stream = Box::pin(stream);
 
                         // 3. Emit value
-                        tx.send(TokioTimestamped::new(1, timer.now())).unwrap();
+                        tx.unbounded_send(TokioTimestamped::new(1, timer.now()))
+                            .unwrap();
 
                         // 4. Advance time to trigger sample
                         advance(duration).await;

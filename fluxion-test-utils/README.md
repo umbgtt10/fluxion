@@ -45,7 +45,7 @@ use fluxion_stream::{FluxionStream, IntoFluxionStream};
 
 #[tokio::test]
 async fn example() {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, rx) = futures::channel::mpsc::unbounded();
     let stream = rx.into_fluxion_stream();
 
     // Auto-assigned sequence numbers (0, 1, 2, ...)

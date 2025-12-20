@@ -6,7 +6,7 @@
 //! In production, this would watch a directory for new CSV files
 
 use fluxion_core::CancellationToken;
-use tokio::sync::mpsc::UnboundedSender;
+use futures::channel::mpsc::UnboundedSender;
 use tokio::time::{sleep, Duration};
 
 use crate::domain::models::Inventory;
@@ -55,7 +55,7 @@ impl LegacyFileWatcher {
                     // Simulate CSV parsing (legacy file contains CSV data)
                     let _csv = format!("{},{},{}", inventory.product_id, inventory.product_name, inventory.quantity);
 
-                    if tx.send(inventory).is_err() {
+                    if tx.unbounded_send(inventory).is_err() {
                         break;
                     }
                 }

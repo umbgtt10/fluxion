@@ -20,14 +20,14 @@ async fn test_filter_ordered_basic_predicate() -> anyhow::Result<()> {
     let mut result = stream.filter_ordered(|data| matches!(data, TestData::Person(_)));
 
     // Act & Assert
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         person_alice()
     );
 
-    tx.send(Sequenced::new(animal_dog()))?;
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -47,8 +47,8 @@ async fn test_filter_ordered_age_threshold() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(Sequenced::new(person_charlie()))?; // 35 - kept
-    tx.send(Sequenced::new(person_diane()))?; // 40 - kept
+    tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - kept
+    tx.unbounded_send(Sequenced::new(person_diane()))?; // 40 - kept
 
     // Assert
     assert_eq!(
@@ -85,9 +85,9 @@ async fn test_filter_ordered_all_filtered_out() -> anyhow::Result<()> {
     let mut result = stream.filter_ordered(|_| false); // Filter everything
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(person_bob()))?;
-    tx.send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
     drop(tx);
 
     // Assert
@@ -103,9 +103,9 @@ async fn test_filter_ordered_none_filtered() -> anyhow::Result<()> {
     let mut result = stream.filter_ordered(|_| true); // Keep everything
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(animal_dog()))?;
-    tx.send(Sequenced::new(plant_rose()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(plant_rose()))?;
 
     // Assert
     assert_eq!(
@@ -136,11 +136,11 @@ async fn test_filter_ordered_preserves_ordering() -> anyhow::Result<()> {
     });
 
     // Act - send in sequence order
-    tx.send(Sequenced::new(person_alice()))?; // 25 - odd, filtered
-    tx.send(Sequenced::new(person_bob()))?; // 30 - even, kept
-    tx.send(Sequenced::new(person_charlie()))?; // 35 - odd, filtered
-    tx.send(Sequenced::new(person_diane()))?; // 40 - even, kept
-    tx.send(Sequenced::new(person_dave()))?; // 28 - even, kept
+    tx.unbounded_send(Sequenced::new(person_alice()))?; // 25 - odd, filtered
+    tx.unbounded_send(Sequenced::new(person_bob()))?; // 30 - even, kept
+    tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - odd, filtered
+    tx.unbounded_send(Sequenced::new(person_diane()))?; // 40 - even, kept
+    tx.unbounded_send(Sequenced::new(person_dave()))?; // 28 - even, kept
 
     // Assert - ordering preserved for kept items
     let r1 = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
@@ -165,11 +165,11 @@ async fn test_filter_ordered_multiple_types() -> anyhow::Result<()> {
     let mut result = stream.filter_ordered(|data| matches!(data, TestData::Animal(_)));
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
-    tx.send(Sequenced::new(animal_dog()))?;
-    tx.send(Sequenced::new(plant_rose()))?;
-    tx.send(Sequenced::new(animal_spider()))?;
-    tx.send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(plant_rose()))?;
+    tx.unbounded_send(Sequenced::new(animal_spider()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     assert_eq!(
@@ -195,11 +195,11 @@ async fn test_filter_ordered_complex_predicate() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?; // 25 - filtered
-    tx.send(Sequenced::new(person_bob()))?; // 30 - kept
-    tx.send(Sequenced::new(animal_dog()))?; // kept
-    tx.send(Sequenced::new(plant_rose()))?; // filtered
-    tx.send(Sequenced::new(person_diane()))?; // 40 - kept
+    tx.unbounded_send(Sequenced::new(person_alice()))?; // 25 - filtered
+    tx.unbounded_send(Sequenced::new(person_bob()))?; // 30 - kept
+    tx.unbounded_send(Sequenced::new(animal_dog()))?; // kept
+    tx.unbounded_send(Sequenced::new(plant_rose()))?; // filtered
+    tx.unbounded_send(Sequenced::new(person_diane()))?; // 40 - kept
 
     // Assert
     assert_eq!(
@@ -225,7 +225,7 @@ async fn test_filter_ordered_single_item() -> anyhow::Result<()> {
     let mut result = stream.filter_ordered(|data| matches!(data, TestData::Person(_)));
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     drop(tx);
 
     // Assert
@@ -248,11 +248,11 @@ async fn test_filter_ordered_with_pattern_matching() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?; // Alice - kept
-    tx.send(Sequenced::new(person_bob()))?; // Bob - filtered
-    tx.send(Sequenced::new(person_charlie()))?; // Charlie - filtered
-    tx.send(Sequenced::new(person_dave()))?; // Dave - kept
-    tx.send(Sequenced::new(person_diane()))?; // Diane - kept
+    tx.unbounded_send(Sequenced::new(person_alice()))?; // Alice - kept
+    tx.unbounded_send(Sequenced::new(person_bob()))?; // Bob - filtered
+    tx.unbounded_send(Sequenced::new(person_charlie()))?; // Charlie - filtered
+    tx.unbounded_send(Sequenced::new(person_dave()))?; // Dave - kept
+    tx.unbounded_send(Sequenced::new(person_diane()))?; // Diane - kept
 
     // Assert
     assert_eq!(
@@ -287,11 +287,11 @@ async fn test_filter_ordered_alternating_pattern() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?; // 1st person - kept
-    tx.send(Sequenced::new(person_bob()))?; // 2nd person - filtered
-    tx.send(Sequenced::new(animal_dog()))?; // not a person - filtered
-    tx.send(Sequenced::new(person_charlie()))?; // 3rd person - kept
-    tx.send(Sequenced::new(person_diane()))?; // 4th person - filtered
+    tx.unbounded_send(Sequenced::new(person_alice()))?; // 1st person - kept
+    tx.unbounded_send(Sequenced::new(person_bob()))?; // 2nd person - filtered
+    tx.unbounded_send(Sequenced::new(animal_dog()))?; // not a person - filtered
+    tx.unbounded_send(Sequenced::new(person_charlie()))?; // 3rd person - kept
+    tx.unbounded_send(Sequenced::new(person_diane()))?; // 4th person - filtered
 
     // Assert
     assert_eq!(

@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -8,9 +8,8 @@ use fluxion_test_utils::test_data::{
     plant_rose, plant_sunflower, TestData,
 };
 use fluxion_test_utils::Sequenced;
+use futures::channel::mpsc;
 use futures::StreamExt;
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// Generate all permutations of [0, 1, 2]
 fn all_channel_permutations() -> Vec<[usize; 3]> {
@@ -60,7 +59,7 @@ fn generate_send_orders() -> Vec<[usize; 9]> {
 async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
     // Test that temporal ordering (sequence numbers) is preserved
     // regardless of channel order or send pattern
-    // This tests 6 channel permutations × 216 send orders = 1296 test cases
+    // This tests 6 channel permutations x 216 send orders = 1296 test cases
 
     let channel_permutations = all_channel_permutations();
     let send_orders = generate_send_orders();
@@ -77,7 +76,7 @@ async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
     );
 
     println!(
-        "Testing {} channel permutations × {} send orders = {} total test cases",
+        "Testing {} channel permutations � {} send orders = {} total test cases",
         channel_permutations.len(),
         send_orders.len(),
         channel_permutations.len() * send_orders.len()
@@ -86,13 +85,13 @@ async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
     for channel_order in &channel_permutations {
         for send_order in &send_orders {
             // Arrange - create three channels
-            let (person_tx, person_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-            let (animal_tx, animal_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
-            let (plant_tx, plant_rx) = mpsc::unbounded_channel::<Sequenced<TestData>>();
+            let (person_tx, person_rx) = mpsc::unbounded::<Sequenced<TestData>>();
+            let (animal_tx, animal_rx) = mpsc::unbounded::<Sequenced<TestData>>();
+            let (plant_tx, plant_rx) = mpsc::unbounded::<Sequenced<TestData>>();
 
-            let person_stream = UnboundedReceiverStream::new(person_rx);
-            let animal_stream = UnboundedReceiverStream::new(animal_rx);
-            let plant_stream = UnboundedReceiverStream::new(plant_rx);
+            let person_stream = person_rx;
+            let animal_stream = animal_rx;
+            let plant_stream = plant_rx;
 
             // Build streams vec based on permutation order
             let streams = match channel_order {
@@ -124,7 +123,9 @@ async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
                             2 => person_charlie(),
                             _ => panic!("Too many person values"),
                         };
-                        person_tx.send(Sequenced::new(value.clone())).unwrap();
+                        person_tx
+                            .unbounded_send(Sequenced::new(value.clone()))
+                            .unwrap();
                         expected_order.push(value);
                         person_idx += 1;
                     }
@@ -135,7 +136,9 @@ async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
                             2 => animal_cat(),
                             _ => panic!("Too many animal values"),
                         };
-                        animal_tx.send(Sequenced::new(value.clone())).unwrap();
+                        animal_tx
+                            .unbounded_send(Sequenced::new(value.clone()))
+                            .unwrap();
                         expected_order.push(value);
                         animal_idx += 1;
                     }
@@ -146,7 +149,9 @@ async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
                             2 => plant_fern(),
                             _ => panic!("Too many plant values"),
                         };
-                        plant_tx.send(Sequenced::new(value.clone())).unwrap();
+                        plant_tx
+                            .unbounded_send(Sequenced::new(value.clone()))
+                            .unwrap();
                         expected_order.push(value);
                         plant_idx += 1;
                     }

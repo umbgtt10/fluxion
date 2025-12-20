@@ -4,11 +4,11 @@
 
 use fluxion_core::CancellationToken;
 use fluxion_exec::subscribe::SubscribeExt;
+use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
 use std::sync::Arc;
 use tokio::spawn;
-use tokio::sync::mpsc::unbounded_channel;
-use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_stream::StreamExt as _;
 
 /// Example test demonstrating subscribe usage
 #[tokio::test]
@@ -25,12 +25,12 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
     struct TestError(String);
 
     // Step 1: Create a stream
-    let (tx, rx) = unbounded_channel::<Item>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let (tx, rx) = unbounded::<Item>();
+    let stream = rx;
 
     // Step 2: Create a shared results container
     let results = Arc::new(FutureMutex::new(Vec::new()));
-    let (notify_tx, mut notify_rx) = unbounded_channel();
+    let (notify_tx, mut notify_rx) = unbounded();
 
     // Step 3: Define the async processing function
     let process_func = {
@@ -42,7 +42,7 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
             async move {
                 // Process the item (in this example, just store it)
                 results.lock().await.push(item);
-                let _ = notify_tx.send(()); // Signal completion
+                let _ = notify_tx.unbounded_send(()); // Signal completion
                 Ok::<(), TestError>(())
             }
         }
@@ -71,16 +71,16 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
     };
 
     // Act & Assert
-    tx.send(item1.clone())?;
-    notify_rx.recv().await.unwrap();
+    tx.unbounded_send(item1.clone())?;
+    notify_rx.next().await.unwrap();
     assert_eq!(*results.lock().await, vec![item1.clone()]);
 
-    tx.send(item2.clone())?;
-    notify_rx.recv().await.unwrap();
+    tx.unbounded_send(item2.clone())?;
+    notify_rx.next().await.unwrap();
     assert_eq!(*results.lock().await, vec![item1.clone(), item2.clone()]);
 
-    tx.send(item3.clone())?;
-    notify_rx.recv().await.unwrap();
+    tx.unbounded_send(item3.clone())?;
+    notify_rx.next().await.unwrap();
     assert_eq!(*results.lock().await, vec![item1, item2, item3]);
 
     // Clean up

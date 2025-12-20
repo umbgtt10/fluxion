@@ -4,12 +4,12 @@
 
 use async_trait::async_trait;
 use fluxion_core::{CancellationToken, FluxionError, Result};
+use futures::channel::mpsc::unbounded;
 use futures::stream::Stream;
 use futures::stream::StreamExt;
 use std::error::Error;
 use std::fmt::Debug;
 use std::future::Future;
-use tokio::sync::mpsc::unbounded_channel;
 
 /// Extension trait providing async subscription capabilities for streams.
 ///
@@ -68,16 +68,17 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///
     /// ```
     /// use fluxion_exec::SubscribeExt;
+    /// use futures::channel::mpsc::unbounded;
     /// use futures::stream;
+    /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
-    /// use tokio::sync::mpsc::unbounded_channel;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// let results = Arc::new(Mutex::new(Vec::new()));
     /// let results_clone = results.clone();
-    /// let (notify_tx, mut notify_rx) = unbounded_channel();
+    /// let (notify_tx, mut notify_rx) = unbounded();
     ///
     /// let stream = stream::iter(vec![1, 2, 3, 4, 5]);
     ///
@@ -88,7 +89,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///         let notify_tx = notify_tx.clone();
     ///         async move {
     ///             results.lock().await.push(item * 2);
-    ///             let _ = notify_tx.send(());
+    ///             let _ = notify_tx.unbounded_send(());
     ///             Ok::<(), std::io::Error>(())
     ///         }
     ///     },
@@ -98,7 +99,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///
     /// // Wait for all 5 items to be processed
     /// for _ in 0..5 {
-    ///     notify_rx.recv().await.unwrap();
+    ///     notify_rx.next().await.unwrap();
     /// }
     ///
     /// let processed = results.lock().await;
@@ -113,10 +114,11 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///
     /// ```
     /// use fluxion_exec::SubscribeExt;
+    /// use futures::channel::mpsc::unbounded;
     /// use futures::stream;
+    /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
-    /// use tokio::sync::mpsc::unbounded_channel;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -131,7 +133,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///
     /// let error_count = Arc::new(Mutex::new(0));
     /// let error_count_clone = error_count.clone();
-    /// let (notify_tx, mut notify_rx) = unbounded_channel();
+    /// let (notify_tx, mut notify_rx) = unbounded();
     ///
     /// let stream = stream::iter(vec![1, 2, 3, 4, 5]);
     ///
@@ -152,7 +154,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///             // We need to signal completion in both paths.
     ///             // Since the handler returns the error, we can't signal *after* returning Err.
     ///             // So we signal before returning.
-    ///             let _ = notify_tx.send(());
+    ///             let _ = notify_tx.unbounded_send(());
     ///             res
     ///         }
     ///     },
@@ -167,7 +169,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///
     /// // Wait for 5 items
     /// for _ in 0..5 {
-    ///     notify_rx.recv().await.unwrap();
+    ///     notify_rx.next().await.unwrap();
     /// }
     ///
     /// // Give a tiny bit of time for the error callback spawn to finish updating the count
@@ -185,8 +187,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///
     /// ```
     /// use fluxion_exec::SubscribeExt;
-    /// use tokio::sync::mpsc::unbounded_channel;
-    /// use tokio_stream::wrappers::UnboundedReceiverStream;
+    /// use futures::channel::mpsc::unbounded;
     /// use futures::StreamExt;
     /// use fluxion_core::CancellationToken;
     /// use std::sync::Arc;
@@ -194,15 +195,15 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let (tx, rx) = unbounded_channel();
-    /// let stream = UnboundedReceiverStream::new(rx);
+    /// let (tx, rx) = unbounded();
+    /// let stream = rx;
     ///
     /// let cancel_token = CancellationToken::new();
     /// let cancel_clone = cancel_token.clone();
     ///
     /// let processed = Arc::new(Mutex::new(Vec::new()));
     /// let processed_clone = processed.clone();
-    /// let (notify_tx, mut notify_rx) = unbounded_channel();
+    /// let (notify_tx, mut notify_rx) = unbounded();
     ///
     /// let handle = tokio::spawn(async move {
     ///     stream.subscribe(
@@ -214,7 +215,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///                     return Ok(());
     ///                 }
     ///                 vec.lock().await.push(item);
-    ///                 let _ = notify_tx.send(());
+    ///                 let _ = notify_tx.unbounded_send(());
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
@@ -224,12 +225,12 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// });
     ///
     /// // Send items
-    /// tx.send(1).unwrap();
-    /// tx.send(2).unwrap();
-    /// tx.send(3).unwrap();
+    /// tx.unbounded_send(1).unwrap();
+    /// tx.unbounded_send(2).unwrap();
+    /// tx.unbounded_send(3).unwrap();
     ///
     /// // Wait for first item to be processed
-    /// notify_rx.recv().await.unwrap();
+    /// notify_rx.next().await.unwrap();
     ///
     /// // Cancel now
     /// cancel_clone.cancel();
@@ -248,10 +249,11 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///
     /// ```
     /// use fluxion_exec::SubscribeExt;
+    /// use futures::channel::mpsc::unbounded;
     /// use futures::stream;
+    /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
-    /// use tokio::sync::mpsc::unbounded_channel;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -261,7 +263,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// // Simulated database
     /// let db = Arc::new(Mutex::new(Vec::new()));
     /// let db_clone = db.clone();
-    /// let (notify_tx, mut notify_rx) = unbounded_channel();
+    /// let (notify_tx, mut notify_rx) = unbounded();
     ///
     /// let events = vec![
     ///     Event { id: 1, data: "event1".to_string() },
@@ -277,7 +279,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///         async move {
     ///             // Simulate database write
     ///             db.lock().await.push(event);
-    ///             let _ = notify_tx.send(());
+    ///             let _ = notify_tx.unbounded_send(());
     ///             Ok::<(), std::io::Error>(())
     ///         }
     ///     },
@@ -286,8 +288,8 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// ).await.unwrap();
     ///
     /// // Wait for 2 events
-    /// notify_rx.recv().await.unwrap();
-    /// notify_rx.recv().await.unwrap();
+    /// notify_rx.next().await.unwrap();
+    /// notify_rx.next().await.unwrap();
     ///
     /// assert_eq!(db.lock().await.len(), 2);
     /// # }
@@ -331,7 +333,7 @@ where
         E: Error + Send + Sync + 'static,
     {
         let cancellation_token = cancellation_token.unwrap_or_default();
-        let (error_tx, mut error_rx) = unbounded_channel();
+        let (error_tx, mut error_rx) = unbounded();
 
         while let Some(item) = self.next().await {
             if cancellation_token.is_cancelled() {
@@ -351,7 +353,7 @@ where
                         on_error_callback(error);
                     } else {
                         // Collect error for later aggregation
-                        let _ = error_tx.send(error);
+                        let _ = error_tx.unbounded_send(error);
                     }
                 }
             });
@@ -362,7 +364,7 @@ where
 
         // Collect all errors from the channel
         let mut collected_errors = Vec::new();
-        while let Some(error) = error_rx.recv().await {
+        while let Some(error) = error_rx.next().await {
             collected_errors.push(error);
         }
 

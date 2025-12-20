@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -10,10 +10,11 @@ use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
     helpers::recv_timeout, test_channel_with_errors, test_data::person_alice, TestData,
 };
+use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use std::time::Duration;
+use tokio::spawn;
 use tokio::time::{advance, pause};
-use tokio::{spawn, sync::mpsc::unbounded_channel};
 
 #[tokio::test]
 async fn test_timeout_error_propagation() -> anyhow::Result<()> {
@@ -23,18 +24,18 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
 
     let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
     let timed_out = stream.timeout(Duration::from_millis(100));
-    let (result_tx, mut result_rx) = unbounded_channel();
+    let (result_tx, mut result_rx) = unbounded();
 
     spawn(async move {
         let mut stream = timed_out;
         while let Some(item) = stream.next().await {
-            result_tx.send(item).unwrap();
+            result_tx.unbounded_send(item).unwrap();
         }
     });
 
     // Act & Assert
     let error = FluxionError::stream_error("Test Error");
-    tx.send(StreamItem::Error(error))?;
+    tx.unbounded_send(StreamItem::Error(error))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 100)
             .await
@@ -46,7 +47,7 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
     );
 
     advance(Duration::from_millis(50)).await;
-    tx.send(StreamItem::Value(TokioTimestamped::new(
+    tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;

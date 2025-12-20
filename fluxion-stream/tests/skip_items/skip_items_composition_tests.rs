@@ -19,11 +19,11 @@ async fn test_map_ordered_skip_items() -> anyhow::Result<()> {
         .skip_items(2);
 
     // Act
-    tx.send(Sequenced::new(person_alice()))?; // age=25, Skipped
-    tx.send(Sequenced::new(person_dave()))?; // age=28, Skipped
-    tx.send(Sequenced::new(person_bob()))?; // age=30, Emitted
-    tx.send(Sequenced::new(person_charlie()))?; // age=35, Emitted
-    tx.send(Sequenced::new(person_diane()))?; // age=40, Emitted
+    tx.unbounded_send(Sequenced::new(person_alice()))?; // age=25, Skipped
+    tx.unbounded_send(Sequenced::new(person_dave()))?; // age=28, Skipped
+    tx.unbounded_send(Sequenced::new(person_bob()))?; // age=30, Emitted
+    tx.unbounded_send(Sequenced::new(person_charlie()))?; // age=35, Emitted
+    tx.unbounded_send(Sequenced::new(person_diane()))?; // age=40, Emitted
 
     // Assert - All items after skip
     assert_eq!(
@@ -53,16 +53,16 @@ async fn test_ordered_merge_then_skip_items() -> anyhow::Result<()> {
 
     // Act & Assert
     // 1. Stream 1 emits (Skipped #1)
-    s1_tx.send(Sequenced::new(person_alice()))?;
+    s1_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // 2. Stream 2 emits (Skipped #2)
-    s2_tx.send(Sequenced::new(person_bob()))?;
+    s2_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // 3. Stream 1 emits (Skipped #3)
-    s1_tx.send(Sequenced::new(person_charlie()))?;
+    s1_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // 4. Stream 2 emits (Should be emitted)
-    s2_tx.send(Sequenced::new(person_dave()))?;
+    s2_tx.unbounded_send(Sequenced::new(person_dave()))?;
 
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
@@ -70,7 +70,7 @@ async fn test_ordered_merge_then_skip_items() -> anyhow::Result<()> {
     );
 
     // 5. Stream 1 emits (Should be emitted)
-    s1_tx.send(Sequenced::new(person_diane()))?;
+    s1_tx.unbounded_send(Sequenced::new(person_diane()))?;
 
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,

@@ -27,7 +27,7 @@
 //! let mut tapped = stream
 //!     .tap(|value| println!("Observed: {:?}", value));
 //!
-//! tx.send(Sequenced::new(42)).unwrap();
+//! tx.unbounded_send(Sequenced::new(42)).unwrap();
 //! drop(tx);
 //!
 //! // Value passes through unchanged
@@ -56,7 +56,7 @@
 //!     .map_ordered(|x| Sequenced::new(x.into_inner() * 2))
 //!     .tap(|v| println!("Final value: {:?}", v));
 //!
-//! tx.send(Sequenced::new(42)).unwrap();
+//! tx.unbounded_send(Sequenced::new(42)).unwrap();
 //! drop(tx);
 //!
 //! let result = processed.next().await.unwrap().unwrap();
@@ -110,12 +110,12 @@ where
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx, rx) = futures::channel::mpsc::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut tapped = stream.tap(|x| println!("Value: {}", x));
     ///
-    /// tx.send(Sequenced::new(42)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(42)).unwrap();
     /// let result = tapped.next().await.unwrap().unwrap();
     /// assert_eq!(result.into_inner(), 42);
     /// # }
@@ -133,7 +133,7 @@ where
     /// let counter = Arc::new(AtomicUsize::new(0));
     /// let counter_clone = counter.clone();
     ///
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+    /// let (tx, rx) = futures::channel::mpsc::unbounded::<Sequenced<i32>>();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let tapped = stream.tap(move |_| {

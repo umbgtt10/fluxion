@@ -877,7 +877,7 @@ use fluxion_stream::{IntoFluxionStream, PartitionExt};
 use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
 
-let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+let (tx, rx) = futures::channel::mpsc::unbounded();
 
 // Partition numbers into even and odd
 let (mut evens, mut odds) = rx.into_fluxion_stream()
@@ -969,7 +969,7 @@ where
 use fluxion_stream::{IntoFluxionStream, ShareExt, MapOrderedExt};
 use fluxion_test_utils::Sequenced;
 
-let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+let (tx, rx) = futures::channel::mpsc::unbounded();
 
 // Create and share a source stream
 let shared = rx.into_fluxion_stream()

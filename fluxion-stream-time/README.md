@@ -187,12 +187,12 @@ use fluxion_stream_time::timer::Timer;
 use fluxion_core::StreamItem;
 use futures::stream::StreamExt;
 use std::time::Duration;
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[tokio::main]
 async fn main() {
-    let (tx, rx) = mpsc::unbounded_channel();
+    let (tx, rx) = mpsc::unbounded();
     let timer = TokioTimer;
 
     // Create timestamped stream with runtime-aware delays - convenience methods!
@@ -539,7 +539,6 @@ WASM support is **fully implemented** via `WasmTimer` using `gloo-timers` and `j
 - Integration tests in `tests/wasm/single_threaded/`
 - Tests use real delays with `gloo_timers::future::sleep` (no time control like Tokio)
 - Run with `wasm-pack test --node --features time-wasm`
-- See [WASM_TESTING.md](WASM_TESTING.md) for complete testing guide
 
 **Platform Support:**
 - ✅ Node.js (v14+)

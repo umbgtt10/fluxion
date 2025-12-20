@@ -13,10 +13,11 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob},
     TestData,
 };
+use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use std::time::Duration;
+use tokio::spawn;
 use tokio::time::{advance, pause};
-use tokio::{spawn, sync::mpsc::unbounded_channel};
 
 #[tokio::test]
 async fn test_delay_with_instant_timestamped() -> anyhow::Result<()> {
@@ -28,7 +29,7 @@ async fn test_delay_with_instant_timestamped() -> anyhow::Result<()> {
     let mut delayed = stream.delay(Duration::from_secs(1));
 
     // Act & Assert
-    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
@@ -38,7 +39,7 @@ async fn test_delay_with_instant_timestamped() -> anyhow::Result<()> {
         person_alice()
     );
 
-    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
@@ -61,19 +62,19 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
     let delayed = stream.delay(Duration::from_millis(10));
 
     let count = 100;
-    let (result_tx, mut result_rx) = unbounded_channel();
+    let (result_tx, mut result_rx) = unbounded();
 
     // Spawn a task to drive the stream
     spawn(async move {
         let mut stream = delayed;
         while let Some(item) = stream.next().await {
-            result_tx.send(item.unwrap().value).unwrap();
+            result_tx.unbounded_send(item.unwrap().value).unwrap();
         }
     });
 
     // Act
     for i in 0..count {
-        tx.send(TokioTimestamped::new(
+        tx.unbounded_send(TokioTimestamped::new(
             TestData::Person(Person::new(format!("Person_{}", i), i as u32)),
             timer.now(),
         ))?;
@@ -86,7 +87,7 @@ async fn test_delay_preserves_order() -> anyhow::Result<()> {
 
     // Assert
     let mut results = Vec::with_capacity(count as usize);
-    while let Some(item) = result_rx.recv().await {
+    while let Some(item) = result_rx.next().await {
         results.push(item);
     }
 

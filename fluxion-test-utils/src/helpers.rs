@@ -3,22 +3,21 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
+use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::stream::StreamExt;
 use futures::Stream;
 use std::fmt::Debug;
 use std::time::Duration;
 use tokio::select;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::sleep;
 use tokio::time::timeout;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// Receives a value from an UnboundedReceiver with a timeout.
 ///
 /// # Panics
 /// Panics if no item is received within the timeout.
 pub async fn recv_timeout<T>(rx: &mut UnboundedReceiver<T>, timeout_ms: u64) -> Option<T> {
-    match timeout(Duration::from_millis(timeout_ms), rx.recv()).await {
+    match timeout(Duration::from_millis(timeout_ms), rx.next()).await {
         Ok(item) => item,
         Err(_) => panic!("Timeout: No item received within {} ms", timeout_ms),
     }
@@ -29,7 +28,7 @@ pub async fn recv_timeout<T>(rx: &mut UnboundedReceiver<T>, timeout_ms: u64) -> 
 /// # Panics
 /// Panics if an item is received within the timeout.
 pub async fn assert_no_recv<T>(rx: &mut UnboundedReceiver<T>, timeout_ms: u64) {
-    match timeout(Duration::from_millis(timeout_ms), rx.recv()).await {
+    match timeout(Duration::from_millis(timeout_ms), rx.next()).await {
         Ok(Some(_)) => panic!("Unexpected item received within {} ms", timeout_ms),
         Ok(None) => {} // Stream ended, which is acceptable for "no item received"
         Err(_) => {}   // Timeout occurred, which is success
@@ -54,7 +53,7 @@ pub async fn assert_no_recv<T>(rx: &mut UnboundedReceiver<T>, timeout_ms: u64) {
 ///
 /// # async fn example() {
 /// let (tx, mut stream) = test_channel();
-/// tx.send(Sequenced::new(person_alice())).unwrap();
+/// tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
 ///
 /// // Instead of: let item = stream.next().await.unwrap().unwrap();
 /// // Prefer the async helper which waits safely for spawned tasks:
@@ -90,7 +89,7 @@ pub fn unwrap_value<T>(item: Option<StreamItem<T>>) -> T {
 ///
 /// # async fn example() {
 /// let (tx, mut stream) = test_channel();
-/// tx.send(Sequenced::new(person_alice())).unwrap();
+/// tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
 ///
 /// // Waits up to 500ms for the item to arrive
 /// let item = unwrap_stream(&mut stream, 500).await;
@@ -123,7 +122,7 @@ where
 /// let (tx, mut stream) = test_channel();
 ///
 /// // Send plain values
-/// tx.send(Sequenced::new(person_alice())).unwrap();
+/// tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
 ///
 /// // Receive StreamItem-wrapped values (prefer using `unwrap_stream` in async tests)
 /// // Option -> StreamItem -> Value
@@ -133,8 +132,8 @@ where
 /// ```
 pub fn test_channel<T: Send + 'static>(
 ) -> (UnboundedSender<T>, impl Stream<Item = StreamItem<T>> + Send) {
-    let (tx, rx) = unbounded_channel();
-    let stream = UnboundedReceiverStream::new(rx).map(StreamItem::Value);
+    let (tx, rx) = unbounded();
+    let stream = rx.map(StreamItem::Value);
     (tx, stream)
 }
 
@@ -154,10 +153,10 @@ pub fn test_channel<T: Send + 'static>(
 /// let (tx, mut stream) = test_channel_with_errors();
 ///
 /// // Send values
-/// tx.send(StreamItem::Value(42)).unwrap();
+/// tx.unbounded_send(StreamItem::Value(42)).unwrap();
 ///
 /// // Send errors
-/// tx.send(StreamItem::Error(FluxionError::stream_error("test error"))).unwrap();
+/// tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error"))).unwrap();
 ///
 /// let value = stream.next().await.unwrap();
 /// let error = stream.next().await.unwrap();
@@ -167,9 +166,8 @@ pub fn test_channel_with_errors<T: Send + 'static>() -> (
     UnboundedSender<StreamItem<T>>,
     impl Stream<Item = StreamItem<T>> + Send,
 ) {
-    let (tx, rx) = unbounded_channel();
-    let stream = UnboundedReceiverStream::new(rx);
-    (tx, stream)
+    let (tx, rx) = unbounded();
+    (tx, rx)
 }
 
 /// Assert that no element is emitted within the given timeout.
@@ -243,8 +241,8 @@ where
 ///
 /// # async fn example() {
 /// let (tx, mut stream) = test_channel();
-/// tx.send(Sequenced::new(person_alice())).unwrap();
-/// tx.send(Sequenced::new(person_bob())).unwrap();
+/// tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
+/// tx.unbounded_send(Sequenced::new(person_bob())).unwrap();
 /// drop(tx);
 ///
 /// let results = unwrap_all(&mut stream, 100).await;
@@ -317,7 +315,7 @@ mod tests {
     async fn test_unwrap_stream_error_injected() {
         let (tx, mut stream) = test_channel_with_errors::<i32>();
 
-        tx.send(StreamItem::Error(FluxionError::stream_error(
+        tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
             "injected error",
         )))
         .unwrap();
@@ -344,7 +342,7 @@ mod tests {
         let (tx, mut stream) = test_channel::<i32>();
 
         // Send a value
-        tx.send(42).unwrap();
+        tx.unbounded_send(42).unwrap();
 
         // This should panic because the stream returns a value
         assert_stream_ended(&mut stream, 500).await;

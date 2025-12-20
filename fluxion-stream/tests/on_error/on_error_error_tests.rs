@@ -32,23 +32,23 @@ async fn test_on_error_handler_receives_correct_error_type() -> anyhow::Result<(
     });
 
     // Act
-    tx.send(StreamItem::Value(Sequenced::new(1)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
     );
 
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Stream processing failed",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Another stream error",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    tx.send(StreamItem::Value(Sequenced::new(2)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         2
@@ -80,29 +80,29 @@ async fn test_on_error_handler_with_counter_state() -> anyhow::Result<()> {
 
     // Act & Assert
     // First error - consumed (count becomes 1)
-    tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Second error - consumed (count becomes 2)
-    tx.send(StreamItem::Error(FluxionError::stream_error("error2")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Third error - propagated (count is now 2, not < 2)
-    tx.send(StreamItem::Error(FluxionError::stream_error("error3")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error3")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Fourth error - also propagated
-    tx.send(StreamItem::Error(FluxionError::stream_error("error4")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error4")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Values still work
-    tx.send(StreamItem::Value(Sequenced::new(42)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(42)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         42
@@ -130,22 +130,22 @@ async fn test_on_error_handler_alternating_decision() -> anyhow::Result<()> {
 
     // Act & Assert
     // First error (call 0) - consumed
-    tx.send(StreamItem::Error(FluxionError::stream_error("error0")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error0")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Second error (call 1) - propagated
-    tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Third error (call 2) - consumed
-    tx.send(StreamItem::Error(FluxionError::stream_error("error2")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Fourth error (call 3) - propagated
-    tx.send(StreamItem::Error(FluxionError::stream_error("error3")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error3")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -169,20 +169,20 @@ async fn test_on_error_handler_decision_based_on_error_content() -> anyhow::Resu
     });
 
     // Act & Assert
-    tx.send(StreamItem::Value(Sequenced::new(1)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
     );
 
     // Transient error - consumed
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "transient network error",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Fatal error - propagated
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "fatal: database corrupted",
     )))?;
     assert!(matches!(
@@ -191,13 +191,13 @@ async fn test_on_error_handler_decision_based_on_error_content() -> anyhow::Resu
     ));
 
     // Retry error - consumed
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "retry: connection reset",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Permanent error - propagated
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "permanent: resource not found",
     )))?;
     assert!(matches!(
@@ -206,13 +206,13 @@ async fn test_on_error_handler_decision_based_on_error_content() -> anyhow::Resu
     ));
 
     // Timeout error - consumed
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "timeout: operation timed out",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Critical error - propagated
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "critical: out of memory",
     )))?;
     assert!(matches!(
@@ -220,7 +220,7 @@ async fn test_on_error_handler_decision_based_on_error_content() -> anyhow::Resu
         StreamItem::Error(_)
     ));
 
-    tx.send(StreamItem::Value(Sequenced::new(2)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         2
@@ -250,22 +250,22 @@ async fn test_on_error_handler_tracks_error_history() -> anyhow::Result<()> {
 
     // Act & Assert
     // First error - consumed (history: 1)
-    tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Second error - consumed (history: 2)
-    tx.send(StreamItem::Error(FluxionError::stream_error("error2")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Third error - propagated (history: 3, >= 3)
-    tx.send(StreamItem::Error(FluxionError::stream_error("error3")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error3")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Fourth error - also propagated
-    tx.send(StreamItem::Error(FluxionError::stream_error("error4")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error4")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -299,29 +299,29 @@ async fn test_on_error_handler_with_rate_limiting_behavior() -> anyhow::Result<(
 
     // Act & Assert
     // First error - consumed
-    tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Second error - consumed
-    tx.send(StreamItem::Error(FluxionError::stream_error("error2")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Third error - propagated (burst limit reached)
-    tx.send(StreamItem::Error(FluxionError::stream_error("error3")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error3")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Value resets nothing in this simple implementation, but stream continues
-    tx.send(StreamItem::Value(Sequenced::new(42)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(42)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         42
     );
 
     // Next error - propagated (counter still high)
-    tx.send(StreamItem::Error(FluxionError::stream_error("error4")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error4")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -340,25 +340,25 @@ async fn test_on_error_handler_never_consumes() -> anyhow::Result<()> {
     let mut result = stream.on_error(|_| false);
 
     // Act & Assert
-    tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("error2")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx.send(StreamItem::Value(Sequenced::new(1)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
     );
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("error3")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error3")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -383,25 +383,25 @@ async fn test_on_error_handler_always_consumes() -> anyhow::Result<()> {
     });
 
     // Act & Assert
-    tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("error2")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("error3")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error3")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    tx.send(StreamItem::Value(Sequenced::new(1)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
     );
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("error4")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error4")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("error5")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error5")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     drop(tx);
@@ -423,22 +423,22 @@ async fn test_on_error_handler_with_external_flag() -> anyhow::Result<()> {
 
     // Act & Assert
     // Initially consuming
-    tx.send(StreamItem::Error(FluxionError::stream_error("error1")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("error2")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Change flag to propagate
     should_consume.store(0, Ordering::SeqCst);
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("error3")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error3")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("error4")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error4")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -447,7 +447,7 @@ async fn test_on_error_handler_with_external_flag() -> anyhow::Result<()> {
     // Change flag back to consume
     should_consume.store(1, Ordering::SeqCst);
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("error5")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error5")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     drop(tx);
@@ -477,17 +477,17 @@ async fn test_on_error_multiple_errors_same_message() -> anyhow::Result<()> {
 
     // Act & Assert
     // First "connection lost" - consumed
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "connection lost",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // First "timeout" - consumed
-    tx.send(StreamItem::Error(FluxionError::stream_error("timeout")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("timeout")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Second "connection lost" - propagated (duplicate)
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "connection lost",
     )))?;
     assert!(matches!(
@@ -496,11 +496,11 @@ async fn test_on_error_multiple_errors_same_message() -> anyhow::Result<()> {
     ));
 
     // First "parse error" - consumed
-    tx.send(StreamItem::Error(FluxionError::stream_error("parse error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("parse error")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Second "timeout" - propagated (duplicate)
-    tx.send(StreamItem::Error(FluxionError::stream_error("timeout")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("timeout")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -530,13 +530,13 @@ async fn test_on_error_handler_preserves_error_details_on_propagate() -> anyhow:
 
     // Act & Assert
     // Consumed error
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "should be consumed",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // Propagated error - verify content is preserved
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "propagate: important error details here",
     )))?;
     match unwrap_stream(&mut result, 100).await {
@@ -567,7 +567,7 @@ async fn test_on_error_rapid_error_sequence() -> anyhow::Result<()> {
 
     // Act: Send 100 errors
     for i in 0..100 {
-        tx.send(StreamItem::Error(FluxionError::stream_error(format!(
+        tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(format!(
             "error{}",
             i
         ))))?;
@@ -577,7 +577,7 @@ async fn test_on_error_rapid_error_sequence() -> anyhow::Result<()> {
     tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
     // Send a value to verify stream is still working
-    tx.send(StreamItem::Value(Sequenced::new(42)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(42)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         42

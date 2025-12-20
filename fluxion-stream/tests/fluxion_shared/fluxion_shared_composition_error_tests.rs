@@ -45,7 +45,7 @@ async fn shared_error_propagates_through_chained_operators() -> anyhow::Result<(
     let mut sub2 = shared.subscribe().unwrap().combine_with_previous();
 
     // Act - send value
-    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
 
     // Assert - sub1 receives transformed value (age + 1 = 26)
     assert_eq!(
@@ -58,7 +58,7 @@ async fn shared_error_propagates_through_chained_operators() -> anyhow::Result<(
     assert!(!with_prev.has_previous());
 
     // Act - send error
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "pipeline failure",
     )))?;
 
@@ -97,8 +97,8 @@ async fn shared_with_on_error_allows_selective_handling() -> anyhow::Result<()> 
     let mut strict = shared.subscribe().unwrap();
 
     // Act - send value, transient error, value, fatal error
-    tx.send(StreamItem::Value(Sequenced::new(person_alice())))?;
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "transient network issue",
     )))?;
 

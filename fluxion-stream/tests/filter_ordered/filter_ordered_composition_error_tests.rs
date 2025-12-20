@@ -24,28 +24,28 @@ async fn test_distinct_until_changed_by_multiple_errors_in_composition() -> anyh
         .filter_ordered(|x| *x > 0);
 
     // Act & Assert
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?; // Odd
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?; // Odd
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(2, 5)))?; // Even
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 5)))?; // Even
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -71,25 +71,25 @@ async fn test_scan_ordered_error_propagation_with_filter() -> anyhow::Result<()>
         .filter_ordered(|count| count % 2 == 0); // Only even counts
 
     // Act & Assert
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(100, 1)))?; // count=1, filtered
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(100, 1)))?; // count=1, filtered
     assert_no_element_emitted(&mut result, 100).await;
 
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(200, 2)))?; // count=2, emitted
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(200, 2)))?; // count=2, emitted
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 2
     ));
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(300, 4)))?; // count=3, filtered
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(300, 4)))?; // count=3, filtered
     assert_no_element_emitted(&mut result, 100).await;
 
-    tx.send(StreamItem::Value(Sequenced::with_timestamp(400, 5)))?; // count=4, emitted
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(400, 5)))?; // count=4, emitted
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 4

@@ -90,11 +90,11 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
     });
 
     // Emit events in temporal order
-    tx_users.send(user_created1)?;
-    tx_users.send(user_created2)?;
-    tx_orders.send(order_placed1)?;
-    tx_payments.send(payment_received1)?;
-    tx_orders.send(order_placed2)?;
+    tx_users.unbounded_send(user_created1)?;
+    tx_users.unbounded_send(user_created2)?;
+    tx_orders.unbounded_send(order_placed1)?;
+    tx_payments.unbounded_send(payment_received1)?;
+    tx_orders.unbounded_send(order_placed2)?;
 
     // Verify repository state updates
     let state1 = unwrap_stream(&mut repository_stream, 500).await.unwrap();

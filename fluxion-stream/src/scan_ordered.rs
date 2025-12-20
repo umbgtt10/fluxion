@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 use fluxion_core::{Fluxion, StreamItem};
@@ -80,9 +80,9 @@ where
     ///     *acc
     /// });
     ///
-    /// tx.send((10, 1).into())?;
-    /// tx.send((20, 2).into())?;
-    /// tx.send((30, 3).into())?;
+    /// tx.unbounded_send((10, 1).into())?;
+    /// tx.unbounded_send((20, 2).into())?;
+    /// tx.unbounded_send((30, 3).into())?;
     ///
     /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut sums, 500).await)).value, 10);  // 0 + 10
     /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut sums, 500).await)).value, 30);  // 10 + 20
@@ -106,8 +106,8 @@ where
     ///     format!("Item #{}", count)
     /// });
     ///
-    /// tx.send(("apple".to_string(), 1).into())?;
-    /// tx.send(("banana".to_string(), 2).into())?;
+    /// tx.unbounded_send(("apple".to_string(), 1).into())?;
+    /// tx.unbounded_send(("banana".to_string(), 2).into())?;
     ///
     /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut counts, 500).await)).value, "Item #1");
     /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut counts, 500).await)).value, "Item #2");
@@ -130,9 +130,9 @@ where
     ///     list.clone() // Return snapshot
     /// });
     ///
-    /// tx.send((10, 1).into())?;
-    /// tx.send((20, 2).into())?;
-    /// tx.send((30, 3).into())?;
+    /// tx.unbounded_send((10, 1).into())?;
+    /// tx.unbounded_send((20, 2).into())?;
+    /// tx.unbounded_send((30, 3).into())?;
     ///
     /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut history, 500).await)).value, vec![10]);
     /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut history, 500).await)).value, vec![10, 20]);
@@ -185,15 +185,15 @@ where
     ///     }
     /// );
     ///
-    /// tx.send(Sequenced::new(Event::Login))?;
+    /// tx.unbounded_send(Sequenced::new(Event::Login))?;
     /// let s1 = unwrap_stream(&mut states, 500).await.unwrap().into_inner();
     /// assert!(s1.logged_in && s1.action_count == 0);
     ///
-    /// tx.send(Sequenced::new(Event::Action("click".to_string())))?;
+    /// tx.unbounded_send(Sequenced::new(Event::Action("click".to_string())))?;
     /// let s2 = unwrap_stream(&mut states, 500).await.unwrap().into_inner();
     /// assert!(s2.logged_in && s2.action_count == 1);
     ///
-    /// tx.send(Sequenced::new(Event::Logout))?;
+    /// tx.unbounded_send(Sequenced::new(Event::Logout))?;
     /// let s3 = unwrap_stream(&mut states, 500).await.unwrap().into_inner();
     /// assert!(!s3.logged_in && s3.action_count == 0);
     /// # Ok(())

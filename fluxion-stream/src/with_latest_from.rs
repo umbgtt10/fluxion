@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -90,8 +90,8 @@ where
     /// );
     ///
     /// // Send values
-    /// tx_secondary.send((10, 1).into()).unwrap();
-    /// tx_primary.send((1, 2).into()).unwrap();
+    /// tx_secondary.unbounded_send((10, 1).into()).unwrap();
+    /// tx_primary.unbounded_send((1, 2).into()).unwrap();
     ///
     /// // Assert
     /// let result = unwrap_value(Some(unwrap_stream(&mut combined, 500).await));

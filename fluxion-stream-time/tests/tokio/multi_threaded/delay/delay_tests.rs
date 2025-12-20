@@ -21,7 +21,7 @@ async fn test_delay_across_threads() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     drop(tx);
 
     // Assert

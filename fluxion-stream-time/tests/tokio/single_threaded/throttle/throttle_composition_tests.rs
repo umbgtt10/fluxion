@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -13,10 +13,11 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob, person_charlie, person_diane},
     TestData,
 };
+use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use std::time::Duration;
+use tokio::spawn;
 use tokio::time::{advance, pause};
-use tokio::{spawn, sync::mpsc::unbounded_channel};
 
 #[tokio::test]
 async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
@@ -36,26 +37,26 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
         })
         .throttle(Duration::from_millis(100));
 
-    let (result_tx, mut result_rx) = unbounded_channel();
+    let (result_tx, mut result_rx) = unbounded();
 
     spawn(async move {
         let mut stream = throttled;
         while let Some(item) = stream.next().await {
-            result_tx.send(item.unwrap().value).unwrap();
+            let _ = result_tx.unbounded_send(item.unwrap().value);
         }
     });
 
     // Act & Assert
-    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         TestData::Person(Person::new("Alice".to_string(), 50))
     );
 
-    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_recv(&mut result_rx, 100).await;
 
-    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         TestData::Person(Person::new("Charlie".to_string(), 70))
@@ -75,32 +76,32 @@ async fn test_throttle_chained_with_throttle() -> anyhow::Result<()> {
         .throttle(Duration::from_millis(100))
         .throttle(Duration::from_millis(200));
 
-    let (result_tx, mut result_rx) = unbounded_channel();
+    let (result_tx, mut result_rx) = unbounded();
 
     spawn(async move {
         let mut stream = throttled.map(|x| x.map(|v| v.value));
         while let Some(item) = stream.next().await {
-            result_tx.send(item.unwrap()).unwrap();
+            let _ = result_tx.unbounded_send(item.unwrap());
         }
     });
 
     // Act & Assert
-    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
     advance(Duration::from_millis(49)).await;
-    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_recv(&mut result_rx, 50).await;
 
     advance(Duration::from_millis(10)).await;
-    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_no_recv(&mut result_rx, 50).await;
 
     advance(Duration::from_millis(50)).await;
-    tx.send(TokioTimestamped::new(person_diane(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_diane(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_diane()
@@ -122,37 +123,37 @@ async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
         .take_while_with(filter_stream, |&condition| condition)
         .throttle(Duration::from_millis(100));
 
-    let (result_tx, mut result_rx) = unbounded_channel();
+    let (result_tx, mut result_rx) = unbounded();
 
     spawn(async move {
         let mut stream = throttled.map(|item| item.map(|x| x.value));
         while let Some(item) = stream.next().await {
-            result_tx.send(item.unwrap()).unwrap();
+            let _ = result_tx.unbounded_send(item.unwrap());
         }
     });
 
     // Act & Assert
-    filter_tx.send(TokioTimestamped::new(true, timer.now()))?;
-    tx.send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    filter_tx.unbounded_send(TokioTimestamped::new(true, timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
-    tx.send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_recv(&mut result_rx, 50).await;
 
     advance(Duration::from_millis(100)).await;
-    tx.send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_charlie()
     );
 
-    filter_tx.send(TokioTimestamped::new(false, timer.now()))?;
+    filter_tx.unbounded_send(TokioTimestamped::new(false, timer.now()))?;
     advance(Duration::from_millis(100)).await;
 
-    tx.send(TokioTimestamped::new(person_diane(), timer.now()))?;
+    tx.unbounded_send(TokioTimestamped::new(person_diane(), timer.now()))?;
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())

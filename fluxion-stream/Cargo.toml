@@ -17,8 +17,6 @@ fluxion-ordered-merge = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
 tokio = { workspace = true }
-tokio-stream = { workspace = true }
-tokio-util = { workspace = true }
 parking_lot = { workspace = true }
 pin-project = { workspace = true }
 fastrand = { workspace = true }

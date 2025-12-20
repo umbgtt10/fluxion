@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -68,8 +68,8 @@
 //! let mut merged = stream1.ordered_merge(vec![stream2]);
 //!
 //! // Send out of order - stream2 sends seq=1, stream1 sends seq=2
-//! tx2.send((100, 1).into()).unwrap();
-//! tx1.send((200, 2).into()).unwrap();
+//! tx2.unbounded_send((100, 1).into()).unwrap();
+//! tx1.unbounded_send((200, 2).into()).unwrap();
 //!
 //! // Items are emitted in temporal order (seq 1, then seq 2)
 //! let first = unwrap_stream(&mut merged, 500).await.unwrap();
@@ -208,8 +208,8 @@
 //! );
 //!
 //! // Send config first, then click
-//! config_tx.send(("theme=dark".to_string(), 1).into()).unwrap();
-//! click_tx.send(("button1".to_string(), 2).into()).unwrap();
+//! config_tx.unbounded_send(("theme=dark".to_string(), 1).into()).unwrap();
+//! click_tx.unbounded_send(("button1".to_string(), 2).into()).unwrap();
 //!
 //! let result = unwrap_value(Some(unwrap_stream(&mut enriched, 500).await));
 //! assert_eq!(result.values().len(), 2); // Has both click and config
@@ -233,8 +233,8 @@
 //! let mut unified_log = service1.ordered_merge(vec![service2]);
 //!
 //! // Send logs with different timestamps
-//! service1_tx.send(("service1: started".to_string(), 1).into()).unwrap();
-//! service2_tx.send(("service2: ready".to_string(), 2).into()).unwrap();
+//! service1_tx.unbounded_send(("service1: started".to_string(), 1).into()).unwrap();
+//! service2_tx.unbounded_send(("service2: ready".to_string(), 2).into()).unwrap();
 //!
 //! let first = unwrap_value(Some(unwrap_stream(&mut unified_log, 500).await));
 //! assert_eq!(first.value, "service1: started");
@@ -258,9 +258,9 @@
 //! let mut paired = stream.combine_with_previous();
 //!
 //! // Send values
-//! tx.send((1, 1).into()).unwrap();
-//! tx.send((1, 2).into()).unwrap(); // Same value
-//! tx.send((2, 3).into()).unwrap(); // Changed!
+//! tx.unbounded_send((1, 1).into()).unwrap();
+//! tx.unbounded_send((1, 2).into()).unwrap(); // Same value
+//! tx.unbounded_send((2, 3).into()).unwrap(); // Changed!
 //!
 //! let result = unwrap_value(Some(unwrap_stream(&mut paired, 500).await));
 //! assert!(result.previous.is_none()); // First has no previous
@@ -296,9 +296,9 @@
 //! );
 //!
 //! // Enable notifications
-//! enabled_tx.send((1, 1).into()).unwrap();
+//! enabled_tx.unbounded_send((1, 1).into()).unwrap();
 //! // Send event
-//! event_tx.send((999, 2).into()).unwrap();
+//! event_tx.unbounded_send((999, 2).into()).unwrap();
 //!
 //! let result = unwrap_value(Some(unwrap_stream(&mut notifications, 500).await));
 //! assert_eq!(result.value, 999);
@@ -307,7 +307,7 @@
 //!
 //! # Anti-Patterns
 //!
-//! ## ❌ Don't: Use `ordered_merge` When Order Doesn't Matter
+//! ## ? Don't: Use `ordered_merge` When Order Doesn't Matter
 //!
 //! ```text
 //! // BAD: Ordering overhead when you don't need it
@@ -322,7 +322,7 @@
 //! let merged = select(stream1, stream2);
 //! ```
 //!
-//! ## ❌ Don't: Use `combine_latest` for All Items
+//! ## ? Don't: Use `combine_latest` for All Items
 //!
 //! ```text
 //! // BAD: combine_latest only emits latest, loses intermediate values
@@ -336,7 +336,7 @@
 //! let merged = stream1.ordered_merge(vec![stream2]);
 //! ```
 //!
-//! ## ❌ Don't: Complex Filter Logic in Operators
+//! ## ? Don't: Complex Filter Logic in Operators
 //!
 //! ```text
 //! // BAD: Complex business logic in filter predicate
@@ -379,8 +379,8 @@
 //!     .take_latest_when(filter_stream, |_| true)
 //!     .combine_with_previous();
 //!
-//! source_tx.send(Sequenced::new(42)).unwrap();
-//! filter_tx.send(Sequenced::new(1)).unwrap();
+//! source_tx.unbounded_send(Sequenced::new(42)).unwrap();
+//! filter_tx.unbounded_send(Sequenced::new(1)).unwrap();
 //!
 //! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert!(item.previous.is_none());
@@ -406,8 +406,8 @@
 //!     .filter_ordered(|&n| n > 0)  // filter_ordered receives &T::Inner
 //!     .map_ordered(|seq| Sequenced::new(format!("Value: {}", seq.value)));  // map_ordered receives T
 //!
-//! tx.send(Sequenced::new(-1)).unwrap();
-//! tx.send(Sequenced::new(5)).unwrap();
+//! tx.unbounded_send(Sequenced::new(-1)).unwrap();
+//! tx.unbounded_send(Sequenced::new(5)).unwrap();
 //!
 //! let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert_eq!(result.value, "Value: 5");
@@ -432,8 +432,8 @@
 //!     .combine_latest(vec![stream2], |_| true)
 //!     .combine_with_previous();
 //!
-//! tx1.send(Sequenced::new(1)).unwrap();
-//! tx2.send(Sequenced::new(2)).unwrap();
+//! tx1.unbounded_send(Sequenced::new(1)).unwrap();
+//! tx2.unbounded_send(Sequenced::new(2)).unwrap();
 //!
 //! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert!(item.previous.is_none());
@@ -452,7 +452,7 @@
 //!
 //! ## Advanced Composition Examples
 //!
-//! ### 1. Ordered Merge → Combine With Previous
+//! ### 1. Ordered Merge ? Combine With Previous
 //!
 //! Merge multiple streams in temporal order, then track consecutive values:
 //!
@@ -470,19 +470,19 @@
 //!     .ordered_merge(vec![stream2])
 //!     .combine_with_previous();
 //!
-//! tx1.send(Sequenced::new(1)).unwrap();
+//! tx1.unbounded_send(Sequenced::new(1)).unwrap();
 //! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert!(item.previous.is_none());
 //! assert_eq!(&item.current.value, &1);
 //!
-//! tx2.send(Sequenced::new(2)).unwrap();
+//! tx2.unbounded_send(Sequenced::new(2)).unwrap();
 //! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert_eq!(&item.previous.unwrap().value, &1);
 //! assert_eq!(&item.current.value, &2);
 //! }
 //! ```
 //!
-//! ### 2. Combine Latest → Combine With Previous
+//! ### 2. Combine Latest ? Combine With Previous
 //!
 //! Combine latest values from multiple streams, then track state changes:
 //!
@@ -500,21 +500,21 @@
 //!     .combine_latest(vec![stream2], |_| true)
 //!     .combine_with_previous();
 //!
-//! tx1.send(Sequenced::new(1)).unwrap();
-//! tx2.send(Sequenced::new(2)).unwrap();
+//! tx1.unbounded_send(Sequenced::new(1)).unwrap();
+//! tx2.unbounded_send(Sequenced::new(2)).unwrap();
 //!
 //! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert!(item.previous.is_none());
 //! assert_eq!(item.current.values().len(), 2);
 //!
-//! tx1.send(Sequenced::new(3)).unwrap();
+//! tx1.unbounded_send(Sequenced::new(3)).unwrap();
 //! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! // Previous state had [1, 2], current has [3, 2]
 //! assert!(item.previous.is_some());
 //! }
 //! ```
 //!
-//! ### 3. Combine Latest → Take While With
+//! ### 3. Combine Latest ? Take While With
 //!
 //! Combine streams and continue only while a condition holds:
 //!
@@ -533,16 +533,16 @@
 //!     .combine_latest(vec![stream2], |_| true)
 //!     .take_while_with(filter_stream, |f| *f);
 //!
-//! filter_tx.send(Sequenced::new(true)).unwrap();
-//! tx1.send(Sequenced::new(1)).unwrap();
-//! tx2.send(Sequenced::new(2)).unwrap();
+//! filter_tx.unbounded_send(Sequenced::new(true)).unwrap();
+//! tx1.unbounded_send(Sequenced::new(1)).unwrap();
+//! tx2.unbounded_send(Sequenced::new(2)).unwrap();
 //!
 //! let combined = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert_eq!(combined.values().len(), 2);
 //! }
 //! ```
 //!
-//! ### 4. Ordered Merge → Take While With
+//! ### 4. Ordered Merge ? Take While With
 //!
 //! Merge streams in order and terminate based on external condition:
 //!
@@ -561,19 +561,19 @@
 //!     .ordered_merge(vec![stream2])
 //!     .take_while_with(filter_stream, |f| *f);
 //!
-//! filter_tx.send(Sequenced::new(true)).unwrap();
-//! tx1.send(Sequenced::new(1)).unwrap();
+//! filter_tx.unbounded_send(Sequenced::new(true)).unwrap();
+//! tx1.unbounded_send(Sequenced::new(1)).unwrap();
 //!
 //! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value.clone();
 //! assert_eq!(item, 1);
 //!
-//! tx2.send(Sequenced::new(2)).unwrap();
+//! tx2.unbounded_send(Sequenced::new(2)).unwrap();
 //! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value.clone();
 //! assert_eq!(item, 2);
 //! }
 //! ```
 //!
-//! ### 5. Take Latest When → Combine With Previous
+//! ### 5. Take Latest When ? Combine With Previous
 //!
 //! Sample latest value on trigger, then pair with previous sampled value:
 //!
@@ -591,14 +591,14 @@
 //!     .take_latest_when(filter_stream, |_| true)
 //!     .combine_with_previous();
 //!
-//! source_tx.send(Sequenced::new(42)).unwrap();
-//! filter_tx.send(Sequenced::new(0)).unwrap();
+//! source_tx.unbounded_send(Sequenced::new(42)).unwrap();
+//! filter_tx.unbounded_send(Sequenced::new(0)).unwrap();
 //!
 //! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert!(item.previous.is_none());
 //! assert_eq!(&item.current.value, &42);
 //!
-//! source_tx.send(Sequenced::new(99)).unwrap();
+//! source_tx.unbounded_send(Sequenced::new(99)).unwrap();
 //! let item = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
 //! assert_eq!(&item.previous.unwrap().value, &42);
 //! assert_eq!(&item.current.value, &99);

@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -26,7 +26,7 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
     let mut delayed = stream.delay(Duration::from_secs(1));
 
     // Act & Assert
-    tx.send(StreamItem::Value(TokioTimestamped::new(
+    tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
@@ -39,13 +39,13 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
         person_alice()
     );
 
-    tx.send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut delayed, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx.send(StreamItem::Value(TokioTimestamped::new(
+    tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
     )))?;

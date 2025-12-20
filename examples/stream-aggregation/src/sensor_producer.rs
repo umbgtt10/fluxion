@@ -6,8 +6,8 @@
 
 use crate::domain::SensorReading;
 use fluxion_core::CancellationToken;
+use futures::channel::mpsc;
 use tokio::select;
-use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
 
@@ -57,7 +57,7 @@ impl SensorProducer {
                         temperature: (temp_float * 10.0) as i32,
                     };
 
-                    if tx.send(reading).is_err() {
+                    if tx.unbounded_send(reading).is_err() {
                         break;
                     }
                     println!("  [Producer<Sensor>] {:.1}°C @ ts {}", temp_float, timestamp);

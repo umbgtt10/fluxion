@@ -21,13 +21,13 @@ Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal order
 
 ## Features
 
-- 🔄 **Rx-Style Operators**: 29 implemented operators (32 planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, `share`, `partition`, `tap`, etc.)
+- 🔄 **Rx-Style Operators**: 29 implemented operators (42 total planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, `share`, `partition`, `tap`, etc.)
 - ⏱️ **Temporal Ordering**: Guaranteed ordering semantics via `Timestamped` trait
 - ⚡ **Async Execution**: Efficient async processing with `subscribe` and `subscribe_latest`
 - 🌐 **Multi-Runtime Support**: Works with Tokio (default), smol, WebAssembly (WASM), and async-std (deprecated) via Timer trait abstraction
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
-- ✅ **Well Tested**: 900+ tests with comprehensive coverage (Tokio + WASM)
+- ✅ **Well Tested**: 890+ tests with comprehensive coverage (Tokio + WASM)
 
 ### 📋 Independent Code Reviews
 
@@ -49,10 +49,11 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.6.3"
-fluxion-test-utils = "0.6.3"
+fluxion-rx = "0.6.7"
+fluxion-test-utils = "0.6.7"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
+futures = "0.3.31"
 ```
 
 ### Basic Usage
@@ -61,7 +62,7 @@ anyhow = "1.0.100"
 use fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
-use tokio::sync::mpsc::unbounded_channel;
+use futures::channel::mpsc::unbounded;
 
 #[tokio::test]
 async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
@@ -73,8 +74,8 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
     }
 
     // Create int stream and bool trigger stream
-    let (tx_int, rx_int) = unbounded_channel::<Sequenced<Value>>();
-    let (tx_trigger, rx_trigger) = unbounded_channel::<Sequenced<Value>>();
+    let (tx_int, rx_int) = unbounded::<Sequenced<Value>>();
+    let (tx_trigger, rx_trigger) = unbounded::<Sequenced<Value>>();
 
     let int_stream = rx_int.into_fluxion_stream();
     let trigger_stream = rx_trigger.into_fluxion_stream();
@@ -83,29 +84,29 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
 
     // Send int values first - they will be buffered
     // Use realistic nanosecond timestamps
-    tx_int.send(Sequenced::with_timestamp(Value::Int(10), 1))?; // 1 sec
-    tx_int.send(Sequenced::with_timestamp(Value::Int(20), 2))?; // 2 sec
-    tx_int.send(Sequenced::with_timestamp(Value::Int(30), 3))?; // 3 sec
+    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(10), 1))?; // 1 sec
+    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(20), 2))?; // 2 sec
+    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(30), 3))?; // 3 sec
 
     // Trigger with bool - should emit latest int value (30) with trigger's sequence
-    tx_trigger.send(Sequenced::with_timestamp(Value::Bool(true), 4))?; // 4 sec
+    tx_trigger.unbounded_send(Sequenced::with_timestamp(Value::Bool(true), 4))?; // 4 sec
 
     let result1 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(&result1.value, Value::Int(30)));
     assert_eq!(result1.timestamp(), 4);
 
     // After first trigger, send more int values
-    tx_int.send(Sequenced::with_timestamp(Value::Int(40), 5))?; // 5 sec
+    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(40), 5))?; // 5 sec
 
     // Need another trigger to emit the buffered value
-    tx_trigger.send(Sequenced::with_timestamp(Value::Bool(true), 6))?; // 6 sec
+    tx_trigger.unbounded_send(Sequenced::with_timestamp(Value::Bool(true), 6))?; // 6 sec
 
     let result2 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(&result2.value, Value::Int(40)));
     assert_eq!(result2.timestamp(), 6);
     // Send another int and trigger
-    tx_int.send(Sequenced::with_timestamp(Value::Int(50), 7))?; // 7 sec
-    tx_trigger.send(Sequenced::with_timestamp(Value::Bool(true), 8))?; // 8 sec
+    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(50), 7))?; // 7 sec
+    tx_trigger.unbounded_send(Sequenced::with_timestamp(Value::Bool(true), 8))?; // 8 sec
 
     let result3 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(&result3.value, Value::Int(50)));
@@ -121,10 +122,11 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.6.3"
-fluxion-test-utils = "0.6.3"
+fluxion-rx = "0.6.7"
+fluxion-test-utils = "0.6.7"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
+futures = "0.3.31"
 ```
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
@@ -133,7 +135,7 @@ anyhow = "1.0.100"
 use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
-use tokio::sync::mpsc::unbounded_channel;
+use futures::channel::mpsc::unbounded;
 
 #[tokio::test]
 async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
@@ -145,8 +147,8 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
     }
 
     // Create two input streams
-    let (tx_int, rx_int) = unbounded_channel::<Sequenced<Value>>();
-    let (tx_str, rx_str) = unbounded_channel::<Sequenced<Value>>();
+    let (tx_int, rx_int) = unbounded::<Sequenced<Value>>();
+    let (tx_str, rx_str) = unbounded::<Sequenced<Value>>();
 
     let int_stream = rx_int.into_fluxion_stream();
     let str_stream = rx_str.into_fluxion_stream();
@@ -160,11 +162,11 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
         });
 
     // Send initial values
-    tx_str.send(Sequenced::with_timestamp(Value::Str("initial".into()), 1))?;
-    tx_int.send(Sequenced::with_timestamp(Value::Int(30), 2))?;
-    tx_int.send(Sequenced::with_timestamp(Value::Int(60), 3))?; // Passes filter (60 > 50)
-    tx_str.send(Sequenced::with_timestamp(Value::Str("updated".into()), 4))?;
-    tx_int.send(Sequenced::with_timestamp(Value::Int(75), 5))?; // Passes filter (75 > 50)
+    tx_str.unbounded_send(Sequenced::with_timestamp(Value::Str("initial".into()), 1))?;
+    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(30), 2))?;
+    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(60), 3))?; // Passes filter (60 > 50)
+    tx_str.unbounded_send(Sequenced::with_timestamp(Value::Str("updated".into()), 4))?;
+    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(75), 5))?; // Passes filter (75 > 50)
 
     // Results: seq 3 (Int 60), seq 4 (Int 60 + Str updated), seq 5 (Int 75)
     let result1 = unwrap_stream(&mut pipeline, 500).await.unwrap();
@@ -196,10 +198,11 @@ The `merge_with` operator enables elegant stateful stream processing by merging 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.6.3"
-fluxion-test-utils = "0.6.3"
+fluxion-rx = "0.6.7"
+fluxion-test-utils = "0.6.7"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
+futures = "0.3.31"
 ```
 
 **Example: Event Sourcing with Repository Pattern**
@@ -293,11 +296,11 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
     });
 
     // Emit events in temporal order
-    tx_users.send(user_created1)?;
-    tx_users.send(user_created2)?;
-    tx_orders.send(order_placed1)?;
-    tx_payments.send(payment_received1)?;
-    tx_orders.send(order_placed2)?;
+    tx_users.unbounded_send(user_created1)?;
+    tx_users.unbounded_send(user_created2)?;
+    tx_orders.unbounded_send(order_placed1)?;
+    tx_payments.unbounded_send(payment_received1)?;
+    tx_orders.unbounded_send(order_placed2)?;
 
     // Verify repository state updates
     let state1 = unwrap_stream(&mut repository_stream, 500).await.unwrap();
@@ -357,21 +360,20 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.6.3"
+fluxion-exec = "0.6.7"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
-tokio-util = "0.7.17"
 ```
 
 **Example:**
 ```rust
+use fluxion_core::CancellationToken;
 use fluxion_exec::subscribe::SubscribeExt;
+use futures::channel::mpsc::unbounded;
+use futures::lock::Mutex as FutureMutex;
 use std::sync::Arc;
 use tokio::spawn;
-use tokio::sync::mpsc::unbounded_channel;
-use tokio::sync::Mutex as TokioMutex;
-use tokio_stream::wrappers::UnboundedReceiverStream;
-use fluxion_core::CancellationToken;
+use tokio_stream::StreamExt as _;
 
 /// Example test demonstrating subscribe usage
 #[tokio::test]
@@ -388,12 +390,12 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
     struct TestError(String);
 
     // Step 1: Create a stream
-    let (tx, rx) = unbounded_channel::<Item>();
-    let stream = UnboundedReceiverStream::new(rx);
+    let (tx, rx) = unbounded::<Item>();
+    let stream = rx;
 
     // Step 2: Create a shared results container
-    let results = Arc::new(TokioMutex::new(Vec::new()));
-    let (notify_tx, mut notify_rx) = unbounded_channel();
+    let results = Arc::new(FutureMutex::new(Vec::new()));
+    let (notify_tx, mut notify_rx) = unbounded();
 
     // Step 3: Define the async processing function
     let process_func = {
@@ -405,7 +407,7 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
             async move {
                 // Process the item (in this example, just store it)
                 results.lock().await.push(item);
-                let _ = notify_tx.send(()); // Signal completion
+                let _ = notify_tx.unbounded_send(()); // Signal completion
                 Ok::<(), TestError>(())
             }
         }
@@ -434,16 +436,16 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
     };
 
     // Act & Assert
-    tx.send(item1.clone())?;
-    notify_rx.recv().await.unwrap();
+    tx.unbounded_send(item1.clone())?;
+    notify_rx.next().await.unwrap();
     assert_eq!(*results.lock().await, vec![item1.clone()]);
 
-    tx.send(item2.clone())?;
-    notify_rx.recv().await.unwrap();
+    tx.unbounded_send(item2.clone())?;
+    notify_rx.next().await.unwrap();
     assert_eq!(*results.lock().await, vec![item1.clone(), item2.clone()]);
 
-    tx.send(item3.clone())?;
-    notify_rx.recv().await.unwrap();
+    tx.unbounded_send(item3.clone())?;
+    notify_rx.next().await.unwrap();
     assert_eq!(*results.lock().await, vec![item1, item2, item3]);
 
     // Clean up
@@ -460,21 +462,20 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.6.3"
+fluxion-exec = "0.6.7"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
-tokio-util = "0.7.17"
 ```
 
 **Example:**
 ```rust
+use fluxion_core::CancellationToken;
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;
+use futures::channel::mpsc::unbounded;
+use futures::lock::Mutex as FutureMutex;
 use std::sync::Arc;
 use tokio::spawn;
-use tokio::sync::mpsc::unbounded_channel;
-use tokio::sync::Mutex as TokioMutex;
-use tokio_stream::wrappers::UnboundedReceiverStream;
-use fluxion_core::CancellationToken;
+use tokio_stream::StreamExt as _;
 
 /// Example demonstrating subscribe_latest with automatic substitution
 #[tokio::test]
@@ -483,13 +484,13 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
     #[error("Error")]
     struct Err;
 
-    let (tx, rx) = unbounded_channel::<u32>();
-    let completed = Arc::new(TokioMutex::new(Vec::new()));
-    let (notify_tx, mut notify_rx) = unbounded_channel();
-    let (gate_tx, gate_rx) = unbounded_channel::<()>();
-    let gate_rx_shared = Arc::new(TokioMutex::new(Some(gate_rx)));
-    let (start_tx, mut start_rx) = unbounded_channel::<()>();
-    let start_tx_shared = Arc::new(TokioMutex::new(Some(start_tx)));
+    let (tx, rx) = unbounded::<u32>();
+    let completed = Arc::new(FutureMutex::new(Vec::new()));
+    let (notify_tx, mut notify_rx) = unbounded();
+    let (gate_tx, gate_rx) = unbounded::<()>();
+    let gate_rx_shared = Arc::new(FutureMutex::new(Some(gate_rx)));
+    let (start_tx, mut start_rx) = unbounded::<()>();
+    let start_tx_shared = Arc::new(FutureMutex::new(Some(start_tx)));
 
     let process = {
         let completed = completed.clone();
@@ -500,14 +501,14 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
             let start_tx_shared = start_tx_shared.clone();
             async move {
                 if let Some(tx) = start_tx_shared.lock().await.take() {
-                    tx.send(()).ok();
+                    tx.unbounded_send(()).ok();
                 }
                 if let Some(mut rx) = gate_rx_shared.lock().await.take() {
-                    rx.recv().await;
+                    rx.next().await;
                 }
                 if !token.is_cancelled() {
                     completed.lock().await.push(id);
-                    notify_tx.send(()).ok();
+                    notify_tx.unbounded_send(()).ok();
                 }
                 Ok::<(), Err>(())
             }
@@ -515,20 +516,19 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
     };
 
     spawn(async move {
-        UnboundedReceiverStream::new(rx)
-            .subscribe_latest(process, None::<fn(Err)>, None)
+        rx.subscribe_latest(process, None::<fn(Err)>, None)
             .await
             .unwrap();
     });
 
-    tx.send(1)?;
-    start_rx.recv().await.unwrap();
+    tx.unbounded_send(1)?;
+    start_rx.next().await.unwrap();
     for i in 2..=5 {
-        tx.send(i)?;
+        tx.unbounded_send(i)?;
     }
-    gate_tx.send(())?;
-    notify_rx.recv().await.unwrap();
-    notify_rx.recv().await.unwrap();
+    gate_tx.unbounded_send(())?;
+    notify_rx.next().await.unwrap();
+    notify_rx.next().await.unwrap();
 
     let result = completed.lock().await;
     assert_eq!(*result, vec![1, 5]);
@@ -644,7 +644,7 @@ See individual crate READMEs for detailed documentation.
 
 ## Project Status
 
-**Current Version:** 0.6.0
+**Current Version:** 0.6.8
 
 - ✅ Published to crates.io
 - ✅ Core functionality complete

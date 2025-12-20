@@ -167,7 +167,7 @@ let combined = stream1.combine_latest(
 - Maintains latest value from each stream
 - Preserves temporal ordering based on triggering stream
 
-[Full documentation](src/combine_latest.rs) | [Tests](tests/combine_latest_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#combine_latest---latest-values-from-all-streams)
+[Full documentation](src/combine_latest.rs) | [Tests](tests/combine_latest_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/combine_latest/report/index.html)
 
 #### `with_latest_from`
 Samples secondary streams only when primary stream emits.
@@ -190,7 +190,7 @@ let enriched = user_clicks.with_latest_from(
 - Primary stream drives the emission timing
 - Secondary streams provide context
 
-[Full documentation](src/with_latest_from.rs) | [Tests](tests/with_latest_from_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#with_latest_from---augment-with-secondary-stream)
+[Full documentation](src/with_latest_from.rs) | [Tests](tests/with_latest_from_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/with_latest_from/report/index.html)
 
 #### `ordered_merge`
 Merges multiple streams preserving temporal order.
@@ -209,7 +209,7 @@ let merged = stream1.ordered_merge(vec![stream2, stream3]);
 - Buffers items to ensure correct ordering
 - Completes when all input streams complete
 
-[Full documentation](src/ordered_merge.rs) | [Tests](tests/merge_ordered_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#ordered_merge---temporal-ordering-of-multiple-streams)
+[Full documentation](src/ordered_merge.rs) | [Tests](tests/merge_ordered_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/ordered_merge/report/index.html)
 
 #### `merge_with`
 Stateful merging of multiple streams with shared state.
@@ -250,7 +250,39 @@ let merged = MergedStream::seed::<Sequenced<Event>>(Repository::new())
 - **Type-safe**: Output type specified once in `seed()`
 - **Ordered**: Temporal ordering guaranteed across all streams
 
-[Full documentation](src/merge_with.rs) | [Tests](tests/merge_with_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#merge_with---repository-pattern-merging)
+[Full documentation](src/merge_with.rs) | [Tests](tests/merge_with_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/merge_with/report/index.html)
+
+#### `start_with`
+Prepend initial values to a stream.
+
+**Use case:** Provide default/placeholder values, seed initial state
+
+```rust
+use fluxion_stream::{IntoFluxionStream, StartWithExt};
+use fluxion_core::StreamItem;
+use fluxion_test_utils::Sequenced;
+
+let (tx, rx) = futures::channel::mpsc::unbounded();
+
+let with_defaults = rx.into_fluxion_stream()
+    .start_with(vec![
+        StreamItem::Value(Sequenced::new(0)),
+        StreamItem::Value(Sequenced::new(1)),
+    ]);
+
+tx.send(Sequenced::new(2)).unwrap();
+tx.send(Sequenced::new(3)).unwrap();
+// Output: 0, 1, 2, 3
+```
+
+**Behavior:**
+- Emits initial values before any source stream values
+- Initial values are emitted immediately upon subscription
+- Useful for providing defaults or seeding state
+- Can include `StreamItem::Error` for testing error handling
+- Preserves temporal ordering (initial values, then source values)
+
+[Full documentation](src/start_with.rs) | [Tests](tests/start_with/start_with_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/start_with/report/index.html)
 
 ### Filtering Operators
 
@@ -274,7 +306,7 @@ let gated = source.emit_when(
 - Maintains temporal ordering
 - Completes when source completes
 
-[Full documentation](src/emit_when.rs) | [Tests](tests/emit_when_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#emit_when---conditional-emission-with-secondary-stream)
+[Full documentation](src/emit_when.rs) | [Tests](tests/emit_when_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/emit_when/report/index.html)
 
 #### `take_latest_when`
 Samples source when filter condition is met.
@@ -296,7 +328,7 @@ let sampled = source.take_latest_when(
 - Discards intermediate values (only latest matters)
 - Useful for sampling / snapshot patterns
 
-[Full documentation](src/take_latest_when.rs) | [Tests](tests/take_latest_when_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#take_latest_when---sampling-with-trigger-stream)
+[Full documentation](src/take_latest_when.rs) | [Tests](tests/take_latest_when_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/take_latest_when/report/index.html)
 
 #### `sample_ratio`
 Probabilistic downsampling with configurable ratio.
@@ -320,7 +352,7 @@ let sampled = stream.sample_ratio(0.5, 42);
 - Errors always pass through (never sampled)
 - Timestamp-preserving
 
-[Full documentation](src/sample_ratio.rs) | [Tests](tests/sample_ratio/) | [Benchmarks](benches/sample_ratio_bench.rs)
+[Full documentation](src/sample_ratio.rs) | [Tests](tests/sample_ratio/) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/sample_ratio_full/report/index.html)
 
 #### `take_while_with`
 Emits while condition holds, terminates when false.
@@ -342,7 +374,7 @@ let bounded = source.take_while_with(
 - First false terminates immediately
 - Preserves temporal ordering until termination
 
-[Full documentation](src/take_while_with.rs) | [Tests](tests/take_while_with_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#take_while_with---conditional-stream-termination)
+[Full documentation](src/take_while_with.rs) | [Tests](tests/take_while_with_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/take_while_with/report/index.html)
 
 ### Transformation Operators
 
@@ -374,7 +406,7 @@ let sums = stream.scan_ordered::<Sequenced<i32>, _, _>(0, |acc, val| {
 - **State machines**: Track state transitions with context
 - **Moving calculations**: Windowed statistics
 
-[Full documentation](src/scan_ordered.rs) | [Tests](tests/scan_ordered_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#scan_ordered---stateful-accumulation)
+[Full documentation](src/scan_ordered.rs) | [Tests](tests/scan_ordered_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/scan_ordered/report/index.html)
 
 #### `combine_with_previous`
 Pairs each value with the previous value.
@@ -395,7 +427,7 @@ let pairs = stream.combine_with_previous();
 - Useful for change detection and delta calculations
 - Preserves temporal ordering
 
-[Full documentation](src/combine_with_previous.rs) | [Tests](tests/combine_with_previous_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#combine_with_previous---sliding-window-pairing)
+[Full documentation](src/combine_with_previous.rs) | [Tests](tests/combine_with_previous_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/combine_with_previous/report/index.html)
 
 #### `window_by_count`
 Batches stream items into fixed-size windows.
@@ -417,7 +449,7 @@ let windowed = stream.window_by_count(3);
 - Errors pass through immediately (not batched)
 - Useful for batch processing and reducing downstream operations
 
-[Full documentation](src/window_by_count.rs) | [Tests](tests/window_by_count_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#window_by_count---batching-items-into-windows)
+[Full documentation](src/window_by_count.rs) | [Tests](tests/window_by_count_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/window_by_count/report/index.html)
 
 ### Utility Operators
 
@@ -428,7 +460,7 @@ Maps values while preserving ordering wrapper.
 let mapped = stream.map_ordered(|x| x * 2);
 ```
 
-[Full documentation](src/map_ordered.rs) | [Tests](tests/map_ordered_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#map_ordered---value-transformation)
+[Full documentation](src/map_ordered.rs) | [Tests](tests/map_ordered_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/map_ordered/report/index.html)
 
 #### `filter_ordered`
 Filters values while preserving ordering wrapper.
@@ -437,12 +469,54 @@ Filters values while preserving ordering wrapper.
 let filtered = stream.filter_ordered(|x| *x > 10);
 ```
 
-[Full documentation](src/filter_ordered.rs) | [Tests](tests/filter_ordered_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#filter_ordered---conditional-filtering)
+[Full documentation](src/filter_ordered.rs) | [Tests](tests/filter_ordered_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/filter_ordered/report/index.html)
+
+#### `take_items`
+Emit only the first N items then complete.
+
+**Use case:** Pagination, limiting results, testing
+
+```rust
+use fluxion_stream::{IntoFluxionStream, TakeItemsExt};
+
+let limited = stream.take_items(10);
+// Emits first 10 items, then completes
+```
+
+**Behavior:**
+- Emits at most N items then completes the stream
+- Errors count as items (use `on_error()` first to filter errors)
+- Stream completes immediately after emitting the Nth item
+- Useful for pagination, testing with limited data, or rate limiting
+- Temporal ordering preserved
+
+[Full documentation](src/take_items.rs) | [Tests](tests/take_items/take_items_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/take_items/report/index.html)
+
+#### `skip_items`
+Skip the first N items, emit all remaining.
+
+**Use case:** Pagination (skip offset), ignoring warmup data
+
+```rust
+use fluxion_stream::{IntoFluxionStream, SkipItemsExt};
+
+let after_skip = stream.skip_items(5);
+// Discards first 5 items, emits all subsequent items
+```
+
+**Behavior:**
+- Discards first N items silently
+- Emits all items after the first N
+- Errors count as items (use `on_error()` first to filter errors)
+- Useful for pagination (offset) and skipping initial values
+- Temporal ordering preserved
+
+[Full documentation](src/skip_items.rs) | [Tests](tests/skip_items/skip_items_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/skip_items/report/index.html)
 
 #### `distinct_until_changed`
 Suppresses consecutive duplicate values.
 
-[Full documentation](src/distinct_until_changed.rs) | [Tests](tests/distinct_until_changed_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#distinct_until_changed---consecutive-duplicate-suppression)
+[Full documentation](src/distinct_until_changed.rs) | [Tests](tests/distinct_until_changed_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/distinct_until_changed/report/index.html)
 
 #### `distinct_until_changed_by`
 Custom duplicate suppression with comparison function.
@@ -455,7 +529,7 @@ Custom duplicate suppression with comparison function.
 - Comparison returns `true` if values considered equal (filtered)
 - Follows Rust patterns: `sort_by`, `dedup_by`, `max_by`
 
-[Full documentation](src/distinct_until_changed_by.rs) | [Tests](tests/distinct_until_changed_by_tests.rs) | [Benchmarks](../benchmarks/BENCHMARKS.md#distinct_until_changed_by---custom-duplicate-suppression)
+[Full documentation](src/distinct_until_changed_by.rs) | [Tests](tests/distinct_until_changed_by_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/distinct_until_changed_by_field/report/index.html)
 
 #### `tap`
 Perform side-effects without transforming items.
@@ -477,7 +551,7 @@ let pipeline = rx.into_fluxion_stream()
 - Errors pass through unchanged (callback not invoked for errors)
 - Timestamp-preserving
 
-[Full documentation](src/tap.rs) | [Tests](tests/tap/) | [Benchmarks](benches/tap_bench.rs)
+[Full documentation](src/tap.rs) | [Tests](tests/tap/) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/tap/report/index.html)
 
 ### Error Handling Operators
 
@@ -525,7 +599,7 @@ use fluxion_stream::{IntoFluxionStream, PartitionExt};
 use fluxion_test_utils::Sequenced;
 use futures::StreamExt;
 
-let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+let (tx, rx) = futures::channel::mpsc::unbounded();
 
 // Partition numbers into even and odd
 let (mut evens, mut odds) = rx.into_fluxion_stream()
@@ -549,7 +623,7 @@ drop(tx);
 - Unbounded internal buffers
 - Each item goes to exactly one output stream
 
-[Full documentation](src/partition.rs) | [Tests](tests/partition_tests.rs) | [Benchmarks](../benchmarks/benches/partition_bench.rs)
+[Full documentation](src/partition.rs) | [Tests](tests/partition_tests.rs) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/partition_balanced/report/index.html)
 
 ### Multicasting Operators
 
@@ -562,7 +636,7 @@ Convert a cold stream into a hot, multi-subscriber broadcast source.
 use fluxion_stream::{IntoFluxionStream, ShareExt, FilterOrderedExt, MapOrderedExt};
 use fluxion_test_utils::Sequenced;
 
-let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Sequenced<i32>>();
+let (tx, rx) = futures::channel::mpsc::unbounded::<Sequenced<i32>>();
 
 // Source operators run ONCE
 let source = rx.into_fluxion_stream()
@@ -584,7 +658,7 @@ let strings = shared.subscribe().unwrap()
 - **Subscription factory**: Call `subscribe()` to create independent subscriber streams
 - **Error propagation**: Errors broadcast to all subscribers, then source closes
 
-[Full documentation](src/fluxion_shared.rs) | [Tests](tests/fluxion_shared/) | [Benchmarks](benches/share_bench.rs)
+[Full documentation](src/fluxion_shared.rs) | [Tests](tests/fluxion_shared/) | [Benchmarks](https://umbgtt10.github.io/fluxion/benchmarks/share/report/index.html)
 
 ## Operator Selection Guide
 
@@ -666,8 +740,8 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() {
     // Create channels
-    let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel();
-    let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel();
+    let (tx1, rx1) = futures::channel::mpsc::unbounded();
+    let (tx2, rx2) = futures::channel::mpsc::unbounded();
 
     // Create streams
     let stream1 = rx1.into_fluxion_stream();
@@ -697,8 +771,8 @@ use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let (cpu_tx, cpu_rx) = tokio::sync::mpsc::unbounded_channel();
-    let (mem_tx, mem_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (cpu_tx, cpu_rx) = futures::channel::mpsc::unbounded::<Sequenced<i32>>();
+    let (mem_tx, mem_rx) = futures::channel::mpsc::unbounded();
 
     let cpu_stream = cpu_rx.into_fluxion_stream();
     let mem_stream = mem_rx.into_fluxion_stream();
@@ -732,8 +806,8 @@ use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let (data_tx, data_rx) = tokio::sync::mpsc::unbounded_channel();
-    let (gate_tx, gate_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (data_tx, data_rx) = futures::channel::mpsc::unbounded();
+    let (gate_tx, gate_rx) = futures::channel::mpsc::unbounded();
 
     let data = data_rx.into_fluxion_stream();
     let gate = gate_rx.into_fluxion_stream();
@@ -765,7 +839,7 @@ use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, rx) = futures::channel::mpsc::unbounded();
     let stream = rx.into_fluxion_stream();
 
     // Calculate running sum
@@ -803,7 +877,7 @@ use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, rx) = futures::channel::mpsc::unbounded();
     let stream = rx.into_fluxion_stream();
 
     let mut pairs = stream.combine_with_previous();

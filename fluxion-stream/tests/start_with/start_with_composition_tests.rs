@@ -27,8 +27,8 @@ async fn test_combine_with_previous_start_with() -> anyhow::Result<()> {
     let mut result = stream.combine_with_previous().start_with(initial);
 
     // Act
-    tx.send(Sequenced::new(person_charlie()))?;
-    tx.send(Sequenced::new(person_dave()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
 
     // Assert - First two from start_with (prepended)
     let item1 = unwrap_stream(&mut result, 100).await.unwrap();
@@ -80,14 +80,14 @@ async fn test_ordered_merge_then_start_with() -> anyhow::Result<()> {
     );
 
     // 2. Send to stream 1
-    s1_tx.send(Sequenced::new(person_charlie()))?;
+    s1_tx.unbounded_send(Sequenced::new(person_charlie()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         person_charlie()
     );
 
     // 3. Send to stream 2
-    s2_tx.send(Sequenced::new(person_dave()))?;
+    s2_tx.unbounded_send(Sequenced::new(person_dave()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         person_dave()

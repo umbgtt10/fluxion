@@ -168,7 +168,7 @@ When channels close unexpectedly or send operations fail, stream processing cont
 ```rust
 use fluxion_rx::prelude::*;
 
-let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+let (tx, rx) = futures::channel::mpsc::unbounded();
 let stream = rx.into_fluxion_stream();
 
 // If tx is dropped, stream will end gracefully
@@ -371,7 +371,7 @@ When writing tests, explicitly test error conditions:
 #[tokio::test]
 async fn test_handles_lock_error() {
     // Setup: Create scenario that might cause lock error
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, rx) = futures::channel::mpsc::unbounded();
     let stream = rx.into_fluxion_stream();
 
     // Act: Trigger potential error
@@ -446,7 +446,7 @@ while let Some(item) = stream.next().await {
 Best for: Critical data that must not be lost
 
 ```rust
-let (dlq_tx, dlq_rx) = tokio::sync::mpsc::unbounded_channel();
+let (dlq_tx, dlq_rx) = futures::channel::mpsc::unbounded();
 
 stream.for_each(|item| async {
     match item {

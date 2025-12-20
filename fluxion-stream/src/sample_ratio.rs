@@ -29,10 +29,10 @@
 //! let sampled = stream.sample_ratio(0.5, 42);
 //!
 //! // Send items
-//! tx.send(Sequenced::new(1)).unwrap();
-//! tx.send(Sequenced::new(2)).unwrap();
-//! tx.send(Sequenced::new(3)).unwrap();
-//! tx.send(Sequenced::new(4)).unwrap();
+//! tx.unbounded_send(Sequenced::new(1)).unwrap();
+//! tx.unbounded_send(Sequenced::new(2)).unwrap();
+//! tx.unbounded_send(Sequenced::new(3)).unwrap();
+//! tx.unbounded_send(Sequenced::new(4)).unwrap();
 //! drop(tx);
 //!
 //! // With seed=42, the sequence is deterministic
@@ -122,7 +122,7 @@ where
     /// // Deterministic test with fixed seed
     /// let mut sampled = stream.sample_ratio(0.5, 12345);
     ///
-    /// tx.send(Sequenced::new(42)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(42)).unwrap();
     /// drop(tx);
     ///
     /// // Item may or may not appear depending on seed

@@ -27,16 +27,16 @@ async fn test_with_latest_from_error_propagation_at_end_of_chain() -> anyhow::Re
         });
 
     // Act
-    tx2.send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Secondary".to_string(), 10),
         0,
     )))?;
-    tx2.send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Secondary".to_string(), 999),
         1000,
     )))?;
 
-    tx1.send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Main".to_string(), 5),
         1,
     )))?;
@@ -45,13 +45,13 @@ async fn test_with_latest_from_error_propagation_at_end_of_chain() -> anyhow::Re
         StreamItem::Value(ref v) if v.value.age == 20
     ));
 
-    tx1.send(StreamItem::Error(FluxionError::stream_error("Error1")))?;
+    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error1")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx1.send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Main".to_string(), 6),
         2,
     )))?;

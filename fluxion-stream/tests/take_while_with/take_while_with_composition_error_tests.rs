@@ -25,11 +25,11 @@ async fn test_take_while_with_error_propagation_at_end_of_chain() -> anyhow::Res
         .take_while_with(condition_stream, |cond| *cond);
 
     // Act & Assert
-    condition_tx.send(StreamItem::Value(Sequenced::with_timestamp(true, 0)))?;
-    condition_tx.send(StreamItem::Value(Sequenced::with_timestamp(false, 3)))?;
+    condition_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(true, 0)))?;
+    condition_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(false, 3)))?;
 
     // Act & Assert
-    source_tx.send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Alice".to_string(), 10),
         1,
     )))?;
@@ -38,13 +38,13 @@ async fn test_take_while_with_error_propagation_at_end_of_chain() -> anyhow::Res
         StreamItem::Value(ref v) if v.value.age == 11
     ));
 
-    source_tx.send(StreamItem::Error(FluxionError::stream_error("Error1")))?;
+    source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error1")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    source_tx.send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Bob".to_string(), 20),
         2,
     )))?;
@@ -53,7 +53,7 @@ async fn test_take_while_with_error_propagation_at_end_of_chain() -> anyhow::Res
         StreamItem::Value(ref v) if v.value.age == 21
     ));
 
-    source_tx.send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Charlie".to_string(), 30),
         3,
     )))?;

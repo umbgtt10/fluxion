@@ -43,11 +43,11 @@ async fn test_start_with_propagates_errors_from_source_stream() -> anyhow::Resul
     let mut result = stream.start_with(initial);
 
     // Act
-    tx.send(StreamItem::Value(Sequenced::new(2)))?;
-    tx.send(StreamItem::Error(FluxionError::stream_error(
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "source error",
     )))?;
-    tx.send(StreamItem::Value(Sequenced::new(3)))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(3)))?;
 
     // Assert
     let item1 = unwrap_stream(&mut result, 100).await;

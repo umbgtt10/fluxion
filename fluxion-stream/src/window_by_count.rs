@@ -26,11 +26,11 @@
 //!
 //! let mut windowed = stream.window_by_count::<Sequenced<Vec<i32>>>(3);
 //!
-//! tx.send(Sequenced::new(1)).unwrap();
-//! tx.send(Sequenced::new(2)).unwrap();
-//! tx.send(Sequenced::new(3)).unwrap();  // Window complete!
-//! tx.send(Sequenced::new(4)).unwrap();
-//! tx.send(Sequenced::new(5)).unwrap();
+//! tx.unbounded_send(Sequenced::new(1)).unwrap();
+//! tx.unbounded_send(Sequenced::new(2)).unwrap();
+//! tx.unbounded_send(Sequenced::new(3)).unwrap();  // Window complete!
+//! tx.unbounded_send(Sequenced::new(4)).unwrap();
+//! tx.unbounded_send(Sequenced::new(5)).unwrap();
 //! drop(tx);  // Partial window [4, 5] emitted on completion
 //!
 //! // First window: [1, 2, 3]
@@ -112,15 +112,15 @@ where
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx, rx) = futures::channel::mpsc::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut windowed = stream.window_by_count::<Sequenced<Vec<i32>>>(2);
     ///
-    /// tx.send(Sequenced::new(1)).unwrap();
-    /// tx.send(Sequenced::new(2)).unwrap();
-    /// tx.send(Sequenced::new(3)).unwrap();
-    /// tx.send(Sequenced::new(4)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(1)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(2)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(3)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(4)).unwrap();
     /// drop(tx);
     ///
     /// assert_eq!(windowed.next().await.unwrap().unwrap().into_inner(), vec![1, 2]);
@@ -137,13 +137,13 @@ where
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx, rx) = futures::channel::mpsc::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut windowed = stream.window_by_count::<Sequenced<Vec<i32>>>(3);
     ///
-    /// tx.send(Sequenced::new(1)).unwrap();
-    /// tx.send(Sequenced::new(2)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(1)).unwrap();
+    /// tx.unbounded_send(Sequenced::new(2)).unwrap();
     /// drop(tx);  // Only 2 items, window size is 3
     ///
     /// // Partial window emitted on completion
@@ -161,14 +161,14 @@ where
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    /// let (tx, rx) = futures::channel::mpsc::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut windowed = stream.window_by_count::<Sequenced<Vec<i32>>>(2);
     ///
     /// // Items with explicit timestamps
-    /// tx.send(Sequenced::from((10, 100))).unwrap();  // value=10, ts=100
-    /// tx.send(Sequenced::from((20, 200))).unwrap();  // value=20, ts=200
+    /// tx.unbounded_send(Sequenced::from((10, 100))).unwrap();  // value=10, ts=100
+    /// tx.unbounded_send(Sequenced::from((20, 200))).unwrap();  // value=20, ts=200
     ///
     /// let window = windowed.next().await.unwrap().unwrap();
     /// // Window timestamp is from the LAST item (200)

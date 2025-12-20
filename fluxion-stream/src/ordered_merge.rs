@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -76,9 +76,9 @@ where
     /// let mut merged = stream1.ordered_merge(vec![stream2]);
     ///
     /// // Send values with explicit ordering
-    /// tx1.send((1, 100).into()).unwrap();
-    /// tx2.send((2, 200).into()).unwrap();
-    /// tx1.send((3, 300).into()).unwrap();
+    /// tx1.unbounded_send((1, 100).into()).unwrap();
+    /// tx2.unbounded_send((2, 200).into()).unwrap();
+    /// tx1.unbounded_send((3, 300).into()).unwrap();
     ///
     /// // Assert - values emitted in temporal order
     /// assert_eq!(unwrap_value(Some(unwrap_stream(&mut merged, 500).await)).value, 1);
