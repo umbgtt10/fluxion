@@ -9,11 +9,11 @@ use crate::processing::event_handler::{print_final_analytics, process_event};
 use anyhow::Result;
 use fluxion_core::stream_item::StreamItem;
 use fluxion_exec::subscribe::SubscribeExt;
+use futures::lock::Mutex as FutureMutex;
 use futures::Stream;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
@@ -43,7 +43,7 @@ impl EventProcessor {
         cancel: CancellationToken,
     ) -> Result<()> {
         let event_count = Arc::new(AtomicU32::new(0));
-        let analytics = Arc::new(Mutex::new(OrderAnalytics::default()));
+        let analytics = Arc::new(FutureMutex::new(OrderAnalytics::default()));
 
         let result = stream
             .subscribe(

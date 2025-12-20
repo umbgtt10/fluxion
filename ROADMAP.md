@@ -307,37 +307,9 @@ See [Operators Roadmap](docs/FLUXION_OPERATORS_ROADMAP.md) for detailed operator
 - Browser-specific optimizations
 - Deterministic time control (WASM doesn't support time mocking like Tokio)
 
-## 🚀 Version 0.6.5 - smol Runtime Support
-
-**Status:** Completed (Not yet published)
-
-**Goal:** Enable time-based operators with smol runtime through Timer abstraction
-
-### Essential Features
-- ✅ **SmolTimer Implementation** - Zero-sized type implementing Timer trait using async-io
-- ✅ **Feature Flag** - `time-smol` for smol runtime support
-- ✅ **Test Suite** - 10 comprehensive tests (5 operators × 2 threading models)
-- ✅ **CI Integration** - Automated testing with `.ci/smol_tests.ps1`
-- ✅ **Documentation** - Usage examples and implementation details
-- ✅ **Public API** - `SmolTimer` and `SmolTimestamped<T>` exports
-
-### Documentation
-- ✅ smol usage examples with SmolTimer
-- ✅ Implementation notes and platform support details
-- ✅ Updated runtime support lists across all READMEs
-
-### Quality Gates
-- ✅ All tests passing (10/10 smol tests)
-- ✅ Zero compilation errors for smol feature
-- ✅ Zero clippy warnings
-- ✅ CI green
-
-### Why smol?
-smol provides a lightweight, actively-maintained alternative to tokio with full multi-threading support, unlike WASM. This validates the Timer trait abstraction works across diverse runtime architectures.
-
 ## 🚀 Version 0.6.4 - Support async-std Runtime ⚠️ **DEPRECATED**
 
-**Status:** Completed (Unmaintained Runtime)
+**Status:** Completed (Internal Release)
 
 **⚠️ WARNING**: async-std has been discontinued (RUSTSEC-2025-0052, 2024-08-24).
 This implementation is kept for compatibility with existing projects only.
@@ -378,7 +350,7 @@ New projects should use tokio or smol runtimes instead.
 
 ## 🚀 Version 0.6.5 - Support smol Runtime
 
-**Status:** Completed
+**Status:** Completed (Internal Release)
 
 **Goal:** Enable time-based operators with async-std runtime through Timer abstraction
 
@@ -412,6 +384,56 @@ New projects should use tokio or smol runtimes instead.
 
 **Out of Scope:**
 - Runtime performance benchmarking
+
+## 🚀 Version 0.6.6 - Ergonomic API Improvements
+
+**Status:** ✅ Completed (Internal Release)
+
+**Goal:** Provide convenience methods for time operators eliminating boilerplate
+
+### Essential Features
+- ✅ **Convenience Methods** - All 5 time operators now have parameter-free variants
+- ✅ **Smart Defaults** - Automatically use runtime's default timer (TokioTimer, SmolTimer, etc.)
+- ✅ **Dual API** - Both convenience (`.debounce()`) and explicit (`.debounce_with_timer()`) methods
+- ✅ **Prelude Module** - Single import for all extension traits
+- ✅ **Feature-Gated** - Implementations for each runtime (time-tokio, time-smol, time-wasm, time-async-std)
+
+### Documentation
+- ✅ Updated README to show convenience methods as primary API
+- ✅ All operator examples demonstrate both APIs
+- ✅ Runtime-specific sections updated
+
+### Quality Gates
+- ✅ All tests migrated to convenience methods (~40 test files)
+- ✅ All benchmarks updated (5 benchmark files)
+- ✅ Zero compilation errors
+- ✅ Zero clippy warnings
+- ✅ CI green
+
+### Key Achievement
+**Zero Trade-offs** - Achieved performance, flexibility, ergonomics, runtime support, and no_std infrastructure simultaneously without compromise.
+
+## 🚀 Version 0.6.7 - Runtime-Agnostic Preparation
+
+**Status:** Ongoing
+
+**Goal:** Provide runtime-agnostic support for time-agnostic operators enabling multiple async runtimes
+
+### Essential Features
+- ✅ Replace tokio::sync::Mutex → futures::lock::Mutex
+- [ ] Custom CancellationToken (using event-listener)
+- [ ] Verify tokio channel portability
+
+### Documentation
+- [ ] Updated docs as appropriate to reflect runtime-agnostic changes
+
+### Quality Gates
+- [ ] Zero compilation errors
+- [ ] Zero clippy warnings
+- [ ] CI green
+
+### Key Achievement
+**Zero Trade-offs** - Risk-free, performance-loss-free preparatory changes reducing coupling to Tokio runtime.
 
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 

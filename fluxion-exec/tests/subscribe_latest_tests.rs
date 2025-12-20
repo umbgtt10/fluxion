@@ -9,6 +9,7 @@ use fluxion_test_utils::test_data::{
     person_dave, person_diane, plant_rose, TestData,
 };
 use fluxion_test_utils::Sequenced;
+use futures::lock::Mutex as FutureMutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::spawn;
@@ -16,7 +17,6 @@ use tokio::sync::mpsc::unbounded_channel;
 use tokio::task::yield_now;
 use tokio::{
     sync::mpsc,
-    sync::Mutex,
     time::{sleep, Duration},
 };
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -36,7 +36,7 @@ impl TestError {
 #[tokio::test]
 async fn test_subscribe_latest_no_skipping_no_error_no_cancellation() -> anyhow::Result<()> {
     // Arrange
-    let collected_items = Arc::new(Mutex::new(Vec::new()));
+    let collected_items = Arc::new(FutureMutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
@@ -126,17 +126,17 @@ async fn test_subscribe_latest_no_skipping_no_error_no_cancellation() -> anyhow:
 #[tokio::test]
 async fn test_subscribe_latest_with_skipping_no_error_no_cancellation() -> anyhow::Result<()> {
     // Arrange
-    let collected_items = Arc::new(Mutex::new(Vec::new()));
+    let collected_items = Arc::new(FutureMutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = mpsc::unbounded_channel();
 
     // Barrier channel: only the FIRST processed item will wait on this
     let (gate_tx, gate_rx) = unbounded_channel::<()>();
-    let gate_rx_shared = Arc::new(Mutex::new(Some(gate_rx)));
+    let gate_rx_shared = Arc::new(FutureMutex::new(Some(gate_rx)));
 
     // Start channel: first processing signals when it starts (to avoid races)
     let (start_tx, mut start_rx) = unbounded_channel::<()>();
-    let start_tx_shared = Arc::new(Mutex::new(Some(start_tx)));
+    let start_tx_shared = Arc::new(FutureMutex::new(Some(start_tx)));
 
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -226,7 +226,7 @@ async fn test_subscribe_latest_with_skipping_no_error_no_cancellation() -> anyho
 #[tokio::test]
 async fn test_subscribe_latest_no_skipping_with_error_no_cancellation() -> anyhow::Result<()> {
     // Arrange
-    let collected_items = Arc::new(Mutex::new(Vec::new()));
+    let collected_items = Arc::new(FutureMutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
@@ -301,7 +301,7 @@ async fn test_subscribe_latest_no_skipping_with_error_no_cancellation() -> anyho
 #[tokio::test]
 async fn test_subscribe_latest_no_skipping_no_errors_with_cancellation() -> anyhow::Result<()> {
     // Arrange
-    let collected_items = Arc::new(Mutex::new(Vec::new()));
+    let collected_items = Arc::new(FutureMutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
@@ -378,7 +378,7 @@ async fn test_subscribe_latest_no_skipping_no_errors_with_cancellation() -> anyh
 #[tokio::test]
 async fn test_subscribe_latest_no_skipping_with_cancellation_and_errors() -> anyhow::Result<()> {
     // Arrange
-    let collected_items = Arc::new(Mutex::new(Vec::new()));
+    let collected_items = Arc::new(FutureMutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
@@ -465,7 +465,7 @@ async fn test_subscribe_latest_no_skipping_no_error_no_cancellation_no_concurren
     // Signal when processing starts; control completion via a finish gate
     let (started_tx, mut started_rx) = unbounded_channel::<()>();
     let (finish_tx, finish_rx) = unbounded_channel::<()>();
-    let finish_rx_shared = Arc::new(Mutex::new(finish_rx));
+    let finish_rx_shared = Arc::new(FutureMutex::new(finish_rx));
 
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
@@ -555,7 +555,7 @@ async fn test_subscribe_latest_no_skipping_no_error_no_cancellation_no_concurren
 async fn test_subscribe_latest_no_skipping_no_error_no_cancellation_token_empty_stream(
 ) -> anyhow::Result<()> {
     // Arrange
-    let collected_items = Arc::new(Mutex::new(Vec::<TestData>::new()));
+    let collected_items = Arc::new(FutureMutex::new(Vec::<TestData>::new()));
     let collected_items_clone = collected_items.clone();
 
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
@@ -596,17 +596,17 @@ async fn test_subscribe_latest_no_skipping_no_error_no_cancellation_token_empty_
 #[tokio::test]
 async fn test_subscribe_latest_high_volume() -> anyhow::Result<()> {
     // Arrange
-    let collected_items = Arc::new(Mutex::new(Vec::new()));
+    let collected_items = Arc::new(FutureMutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
     // Gate to block first processing until we're ready
     let (gate_tx, gate_rx) = unbounded_channel::<()>();
-    let gate_rx_shared = Arc::new(Mutex::new(Some(gate_rx)));
+    let gate_rx_shared = Arc::new(FutureMutex::new(Some(gate_rx)));
 
     // Signal when first processing starts
     let (start_tx, mut start_rx) = unbounded_channel::<()>();
-    let start_tx_shared = Arc::new(Mutex::new(Some(start_tx)));
+    let start_tx_shared = Arc::new(FutureMutex::new(Some(start_tx)));
 
     // Track how many items have been enqueued by the for_each loop
     let enqueue_count = Arc::new(AtomicUsize::new(0));
@@ -702,7 +702,7 @@ async fn test_subscribe_latest_high_volume() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_subscribe_latest_single_item() -> anyhow::Result<()> {
     // Arrange
-    let collected_items = Arc::new(Mutex::new(Vec::new()));
+    let collected_items = Arc::new(FutureMutex::new(Vec::new()));
     let collected_items_clone = collected_items.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
 

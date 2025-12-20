@@ -3,10 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_exec::subscribe::SubscribeExt;
+use futures::lock::Mutex as FutureMutex;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
-use tokio::sync::Mutex as TokioMutex;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::sync::CancellationToken;
 
@@ -29,7 +29,7 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
     let stream = UnboundedReceiverStream::new(rx);
 
     // Step 2: Create a shared results container
-    let results = Arc::new(TokioMutex::new(Vec::new()));
+    let results = Arc::new(FutureMutex::new(Vec::new()));
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
     // Step 3: Define the async processing function

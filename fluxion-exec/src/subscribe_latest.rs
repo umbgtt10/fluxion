@@ -4,12 +4,13 @@
 
 use async_trait::async_trait;
 use fluxion_core::{FluxionError, Result};
+use futures::lock::Mutex as FutureMutex;
 use futures::{Stream, StreamExt};
 use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::future::Future;
 use std::{error::Error, sync::Arc};
-use tokio::sync::{Mutex as TokioMutex, Notify};
+use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
 
 /// Extension trait providing async subscription with automatic cancellation of outdated work.
@@ -506,7 +507,7 @@ where
 
 #[derive(Debug)]
 struct Context<T> {
-    state: TokioMutex<State<T>>,
+    state: FutureMutex<State<T>>,
     processing_complete: Notify,
 }
 
@@ -586,7 +587,7 @@ impl<T> Context<T> {
 impl<T> Default for Context<T> {
     fn default() -> Self {
         Self {
-            state: TokioMutex::new(State {
+            state: FutureMutex::new(State {
                 item: None,
                 is_processing: false,
             }),

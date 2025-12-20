@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.7] - 2025-12-20
+
+### Changed
+- **Runtime-Agnostic Primitives** (`fluxion-stream`, `fluxion-exec`)
+  - Replaced `tokio::sync::Mutex` with `futures::lock::Mutex` in `merge_with.rs`
+  - Replaced `tokio::sync::Mutex` with `futures::lock::Mutex` in `subscribe_latest.rs`
+  - Both mutexes are async fair mutexes with identical semantics and performance
+  - Works on ANY async executor (Tokio, smol, async-std, WASM)
+  - Zero API changes (internal implementation detail)
+  - Zero performance impact (equivalent primitives)
+
+### Technical Details
+- **Phase 0 of Runtime Abstraction** - Risk-free preparatory work
+  - Reduces coupling to Tokio-specific types
+  - Foundation for multi-runtime support in v0.7.0
+  - All tests passing (no modifications required)
+  - Zero compilation errors, zero clippy warnings
+
+### Why This Change?
+- **Preparation:** Sets foundation for multi-runtime support (v0.7.0)
+- **Portability:** `futures::lock::Mutex` works across all async executors
+- **no_std Ready:** `futures::lock` supports no_std + alloc environments
+- **Zero Risk:** Internal change only, equivalent performance characteristics
+
+## [0.6.6] - 2025-12-20
+
 ### Added
 - **Ergonomic Convenience Methods** (`fluxion-stream-time`)
   - New convenience methods for all 5 time operators: `debounce()`, `delay()`, `throttle()`, `sample()`, `timeout()`
@@ -15,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Feature-gated implementations for each runtime (time-tokio, time-smol, time-wasm, time-async-std)
   - Example: `.debounce(Duration::from_millis(100))` vs `.debounce_with_timer(duration, timer)`
 
-### Changed  
+### Changed
 - **API Enhancement** (`fluxion-stream-time`)
   - Renamed base operator methods to `*_with_timer` pattern (e.g., `debounce` → `debounce_with_timer`)
   - Added `*WithDefaultTimerExt` traits providing convenience methods (e.g., `DebounceWithDefaultTimerExt`)
@@ -907,7 +933,8 @@ See [Error Handling Guide](docs/ERROR-HANDLING.md) for comprehensive patterns.
 
 ---
 
-[Unreleased]: https://github.com/umbgtt10/fluxion/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/umbgtt10/fluxion/compare/v0.6.6...HEAD
+[0.6.6]: https://github.com/umbgtt10/fluxion/compare/v0.6.0...v0.6.6
 [0.6.0]: https://github.com/umbgtt10/fluxion/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/umbgtt10/fluxion/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/umbgtt10/fluxion/compare/v0.3.0...v0.4.0

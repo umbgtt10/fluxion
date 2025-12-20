@@ -9,11 +9,11 @@ use fluxion_test_utils::test_data::{
     TestData,
 };
 use fluxion_test_utils::Sequenced;
+use futures::lock::Mutex as FutureMutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{sync::Arc, sync::Mutex as StdMutex};
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
-use tokio::sync::Mutex as TokioMutex;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_stream::StreamExt as _;
 use tokio_util::sync::CancellationToken;
@@ -42,7 +42,7 @@ async fn test_subscribe_processes_items_when_waiting_per_item() -> anyhow::Resul
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
-    let results = Arc::new(TokioMutex::new(Vec::new()));
+    let results = Arc::new(FutureMutex::new(Vec::new()));
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
     let func = {
@@ -128,7 +128,7 @@ async fn test_subscribe_reports_errors_for_animals_and_collects_people() -> anyh
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
-    let results = Arc::new(TokioMutex::new(Vec::new()));
+    let results = Arc::new(FutureMutex::new(Vec::new()));
     let errors = Arc::new(StdMutex::new(Vec::new()));
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
@@ -205,7 +205,7 @@ async fn test_subscribe_cancels_midstream_no_post_cancel_processing() -> anyhow:
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
-    let results = Arc::new(TokioMutex::new(Vec::new()));
+    let results = Arc::new(FutureMutex::new(Vec::new()));
     let cancellation_token = CancellationToken::new();
     let cancellation_token_clone = cancellation_token.clone();
     let (notify_tx, mut notify_rx) = unbounded_channel();
@@ -274,7 +274,7 @@ async fn test_subscribe_errors_then_cancellation_no_post_cancel_processing() -> 
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
-    let results = Arc::new(TokioMutex::new(Vec::new()));
+    let results = Arc::new(FutureMutex::new(Vec::new()));
     let errors = Arc::new(StdMutex::new(Vec::new()));
     let cancellation_token = CancellationToken::new();
     let cancellation_token_clone = cancellation_token.clone();
@@ -381,7 +381,7 @@ async fn test_subscribe_empty_stream_completes_without_items() -> anyhow::Result
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
-    let results = Arc::new(TokioMutex::new(Vec::new()));
+    let results = Arc::new(FutureMutex::new(Vec::new()));
 
     let func = {
         let results = results.clone();
@@ -427,7 +427,7 @@ async fn test_subscribe_parallelism_max_active_ge_2() -> anyhow::Result<()> {
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
-    let results = Arc::new(TokioMutex::new(Vec::new()));
+    let results = Arc::new(FutureMutex::new(Vec::new()));
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
     // Concurrency counters
@@ -436,7 +436,7 @@ async fn test_subscribe_parallelism_max_active_ge_2() -> anyhow::Result<()> {
 
     // Gate to hold completion so tasks overlap; and starter to know when tasks begin
     let (finish_tx, finish_rx) = unbounded_channel::<()>();
-    let finish_rx_shared = Arc::new(TokioMutex::new(finish_rx));
+    let finish_rx_shared = Arc::new(FutureMutex::new(finish_rx));
     let (started_tx, mut started_rx) = unbounded_channel::<()>();
 
     let func = {
@@ -529,7 +529,7 @@ async fn test_subscribe_high_volume_processes_all() -> anyhow::Result<()> {
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
-    let results = Arc::new(TokioMutex::new(Vec::new()));
+    let results = Arc::new(FutureMutex::new(Vec::new()));
     let (notify_tx, mut notify_rx) = unbounded_channel();
 
     let func = {
@@ -591,7 +591,7 @@ async fn test_subscribe_precancelled_token_processes_nothing() -> anyhow::Result
     let (tx, rx) = unbounded_channel::<Sequenced<TestData>>();
     let stream = UnboundedReceiverStream::new(rx);
     let stream = stream.map(|timestamped| timestamped.value);
-    let results = Arc::new(TokioMutex::new(Vec::new()));
+    let results = Arc::new(FutureMutex::new(Vec::new()));
     let cancellation_token = CancellationToken::new();
 
     // Pre-cancel the token

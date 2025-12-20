@@ -11,7 +11,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use futures::lock::Mutex as FutureMutex;
 
 /// A stateful stream merger that combines multiple Timestamped streams while maintaining state.
 ///
@@ -21,7 +21,7 @@ use tokio::sync::Mutex;
 pub struct MergedStream<S, State, Item> {
     #[pin]
     inner: S,
-    state: Arc<Mutex<State>>,
+    state: Arc<FutureMutex<State>>,
     _marker: PhantomData<Item>,
 }
 
@@ -48,7 +48,7 @@ where
     {
         MergedStream {
             inner: empty::<StreamItem<OutWrapper>>(),
-            state: Arc::new(Mutex::new(initial_state)),
+            state: Arc::new(FutureMutex::new(initial_state)),
             _marker: PhantomData,
         }
     }

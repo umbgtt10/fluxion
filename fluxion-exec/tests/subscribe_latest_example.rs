@@ -3,10 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;
+use futures::lock::Mutex as FutureMutex;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
-use tokio::sync::Mutex as TokioMutex;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::sync::CancellationToken;
 
@@ -18,12 +18,12 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
     struct Err;
 
     let (tx, rx) = unbounded_channel::<u32>();
-    let completed = Arc::new(TokioMutex::new(Vec::new()));
+    let completed = Arc::new(FutureMutex::new(Vec::new()));
     let (notify_tx, mut notify_rx) = unbounded_channel();
     let (gate_tx, gate_rx) = unbounded_channel::<()>();
-    let gate_rx_shared = Arc::new(TokioMutex::new(Some(gate_rx)));
+    let gate_rx_shared = Arc::new(FutureMutex::new(Some(gate_rx)));
     let (start_tx, mut start_rx) = unbounded_channel::<()>();
-    let start_tx_shared = Arc::new(TokioMutex::new(Some(start_tx)));
+    let start_tx_shared = Arc::new(FutureMutex::new(Some(start_tx)));
 
     let process = {
         let completed = completed.clone();
