@@ -18,7 +18,6 @@ async fn test_delay_across_threads() {
     let (tx, stream) = test_channel::<AsyncStdTimestamped<Person>>();
 
     // Spawn on different thread
-    let timer_clone = timer.clone();
     let handle = async_std::task::spawn(async move {
         use futures::StreamExt;
         let mut delayed = stream.delay(Duration::from_millis(50));

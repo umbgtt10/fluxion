@@ -2,12 +2,12 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::CancellationToken;
 use futures::{Stream, StreamExt};
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::task::JoinHandle;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tokio_util::sync::CancellationToken;
 
 use crate::domain::{events::UnifiedEvent, TimestampedEvent};
 use crate::legacy::file_watcher::LegacyFileWatcher;

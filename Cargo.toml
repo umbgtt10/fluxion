@@ -44,6 +44,7 @@ fastrand = "2.3.0"
 
 # Synchronization
 parking_lot = "0.12.5"
+event-listener = "5.4"
 
 # Logging
 tracing = "0.1.44"

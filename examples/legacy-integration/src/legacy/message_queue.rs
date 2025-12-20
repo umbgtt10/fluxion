@@ -5,10 +5,10 @@
 //! Simulates a legacy message queue producing XML order events
 //! In production, this would consume from RabbitMQ, ActiveMQ, etc.
 
+use fluxion_core::CancellationToken;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::{sleep, Duration};
-use tokio_util::sync::CancellationToken;
 
 use crate::domain::models::Order;
 

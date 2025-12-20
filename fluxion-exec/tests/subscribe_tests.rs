@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::CancellationToken;
 use fluxion_core::FluxionError;
 use fluxion_exec::subscribe::SubscribeExt;
 use fluxion_test_utils::test_data::{
@@ -16,7 +17,6 @@ use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_stream::StreamExt as _;
-use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Test error: {0}")]

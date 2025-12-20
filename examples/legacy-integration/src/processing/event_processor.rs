@@ -7,7 +7,7 @@
 use crate::domain::{events::UnifiedEvent, repository::OrderAnalytics, TimestampedEvent};
 use crate::processing::event_handler::{print_final_analytics, process_event};
 use anyhow::Result;
-use fluxion_core::stream_item::StreamItem;
+use fluxion_core::{stream_item::StreamItem, CancellationToken};
 use fluxion_exec::subscribe::SubscribeExt;
 use futures::lock::Mutex as FutureMutex;
 use futures::Stream;
@@ -16,7 +16,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
-use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Processing error: {0}")]

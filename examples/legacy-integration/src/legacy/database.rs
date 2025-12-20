@@ -5,12 +5,11 @@
 //! Simulates a legacy database that produces JSON user records
 //! In production, this would poll a real database table
 
+use crate::domain::models::User;
+use fluxion_core::CancellationToken;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::{sleep, Duration};
-use tokio_util::sync::CancellationToken;
-
-use crate::domain::models::User;
 
 pub struct LegacyDatabase {
     user_id_counter: AtomicU64,

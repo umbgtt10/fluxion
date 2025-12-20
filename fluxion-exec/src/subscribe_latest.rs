@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use async_trait::async_trait;
-use fluxion_core::{FluxionError, Result};
+use fluxion_core::{CancellationToken, FluxionError, Result};
 use futures::lock::Mutex as FutureMutex;
 use futures::{Stream, StreamExt};
 use parking_lot::Mutex;
@@ -11,7 +11,6 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::{error::Error, sync::Arc};
 use tokio::sync::Notify;
-use tokio_util::sync::CancellationToken;
 
 /// Extension trait providing async subscription with automatic cancellation of outdated work.
 ///
@@ -161,7 +160,7 @@ where
     /// use futures::StreamExt;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
-    /// use tokio_util::sync::CancellationToken;
+    /// use fluxion_core::CancellationToken;
     ///
     /// # #[tokio::main]
     /// # async fn main() {

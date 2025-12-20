@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -195,7 +195,7 @@ where
     type Timestamped;
 }
 
-#[cfg(feature = "time-tokio")]
+#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
 impl<S, T> SampleWithDefaultTimerExt<T> for S
 where
     S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>>,
@@ -208,7 +208,7 @@ where
     }
 }
 
-#[cfg(feature = "time-smol")]
+#[cfg(all(feature = "time-smol", not(feature = "time-tokio")))]
 impl<S, T> SampleWithDefaultTimerExt<T> for S
 where
     S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>>,
@@ -221,7 +221,7 @@ where
     }
 }
 
-#[cfg(feature = "time-wasm")]
+#[cfg(all(feature = "time-wasm", target_arch = "wasm32"))]
 impl<S, T> SampleWithDefaultTimerExt<T> for S
 where
     S: Stream<
@@ -240,7 +240,11 @@ where
     }
 }
 
-#[cfg(feature = "time-async-std")]
+#[cfg(all(
+    feature = "time-async-std",
+    not(feature = "time-tokio"),
+    not(feature = "time-smol")
+))]
 impl<S, T> SampleWithDefaultTimerExt<T> for S
 where
     S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>>,

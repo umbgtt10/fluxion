@@ -67,6 +67,7 @@
 //! - **Type routing**: Route different enum variants to specialized handlers
 //! - **Threshold filtering**: Split values above/below a threshold
 
+use fluxion_core::CancellationToken;
 use fluxion_core::{Fluxion, FluxionSubject, StreamItem};
 use futures::{Stream, StreamExt};
 use std::fmt::Debug;
@@ -74,7 +75,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::task::JoinHandle;
-use tokio_util::sync::CancellationToken;
 
 /// Extension trait providing the `partition` operator for streams.
 ///

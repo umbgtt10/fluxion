@@ -5,11 +5,11 @@
 //! Sensor reading producer - simulates Queue 1
 
 use crate::domain::SensorReading;
+use fluxion_core::CancellationToken;
 use tokio::select;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
-use tokio_util::sync::CancellationToken;
 
 pub struct SensorProducer {
     cancel_token: CancellationToken,

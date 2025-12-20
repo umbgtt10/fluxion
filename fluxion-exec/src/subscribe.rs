@@ -3,15 +3,13 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use async_trait::async_trait;
+use fluxion_core::{CancellationToken, FluxionError, Result};
 use futures::stream::Stream;
 use futures::stream::StreamExt;
 use std::error::Error;
 use std::fmt::Debug;
 use std::future::Future;
 use tokio::sync::mpsc::unbounded_channel;
-use tokio_util::sync::CancellationToken;
-
-use fluxion_core::{FluxionError, Result};
 
 /// Extension trait providing async subscription capabilities for streams.
 ///
@@ -190,7 +188,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// use tokio::sync::mpsc::unbounded_channel;
     /// use tokio_stream::wrappers::UnboundedReceiverStream;
     /// use futures::StreamExt;
-    /// use tokio_util::sync::CancellationToken;
+    /// use fluxion_core::CancellationToken;
     /// use std::sync::Arc;
     /// use tokio::sync::Mutex;
     ///

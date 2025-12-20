@@ -11,6 +11,9 @@ keywords = ["async", "stream", "time", "debounce", "throttle"]
 categories = ["asynchronous", "concurrency", "date-and-time"]
 readme = "README.md"
 
+[package.metadata.cargo-udeps.ignore]
+development = ["async-std", "smol"]
+
 [dependencies]
 fluxion-core = { workspace = true }
 futures = { workspace = true }

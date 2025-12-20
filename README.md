@@ -371,7 +371,7 @@ use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::Mutex as TokioMutex;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tokio_util::sync::CancellationToken;
+use fluxion_core::CancellationToken;
 
 /// Example test demonstrating subscribe usage
 #[tokio::test]
@@ -474,7 +474,7 @@ use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::Mutex as TokioMutex;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tokio_util::sync::CancellationToken;
+use fluxion_core::CancellationToken;
 
 /// Example demonstrating subscribe_latest with automatic substitution
 #[tokio::test]

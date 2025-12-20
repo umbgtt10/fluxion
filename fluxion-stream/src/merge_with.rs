@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::ordered_merge::ordered_merge_with_index;
 use fluxion_core::{Fluxion, HasTimestamp, StreamItem, Timestamped};
+use futures::lock::Mutex as FutureMutex;
 use futures::stream::{empty, Empty, Stream, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
@@ -11,7 +12,6 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::Arc;
-use futures::lock::Mutex as FutureMutex;
 
 /// A stateful stream merger that combines multiple Timestamped streams while maintaining state.
 ///

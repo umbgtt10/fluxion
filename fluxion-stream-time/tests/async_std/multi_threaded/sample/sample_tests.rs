@@ -18,7 +18,6 @@ async fn test_sample_across_threads() {
     let (tx, stream) = test_channel::<AsyncStdTimestamped<Person>>();
 
     // Spawn on different thread
-    let timer_clone = timer.clone();
     let handle = async_std::task::spawn(async move {
         let mut sampled = stream.sample(Duration::from_millis(100));
         unwrap_stream(&mut sampled, 200).await

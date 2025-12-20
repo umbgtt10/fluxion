@@ -34,9 +34,9 @@ mod metrics_producer;
 mod sensor_producer;
 
 use aggregator::Aggregator;
+use fluxion_core::CancellationToken;
 use tokio::select;
 use tokio::signal;
-use tokio_util::sync::CancellationToken;
 
 // ============================================================================
 // Main - Single-threaded with parallel tasks

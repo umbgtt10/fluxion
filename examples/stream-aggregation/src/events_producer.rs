@@ -5,11 +5,11 @@
 //! System events producer - simulates Queue 3
 
 use crate::domain::SystemEvent;
+use fluxion_core::CancellationToken;
 use tokio::select;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
-use tokio_util::sync::CancellationToken;
 
 pub struct EventsProducer {
     cancel_token: CancellationToken,

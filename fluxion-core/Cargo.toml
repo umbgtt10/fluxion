@@ -17,6 +17,7 @@ ignore = { normal = ["tracing"] }
 [dependencies]
 futures = { workspace = true }
 parking_lot = { workspace = true }
+event-listener = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true, optional = true }
 

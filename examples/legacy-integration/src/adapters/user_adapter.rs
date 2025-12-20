@@ -5,12 +5,12 @@
 //! Adapter that wraps legacy User records with timestamps
 //! This is Pattern 3: Wrapper Ordering from the Integration Guide
 
+use fluxion_core::CancellationToken;
 use futures::{Stream, StreamExt};
 use tokio::spawn;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::task::JoinHandle;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tokio_util::sync::CancellationToken;
 
 use crate::domain::{events::UnifiedEvent, TimestampedEvent};
 use crate::legacy::database::LegacyDatabase;

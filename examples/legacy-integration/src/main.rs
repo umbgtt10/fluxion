@@ -23,9 +23,9 @@ use crate::adapters::{InventoryAdapter, OrderAdapter, UserAdapter};
 use crate::domain::repository::Repository;
 use crate::processing::event_processor::EventProcessor;
 use anyhow::Result;
+use fluxion_core::CancellationToken;
 use tokio::time::sleep;
 use tokio::{select, signal};
-use tokio_util::sync::CancellationToken;
 
 #[tokio::main]
 async fn main() -> Result<()> {

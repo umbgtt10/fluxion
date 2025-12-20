@@ -3,10 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::async_std::helpers::{person_alice, test_channel, Person};
-
 use fluxion_stream_time::runtimes::AsyncStdTimer;
 use fluxion_stream_time::timer::Timer;
 use fluxion_stream_time::{prelude::*, InstantTimestamped};
+use futures::StreamExt;
 use std::time::Duration;
 
 type AsyncStdTimestamped<T> = InstantTimestamped<T, AsyncStdTimer>;
@@ -18,9 +18,7 @@ async fn test_timeout_across_threads() {
     let (tx, stream) = test_channel::<AsyncStdTimestamped<Person>>();
 
     // Spawn on different thread
-    let timer_clone = timer.clone();
     let handle = async_std::task::spawn(async move {
-        use futures::StreamExt;
         let mut timed = stream.timeout(Duration::from_millis(200));
         timed.next().await
     });

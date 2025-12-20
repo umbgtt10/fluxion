@@ -5,10 +5,10 @@
 //! Final consumer - consumes aggregated events from Queue 4
 
 use crate::domain::AggregatedEvent;
+use fluxion_core::CancellationToken;
 use tokio::select;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
-use tokio_util::sync::CancellationToken;
 
 pub struct FinalConsumer {
     cancel_token: CancellationToken,

@@ -5,11 +5,11 @@
 //! Metrics data producer - simulates Queue 2
 
 use crate::domain::MetricData;
+use fluxion_core::CancellationToken;
 use tokio::select;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
-use tokio_util::sync::CancellationToken;
 
 pub struct MetricsProducer {
     cancel_token: CancellationToken,

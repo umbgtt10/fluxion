@@ -5,9 +5,9 @@
 //! Simulates a legacy file watcher producing CSV inventory updates
 //! In production, this would watch a directory for new CSV files
 
+use fluxion_core::CancellationToken;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::{sleep, Duration};
-use tokio_util::sync::CancellationToken;
 
 use crate::domain::models::Inventory;
 
