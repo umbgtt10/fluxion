@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use async_trait::async_trait;
+use event_listener::Event;
 use fluxion_core::{CancellationToken, FluxionError, Result};
 use futures::lock::Mutex as FutureMutex;
 use futures::{Stream, StreamExt};
@@ -10,7 +11,6 @@ use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::future::Future;
 use std::{error::Error, sync::Arc};
-use tokio::sync::Notify;
 
 /// Extension trait providing async subscription with automatic cancellation of outdated work.
 ///
@@ -503,7 +503,7 @@ where
 #[derive(Debug)]
 struct Context<T> {
     state: FutureMutex<State<T>>,
-    processing_complete: Notify,
+    processing_complete: Event,
 }
 
 #[derive(Debug)]
@@ -560,7 +560,7 @@ impl<T> Context<T> {
 
     /// Notify that a processing task has completed
     pub fn notify_task_complete(&self) {
-        self.processing_complete.notify_waiters();
+        self.processing_complete.notify(usize::MAX);
     }
 
     /// Wait for all processing to complete
@@ -574,7 +574,8 @@ impl<T> Context<T> {
                 }
             }
             // Wait for notification
-            self.processing_complete.notified().await;
+            let listener = self.processing_complete.listen();
+            listener.await;
         }
     }
 }
@@ -586,7 +587,7 @@ impl<T> Default for Context<T> {
                 item: None,
                 is_processing: false,
             }),
-            processing_complete: Notify::new(),
+            processing_complete: Event::new(),
         }
     }
 }

@@ -14,6 +14,7 @@ categories = ["asynchronous", "concurrency"]
 fluxion-core = { workspace = true }
 futures = { workspace = true }
 parking_lot = { workspace = true }
+event-listener = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 async-trait = { workspace = true }

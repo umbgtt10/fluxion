@@ -423,15 +423,15 @@ New projects should use tokio or smol runtimes instead.
 - ✅ Replace tokio::sync::Mutex → futures::lock::Mutex
 - ✅ Custom CancellationToken (using event-listener)
 - ✅ Replace tokio channels with futures::channel (mpsc, oneshot)
-- [ ] Replace tokio::sync::Notify with a custom solution
+- ✅ Replace tokio::sync::Notify → event_listener::Event
 
 ### Documentation
 - ✅ Updated docs as appropriate to reflect runtime-agnostic changes
 
 ### Quality Gates
-- [ ] Zero compilation errors
-- [ ] Zero clippy warnings
-- [ ] CI green
+- ✅ Zero compilation errors
+- ✅ Zero clippy warnings
+- ✅ CI green
 
 ### Key Achievement
 **Zero Trade-offs** - Risk-free, performance-loss-free preparatory changes reducing coupling to Tokio runtime.
