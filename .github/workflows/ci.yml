@@ -161,29 +161,54 @@ jobs:
       - name: Add wasm32 target
         run: rustup target add wasm32-unknown-unknown
 
-      - name: Run WASM tests (Node.js)
-        working-directory: fluxion-stream-time
+      - name: Run WASM tests (fluxion-core)
+        working-directory: fluxion-core
         continue-on-error: true
-        id: wasm-test
-        run: wasm-pack test --node --features runtime-wasm 2>&1 | tee wasm-output.txt
+        id: wasm-test-core
+        run: wasm-pack test --node -- --no-default-features 2>&1 | tee wasm-output.txt
 
-      - name: Verify WASM tests passed
-        working-directory: fluxion-stream-time
+      - name: Verify WASM tests passed (fluxion-core)
+        working-directory: fluxion-core
         shell: bash
         run: |
           if grep -q "test result: ok\. [0-9]* passed; 0 failed; 0 ignored" wasm-output.txt; then
-            echo "✓ WASM tests passed (doc test failures are expected)"
+            echo "✓ fluxion-core WASM tests passed"
             exit 0
           else
-            echo "✗ WASM tests did not pass"
+            echo "✗ fluxion-core WASM tests did not pass"
             cat wasm-output.txt
             exit 1
           fi
 
-      - name: Run async-std tests
+      - name: Run WASM tests (fluxion-stream-time)
+        working-directory: fluxion-stream-time
+        continue-on-error: true
+        id: wasm-test-time
+        run: wasm-pack test --node --features runtime-wasm 2>&1 | tee wasm-output.txt
+
+      - name: Verify WASM tests passed (fluxion-stream-time)
+        working-directory: fluxion-stream-time
+        shell: bash
+        run: |
+          if grep -q "test result: ok\. [0-9]* passed; 0 failed; 0 ignored" wasm-output.txt; then
+            echo "✓ fluxion-stream-time WASM tests passed (doc test failures are expected)"
+            exit 0
+          else
+            echo "✗ fluxion-stream-time WASM tests did not pass"
+            cat wasm-output.txt
+            exit 1
+          fi
+
+      - name: Run async-std tests (fluxion-core)
+        run: cargo test --package fluxion-core --features runtime-async-std --no-default-features --test all_tests --verbose
+
+      - name: Run async-std tests (fluxion-stream-time)
         run: cargo test --package fluxion-stream-time --features runtime-async-std --no-default-features --test all_tests --verbose
 
-      - name: Run smol tests
+      - name: Run smol tests (fluxion-core)
+        run: cargo test --package fluxion-core --features runtime-smol --no-default-features --test all_tests --verbose
+
+      - name: Run smol tests (fluxion-stream-time)
         run: cargo test --package fluxion-stream-time --features runtime-smol --no-default-features --test all_tests --verbose
 
       - name: Install cargo-audit
