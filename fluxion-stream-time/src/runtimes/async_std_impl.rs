@@ -37,7 +37,7 @@ pub mod async_std_implementation {
         }
     }
 
-    impl std::future::Future for AsyncStdSleep {
+    impl core::future::Future for AsyncStdSleep {
         type Output = ();
 
         fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

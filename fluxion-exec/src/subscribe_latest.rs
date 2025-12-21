@@ -4,12 +4,12 @@
 
 use async_trait::async_trait;
 use core::fmt::Debug;
+use core::future::Future;
 use event_listener::Event;
 use fluxion_core::{CancellationToken, FluxionError, FluxionTask, Result};
 use futures::lock::Mutex as FutureMutex;
 use futures::{Stream, StreamExt};
 use parking_lot::Mutex;
-use std::future::Future;
 use std::{error::Error, sync::Arc};
 
 /// Extension trait providing async subscription with automatic cancellation of outdated work.

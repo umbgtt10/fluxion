@@ -4,12 +4,12 @@
 
 use async_trait::async_trait;
 use core::fmt::Debug;
+use core::future::Future;
 use fluxion_core::{CancellationToken, FluxionError, Result};
 use futures::channel::mpsc::unbounded;
 use futures::stream::Stream;
 use futures::stream::StreamExt;
 use std::error::Error;
-use std::future::Future;
 
 /// Extension trait providing async subscription capabilities for streams.
 ///

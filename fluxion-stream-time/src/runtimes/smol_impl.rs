@@ -32,7 +32,7 @@ pub mod smol_implementation {
         }
     }
 
-    impl std::future::Future for SmolSleep {
+    impl core::future::Future for SmolSleep {
         type Output = ();
 
         fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
