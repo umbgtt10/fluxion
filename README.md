@@ -25,8 +25,8 @@ Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal order
 - ⏱️ **Temporal Ordering**: Guaranteed ordering semantics via `Timestamped` trait
 - ⚡ **Async Execution**: Efficient async processing with `subscribe` and `subscribe_latest`
 - 🌐 **Multi-Runtime Support**: Works with Tokio (default), smol, WebAssembly (WASM), and async-std (deprecated) via Timer trait abstraction
-- � **True Runtime Abstraction**: Zero-config for Tokio users, optional runtime selection supporting smol, wasm and async-std with automatic dead code elimination - never think about spawn/timer APIs again
-- � **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
+- 🔌 **True Runtime Abstraction**: Zero-config for Tokio users, optional runtime selection supporting smol, wasm and async-std with automatic dead code elimination - never think about spawn/timer APIs again
+- 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
 - ✅ **Well Tested**: 890+ tests with comprehensive coverage (Tokio + WASM)
 
@@ -50,7 +50,7 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.6.8"  # Zero-config: Tokio included by default
+fluxion-rx = "0.6.8"
 fluxion-test-utils = "0.6.8"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
@@ -79,8 +79,7 @@ fluxion-rx = { version = "0.6.8", default-features = false, features = ["runtime
 
 ### Basic Usage
 
-```rust
-use fluxion_core::HasTimestamp;
+```rustuse fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use futures::channel::mpsc::unbounded;
@@ -143,8 +142,8 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.6.7"
-fluxion-test-utils = "0.6.7"
+fluxion-rx = "0.6.8"
+fluxion-test-utils = "0.6.8"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 futures = "0.3.31"
@@ -152,8 +151,7 @@ futures = "0.3.31"
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rust
-use fluxion_core::Timestamped;
+```rustuse fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use futures::channel::mpsc::unbounded;
@@ -219,8 +217,8 @@ The `merge_with` operator enables elegant stateful stream processing by merging 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.6.7"
-fluxion-test-utils = "0.6.7"
+fluxion-rx = "0.6.8"
+fluxion-test-utils = "0.6.8"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 futures = "0.3.31"
@@ -228,8 +226,7 @@ futures = "0.3.31"
 
 **Example: Event Sourcing with Repository Pattern**
 
-```rust
-use fluxion_stream::MergedStream;
+```rustuse fluxion_stream::MergedStream;
 use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
 
 #[tokio::test]
@@ -379,16 +376,14 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Sequential Processing:**
 
 **Dependencies:**
-```toml
-[dependencies]
-fluxion-exec = "0.6.7"
+```toml[dependencies]
+fluxion-exec = "0.6.8"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 ```
 
 **Example:**
-```rust
-use fluxion_core::CancellationToken;
+```rustuse fluxion_core::CancellationToken;
 use fluxion_exec::subscribe::SubscribeExt;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
@@ -481,16 +476,14 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 **Latest-Value Processing (with auto-cancellation):**
 
 **Dependencies:**
-```toml
-[dependencies]
-fluxion-exec = "0.6.7"
+```toml[dependencies]
+fluxion-exec = "0.6.8"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 ```
 
 **Example:**
-```rust
-use fluxion_core::CancellationToken;
+```rustuse fluxion_core::CancellationToken;
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
