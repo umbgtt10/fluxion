@@ -3,13 +3,13 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::ordered_merge::ordered_merge_with_index;
+use alloc::sync::Arc;
 use core::fmt::Debug;
 use core::pin::Pin;
 use fluxion_core::{Fluxion, HasTimestamp, StreamItem, Timestamped};
 use futures::stream::StreamExt;
 use futures::Stream;
 use parking_lot::Mutex;
-use std::sync::Arc;
 
 /// Extension trait providing the `take_while_with` operator for timestamped streams.
 ///

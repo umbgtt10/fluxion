@@ -9,7 +9,6 @@
 //! and interaction with different error types.
 
 use fluxion_core::{FluxionError, StreamItem};
-
 use fluxion_stream::OnErrorExt;
 use fluxion_test_utils::{
     assert_no_element_emitted, assert_stream_ended, test_channel_with_errors, unwrap_stream,

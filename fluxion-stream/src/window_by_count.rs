@@ -56,11 +56,11 @@
 //! is propagated immediately. This ensures clean error boundaries without
 //! emitting potentially incomplete data.
 
+use alloc::sync::Arc;
 use core::fmt::Debug;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
 use parking_lot::Mutex;
-use std::sync::Arc;
 
 /// Extension trait providing the [`window_by_count`](Self::window_by_count) operator.
 ///

@@ -4,13 +4,13 @@
 
 use crate::ordered_merge::ordered_merge_with_index;
 use crate::types::CombinedState;
+use alloc::sync::Arc;
 use core::fmt::Debug;
 use core::pin::Pin;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{Stream, StreamExt};
 use parking_lot::Mutex;
-use std::sync::Arc;
 
 /// Extension trait providing the `with_latest_from` operator for timestamped streams.
 ///

@@ -7,12 +7,12 @@
 //! This module provides a drop-in replacement for `tokio_util::sync::CancellationToken`
 //! that works on any async runtime (Tokio, smol, async-std, WASM).
 
+use alloc::sync::Arc;
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use event_listener::{Event, EventListener};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 /// Runtime-agnostic cancellation token.
 ///

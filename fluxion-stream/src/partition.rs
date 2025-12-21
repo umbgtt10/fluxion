@@ -67,13 +67,13 @@
 //! - **Type routing**: Route different enum variants to specialized handlers
 //! - **Threshold filtering**: Split values above/below a threshold
 
+use alloc::sync::Arc;
 use core::fmt::Debug;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use fluxion_core::FluxionTask;
 use fluxion_core::{Fluxion, FluxionSubject, StreamItem};
 use futures::{FutureExt, Stream, StreamExt};
-use std::sync::Arc;
 
 /// Extension trait providing the `partition` operator for streams.
 ///

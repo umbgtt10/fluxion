@@ -328,6 +328,7 @@
 //! [`subscribe_latest`]: SubscribeLatestExt::subscribe_latest
 
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
+
 #[macro_use]
 mod logging;
 pub mod subscribe;
