@@ -14,7 +14,7 @@
 - ✅ Production-ready and deployed
 
 **Future Work:**
-- 📋 no_std support (7.5-10.5 days if requested)
+- 📋 no_std support (7.5 days if requested)
 
 ---
 
@@ -118,39 +118,6 @@ stream.throttle(Duration::from_millis(100))
 ### Phased Approach
 
 Implementation follows dependency order: `fluxion-core` → `fluxion-stream` → `fluxion-stream-time`
-
-### Phase 0: Risk-Free Preparation (0.5 days)
-
-**Goal:** Zero-risk changes that prepare codebase for no_std without breaking anything
-
-**Changes:**
-1. **Convert std imports to core imports** across all crates:
-   - `use std::fmt` → `use core::fmt`
-   - `use std::pin::Pin` → `use core::pin::Pin`
-   - `use std::task` → `use core::task`
-   - `use std::future::Future` → `use core::future::Future`
-   - Note: `std::time::Instant` remains std-only (no core equivalent)
-
-2. **Replace std types with alloc types** where needed:
-   - `std::sync::Arc` → `alloc::sync::Arc` (for no_std build)
-   - `std::boxed::Box` → `alloc::boxed::Box` (for no_std build)
-   - `std::vec::Vec` → `alloc::vec::Vec` (for no_std build)
-
-**Why Risk-Free:**
-- Standard library re-exports all core types (std::fmt::Debug = core::fmt::Debug)
-- Zero behavioral changes
-- Zero performance impact
-- All tests continue passing
-- Works on all existing runtimes
-
-**Effort:** 0.5 days
-- Systematic search and replace across ~50 files
-- Compile verification on all targets
-- Test suite execution (should be 100% passing)
-
-**Deliverable:** Codebase ready for no_std with zero behavioral changes
-
----
 
 ### Phase 1: Core Infrastructure (2 days)
 
@@ -326,16 +293,18 @@ pub fn partition<F>(self, predicate: F) -> PartitionedStream<T, S, F> {
 
 ## 📊 Effort Summary
 
-| Phase | Duration | Deliverable |
-|-------|----------|-------------|
-| **Phase 0** | 0.5 days | std→core imports (risk-free) |
-| **Phase 1** | 2 days | Core infrastructure (24/27 operators) |
-| **Phase 2** | 3 days | Poll-based partition() (25/27 operators) |
-| **Phase 3** | 2.5 days | Time operators with embassy (all operators) |
-| **Phase 4** | +3 days | Optional: publish() operator |
-| **Total** | **8-11 days** | Full no_std support |
+| Phase | Duration | Status | Deliverable |
+|-------|----------|--------|-------------|
+| **Phase 0** | 0.5 days | ✅ **COMPLETE** | std→core/alloc imports (risk-free) |
+| **Phase 1** | 2 days | 📋 Pending | Core infrastructure (24/27 operators) |
+| **Phase 2** | 3 days | 📋 Pending | Poll-based partition() (25/27 operators) |
+| **Phase 3** | 2.5 days | 📋 Pending | Time operators with embassy (all operators) |
+| **Phase 4** | +3 days | 📋 Optional | Optional: publish() operator |
+| **Total** | **7.5-10.5 days** | ✅ 0.5 / 📋 7-10 | Full no_std support |
 
-**Critical Path:** Phase 0 → Phase 1 → Phase 2 → Phase 3 (8 days)
+**Completed:** Phase 0 (0.5 days) ✅
+
+**Remaining Critical Path:** Phase 1 → Phase 2 → Phase 3 (7.5 days)
 
 **Optional:** Phase 4 based on user demand (+3 days)
 
@@ -360,18 +329,15 @@ pub fn partition<F>(self, predicate: F) -> PartitionedStream<T, S, F> {
 - Minimum: Rust 1.81+ (for core::error::Error)
 - Released: August 2024 (widely available)
 
-**Embedded Requirements:**
-- Heap allocator (alloc feature required)
-- Embassy executor (for time operators)
-- async support in target environment
+**Embedded RequiremenDeliverable |
+|-------|----------|-------------|
+| **Phase 1** | 2 days | Core infrastructure (24/27 operators) |
+| **Phase 2** | 3 days | Poll-based partition() (25/27 operators) |
+| **Phase 3** | 2.5 days | Time operators with embassy (all operators) |
+| **Phase 4** | +3 days | Optional: publish() operator |
+| **Total** | **7.5-10.5 days** | Full no_std support |
 
-**Dependencies (no_std-compatible):**
-- ✅ `futures` (with `default-features = false, features = ["alloc"]`)
-- ✅ `futures-core`
-- ✅ `pin-project`
-- ✅ `event-listener`
-- ✅ `thiserror` (error derive)
-- ✅ `embassy-time` (for embedded timer)
+**-time` (for embedded timer)
 
 ---
 
@@ -421,32 +387,3 @@ stream.throttle(Duration::from_millis(100))
 - No background task needed
 - Honest naming: "publish" (lazy) vs "share" (hot)
 
----
-
-## 🚦 Recommendation
-
-**Phase 0: Execute immediately** (0.5 days)
-- Zero risk, zero performance impact
-- Future-proofs codebase
-- Best practice (use core:: when available)
-
-**Phases 1-3: Wait for user demand** (8 days)
-- Current state serves 99%+ of use cases
-- Implement when:
-  - User explicitly requests embedded support
-  - Clear use case identified
-  - Resources available
-
-**Phase 4: User feedback driven** (+3 days)
-- Evaluate publish() operator based on demand
-- Consider mock timer for testing
-
----
-
-## 📅 Document History
-
-- **December 21, 2025** - Restructured as phased implementation roadmap
-  - Removed completed work (runtime abstraction done)
-  - Focused on no_std open points only
-  - Created Phase 0 for risk-free preparation
-  - Defined clear success criteria and trade-offs

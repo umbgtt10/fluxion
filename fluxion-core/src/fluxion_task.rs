@@ -8,7 +8,7 @@
 //! that works across all async runtimes (Tokio, smol, async-std, WASM).
 
 use crate::CancellationToken;
-use std::future::Future;
+use core::future::Future;
 
 /// Runtime-agnostic task handle with automatic cancellation on drop.
 ///
@@ -24,7 +24,7 @@ use std::future::Future;
 ///
 /// - **Tokio**: `tokio::spawn` (default)
 /// - **smol**: `smol::spawn`
-/// - **async-std**: `async_std::task::spawn`
+/// - **async-std**: `async_core::task::spawn`
 /// - **WASM**: `wasm_bindgen_futures::spawn_local`
 ///
 /// Select runtime via feature flags: `runtime-tokio`, `runtime-smol`,

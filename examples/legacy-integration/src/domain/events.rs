@@ -12,8 +12,8 @@ pub enum UnifiedEvent {
     InventoryUpdated(Inventory),
 }
 
-impl std::fmt::Display for UnifiedEvent {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for UnifiedEvent {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             UnifiedEvent::UserAdded(u) => write!(f, "User({}, {})", u.id, u.name),
             UnifiedEvent::OrderReceived(o) => {

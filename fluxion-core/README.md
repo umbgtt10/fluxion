@@ -26,7 +26,7 @@ Minimal trait for types that expose a timestamp value:
 
 ```rust
 pub trait HasTimestamp {
-    type Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug;
+    type Timestamp: Ord + Copy + Send + Sync + core::fmt::Debug;
 
     fn timestamp(&self) -> Self::Timestamp;  // Get timestamp for ordering
 }

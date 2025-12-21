@@ -4,13 +4,13 @@
 
 use crate::timer::Timer;
 use crate::InstantTimestamped;
+use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll};
 use fluxion_core::StreamItem;
 use futures::stream::FuturesOrdered;
 use futures::{Stream, StreamExt};
 use pin_project::pin_project;
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 use std::time::Duration;
 
 /// Extension trait providing the `delay` operator for streams.

@@ -73,9 +73,9 @@
 //! Errors always pass through unconditionally—they are never subject to sampling.
 //! This ensures error observability is not affected by downsampling.
 
+use core::fmt::Debug;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{Stream, StreamExt};
-use std::fmt::Debug;
 
 /// Extension trait providing the [`sample_ratio`](Self::sample_ratio) operator.
 ///

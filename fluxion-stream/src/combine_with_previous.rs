@@ -3,9 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::types::WithPrevious;
+use core::fmt::Debug;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
-use std::fmt::Debug;
 
 /// Extension trait providing the `combine_with_previous` operator for timestamped streams.
 ///

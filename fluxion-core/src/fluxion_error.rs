@@ -20,6 +20,9 @@
 //! }
 //! ```
 
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+
 /// Root error type for all Fluxion operations
 ///
 /// This enum encompasses all possible error conditions that can occur

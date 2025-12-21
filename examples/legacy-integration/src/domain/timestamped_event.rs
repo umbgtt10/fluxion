@@ -69,8 +69,8 @@ impl Ord for TimestampedEvent {
     }
 }
 
-impl std::fmt::Display for TimestampedEvent {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for TimestampedEvent {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "[{}] {}", self.timestamp, self.event)
     }
 }

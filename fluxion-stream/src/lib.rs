@@ -633,8 +633,8 @@
 //! [`combine_with_previous`]: CombineWithPreviousExt::combine_with_previous
 
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
-#[macro_use]
-mod logging;
+extern crate alloc;
+
 pub mod combine_latest;
 pub mod combine_with_previous;
 pub mod distinct_until_changed;
@@ -643,6 +643,7 @@ pub mod emit_when;
 pub mod filter_ordered;
 pub mod fluxion_shared;
 pub mod into_fluxion_stream;
+mod logging;
 pub mod map_ordered;
 pub mod merge_with;
 pub mod on_error;

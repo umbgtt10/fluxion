@@ -1,14 +1,13 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Convenience constructors for creating fluxion streams from futures channels.
-
+use alloc::boxed::Box;
+use core::fmt::Debug;
+use core::pin::Pin;
 use fluxion_core::{StreamItem, Timestamped};
 use futures::channel::mpsc::UnboundedReceiver;
 use futures::{Stream, StreamExt};
-use std::fmt::Debug;
-use std::pin::Pin;
 
 /// Extension trait to convert futures channels into fluxion streams.
 ///

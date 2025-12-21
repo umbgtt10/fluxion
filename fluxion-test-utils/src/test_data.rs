@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::{animal::Animal, person::Person, plant::Plant};
-use std::fmt::{self, Display};
+use core::fmt::{self, Display};
 
 #[derive(Debug, Clone)]
 pub enum DataVariant {

@@ -355,8 +355,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[derive(Debug)]
 struct ProcessingError(String);
-impl std::fmt::Display for ProcessingError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for ProcessingError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "ProcessingError: {}", self.0)
     }
 }

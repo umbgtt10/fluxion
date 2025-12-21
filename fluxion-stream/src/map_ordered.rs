@@ -2,11 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Map transformation operator that preserves temporal ordering.
-
+use core::fmt::Debug;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{Stream, StreamExt};
-use std::fmt::Debug;
 
 /// Extension trait providing the `map_ordered` operator for streams.
 ///

@@ -117,8 +117,8 @@ async fn test_cancel_before_first_poll() {
     let mut future = Box::pin(token.cancelled());
 
     // Now poll it - should be Ready immediately
-    use std::future::Future;
-    use std::task::{Context, Poll};
+    use core::future::Future;
+    use core::task::{Context, Poll};
 
     let waker = futures::task::noop_waker();
     let mut cx = Context::from_waker(&waker);

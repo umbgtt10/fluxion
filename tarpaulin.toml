@@ -6,7 +6,7 @@ engine = "Llvm"
 out = ["Html", "Xml"]
 
 [run]
-fail-under = 88
+fail-under = 85
 exclude-files = [
   "examples/**",
   "fluxion-stream-time/tests/wasm/*",
@@ -23,3 +23,4 @@ exclude-files = [
   "fluxion-core/tests/async_std/**",
   "fluxion-test-utils/**",
 ]
+

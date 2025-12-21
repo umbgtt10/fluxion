@@ -3,9 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::timer::Timer;
+use core::fmt::Debug;
 use fluxion_core::{HasTimestamp, Timestamped};
 use std::cmp::Ordering;
-use std::fmt::Debug;
 use std::ops::Deref;
 
 /// A timestamped value using a Timer's Instant type for monotonic time operations.

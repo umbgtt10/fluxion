@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use std::fmt::Debug;
+use core::fmt::Debug;
 
 /// A minimal trait for types that have an intrinsic timestamp for stream ordering.
 ///

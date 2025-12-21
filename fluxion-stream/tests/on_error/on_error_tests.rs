@@ -5,7 +5,6 @@
 //! Tests for the `on_error` operator implementing Chain of Responsibility pattern.
 
 use fluxion_core::{FluxionError, StreamItem};
-
 use fluxion_stream::OnErrorExt;
 use fluxion_test_utils::{assert_no_element_emitted, assert_stream_ended};
 use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, unwrap_value, Sequenced};

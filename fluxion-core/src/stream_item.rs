@@ -110,7 +110,7 @@ impl<T> StreamItem<T> {
     /// Panics if the item is an `Error`.
     pub fn unwrap(self) -> T
     where
-        FluxionError: std::fmt::Debug,
+        FluxionError: core::fmt::Debug,
     {
         match self {
             StreamItem::Value(v) => v,
@@ -127,7 +127,7 @@ impl<T> StreamItem<T> {
     /// Panics with the provided message if the item is an `Error`.
     pub fn expect(self, msg: &str) -> T
     where
-        FluxionError: std::fmt::Debug,
+        FluxionError: core::fmt::Debug,
     {
         match self {
             StreamItem::Value(v) => v,

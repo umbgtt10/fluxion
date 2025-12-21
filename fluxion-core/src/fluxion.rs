@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::Timestamped;
-use std::fmt::Debug;
+use core::fmt::Debug;
 
 /// The standard trait for items flowing through Fluxion streams.
 ///

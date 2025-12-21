@@ -17,8 +17,8 @@
 pub mod async_std_implementation {
     use crate::timer::Timer;
     use async_io::Timer as AsyncIoTimer;
-    use std::pin::Pin;
-    use std::task::{Context, Poll};
+    use core::pin::Pin;
+    use core::task::{Context, Poll};
     use std::time::{Duration, Instant};
 
     #[derive(Clone, Debug)]
@@ -37,7 +37,7 @@ pub mod async_std_implementation {
         }
     }
 
-    impl std::future::Future for AsyncStdSleep {
+    impl core::future::Future for AsyncStdSleep {
         type Output = ();
 
         fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

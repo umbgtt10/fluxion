@@ -67,13 +67,14 @@
 //! - **Type routing**: Route different enum variants to specialized handlers
 //! - **Threshold filtering**: Split values above/below a threshold
 
+use alloc::boxed::Box;
+use alloc::sync::Arc;
+use core::fmt::Debug;
+use core::pin::Pin;
+use core::task::{Context, Poll};
 use fluxion_core::FluxionTask;
 use fluxion_core::{Fluxion, FluxionSubject, StreamItem};
 use futures::{FutureExt, Stream, StreamExt};
-use std::fmt::Debug;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
 
 /// Extension trait providing the `partition` operator for streams.
 ///
@@ -197,7 +198,7 @@ where
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("PartitionedStream")
             .field("inner", &"<stream>")
             .finish()

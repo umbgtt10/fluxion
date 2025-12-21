@@ -323,7 +323,7 @@ let timestamped = InstantTimestamped::new(my_value, timer.now());
 **async-std Notes:**
 - Uses `async-io::Timer` for async sleep operations
 - Supports both single-threaded and multi-threaded execution
-- Multi-threaded tests use `async_std::task::spawn` for true concurrency
+- Multi-threaded tests use `async_core::task::spawn` for true concurrency
 - Tests run with `cargo test --features time-async-std --no-default-features`
 
 ### smol
@@ -412,13 +412,13 @@ async-std support is **fully implemented** via `AsyncStdTimer` using `async-io` 
 
 **Testing:**
 - Integration tests in `tests/async_std/single_threaded/` and `tests/async_std/multi_threaded/`
-- Tests use real delays with `async_std::task::sleep` and external spawning
+- Tests use real delays with `async_core::task::sleep` and external spawning
 - Run with `cargo test --features time-async-std --no-default-features`
 - See `.ci/async_std_tests.ps1` for CI testing configuration
 
 **Platform Support:**
 - ✅ Single-threaded execution (inline async)
-- ✅ Multi-threaded execution (`async_std::task::spawn`)
+- ✅ Multi-threaded execution (`async_core::task::spawn`)
 - ✅ GitHub Actions CI integration
 - ✅ 10 comprehensive tests (5 operators × 2 threading models)
 

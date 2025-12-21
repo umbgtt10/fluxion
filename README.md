@@ -50,8 +50,8 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.6.8"
-fluxion-test-utils = "0.6.8"
+fluxion-rx = "0.6.9"
+fluxion-test-utils = "0.6.9"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 futures = "0.3.31"
@@ -63,10 +63,10 @@ Fluxion defaults to **Tokio** with zero configuration. To use alternative runtim
 
 ```toml
 # Use smol instead of tokio
-fluxion-rx = { version = "0.6.8", default-features = false, features = ["runtime-smol"] }
+fluxion-rx = { version = "0.6.9", default-features = false, features = ["runtime-smol"] }
 
 # Use async-std (deprecated but supported)
-fluxion-rx = { version = "0.6.8", default-features = false, features = ["runtime-async-std"] }
+fluxion-rx = { version = "0.6.9", default-features = false, features = ["runtime-async-std"] }
 
 # WASM support is automatic when compiling for wasm32 target
 # cargo build --target wasm32-unknown-unknown
@@ -79,7 +79,8 @@ fluxion-rx = { version = "0.6.8", default-features = false, features = ["runtime
 
 ### Basic Usage
 
-```rustuse fluxion_core::HasTimestamp;
+```rust
+use fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use futures::channel::mpsc::unbounded;
@@ -142,8 +143,8 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.6.8"
-fluxion-test-utils = "0.6.8"
+fluxion-rx = "0.6.9"
+fluxion-test-utils = "0.6.9"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 futures = "0.3.31"
@@ -151,7 +152,8 @@ futures = "0.3.31"
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rustuse fluxion_core::Timestamped;
+```rust
+use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use futures::channel::mpsc::unbounded;
@@ -217,8 +219,8 @@ The `merge_with` operator enables elegant stateful stream processing by merging 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.6.8"
-fluxion-test-utils = "0.6.8"
+fluxion-rx = "0.6.9"
+fluxion-test-utils = "0.6.9"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 futures = "0.3.31"
@@ -226,7 +228,8 @@ futures = "0.3.31"
 
 **Example: Event Sourcing with Repository Pattern**
 
-```rustuse fluxion_stream::MergedStream;
+```rust
+use fluxion_stream::MergedStream;
 use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
 
 #[tokio::test]
@@ -376,14 +379,16 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Sequential Processing:**
 
 **Dependencies:**
-```toml[dependencies]
-fluxion-exec = "0.6.8"
+```toml
+[dependencies]
+fluxion-exec = "0.6.9"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 ```
 
 **Example:**
-```rustuse fluxion_core::CancellationToken;
+```rust
+use fluxion_core::CancellationToken;
 use fluxion_exec::subscribe::SubscribeExt;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
@@ -476,14 +481,16 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 **Latest-Value Processing (with auto-cancellation):**
 
 **Dependencies:**
-```toml[dependencies]
-fluxion-exec = "0.6.8"
+```toml
+[dependencies]
+fluxion-exec = "0.6.9"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 ```
 
 **Example:**
-```rustuse fluxion_core::CancellationToken;
+```rust
+use fluxion_core::CancellationToken;
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
@@ -658,7 +665,7 @@ See individual crate READMEs for detailed documentation.
 
 ## Project Status
 
-**Current Version:** 0.6.8
+**Current Version:** 0.6.9
 
 - ✅ Published to crates.io
 - ✅ Core functionality complete

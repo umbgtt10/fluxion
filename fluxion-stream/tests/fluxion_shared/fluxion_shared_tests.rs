@@ -14,6 +14,10 @@ use fluxion_test_utils::{
     Sequenced,
 };
 use futures::StreamExt;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 
 #[tokio::test]
 async fn share_broadcasts_to_multiple_subscribers() {
@@ -239,9 +243,6 @@ async fn each_subscriber_can_chain_independently() {
 
 #[tokio::test]
 async fn source_operators_run_once_per_emission() {
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::Arc;
-
     // Arrange - track how many times the map runs
     let call_count = Arc::new(AtomicUsize::new(0));
     let call_count_clone = call_count.clone();

@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Basic tests for `tap` operator.
-
 use fluxion_core::HasTimestamp;
 use fluxion_stream::TapExt;
 use fluxion_test_utils::test_data::{

@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -38,12 +38,14 @@
 //! # }
 
 use crate::{FluxionError, StreamItem, SubjectError};
+use alloc::boxed::Box;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
+use core::pin::Pin;
+use core::task::{Context, Poll};
 use futures::channel::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use futures::Stream;
 use parking_lot::Mutex;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
 
 type SubjectBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
 
