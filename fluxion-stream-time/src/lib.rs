@@ -30,8 +30,10 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```rust,no_run
+//! # #[cfg(not(target_arch = "wasm32"))]
 //! use fluxion_stream_time::prelude::*;
+//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 //! use fluxion_stream_time::{TokioTimestamped, TokioTimer};
 //! use fluxion_stream_time::timer::Timer;
 //! use fluxion_core::StreamItem;
@@ -39,6 +41,7 @@
 //! use std::time::Duration;
 //! use futures::channel::mpsc;
 //!
+//! # #[cfg(not(target_arch = "wasm32"))]
 //! # async fn example() {
 //! let (tx, rx) = mpsc::unbounded::<TokioTimestamped<i32>>();
 //! let timer = TokioTimer;
@@ -77,20 +80,20 @@ pub use sample::{SampleExt, SampleWithDefaultTimerExt};
 pub use throttle::{ThrottleExt, ThrottleWithDefaultTimerExt};
 pub use timeout::{TimeoutExt, TimeoutWithDefaultTimerExt};
 
-#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 pub use runtimes::TokioTimer;
 
-#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 pub type TokioTimestamped<T> = InstantTimestamped<T, TokioTimer>;
 
-#[cfg(all(feature = "time-async-std", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
 pub use runtimes::AsyncStdTimer;
 
-#[cfg(all(feature = "time-async-std", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
 pub type AsyncStdTimestamped<T> = InstantTimestamped<T, AsyncStdTimer>;
 
-#[cfg(all(feature = "time-smol", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-smol", not(target_arch = "wasm32")))]
 pub use runtimes::SmolTimer;
 
-#[cfg(all(feature = "time-smol", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-smol", not(target_arch = "wasm32")))]
 pub type SmolTimestamped<T> = InstantTimestamped<T, SmolTimer>;

@@ -38,8 +38,12 @@ function Invoke-StepAction {
 
 Write-Output "Starting smol tests..."
 
-Invoke-StepAction "Run smol tests" {
-  cargo test --package fluxion-stream-time --features time-smol --no-default-features --test all_tests --verbose
+Invoke-StepAction "Run smol tests (fluxion-core)" {
+  cargo test --package fluxion-core --features runtime-smol --no-default-features --test all_tests --verbose
+}
+
+Invoke-StepAction "Run smol tests (fluxion-stream-time)" {
+  cargo test --package fluxion-stream-time --features runtime-smol --no-default-features --test all_tests --verbose
 }
 
 Write-Output "smol tests completed successfully."

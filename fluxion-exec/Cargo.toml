@@ -9,6 +9,7 @@ repository.workspace = true
 description = "Async stream subscribers and execution utilities for fluxion"
 keywords = ["async", "stream", "reactive", "subscribe", "executor"]
 categories = ["asynchronous", "concurrency"]
+readme = "README.md"
 
 [dependencies]
 fluxion-core = { workspace = true }

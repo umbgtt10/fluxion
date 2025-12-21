@@ -22,6 +22,7 @@
 | **Code Examples** | **Multiple per API** | Few | All compile & run |
 | **Doc Tests** | **99 passing** | Few | Examples always current |
 | **Performance** | **Benchmarked** | Rarely measured | Data-driven decisions |
+| **Runtime Support** | **4 runtimes** | 1 (locked-in) | ⭐ Zero-config + flexible |
 
 ### 🎯 Exceptional Quality Metrics
 
@@ -83,6 +84,14 @@ Breaking down our 890+ tests:
 - **Lock poisoning recovery** - resilient by design
 - **Temporal ordering guarantees** - not just concurrent, but ordered
 - **Performance benchmarked** - data-driven architectural decisions
+- **True runtime abstraction** - zero-config default with optional alternatives
+
+**Runtime Abstraction Benefits:**
+- ✅ **99% of users**: Just add `fluxion-rx` - tokio included automatically
+- ✅ **Dead code elimination**: Unused runtimes completely excluded from build
+- ✅ **Zero abstraction leakage**: No `tokio::spawn`, timer, or platform-specific APIs in user code
+- ✅ **Cross-platform**: Native (tokio/smol/async-std) and WASM with identical code
+- ✅ **Flexible yet simple**: Optional runtime selection without configuration complexity
 
 **Code organization:**
 ```

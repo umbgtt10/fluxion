@@ -2,4 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-pub mod debounce_tests;
+pub mod cancellation_token_tests;
+pub mod fluxion_subject_tests;
+pub mod fluxion_task_tests;

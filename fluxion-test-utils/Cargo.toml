@@ -9,6 +9,7 @@ repository.workspace = true
 description = "Test utilities and infrastructure for fluxion workspace"
 keywords = ["testing", "async", "stream"]
 categories = ["development-tools::testing"]
+readme = "README.md"
 
 [dependencies]
 fluxion-core = { workspace = true }

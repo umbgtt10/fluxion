@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -16,12 +16,16 @@ use std::ops::Deref;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```rust,no_run
+/// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 /// use fluxion_stream_time::{InstantTimestamped, TokioTimer};
 /// use fluxion_stream_time::timer::Timer;
 ///
-/// let timer = TokioTimer;
+/// # #[cfg(not(target_arch = "wasm32"))]
+/// # fn example() {
+/// # let timer = TokioTimer;
 /// let item: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, timer.now());
+/// # }
 /// ```
 #[derive(Debug, Clone)]
 pub struct InstantTimestamped<T, TM: Timer> {

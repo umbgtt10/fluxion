@@ -1,0 +1,42 @@
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
+use fluxion_core::FluxionTask;
+use futures::channel::oneshot;
+
+#[test]
+fn test_task_cancellation_on_drop() {
+    smol::block_on(async {
+        let (tx, rx) = oneshot::channel();
+
+        let task = FluxionTask::spawn(|cancel| async move {
+            cancel.cancelled().await;
+            let _ = tx.send(());
+        });
+
+        drop(task);
+
+        // Wait for task to signal completion
+        assert!(rx.await.is_ok(), "Task should complete after cancellation");
+    });
+}
+
+#[test]
+fn test_task_manual_cancel() {
+    smol::block_on(async {
+        let (tx, rx) = oneshot::channel();
+
+        let task = FluxionTask::spawn(|cancel| async move {
+            cancel.cancelled().await;
+            let _ = tx.send(());
+        });
+
+        assert!(!task.is_cancelled());
+        task.cancel();
+        assert!(task.is_cancelled());
+
+        // Wait for task to signal completion
+        assert!(rx.await.is_ok(), "Task should complete after cancellation");
+    });
+}

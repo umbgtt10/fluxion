@@ -48,10 +48,9 @@
 //!
 //! Both are subscription factories with the same `subscribe()` pattern.
 
-use fluxion_core::{FluxionSubject, StreamItem, SubjectError};
+use fluxion_core::{FluxionSubject, FluxionTask, StreamItem, SubjectError};
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
-use tokio::task::JoinHandle;
 
 /// Type alias for the boxed stream returned by `subscribe()`.
 pub type SharedBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
@@ -68,7 +67,7 @@ pub type SharedBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + 
 /// See the [module documentation](self) for examples and more details.
 pub struct FluxionShared<T: Clone + Send + Sync + 'static> {
     subject: FluxionSubject<T>,
-    _task: JoinHandle<()>,
+    _task: FluxionTask,
 }
 
 impl<T: Clone + Send + Sync + 'static> FluxionShared<T> {
@@ -87,19 +86,27 @@ impl<T: Clone + Send + Sync + 'static> FluxionShared<T> {
         let subject = FluxionSubject::new();
         let subject_clone = subject.clone();
 
-        let task = tokio::spawn(async move {
+        let task = FluxionTask::spawn(|cancel| async move {
             let mut stream = source;
-            while let Some(item) = stream.next().await {
-                match item {
-                    StreamItem::Value(v) => {
+            loop {
+                if cancel.is_cancelled() {
+                    break;
+                }
+
+                match stream.next().await {
+                    Some(StreamItem::Value(v)) => {
                         if subject_clone.next(v).is_err() {
                             // Subject closed (all subscribers dropped or explicit close)
                             break;
                         }
                     }
-                    StreamItem::Error(e) => {
+                    Some(StreamItem::Error(e)) => {
                         // Propagate error to all subscribers and terminate
                         let _ = subject_clone.error(e);
+                        break;
+                    }
+                    None => {
+                        // Source completed
                         break;
                     }
                 }

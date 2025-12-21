@@ -5,10 +5,9 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "A reactive stream processing library with ordered semantics, friendly interface, and bullet-proof, state-of-the art test coverage and examples"
+description = "A reactive stream processing library with ordered semantics, friendly interface, bullet-proof test coverage, state-of-the art documentation and examples"
 keywords = ["stream", "reactive", "async", "ordered"]
 categories = ["asynchronous", "data-structures"]
-# Point to the root documentation file
 readme = "../README.md"
 
 [dependencies]
@@ -17,6 +16,14 @@ fluxion-stream = { workspace = true }
 fluxion-exec = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }
+
+[features]
+default = ["runtime-tokio"]
+tracing = ["fluxion-core/tracing", "fluxion-stream/tracing", "fluxion-exec/tracing"]
+
+runtime-tokio = ["fluxion-core/runtime-tokio"]
+runtime-smol = ["fluxion-core/runtime-smol"]
+runtime-async-std = ["fluxion-core/runtime-async-std"]
 
 [dev-dependencies]
 fluxion-test-utils = { workspace = true }

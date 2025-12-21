@@ -415,7 +415,7 @@ New projects should use tokio or smol runtimes instead.
 
 ## 🚀 Version 0.6.7 - Runtime-Agnostic Preparation
 
-**Status:** Ongoing
+**Status:** ✅ Completed (Internal Release)
 
 **Goal:** Provide runtime-agnostic support for time-agnostic operators enabling multiple async runtimes
 
@@ -436,6 +436,38 @@ New projects should use tokio or smol runtimes instead.
 
 ### Key Achievement
 **Zero Trade-offs** - Risk-free, performance-loss-free preparatory changes reducing coupling to Tokio runtime.
+
+
+## 🚀 Version 0.6.8 - Complete Runtime Abstraction
+
+**Status:** ✅ Completed (Internal Release)
+
+**Goal:** Enable Fluxion to run on multiple async runtimes (Tokio, smol, async-std, WASM)
+
+### Essential Features
+- ✅ `FluxionTask` trait for runtime-agnostic spawning (Tokio, smol, async-std, WASM)
+- ✅ Feature flags: `runtime-tokio` (default), `runtime-smol`, `runtime-async-std`
+- ✅ WASM support via `cfg(target_arch = "wasm32")` with wasm-bindgen-futures
+- ✅ Runtime-specific test infrastructure (tokio/, async_std/, smol/, wasm/ folders)
+- ✅ All 4 runtimes validated: 900+ tokio + 12 async-std + 12 smol + 7 wasm tests
+- ✅ Feature propagation in fluxion-rx for zero-config experience
+- ✅ CI workflow fixes: Added missing fluxion-core tests for all runtimes
+
+### Documentation
+- ✅ Runtime selection guide in README
+- ✅ FluxionTask API documentation with runtime examples
+- ✅ CI infrastructure validated (.ci/ scripts + GitHub Actions)
+
+### Quality Gates
+- ✅ Zero compilation errors across all feature combinations
+- ✅ Zero clippy warnings
+- ✅ CI green for all 4 runtimes
+- ✅ WASM compilation working (platform-gated dependencies)
+
+### Key Achievement
+**100% Runtime Abstraction** - Complete multi-runtime support with zero user-visible complexity. Tokio by default, alternative runtimes via feature flags, WASM automatic.
+
+---
 
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 
@@ -468,6 +500,28 @@ New projects should use tokio or smol runtimes instead.
 - [ ] Doc tests for all runtime configurations
 - [ ] CI green
 
+
+## 🚀 Version 0.8.0 - Polishing and Consolidating
+
+**Status:** Planned
+
+**Goal:** Ensure strict consistency in the code, comments, test code and documentation
+
+**Essential Features:**
+- [ ] Remove remaining sleeps from the tests
+- [ ] Review and finalize unstable doc
+- [ ] Review and finalize toml files
+- [ ] Review and finalize comments in the source code
+- [ ] Tighten the CI pipeline to the maximum
+- [ ] Create a WASM example application
+
+### Documentation
+- [ ] Docs finalized and reviews by all AI agents
+
+### Quality Gates
+- [ ] Zero compilation errors
+- [ ] Zero clippy warnings
+- [ ] CI green
 
 ## 🚀 Version 1.0.0 - Production Ready
 
