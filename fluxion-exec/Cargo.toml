@@ -29,5 +29,15 @@ anyhow = { workspace = true }
 
 [features]
 default = []
+
+# Base capability for no_std
+alloc = ["fluxion-core/alloc"]
+
+# Tracing support
 tracing = ["dep:tracing"]
+
+# Runtime features (for subscribe_latest)
+runtime-tokio = ["alloc", "fluxion-core/runtime-tokio"]
+runtime-smol = ["alloc", "fluxion-core/runtime-smol"]
+runtime-async-std = ["alloc", "fluxion-core/runtime-async-std"]
 

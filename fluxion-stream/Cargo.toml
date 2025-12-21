@@ -24,7 +24,17 @@ tracing = { workspace = true, optional = true }
 
 [features]
 default = []
+
+# Base capability for no_std
+alloc = ["fluxion-core/alloc"]
+
+# Tracing support
 tracing = ["dep:tracing"]
+
+# Runtime features (for spawn-based operators)
+runtime-tokio = ["alloc", "fluxion-core/runtime-tokio"]
+runtime-smol = ["alloc", "fluxion-core/runtime-smol"]
+runtime-async-std = ["alloc", "fluxion-core/runtime-async-std"]
 
 [dev-dependencies]
 fluxion-test-utils = { workspace = true }

@@ -19,11 +19,17 @@ tokio = { workspace = true }
 
 [features]
 default = ["runtime-tokio"]
+
+# Base capability for no_std
+alloc = ["fluxion-core/alloc", "fluxion-stream/alloc", "fluxion-exec/alloc"]
+
+# Tracing support
 tracing = ["fluxion-core/tracing", "fluxion-stream/tracing", "fluxion-exec/tracing"]
 
-runtime-tokio = ["fluxion-core/runtime-tokio"]
-runtime-smol = ["fluxion-core/runtime-smol"]
-runtime-async-std = ["fluxion-core/runtime-async-std"]
+# Runtime features (each implies alloc)
+runtime-tokio = ["alloc", "fluxion-core/runtime-tokio", "fluxion-stream/runtime-tokio", "fluxion-exec/runtime-tokio"]
+runtime-smol = ["alloc", "fluxion-core/runtime-smol", "fluxion-stream/runtime-smol", "fluxion-exec/runtime-smol"]
+runtime-async-std = ["alloc", "fluxion-core/runtime-async-std", "fluxion-stream/runtime-async-std", "fluxion-exec/runtime-async-std"]
 
 [dev-dependencies]
 fluxion-test-utils = { workspace = true }
