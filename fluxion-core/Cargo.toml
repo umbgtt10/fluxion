@@ -12,7 +12,7 @@ categories = ["asynchronous", "concurrency"]
 readme = "README.md"
 
 [package.metadata.cargo-udeps]
-ignore = { normal = ["tracing"] }
+ignore = { normal = ["tracing", "async-std", "smol"] }
 
 [dependencies]
 futures = { workspace = true }
@@ -46,8 +46,6 @@ runtime-async-std = ["dep:async-std"]
 [dev-dependencies]
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { workspace = true }
-smol = { workspace = true }
-async-std = { workspace = true }
 criterion = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
