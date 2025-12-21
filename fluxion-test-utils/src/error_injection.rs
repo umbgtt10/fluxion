@@ -8,9 +8,9 @@
 //! into streams for testing error propagation behavior in stream operators.
 
 use core::pin::Pin;
+use core::task::{Context, Poll};
 use fluxion_core::{FluxionError, StreamItem, Timestamped};
 use futures::Stream;
-use std::task::{Context, Poll};
 
 /// A stream wrapper that injects errors at specified positions.
 ///

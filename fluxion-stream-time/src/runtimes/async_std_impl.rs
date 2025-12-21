@@ -18,7 +18,7 @@ pub mod async_std_implementation {
     use crate::timer::Timer;
     use async_io::Timer as AsyncIoTimer;
     use core::pin::Pin;
-    use std::task::{Context, Poll};
+    use core::task::{Context, Poll};
     use std::time::{Duration, Instant};
 
     #[derive(Clone, Debug)]

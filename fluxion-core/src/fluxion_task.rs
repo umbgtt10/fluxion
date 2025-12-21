@@ -24,7 +24,7 @@ use std::future::Future;
 ///
 /// - **Tokio**: `tokio::spawn` (default)
 /// - **smol**: `smol::spawn`
-/// - **async-std**: `async_std::task::spawn`
+/// - **async-std**: `async_core::task::spawn`
 /// - **WASM**: `wasm_bindgen_futures::spawn_local`
 ///
 /// Select runtime via feature flags: `runtime-tokio`, `runtime-smol`,

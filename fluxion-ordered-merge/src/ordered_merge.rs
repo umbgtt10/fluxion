@@ -3,8 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use core::pin::Pin;
+use core::task::{Context, Poll};
 use futures::Stream;
-use std::task::{Context, Poll};
 
 /// Low-level ordered merge that combines multiple streams emitting items in order.
 /// Items are emitted based on their `Ord` implementation - smallest items first.

@@ -69,11 +69,11 @@
 
 use core::fmt::Debug;
 use core::pin::Pin;
+use core::task::{Context, Poll};
 use fluxion_core::FluxionTask;
 use fluxion_core::{Fluxion, FluxionSubject, StreamItem};
 use futures::{FutureExt, Stream, StreamExt};
 use std::sync::Arc;
-use std::task::{Context, Poll};
 
 /// Extension trait providing the `partition` operator for streams.
 ///

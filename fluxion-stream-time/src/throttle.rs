@@ -5,11 +5,11 @@
 use crate::timer::Timer;
 use crate::InstantTimestamped;
 use core::pin::Pin;
+use core::task::{Context, Poll};
 use fluxion_core::StreamItem;
 use futures::Stream;
 use pin_project::pin_project;
 use std::future::Future;
-use std::task::{Context, Poll};
 use std::time::Duration;
 
 /// Extension trait providing the `throttle` operator for streams.
