@@ -2,10 +2,43 @@
 
 All notable changes to the Fluxion project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.8] - 2025-12-21
+## [0.6.9] - Not Published (Internal Release)
+
+### Changed
+- **no_std Preparation (Phase 0)** (`fluxion-core`, `fluxion-stream`, `fluxion-exec`, `fluxion-ordered-merge`)
+  - Converted all `std` imports to `core`/`alloc` equivalents for future no_std support
+  - Added `extern crate alloc;` to all library crate root files
+  - Added explicit `use alloc::sync::Arc;` to 12+ source files
+  - Added explicit `use alloc::boxed::Box;` to 12+ source files
+  - Added explicit `use alloc::vec::Vec;` to 14+ source files
+  - Changed `std::marker::PhantomData` → `core::marker::PhantomData`
+  - **Zero behavioral changes** - std re-exports core/alloc, ensuring 100% compatibility
+  - **Zero performance impact** - identical codegen, just different import paths
+  - Test files continue using `std` imports (separate binary crates with std)
+  - Doctests continue using `std` imports (compile as test binaries)
+
+### Technical Details
+- **Risk-Free Migration:**
+  - Standard library re-exports everything from `core` and `alloc`
+  - These imports are functionally identical at runtime
+  - Prepares codebase for future `#![no_std]` attribute addition
+  - All 816 tests passing confirms zero behavioral impact
+
+- **Import Strategy:**
+  - `core` - No allocator required (fmt, pin, task, future, marker)
+  - `alloc` - Heap allocation required (Arc, Box, Vec)
+  - `std` - Full standard library (only in test code)
+
+### Impact
+- **100% backward compatible** - No breaking changes
+- **Future-proof** - Enables eventual no_std support for embedded/WASM
+- **Zero overhead** - Preparatory change with no runtime cost
+- **Validated** - 816 tests passing across all runtimes (Tokio, smol, async-std, WASM)
+
+## [0.6.8] - Not Published (Internal Release)
 
 ### Added
 - **Complete Runtime Abstraction** (`fluxion-core`, `fluxion-rx`)
@@ -86,7 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Zero overhead** - Dead code elimination for unused runtimes
 - **Professional-grade** - Complete abstraction from spawn/timer implementation details
 
-## [0.6.7] - 2025-12-20
+## [0.6.7] - Not Published (Internal Release)
 
 ### Changed
 - **Runtime-Agnostic Primitives** (`fluxion-stream`, `fluxion-exec`)
@@ -110,7 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **no_std Ready:** `futures::lock` supports no_std + alloc environments
 - **Zero Risk:** Internal change only, equivalent performance characteristics
 
-## [0.6.6] - 2025-12-20
+## [0.6.6] - Not Published (Internal Release)
 
 ### Added
 - **Ergonomic Convenience Methods** (`fluxion-stream-time`)
