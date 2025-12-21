@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use futures::Stream;

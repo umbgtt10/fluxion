@@ -4,6 +4,7 @@
 
 //! Start-with operator that prepends initial values to a stream.
 
+use alloc::vec::Vec;
 use fluxion_core::StreamItem;
 use futures::{stream::iter, Stream, StreamExt};
 

@@ -48,11 +48,11 @@
 //!
 //! Both are subscription factories with the same `subscribe()` pattern.
 
+use alloc::boxed::Box;
 use core::pin::Pin;
 use fluxion_core::{FluxionSubject, FluxionTask, StreamItem, SubjectError};
 use futures::{Stream, StreamExt};
 
-/// Type alias for the boxed stream returned by `subscribe()`.
 pub type SharedBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
 
 /// A shared stream that broadcasts items from a source to multiple subscribers.

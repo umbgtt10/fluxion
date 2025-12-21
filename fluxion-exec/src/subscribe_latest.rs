@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 use async_trait::async_trait;
 use core::fmt::Debug;
 use core::future::Future;
@@ -10,7 +12,7 @@ use fluxion_core::{CancellationToken, FluxionError, FluxionTask, Result};
 use futures::lock::Mutex as FutureMutex;
 use futures::{Stream, StreamExt};
 use parking_lot::Mutex;
-use std::{error::Error, sync::Arc};
+use std::error::Error;
 
 /// Extension trait providing async subscription with automatic cancellation of outdated work.
 ///

@@ -67,6 +67,7 @@
 //! - **Type routing**: Route different enum variants to specialized handlers
 //! - **Threshold filtering**: Split values above/below a threshold
 
+use alloc::boxed::Box;
 use alloc::sync::Arc;
 use core::fmt::Debug;
 use core::pin::Pin;

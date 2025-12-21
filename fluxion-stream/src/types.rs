@@ -6,6 +6,7 @@
 //!
 //! This module centralizes shared types to reduce duplication and improve maintainability.
 
+use alloc::vec::Vec;
 use core::fmt::Debug;
 use fluxion_core::{HasTimestamp, Timestamped};
 

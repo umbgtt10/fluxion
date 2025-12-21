@@ -57,6 +57,7 @@
 //! emitting potentially incomplete data.
 
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use core::fmt::Debug;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};

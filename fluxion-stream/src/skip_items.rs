@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Skip-items operator that skips the first n items from a stream.
-
 use fluxion_core::StreamItem;
 use futures::{Stream, StreamExt};
 

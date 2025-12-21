@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Error handling operator for Fluxion streams.
-
 use fluxion_core::{FluxionError, StreamItem};
 use futures::future::ready;
 use futures::{Stream, StreamExt};

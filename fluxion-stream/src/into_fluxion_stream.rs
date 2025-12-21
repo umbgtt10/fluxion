@@ -2,8 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Convenience constructors for creating fluxion streams from futures channels.
-
+use alloc::boxed::Box;
 use core::fmt::Debug;
 use core::pin::Pin;
 use fluxion_core::{StreamItem, Timestamped};

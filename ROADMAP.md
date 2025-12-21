@@ -480,8 +480,8 @@ New projects should use tokio or smol runtimes instead.
   - ✅ `std::task` → `core::task`
   - ✅ `std::future::Future` → `core::future::Future`
   - ✅ `std::sync::Arc` → `alloc::sync::Arc` for no_std builds
-  - [ ] `std::boxed::Box` → `alloc::boxed::Box` for no_std builds
-  - [ ] `std::vec::Vec` → `alloc::vec::Vec` for no_std builds
+  - ✅ `std::boxed::Box` → `alloc::boxed::Box` for no_std builds
+  - ✅ `std::vec::Vec` → `alloc::vec::Vec` for no_std builds
 
 ### Documentation
 - [ ] Document Phase 0 changes as preparation step for future no_std support

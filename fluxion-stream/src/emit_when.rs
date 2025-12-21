@@ -5,7 +5,9 @@
 use crate::ordered_merge::ordered_merge_with_index;
 use crate::types::CombinedState;
 use crate::warn;
+use alloc::boxed::Box;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use core::fmt::Debug;
 use core::pin::Pin;
 use fluxion_core::into_stream::IntoStream;
