@@ -478,6 +478,8 @@ New projects should use tokio or smol runtimes instead.
 **Essential Features:**
 - [ ] Remove remaining sleeps from the tests
 - [ ] Review and finalize unstable doc
+- [ ] Review and finalize toml files
+- [ ] Review and finalize comments in the source code
 
 ### Documentation
 - [ ] Docs finalized and reviews by all AI agents

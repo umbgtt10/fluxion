@@ -25,7 +25,8 @@ Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal order
 - ⏱️ **Temporal Ordering**: Guaranteed ordering semantics via `Timestamped` trait
 - ⚡ **Async Execution**: Efficient async processing with `subscribe` and `subscribe_latest`
 - 🌐 **Multi-Runtime Support**: Works with Tokio (default), smol, WebAssembly (WASM), and async-std (deprecated) via Timer trait abstraction
-- 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
+- � **True Runtime Abstraction**: Zero-config for Tokio users, optional runtime selection supporting smol, wasm and async-std with automatic dead code elimination - never think about spawn/timer APIs again
+- � **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
 - ✅ **Well Tested**: 890+ tests with comprehensive coverage (Tokio + WASM)
 
@@ -49,12 +50,32 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.6.7"
+fluxion-rx = "0.6.7"  # Zero-config: Tokio included by default
 fluxion-test-utils = "0.6.7"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 futures = "0.3.31"
 ```
+
+### Runtime Selection (Optional)
+
+Fluxion defaults to **Tokio** with zero configuration. To use alternative runtimes:
+
+```toml
+# Use smol instead of tokio
+fluxion-rx = { version = "0.6.7", default-features = false, features = ["runtime-smol"] }
+
+# Use async-std (deprecated but supported)
+fluxion-rx = { version = "0.6.7", default-features = false, features = ["runtime-async-std"] }
+
+# WASM support is automatic when compiling for wasm32 target
+# cargo build --target wasm32-unknown-unknown
+```
+
+**Benefits:**
+- ✅ **Zero overhead**: Unused runtimes are completely excluded from compilation
+- ✅ **No abstraction leakage**: Never write `tokio::spawn` or deal with timer APIs
+- ✅ **Cross-platform**: Same code works on native and WASM
 
 ### Basic Usage
 

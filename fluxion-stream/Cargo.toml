@@ -9,7 +9,7 @@ repository.workspace = true
 description = "Stream combinators with ordering guarantees for async Rust"
 keywords = ["async", "stream", "reactive", "combinators", "futures"]
 categories = ["asynchronous", "concurrency"]
-readme = "../README.md"
+readme = "README.md"
 
 [dependencies]
 fluxion-core = { workspace = true }

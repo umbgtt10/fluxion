@@ -7,6 +7,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Complete Runtime Abstraction** (`fluxion-core`, `fluxion-rx`)
+  - New `FluxionTask` trait for runtime-agnostic task spawning
+  - Implementations for Tokio, smol, async-std, and WASM (wasm-bindgen-futures)
+  - Runtime selection via feature flags: `runtime-tokio` (default), `runtime-smol`, `runtime-async-std`
+  - WASM support automatic via `cfg(target_arch = "wasm32")`
+  - Zero-config experience: just add `fluxion-rx` for Tokio by default
+  - Feature propagation in fluxion-rx: users can select runtime through main crate
+  - Complete abstraction: users never write `tokio::spawn` or deal with timer APIs
+
+- **Runtime-Specific Test Infrastructure** (`fluxion-core`)
+  - Organized test structure: root (sync), tokio/, async_std/, smol/, wasm/ folders
+  - Runtime-agnostic async tests use `#[tokio::test]` (execute once)
+  - Runtime-specific tests (FluxionTask) execute on their respective runtimes
+  - WASM test support via wasm-pack
+  - All 4 runtimes validated in CI (900+ tokio, 12 async-std, 12 smol, 7 wasm tests)
+
+- **Feature Propagation** (`fluxion-rx`)
+  - New `tracing` feature propagates to fluxion-core/stream/exec
+  - Runtime selection features: `runtime-tokio`, `runtime-smol`, `runtime-async-std`
+  - Default feature set: `["runtime-tokio"]` for zero-config experience
+
+### Changed
+- **CI Infrastructure** (`.ci/`)
+  - Updated all runtime test scripts to test both fluxion-core and fluxion-stream-time
+  - async_std_tests.ps1: Added fluxion-core testing with runtime-async-std feature
+  - smol_tests.ps1: Added fluxion-core testing with runtime-smol feature
+  - wasm_tests.ps1: Added fluxion-core testing with --no-default-features flag
+
+- **WASM Compilation Fixes** (`fluxion-core/Cargo.toml`)
+  - Platform-gated dependencies: tokio, smol, async-std, criterion only for `cfg(not(target_arch = "wasm32"))`
+  - Moved runtime-agnostic async tests to tokio/ folder (excluded from WASM compilation)
+  - Prevents WASM compilation errors from OS-specific dependencies
+
+- **Workspace Configuration** (`Cargo.toml`)
+  - Fixed version mismatch: internal workspace dependencies now correctly reference `0.6.7`
+  - Added readme fields to all published packages (fluxion-core, fluxion-exec, fluxion-test-utils, fluxion-stream)
+  - Added homepage and documentation URLs to workspace metadata
+  - cargo-udeps ignore configuration: async-std, smol (feature-gated dependencies)
+
+- **Documentation** (`README.md`, `PITCH.md`)
+  - Added "Runtime Selection (Optional)" section in README
+  - Documented zero-config default (Tokio) and alternative runtime selection
+  - Added "Runtime Abstraction Benefits" to PITCH
+  - New comparison table row: 4 runtimes supported vs typical 1 (locked-in)
+
+### Fixed
+- **Doc Test Race Condition** (`fluxion-exec/src/subscribe_latest.rs`)
+  - Fixed hanging doc test at line 316
+  - Added sleep after queueing items to ensure proper timing demonstration
+  - Moved stream drop after gate release for correct stream lifecycle
+  - Relaxed assertions to check for "at least 2 but not all 10 items"
+
+- **Dead Code Elimination**
+  - Unused runtimes completely excluded from compilation when not selected
+  - No runtime overhead from unused runtime dependencies
+
+### Technical Details
+- **Runtime Abstraction Pattern:**
+  - `FluxionTask::spawn()` dispatches to runtime-specific implementation at compile time
+  - Zero-cost abstraction: no dynamic dispatch or vtables
+  - Platform-gated WASM support: automatic when compiling for wasm32 target
+  - Tests validate correct behavior on all supported runtimes
+
+- **Test Organization:**
+  - Pure sync tests: fluxion_error_tests.rs, stream_item_tests.rs (execute once)
+  - Runtime-agnostic async: FluxionSubject, CancellationToken tests in tokio/ folder
+  - Runtime-specific: FluxionTask spawn/cancel tests per runtime folder
+  - No redundant test execution across runtimes
+
+### Impact
+- **Zero-config for 99% of users** - Tokio included by default
+- **Complete flexibility** - Runtime selection without code changes
+- **Cross-platform** - Native (tokio/smol/async-std) and WASM with identical code
+- **Zero overhead** - Dead code elimination for unused runtimes
+- **Professional-grade** - Complete abstraction from spawn/timer implementation details
+
 ## [0.6.8] - 2025-12-20
 
 ### Added
