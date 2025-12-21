@@ -79,8 +79,7 @@ fluxion-rx = { version = "0.6.9", default-features = false, features = ["runtime
 
 ### Basic Usage
 
-```rust
-use fluxion_core::HasTimestamp;
+```rustuse fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use futures::channel::mpsc::unbounded;
@@ -152,8 +151,7 @@ futures = "0.3.31"
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rust
-use fluxion_core::Timestamped;
+```rustuse fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 use futures::channel::mpsc::unbounded;
@@ -228,8 +226,7 @@ futures = "0.3.31"
 
 **Example: Event Sourcing with Repository Pattern**
 
-```rust
-use fluxion_stream::MergedStream;
+```rustuse fluxion_stream::MergedStream;
 use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
 
 #[tokio::test]
@@ -379,16 +376,14 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Sequential Processing:**
 
 **Dependencies:**
-```toml
-[dependencies]
+```toml[dependencies]
 fluxion-exec = "0.6.9"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 ```
 
 **Example:**
-```rust
-use fluxion_core::CancellationToken;
+```rustuse fluxion_core::CancellationToken;
 use fluxion_exec::subscribe::SubscribeExt;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
@@ -481,16 +476,14 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 **Latest-Value Processing (with auto-cancellation):**
 
 **Dependencies:**
-```toml
-[dependencies]
+```toml[dependencies]
 fluxion-exec = "0.6.9"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 ```
 
 **Example:**
-```rust
-use fluxion_core::CancellationToken;
+```rustuse fluxion_core::CancellationToken;
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;

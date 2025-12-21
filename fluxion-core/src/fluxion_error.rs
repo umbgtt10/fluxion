@@ -22,18 +22,18 @@
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use core::fmt::{self, Display, Formatter};
 
 /// Root error type for all Fluxion operations
 ///
 /// This enum encompasses all possible error conditions that can occur
 /// during stream processing, subscription, and channel operations.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum FluxionError {
     /// Stream processing encountered an error
     ///
     /// This is a general error for stream operations that don't fit
     /// other specific categories.
-    #[error("Stream processing error: {context}")]
     StreamProcessingError {
         /// Description of what went wrong during stream processing
         context: String,
@@ -43,14 +43,12 @@ pub enum FluxionError {
     ///
     /// This wraps errors produced by user-provided functions and callbacks,
     /// allowing them to be propagated through the Fluxion error system.
-    #[error("User error: {0}")]
-    UserError(#[source] Box<dyn core::error::Error + Send + Sync>),
+    UserError(Box<dyn core::error::Error + Send + Sync>),
 
     /// Multiple errors occurred
     ///
     /// When processing multiple items in parallel, multiple failures can occur.
     /// This variant aggregates them.
-    #[error("Multiple errors occurred: {count} errors")]
     MultipleErrors {
         /// Number of errors that occurred
         count: usize,
@@ -62,12 +60,35 @@ pub enum FluxionError {
     ///
     /// This error is emitted when a time-based operation (like `timeout`)
     /// exceeds its specified duration.
-    #[error("Timeout error: {context}")]
     TimeoutError {
         /// Context about the timeout (e.g. duration)
         context: String,
     },
 }
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
+#[cfg(not(feature = "std"))]
+use core::error::Error as StdError;
+
+// Manual Display implementation (required for no_std)
+impl Display for FluxionError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::StreamProcessingError { context } => {
+                write!(f, "Stream processing error: {}", context)
+            }
+            Self::UserError(err) => write!(f, "User error: {}", err),
+            Self::MultipleErrors { count, .. } => {
+                write!(f, "Multiple errors occurred: {} errors", count)
+            }
+            Self::TimeoutError { context } => write!(f, "Timeout error: {}", context),
+        }
+    }
+}
+
+impl StdError for FluxionError {}
 
 impl FluxionError {
     /// Create a stream processing error with the given context
