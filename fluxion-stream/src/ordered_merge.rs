@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use core::fmt::Debug;
 use fluxion_core::{into_stream::IntoStream, Fluxion, StreamItem};
 use futures::task::{Context, Poll};
 use futures::{Stream, StreamExt};
-use std::fmt::Debug;
 use std::pin::Pin;
 
 // Re-export for backwards compatibility with modules that use it

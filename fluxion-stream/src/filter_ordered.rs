@@ -4,11 +4,11 @@
 
 //! Filter operator that preserves temporal ordering.
 
+use core::fmt::Debug;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::future::ready;
 use futures::Stream;
 use futures::StreamExt;
-use std::fmt::Debug;
 
 /// Extension trait providing the `filter_ordered` operator for streams.
 ///

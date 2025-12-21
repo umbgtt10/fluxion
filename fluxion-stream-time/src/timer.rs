@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use core::fmt::Debug;
 use core::future::Future;
 use core::ops::{Add, Sub};
 use core::time::Duration;
-use std::fmt::Debug;
 
 pub trait Timer: Clone + Send + Sync + Debug + 'static {
     type Sleep: Future<Output = ()>;

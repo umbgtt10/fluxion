@@ -1,14 +1,14 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use async_trait::async_trait;
+use core::fmt::Debug;
 use fluxion_core::{CancellationToken, FluxionError, Result};
 use futures::channel::mpsc::unbounded;
 use futures::stream::Stream;
 use futures::stream::StreamExt;
 use std::error::Error;
-use std::fmt::Debug;
 use std::future::Future;
 
 /// Extension trait providing async subscription capabilities for streams.
@@ -124,8 +124,8 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// # async fn main() {
     /// #[derive(Debug)]
     /// struct MyError(String);
-    /// impl std::fmt::Display for MyError {
-    ///     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// impl core::fmt::Display for MyError {
+    ///     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     ///         write!(f, "MyError: {}", self.0)
     ///     }
     /// }

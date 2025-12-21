@@ -1,10 +1,10 @@
 // Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
+use core::fmt::Debug;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
 use parking_lot::Mutex;
-use std::fmt::Debug;
 use std::sync::Arc;
 
 /// Extension trait providing the `scan_ordered` operator for streams.

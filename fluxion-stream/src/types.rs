@@ -6,8 +6,8 @@
 //!
 //! This module centralizes shared types to reduce duplication and improve maintainability.
 
+use core::fmt::Debug;
 use fluxion_core::{HasTimestamp, Timestamped};
-use std::fmt::Debug;
 
 /// Represents a value paired with its previous value in the stream.
 ///

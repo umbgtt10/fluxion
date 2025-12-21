@@ -3,11 +3,11 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::ordered_merge::ordered_merge_with_index;
+use core::fmt::Debug;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{Stream, StreamExt};
 use parking_lot::Mutex;
-use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::Arc;
 

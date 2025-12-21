@@ -467,7 +467,37 @@ New projects should use tokio or smol runtimes instead.
 ### Key Achievement
 **100% Runtime Abstraction** - Complete multi-runtime support with zero user-visible complexity. Tokio by default, alternative runtimes via feature flags, WASM automatic.
 
----
+## 🚀 Version 0.6.9 - no_std Preparation (Phase 0)
+
+**Status:** Planned
+
+**Goal:** Zero-risk preparation for no_std support without breaking changes
+
+### Essential Features
+- [ ] Convert `std` imports to `core` imports across all crates
+  - [ ] `core::fmt` → `core::fmt`
+  - [ ] `std::pin::Pin` → `core::pin::Pin`
+  - [ ] `std::task` → `core::task`
+  - [ ] `std::future::Future` → `core::future::Future`
+  - [ ] Note: `std::time::Instant` remains unchanged (no core equivalent)
+- [ ] Replace std types with alloc types where needed (preparation)
+  - [ ] `std::sync::Arc` → conditional `alloc::sync::Arc` for no_std builds
+  - [ ] `std::boxed::Box` → conditional `alloc::boxed::Box` for no_std builds
+  - [ ] `std::vec::Vec` → conditional `alloc::vec::Vec` for no_std builds
+
+### Documentation
+- [ ] Document Phase 0 changes as preparation step for future no_std support
+
+### Quality Gates
+- [ ] All existing tests passing (1,480+ tests)
+- [ ] Zero behavioral changes
+- [ ] Zero performance impact
+- [ ] Zero compilation errors
+- [ ] Zero clippy warnings
+- [ ] CI green for all runtimes (Tokio, smol, async-std, WASM)
+
+### Key Achievement
+**Risk-Free Foundation** - Systematic core/alloc imports enabling future no_std support with zero behavioral or performance changes. Standard library re-exports ensure compatibility.
 
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 

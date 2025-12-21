@@ -61,7 +61,7 @@ Provides read-only access to timestamp values:
 
 ```rust
 pub trait HasTimestamp {
-    type Timestamp: Ord + Copy + Send + Sync + std::fmt::Debug;
+    type Timestamp: Ord + Copy + Send + Sync + core::fmt::Debug;
 
     fn timestamp(&self) -> Self::Timestamp;  // Get the timestamp for ordering
 }

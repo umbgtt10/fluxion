@@ -4,9 +4,9 @@
 
 //! Map transformation operator that preserves temporal ordering.
 
+use core::fmt::Debug;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{Stream, StreamExt};
-use std::fmt::Debug;
 
 /// Extension trait providing the `map_ordered` operator for streams.
 ///

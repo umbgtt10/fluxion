@@ -125,7 +125,7 @@ Implementation follows dependency order: `fluxion-core` → `fluxion-stream` →
 
 **Changes:**
 1. **Convert std imports to core imports** across all crates:
-   - `use std::fmt` → `use core::fmt`
+   - `use core::fmt` → `use core::fmt`
    - `use std::pin::Pin` → `use core::pin::Pin`
    - `use std::task` → `use core::task`
    - `use std::future::Future` → `use core::future::Future`
@@ -137,7 +137,7 @@ Implementation follows dependency order: `fluxion-core` → `fluxion-stream` →
    - `std::vec::Vec` → `alloc::vec::Vec` (for no_std build)
 
 **Why Risk-Free:**
-- Standard library re-exports all core types (std::fmt::Debug = core::fmt::Debug)
+- Standard library re-exports all core types (core::fmt::Debug = core::fmt::Debug)
 - Zero behavioral changes
 - Zero performance impact
 - All tests continue passing

@@ -69,9 +69,9 @@
 //! The tap function is only called for values, not errors. Errors pass through
 //! unchanged without invoking the tap function.
 
+use core::fmt::Debug;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{Stream, StreamExt};
-use std::fmt::Debug;
 
 /// Extension trait providing the [`tap`](Self::tap) operator.
 ///

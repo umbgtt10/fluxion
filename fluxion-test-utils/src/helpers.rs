@@ -2,11 +2,11 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use core::fmt::Debug;
 use fluxion_core::StreamItem;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::stream::StreamExt;
 use futures::Stream;
-use std::fmt::Debug;
 use std::time::Duration;
 use tokio::select;
 use tokio::time::sleep;
