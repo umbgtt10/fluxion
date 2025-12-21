@@ -19,7 +19,7 @@
 //!
 //! ## Alternatives for no_std
 //!
-//! - Use [`FluxionSubject`](fluxion_core::FluxionSubject) directly for manual multicast control
+//! - Use [`FluxionSubject`] directly for manual multicast control
 //!
 //! ## Characteristics
 //!

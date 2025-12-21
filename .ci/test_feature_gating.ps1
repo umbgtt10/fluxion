@@ -96,8 +96,10 @@ function Test-SymbolPresence {
         $found = Select-String -Path "target/doc/$docPackageName/*.html" -Pattern "id=.reexport\.$symbol" -Quiet 2>$null
         if ($found) {
             Write-Success "    Found expected: $symbol"
+            $script:SuccessCount++
         } else {
             Write-Failure "    Missing expected: $symbol"
+            $script:FailureCount++
             $allPassed = $false
         }
     }
@@ -107,8 +109,10 @@ function Test-SymbolPresence {
         $found = Select-String -Path "target/doc/$docPackageName/*.html" -Pattern "id=.reexport\.$symbol" -Quiet 2>$null
         if (-not $found) {
             Write-Success "    Correctly excluded: $symbol"
+            $script:SuccessCount++
         } else {
             Write-Failure "    Should not have: $symbol"
+            $script:FailureCount++
             $allPassed = $false
         }
     }
@@ -128,6 +132,67 @@ function Record-Result {
         $script:FailureCount++
     }
 }
+
+# ============================================================================
+# Comprehensive operator lists
+# ============================================================================
+
+# All fluxion-stream operators/types available in no_std + alloc
+# 22 stream operators (20 non-gated + utility trait) + 3 types = 23 items
+$AllNonGatedStreamOperators = @(
+    # Stream Operators (22 non-gated)
+    "CombineLatestExt",
+    "CombineWithPreviousExt",
+    "DistinctUntilChangedExt",
+    "DistinctUntilChangedByExt",
+    "EmitWhenExt",
+    "FilterOrderedExt",
+    "IntoFluxionStream",
+    "MapOrderedExt",
+    "OnErrorExt",
+    "OrderedStreamExt",
+    "SampleRatioExt",
+    "ScanOrderedExt",
+    "SkipItemsExt",
+    "StartWithExt",
+    "TakeItemsExt",
+    "TakeLatestWhenExt",
+    "TapExt",
+    "TakeWhileExt",
+    "WindowByCountExt",
+    "WithLatestFromExt",
+    # Types (3 non-gated)
+    "CombinedState",
+    "MergedStream",
+    "WithPrevious"
+)
+
+# Runtime-gated fluxion-stream operators/types (2 operators + 2 types = 4 items)
+$RuntimeGatedStreamOperators = @(
+    "PartitionExt",
+    "ShareExt",
+    # Types
+    "FluxionShared",
+    "PartitionedStream"
+)
+
+# All fluxion-stream operators/types with runtime
+# 20+2=22 stream operators + 3+2=5 types = 27 stream items total
+$AllStreamOperators = $AllNonGatedStreamOperators + $RuntimeGatedStreamOperators
+
+# Note: fluxion-stream-time operators (5 time operators) not tested here
+# They will be tested separately after migration is complete
+
+# fluxion-exec operators
+$NonGatedExecOperators = @(
+    "SubscribeExt"
+)
+
+$RuntimeGatedExecOperators = @(
+    "SubscribeLatestExt"
+)
+
+$AllExecOperators = $NonGatedExecOperators + $RuntimeGatedExecOperators
 
 # ============================================================================
 # Test 1: Default features (runtime-tokio enabled)
@@ -165,15 +230,16 @@ Record-Result $result
 # ============================================================================
 # Test 4: Verify gated operators are excluded without runtime
 # ============================================================================
-Write-TestHeader "Test 4: Gated Operators Excluded (no runtime)"
+Write-TestHeader "Test 4: Gated Operators Excluded (no_std + alloc)"
 
 Write-Host "  Checking symbol presence in documentation..."
+Write-Host "  Expected: $($AllNonGatedStreamOperators.Count) items present (20 operators + 3 types), $($RuntimeGatedStreamOperators.Count) items absent (2 operators + 2 types)"
 $result = Test-SymbolPresence `
     -Package "fluxion-stream" `
     -Features "alloc" `
-    -ExpectedSymbols @("FilterOrderedExt", "MapOrderedExt", "ScanOrderedExt") `
-    -UnexpectedSymbols @("ShareExt", "PartitionExt") `
-    -Description "no_std+alloc (no share/partition)"
+    -ExpectedSymbols $AllNonGatedStreamOperators `
+    -UnexpectedSymbols $RuntimeGatedStreamOperators `
+    -Description "no_std+alloc: All non-gated operators present, runtime-gated absent"
 Record-Result $result
 
 # ============================================================================
@@ -182,12 +248,13 @@ Record-Result $result
 Write-TestHeader "Test 5: Gated Operators Included (with runtime)"
 
 Write-Host "  Checking symbol presence in documentation..."
+Write-Host "  Expected: All $($AllStreamOperators.Count) items present (22 stream operators + 5 types)"
 $result = Test-SymbolPresence `
     -Package "fluxion-stream" `
     -Features "runtime-tokio" `
-    -ExpectedSymbols @("FilterOrderedExt", "MapOrderedExt", "ShareExt", "PartitionExt") `
+    -ExpectedSymbols $AllStreamOperators `
     -UnexpectedSymbols @() `
-    -Description "runtime-tokio (includes share/partition)"
+    -Description "runtime-tokio: All operators including gated ones present"
 Record-Result $result
 
 # ============================================================================
@@ -196,20 +263,22 @@ Record-Result $result
 Write-TestHeader "Test 6: fluxion-exec Gating"
 
 Write-Host "  Checking symbol presence in documentation..."
+Write-Host "  Testing no_std+alloc: $($NonGatedExecOperators.Count) operator present, $($RuntimeGatedExecOperators.Count) operator absent"
 $result = Test-SymbolPresence `
     -Package "fluxion-exec" `
     -Features "alloc" `
-    -ExpectedSymbols @("SubscribeExt") `
-    -UnexpectedSymbols @("SubscribeLatestExt") `
-    -Description "no_std+alloc (no subscribe_latest)"
+    -ExpectedSymbols $NonGatedExecOperators `
+    -UnexpectedSymbols $RuntimeGatedExecOperators `
+    -Description "no_std+alloc: subscribe available, subscribe_latest absent"
 Record-Result $result
 
+Write-Host "  Testing runtime-tokio: All $($AllExecOperators.Count) operators present"
 $result = Test-SymbolPresence `
     -Package "fluxion-exec" `
     -Features "runtime-tokio" `
-    -ExpectedSymbols @("SubscribeExt", "SubscribeLatestExt") `
+    -ExpectedSymbols $AllExecOperators `
     -UnexpectedSymbols @() `
-    -Description "runtime-tokio (includes subscribe_latest)"
+    -Description "runtime-tokio: All operators including subscribe_latest present"
 Record-Result $result
 
 # ============================================================================
