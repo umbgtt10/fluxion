@@ -21,4 +21,5 @@ exclude-files = [
   "fluxion-core/tests/smol/**",
   "fluxion-core/tests/async_std/*",
   "fluxion-core/tests/async_std/**",
+  "fluxion-test-utils/**",
 ]
