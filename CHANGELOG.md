@@ -5,7 +5,7 @@ All notable changes to the Fluxion project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.8] - 2025-12-21
 
 ### Added
 - **Complete Runtime Abstraction** (`fluxion-core`, `fluxion-rx`)
@@ -30,11 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Default feature set: `["runtime-tokio"]` for zero-config experience
 
 ### Changed
-- **CI Infrastructure** (`.ci/`)
+- **CI Infrastructure** (`.ci/`, `.github/workflows/`)
   - Updated all runtime test scripts to test both fluxion-core and fluxion-stream-time
   - async_std_tests.ps1: Added fluxion-core testing with runtime-async-std feature
   - smol_tests.ps1: Added fluxion-core testing with runtime-smol feature
   - wasm_tests.ps1: Added fluxion-core testing with --no-default-features flag
+  - GitHub Actions workflow: Added missing fluxion-core tests for async-std, smol, and WASM runtimes
+  - Previously only fluxion-stream-time was tested for alternative runtimes; now both packages validated
 
 - **WASM Compilation Fixes** (`fluxion-core/Cargo.toml`)
   - Platform-gated dependencies: tokio, smol, async-std, criterion only for `cfg(not(target_arch = "wasm32"))`
@@ -42,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Prevents WASM compilation errors from OS-specific dependencies
 
 - **Workspace Configuration** (`Cargo.toml`)
-  - Fixed version mismatch: internal workspace dependencies now correctly reference `0.6.7`
+  - Fixed version mismatch: internal workspace dependencies now correctly reference `0.6.8`
   - Added readme fields to all published packages (fluxion-core, fluxion-exec, fluxion-test-utils, fluxion-stream)
   - Added homepage and documentation URLs to workspace metadata
   - cargo-udeps ignore configuration: async-std, smol (feature-gated dependencies)
@@ -83,60 +85,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cross-platform** - Native (tokio/smol/async-std) and WASM with identical code
 - **Zero overhead** - Dead code elimination for unused runtimes
 - **Professional-grade** - Complete abstraction from spawn/timer implementation details
-
-## [0.6.8] - 2025-12-20
-
-### Added
-- **Runtime-Agnostic CancellationToken** (`fluxion-core`)
-  - New `fluxion_core::CancellationToken` - drop-in replacement for `tokio_util::sync::CancellationToken`
-  - Works on ANY async runtime: Tokio, smol, async-std, WASM
-  - Identical API to tokio_util version (`.new()`, `.cancel()`, `.cancelled()`, `.is_cancelled()`)
-  - Built using `event-listener` crate for runtime-agnostic event notification
-  - 19 comprehensive tests covering edge cases and concurrent scenarios
-
-### Changed
-- **Runtime-Agnostic Primitives** (`fluxion-core`, `fluxion-stream`, `fluxion-exec`, `fluxion-merge`)
-  - **Replaced `tokio::sync::Mutex` → `futures::lock::Mutex`** across all crates
-    - Updated: `merge_with.rs`, `subscribe_latest.rs`, and other operator files
-    - Async fair mutex with identical semantics and performance
-    - Works on ANY async executor (Tokio, smol, async-std, WASM)
-
-  - **Replaced `tokio::sync::Notify` → `event_listener::Event`**
-    - Runtime-agnostic event notification using `event-listener` crate
-    - Zero API changes for end users
-    - Eliminates hard dependency on Tokio runtime
-
-  - **Replaced tokio channels → futures channels** (`mpsc`, `oneshot`)
-    - Migrated from `tokio::sync::mpsc` to `futures::channel::mpsc`
-    - Migrated from `tokio::sync::oneshot` to `futures::channel::oneshot`
-    - Runtime-agnostic channel implementations
-    - All operators and tests updated accordingly
-
-- **CancellationToken Migration** (`fluxion-stream`, `fluxion-exec`)
-  - Migrated from `tokio_util::sync::CancellationToken` to `fluxion_core::CancellationToken`
-  - Updated files: `partition.rs`, `subscribe.rs`, `subscribe_latest.rs`
-  - All doctests updated to use new import
-  - README examples updated
-  - Zero API changes for end users
-
-- **WASM Conditional Compilation** (`fluxion-stream-time`)
-  - Fixed WASM builds by adding `not(target_arch = "wasm32")` to Tokio default timer implementations
-  - Prevents conflicting trait implementations when building for WASM with `time-wasm` feature
-  - Files updated: `debounce.rs`, `delay.rs`, `sample.rs`, `throttle.rs`, `timeout.rs`
-  - WASM builds now succeed: `cargo build --target wasm32-unknown-unknown --features time-wasm`
-
-- **Documentation** (`fluxion-stream-time`)
-  - Added `cargo-udeps` ignore configuration for `async-std` and `smol` (false positives - used in feature-gated tests)
-
-### Fixed
-- WASM compilation errors when using time-wasm feature
-- Doctest failures due to outdated CancellationToken imports
-
-### Impact
-- **Zero performance impact** - All replacements use equivalent or identical implementations
-- **Zero API changes** - Drop-in replacements maintain exact same interfaces
-- **Massive decoupling** - Reduced hard dependencies on Tokio runtime throughout codebase
-- **Multi-runtime ready** - Foundation laid for full runtime abstraction in v0.7.0
 
 ## [0.6.7] - 2025-12-20
 

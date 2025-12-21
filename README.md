@@ -50,8 +50,8 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.6.7"  # Zero-config: Tokio included by default
-fluxion-test-utils = "0.6.7"
+fluxion-rx = "0.6.8"  # Zero-config: Tokio included by default
+fluxion-test-utils = "0.6.8"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 futures = "0.3.31"
@@ -63,10 +63,10 @@ Fluxion defaults to **Tokio** with zero configuration. To use alternative runtim
 
 ```toml
 # Use smol instead of tokio
-fluxion-rx = { version = "0.6.7", default-features = false, features = ["runtime-smol"] }
+fluxion-rx = { version = "0.6.8", default-features = false, features = ["runtime-smol"] }
 
 # Use async-std (deprecated but supported)
-fluxion-rx = { version = "0.6.7", default-features = false, features = ["runtime-async-std"] }
+fluxion-rx = { version = "0.6.8", default-features = false, features = ["runtime-async-std"] }
 
 # WASM support is automatic when compiling for wasm32 target
 # cargo build --target wasm32-unknown-unknown
