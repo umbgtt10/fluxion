@@ -68,10 +68,10 @@
 //! - **Threshold filtering**: Split values above/below a threshold
 
 use core::fmt::Debug;
+use core::pin::Pin;
 use fluxion_core::FluxionTask;
 use fluxion_core::{Fluxion, FluxionSubject, StreamItem};
 use futures::{FutureExt, Stream, StreamExt};
-use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 

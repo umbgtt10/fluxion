@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -7,9 +7,9 @@
 //! This module provides stream wrappers that can inject `StreamItem::Error` values
 //! into streams for testing error propagation behavior in stream operators.
 
+use core::pin::Pin;
 use fluxion_core::{FluxionError, StreamItem, Timestamped};
 use futures::Stream;
-use std::pin::Pin;
 use std::task::{Context, Poll};
 
 /// A stream wrapper that injects errors at specified positions.

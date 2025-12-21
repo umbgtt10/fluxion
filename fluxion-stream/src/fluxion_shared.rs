@@ -48,9 +48,9 @@
 //!
 //! Both are subscription factories with the same `subscribe()` pattern.
 
+use core::pin::Pin;
 use fluxion_core::{FluxionSubject, FluxionTask, StreamItem, SubjectError};
 use futures::{Stream, StreamExt};
-use std::pin::Pin;
 
 /// Type alias for the boxed stream returned by `subscribe()`.
 pub type SharedBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;

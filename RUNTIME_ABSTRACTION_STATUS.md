@@ -125,7 +125,7 @@ Implementation follows dependency order: `fluxion-core` → `fluxion-stream` →
 
 **Changes:**
 1. **Convert std imports to core imports** across all crates:
-   - `use core::fmt` → `use core::fmt`
+   - `use std::fmt` → `use core::fmt`
    - `use std::pin::Pin` → `use core::pin::Pin`
    - `use std::task` → `use core::task`
    - `use std::future::Future` → `use core::future::Future`

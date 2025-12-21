@@ -4,13 +4,13 @@
 
 use crate::ordered_merge::ordered_merge_with_index;
 use core::fmt::Debug;
+use core::pin::Pin;
 use fluxion_core::{Fluxion, HasTimestamp, StreamItem, Timestamped};
 use futures::lock::Mutex as FutureMutex;
 use futures::stream::{empty, Empty, Stream, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
 use std::marker::PhantomData;
-use std::pin::Pin;
 use std::sync::Arc;
 
 /// A stateful stream merger that combines multiple Timestamped streams while maintaining state.

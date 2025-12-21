@@ -3,10 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use core::fmt::Debug;
+use core::pin::Pin;
 use fluxion_core::{into_stream::IntoStream, Fluxion, StreamItem};
 use futures::task::{Context, Poll};
 use futures::{Stream, StreamExt};
-use std::pin::Pin;
 
 // Re-export for backwards compatibility with modules that use it
 pub use fluxion_ordered_merge::OrderedMergeExt;

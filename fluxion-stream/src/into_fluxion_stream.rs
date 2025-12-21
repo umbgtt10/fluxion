@@ -5,10 +5,10 @@
 //! Convenience constructors for creating fluxion streams from futures channels.
 
 use core::fmt::Debug;
+use core::pin::Pin;
 use fluxion_core::{StreamItem, Timestamped};
 use futures::channel::mpsc::UnboundedReceiver;
 use futures::{Stream, StreamExt};
-use std::pin::Pin;
 
 /// Extension trait to convert futures channels into fluxion streams.
 ///

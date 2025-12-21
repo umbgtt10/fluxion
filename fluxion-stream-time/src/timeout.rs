@@ -4,11 +4,11 @@
 
 use crate::timer::Timer;
 use crate::InstantTimestamped;
+use core::pin::Pin;
 use fluxion_core::{FluxionError, StreamItem};
 use futures::Stream;
 use pin_project::pin_project;
 use std::future::Future;
-use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
 

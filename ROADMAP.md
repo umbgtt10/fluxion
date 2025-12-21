@@ -475,7 +475,7 @@ New projects should use tokio or smol runtimes instead.
 
 ### Essential Features
 - [ ] Convert `std` imports to `core` imports across all crates
-  - [ ] `core::fmt` → `core::fmt`
+  - ✅ `std::fmt` → `core::fmt`
   - [ ] `std::pin::Pin` → `core::pin::Pin`
   - [ ] `std::task` → `core::task`
   - [ ] `std::future::Future` → `core::future::Future`

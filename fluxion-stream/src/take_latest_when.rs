@@ -4,11 +4,11 @@
 
 use crate::ordered_merge::ordered_merge_with_index;
 use core::fmt::Debug;
+use core::pin::Pin;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{Stream, StreamExt};
 use parking_lot::Mutex;
-use std::pin::Pin;
 use std::sync::Arc;
 
 /// Extension trait providing the `take_latest_when` operator for timestamped streams.
