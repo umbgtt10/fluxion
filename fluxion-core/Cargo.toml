@@ -21,13 +21,37 @@ event-listener = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true, optional = true }
 
+# Runtime dependencies (optional, feature-gated)
+# Note: tokio for non-WASM only, smol/async-std available for both
+smol = { workspace = true, optional = true }
+async-std = { workspace = true, optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { workspace = true, optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# wasm-bindgen-futures must NOT be optional due to wasm-pack limitations
+wasm-bindgen-futures = { workspace = true }
+
 [features]
-default = []
+default = ["runtime-tokio"]
 tracing = ["dep:tracing"]
 
+# Runtime feature flags
+runtime-tokio = ["dep:tokio"]
+runtime-smol = ["dep:smol"]
+runtime-async-std = ["dep:async-std"]
+# runtime-wasm doesn't need a feature flag since wasm-bindgen-futures is always available on WASM
+
 [dev-dependencies]
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { workspace = true }
+smol = { workspace = true }
+async-std = { workspace = true }
 criterion = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = { workspace = true }
 
 [[bench]]
 name = "benchmarks"

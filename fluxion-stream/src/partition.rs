@@ -67,14 +67,13 @@
 //! - **Type routing**: Route different enum variants to specialized handlers
 //! - **Threshold filtering**: Split values above/below a threshold
 
-use fluxion_core::CancellationToken;
+use fluxion_core::FluxionTask;
 use fluxion_core::{Fluxion, FluxionSubject, StreamItem};
 use futures::{FutureExt, Stream, StreamExt};
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use tokio::task::JoinHandle;
 
 /// Extension trait providing the `partition` operator for streams.
 ///
@@ -240,14 +239,11 @@ where
             .subscribe()
             .unwrap_or_else(|_| unreachable!("fresh subject should allow subscription"));
 
-        let cancel = CancellationToken::new();
-        let cancel_clone = cancel.clone();
-
-        let task = tokio::spawn(async move {
+        let task = FluxionTask::spawn(|cancel| async move {
             let mut stream = self;
             loop {
                 futures::select! {
-                    _ = cancel_clone.cancelled().fuse() => {
+                    _ = cancel.cancelled().fuse() => {
                         // Graceful shutdown requested
                         break;
                     }
@@ -283,10 +279,7 @@ where
             false_subject.close();
         });
 
-        let guard = Arc::new(TaskGuard {
-            cancel,
-            _task: task,
-        });
+        let guard = Arc::new(TaskGuard { task });
 
         (
             PartitionedStream {
@@ -305,12 +298,11 @@ type InnerStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + '
 
 #[derive(Debug)]
 struct TaskGuard {
-    cancel: CancellationToken,
-    _task: JoinHandle<()>,
+    task: FluxionTask,
 }
 
 impl Drop for TaskGuard {
     fn drop(&mut self) {
-        self.cancel.cancel();
+        self.task.cancel();
     }
 }

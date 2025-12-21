@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-#[cfg(all(feature = "time-wasm", target_arch = "wasm32"))]
+#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
 pub mod wasm_implementation {
     use crate::timer::Timer;
     use gloo_timers::future::TimeoutFuture;

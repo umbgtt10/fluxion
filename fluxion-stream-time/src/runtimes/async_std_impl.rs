@@ -13,7 +13,7 @@
 //! This implementation is kept for compatibility with existing projects using async-std,
 //! but new projects should consider using tokio or smol runtimes instead.
 
-#[cfg(all(feature = "time-async-std", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
 pub mod async_std_implementation {
     use crate::timer::Timer;
     use async_io::Timer as AsyncIoTimer;

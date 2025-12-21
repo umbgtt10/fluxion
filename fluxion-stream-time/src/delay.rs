@@ -34,15 +34,18 @@ where
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,no_run
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use fluxion_stream_time::{DelayExt, InstantTimestamped, TokioTimer};
     /// use fluxion_stream_time::timer::Timer;
     /// use fluxion_core::StreamItem;
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use fluxion_test_utils::test_data::person_alice;
     /// use futures::stream::StreamExt;
     /// use std::time::Duration;
     /// use futures::channel::mpsc;
     ///
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// # #[tokio::main]
     /// # async fn main() {
     /// let (mut tx, rx) = mpsc::unbounded();
@@ -195,7 +198,7 @@ where
     type Timestamped;
 }
 
-#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 impl<S, T> DelayWithDefaultTimerExt<T> for S
 where
     S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>>,
@@ -208,7 +211,7 @@ where
     }
 }
 
-#[cfg(all(feature = "time-smol", not(feature = "time-tokio")))]
+#[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
 impl<S, T> DelayWithDefaultTimerExt<T> for S
 where
     S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>>,
@@ -221,7 +224,7 @@ where
     }
 }
 
-#[cfg(all(feature = "time-wasm", target_arch = "wasm32"))]
+#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
 impl<S, T> DelayWithDefaultTimerExt<T> for S
 where
     S: Stream<
@@ -241,9 +244,9 @@ where
 }
 
 #[cfg(all(
-    feature = "time-async-std",
-    not(feature = "time-tokio"),
-    not(feature = "time-smol")
+    feature = "runtime-async-std",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol")
 ))]
 impl<S, T> DelayWithDefaultTimerExt<T> for S
 where

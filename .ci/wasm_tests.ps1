@@ -58,20 +58,19 @@ if (-not (Get-Command wasm-pack -ErrorAction SilentlyContinue)) {
     }
 }
 
-# Run WASM tests from fluxion-stream-time directory
-Push-Location fluxion-stream-time
+# Run WASM tests for fluxion-core
+Push-Location fluxion-core
 try {
-  Write-Output "=== Run WASM tests (Node.js runtime) ==="
-  Write-Output "Note: Doc tests reference TokioTimer and will fail on wasm32 (expected)"
-  Write-Output "Doc tests are validated in tokio_tests.ps1 for native/Tokio usage"
+  Write-Output "=== Run WASM tests (fluxion-core) ==="
   Write-Output ""
 
   # Temporarily disable error action to capture output even if wasm-pack returns non-zero
   $previousErrorAction = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
 
-  # Run wasm-pack test - doc tests will fail (expected), but we check that WASM tests pass
-  $output = & wasm-pack test --node --features time-wasm 2>&1 | Out-String
+  # Run wasm-pack test
+  # Note: --no-default-features avoids tokio/smol/async-std which aren't WASM-compatible
+  $output = & wasm-pack test --node -- --no-default-features 2>&1 | Out-String
   $exitCode = $LASTEXITCODE
 
   $ErrorActionPreference = $previousErrorAction
@@ -82,9 +81,43 @@ try {
   # Look for the line "test result: ok. N passed; 0 failed" from all_tests.rs
   if ($output -match "test result: ok\. \d+ passed; 0 failed; 0 ignored") {
     Write-Output ""
-    Write-Output "SUCCESS: WASM tests passed (doc test failures are expected and ignored)"
+    Write-Output "SUCCESS: fluxion-core WASM tests passed"
   } else {
-    Write-Error "WASM tests did not pass. Check output above."
+    Write-Error "fluxion-core WASM tests did not pass. Check output above."
+    exit 1
+  }
+} finally {
+  Pop-Location
+}
+
+# Run WASM tests for fluxion-stream-time
+Push-Location fluxion-stream-time
+try {
+  Write-Output ""
+  Write-Output "=== Run WASM tests (fluxion-stream-time) ==="
+  Write-Output "Note: Doc tests reference TokioTimer and will fail on wasm32 (expected)"
+  Write-Output "Doc tests are validated in tokio_tests.ps1 for native/Tokio usage"
+  Write-Output ""
+
+  # Temporarily disable error action to capture output even if wasm-pack returns non-zero
+  $previousErrorAction = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+
+  # Run wasm-pack test - doc tests will fail (expected), but we check that WASM tests pass
+  $output = & wasm-pack test --node --features runtime-wasm 2>&1 | Out-String
+  $exitCode = $LASTEXITCODE
+
+  $ErrorActionPreference = $previousErrorAction
+
+  Write-Output $output
+
+  # Check if actual WASM tests passed (tests/all_tests.rs)
+  # Look for the line "test result: ok. N passed; 0 failed" from all_tests.rs
+  if ($output -match "test result: ok\. \d+ passed; 0 failed; 0 ignored") {
+    Write-Output ""
+    Write-Output "SUCCESS: fluxion-stream-time WASM tests passed (doc test failures are expected and ignored)"
+  } else {
+    Write-Error "fluxion-stream-time WASM tests did not pass. Check output above."
     exit 1
   }
 } finally {

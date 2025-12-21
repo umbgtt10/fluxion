@@ -43,15 +43,18 @@ where
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,no_run
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use fluxion_stream_time::{DebounceExt, TokioTimestamped, TokioTimer};
     /// use fluxion_stream_time::timer::Timer;
     /// use fluxion_core::StreamItem;
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
     /// use futures::stream::StreamExt;
     /// use std::time::Duration;
     /// use futures::channel::mpsc;
     ///
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// # #[tokio::main]
     /// # async fn main() {
     /// let (mut tx, rx) = mpsc::unbounded();
@@ -202,18 +205,23 @@ where
     ///
     /// # Examples
     ///
-    /// With the `time-tokio` feature:
-    /// ```rust
+    /// With the `runtime-tokio` feature:
+    /// ```rust,no_run
+    /// # #[cfg(not(target_arch = "wasm32"))]
     /// use fluxion_stream_time::prelude::*;
+    /// # #[cfg(not(target_arch = "wasm32"))]
     /// use fluxion_stream_time::{TokioTimestamped, TokioTimer};
     /// use fluxion_stream_time::timer::Timer;
     /// use fluxion_core::StreamItem;
     /// use futures::stream::StreamExt;
     /// use std::time::Duration;
     ///
+    /// # #[cfg(not(target_arch = "wasm32"))]
     /// # #[tokio::main]
     /// # async fn main() {
+    /// # #[cfg(not(target_arch = "wasm32"))]
     /// # let timer = TokioTimer;
+    /// # #[cfg(not(target_arch = "wasm32"))]
     /// # let source: futures::stream::Empty<StreamItem<TokioTimestamped<i32>>> = futures::stream::empty();
     /// // No timer parameter needed!
     /// let debounced = source.debounce(Duration::from_millis(100));
@@ -225,7 +233,7 @@ where
     type Timestamped;
 }
 
-#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 impl<S, T> DebounceWithDefaultTimerExt<T> for S
 where
     S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>>,
@@ -238,7 +246,7 @@ where
     }
 }
 
-#[cfg(all(feature = "time-smol", not(feature = "time-tokio")))]
+#[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
 impl<S, T> DebounceWithDefaultTimerExt<T> for S
 where
     S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>>,
@@ -251,7 +259,7 @@ where
     }
 }
 
-#[cfg(all(feature = "time-wasm", target_arch = "wasm32"))]
+#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
 impl<S, T> DebounceWithDefaultTimerExt<T> for S
 where
     S: Stream<
@@ -271,9 +279,9 @@ where
 }
 
 #[cfg(all(
-    feature = "time-async-std",
-    not(feature = "time-tokio"),
-    not(feature = "time-smol")
+    feature = "runtime-async-std",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol")
 ))]
 impl<S, T> DebounceWithDefaultTimerExt<T> for S
 where

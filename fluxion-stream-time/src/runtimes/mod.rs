@@ -2,26 +2,26 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 pub use tokio_impl::tokio_implementation::TokioTimer;
 
-#[cfg(all(feature = "time-tokio", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 mod tokio_impl;
 
-#[cfg(all(feature = "time-async-std", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
 pub use async_std_impl::async_std_implementation::AsyncStdTimer;
 
-#[cfg(all(feature = "time-async-std", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
 mod async_std_impl;
 
-#[cfg(all(feature = "time-smol", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-smol", not(target_arch = "wasm32")))]
 pub use smol_impl::smol_implementation::SmolTimer;
 
-#[cfg(all(feature = "time-smol", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-smol", not(target_arch = "wasm32")))]
 mod smol_impl;
 
-#[cfg(all(feature = "time-wasm", target_arch = "wasm32"))]
+#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
 pub use wasm_impl::wasm_implementation;
 
-#[cfg(all(feature = "time-wasm", target_arch = "wasm32"))]
+#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
 mod wasm_impl;

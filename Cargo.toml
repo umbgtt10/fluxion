@@ -60,6 +60,7 @@ criterion = { version = "0.7.0", features = ["async", "html_reports"] }
 gloo-timers = "0.3"
 js-sys = "0.3"
 wasm-bindgen-test = "0.3"
+wasm-bindgen-futures = "0.4"
 
 # Platform bindings (unify versions across workspace)
 windows-sys = "0.61.2"

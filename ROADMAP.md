@@ -469,6 +469,24 @@ New projects should use tokio or smol runtimes instead.
 - [ ] CI green
 
 
+## 🚀 Version 0.8.0 - Polishing and Consolidating
+
+**Status:** Planned
+
+**Goal:** Ensure strict consistency in the code, comments, test code and documentation
+
+**Essential Features:**
+- [ ] Remove remaining sleeps from the tests
+- [ ] Review and finalize unstable doc
+
+### Documentation
+- [ ] Docs finalized and reviews by all AI agents
+
+### Quality Gates
+- [ ] Zero compilation errors
+- [ ] Zero clippy warnings
+- [ ] CI green
+
 ## 🚀 Version 1.0.0 - Production Ready
 
 **Essential Features:**

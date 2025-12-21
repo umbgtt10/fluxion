@@ -8,7 +8,7 @@
 //! which is a small and fast async runtime built on async-executor.
 //! Smol is well-maintained and supports both single-threaded and multi-threaded execution.
 
-#[cfg(all(feature = "time-smol", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "runtime-smol", not(target_arch = "wasm32")))]
 pub mod smol_implementation {
     use crate::timer::Timer;
     use async_io::Timer as AsyncIoTimer;
