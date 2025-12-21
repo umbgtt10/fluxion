@@ -5,7 +5,9 @@
 use crate::ordered_merge::ordered_merge_with_index;
 use alloc::boxed::Box;
 use alloc::sync::Arc;
+use alloc::vec;
 use alloc::vec::Vec;
+use core::cmp::Ordering;
 use core::fmt::Debug;
 use core::pin::Pin;
 use fluxion_core::{Fluxion, HasTimestamp, StreamItem, Timestamped};
@@ -265,7 +267,7 @@ where
     TItem: HasTimestamp,
     TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
@@ -275,7 +277,7 @@ where
     TItem: HasTimestamp,
     TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
 {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.timestamp().cmp(&other.timestamp())
     }
 }

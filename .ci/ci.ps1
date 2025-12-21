@@ -45,6 +45,7 @@ function Invoke-StepAction {
 Write-Output "Starting local CI checks..."
 
 Invoke-StepAction "Format check" { cargo fmt --all -- --check }
+Invoke-StepAction "Feature gating tests" { .\.ci\test_feature_gating.ps1 }
 
 # Run upgrade & build early to fail fast on dependency or build regressions
 Write-Output "=== Upgrade & build ==="

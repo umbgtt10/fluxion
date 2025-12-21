@@ -55,12 +55,24 @@ pub use crate::distinct_until_changed::DistinctUntilChangedExt;
 pub use crate::distinct_until_changed_by::DistinctUntilChangedByExt;
 pub use crate::emit_when::EmitWhenExt;
 pub use crate::filter_ordered::FilterOrderedExt;
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
 pub use crate::fluxion_shared::{FluxionShared, ShareExt};
 pub use crate::into_fluxion_stream::IntoFluxionStream;
 pub use crate::map_ordered::MapOrderedExt;
 pub use crate::merge_with::MergedStream;
 pub use crate::on_error::OnErrorExt;
 pub use crate::ordered_merge::OrderedStreamExt;
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
 pub use crate::partition::{PartitionExt, PartitionedStream};
 pub use crate::sample_ratio::SampleRatioExt;
 pub use crate::scan_ordered::ScanOrderedExt;

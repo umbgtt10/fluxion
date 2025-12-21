@@ -8,6 +8,16 @@
 //! output streams based on a predicate function. Items satisfying the predicate go to
 //! the "true" stream, while others go to the "false" stream.
 //!
+//! # Runtime Requirements
+//!
+//! This operator requires one of the following runtime features:
+//! - `runtime-tokio` (default)
+//! - `runtime-smol`
+//! - `runtime-async-std`
+//! - Or compiling for `wasm32` target
+//!
+//! It is not available when compiling without a runtime (no_std + alloc only).
+//!
 //! ## Characteristics
 //!
 //! - **Chain-breaking**: Returns two streams, cannot chain further on the original
@@ -67,6 +77,12 @@
 //! - **Type routing**: Route different enum variants to specialized handlers
 //! - **Threshold filtering**: Split values above/below a threshold
 
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use core::fmt::Debug;

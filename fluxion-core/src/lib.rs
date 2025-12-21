@@ -2,6 +2,15 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+#![cfg_attr(
+    not(any(
+        feature = "runtime-tokio",
+        feature = "runtime-smol",
+        feature = "runtime-async-std",
+        target_arch = "wasm32"
+    )),
+    no_std
+)]
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 
 extern crate alloc;

@@ -2,14 +2,16 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 use async_trait::async_trait;
+use core::error::Error;
 use core::fmt::Debug;
 use core::future::Future;
 use fluxion_core::{CancellationToken, FluxionError, Result};
 use futures::channel::mpsc::unbounded;
 use futures::stream::Stream;
 use futures::stream::StreamExt;
-use std::error::Error;
 
 /// Extension trait providing async subscription capabilities for streams.
 ///
@@ -307,7 +309,7 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ) -> Result<()>
     where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
-        Fut: Future<Output = std::result::Result<(), E>> + Send + 'static,
+        Fut: Future<Output = core::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
         T: Debug + Send + Clone + 'static,
         E: Error + Send + Sync + 'static;
@@ -327,7 +329,7 @@ where
     ) -> Result<()>
     where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
-        Fut: Future<Output = std::result::Result<(), E>> + Send + 'static,
+        Fut: Future<Output = core::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
         T: Debug + Send + Clone + 'static,
         E: Error + Send + Sync + 'static,

@@ -26,7 +26,16 @@ macro_rules! info {
     }};
 }
 
-#[cfg(not(feature = "tracing"))]
+// With std available (runtime features enabled)
+#[cfg(all(
+    not(feature = "tracing"),
+    any(
+        feature = "runtime-tokio",
+        feature = "runtime-smol",
+        feature = "runtime-async-std",
+        target_arch = "wasm32"
+    )
+))]
 #[macro_export]
 macro_rules! error {
     ($($arg:tt)*) => {{
@@ -34,7 +43,15 @@ macro_rules! error {
     }};
 }
 
-#[cfg(not(feature = "tracing"))]
+#[cfg(all(
+    not(feature = "tracing"),
+    any(
+        feature = "runtime-tokio",
+        feature = "runtime-smol",
+        feature = "runtime-async-std",
+        target_arch = "wasm32"
+    )
+))]
 #[macro_export]
 macro_rules! warn {
     ($($arg:tt)*) => {{
@@ -42,12 +59,63 @@ macro_rules! warn {
     }};
 }
 
-#[cfg(not(feature = "tracing"))]
+#[cfg(all(
+    not(feature = "tracing"),
+    any(
+        feature = "runtime-tokio",
+        feature = "runtime-smol",
+        feature = "runtime-async-std",
+        target_arch = "wasm32"
+    )
+))]
 #[macro_export]
 macro_rules! info {
     ($($arg:tt)*) => {{
         println!($($arg)*);
     }};
+}
+
+// In no_std mode (no runtime features), logging is a no-op
+#[cfg(all(
+    not(feature = "tracing"),
+    not(any(
+        feature = "runtime-tokio",
+        feature = "runtime-smol",
+        feature = "runtime-async-std",
+        target_arch = "wasm32"
+    ))
+))]
+#[macro_export]
+macro_rules! error {
+    ($($arg:tt)*) => {{}};
+}
+
+#[cfg(all(
+    not(feature = "tracing"),
+    not(any(
+        feature = "runtime-tokio",
+        feature = "runtime-smol",
+        feature = "runtime-async-std",
+        target_arch = "wasm32"
+    ))
+))]
+#[macro_export]
+macro_rules! warn {
+    ($($arg:tt)*) => {{}};
+}
+
+#[cfg(all(
+    not(feature = "tracing"),
+    not(any(
+        feature = "runtime-tokio",
+        feature = "runtime-smol",
+        feature = "runtime-async-std",
+        target_arch = "wasm32"
+    ))
+))]
+#[macro_export]
+macro_rules! info {
+    ($($arg:tt)*) => {{}};
 }
 
 // Note: consider adding lightweight metrics hooks here later

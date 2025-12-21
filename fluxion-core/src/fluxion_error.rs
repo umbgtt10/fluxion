@@ -44,7 +44,7 @@ pub enum FluxionError {
     /// This wraps errors produced by user-provided functions and callbacks,
     /// allowing them to be propagated through the Fluxion error system.
     #[error("User error: {0}")]
-    UserError(#[source] Box<dyn std::error::Error + Send + Sync>),
+    UserError(#[source] Box<dyn core::error::Error + Send + Sync>),
 
     /// Multiple errors occurred
     ///
