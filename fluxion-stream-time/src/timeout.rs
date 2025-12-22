@@ -64,6 +64,8 @@ where
     /// let item = timed_out.next().await.unwrap().unwrap();
     /// assert_eq!(&*item, &person_alice());
     /// # }
+    /// # #[cfg(not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))))]
+    /// # fn main() {}
     /// ```
     fn timeout_with_timer(
         self,

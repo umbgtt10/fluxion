@@ -32,17 +32,22 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! # #[cfg(not(target_arch = "wasm32"))]
+//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 //! use fluxion_stream_time::prelude::*;
 //! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 //! use fluxion_stream_time::{TokioTimestamped, TokioTimer};
+//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 //! use fluxion_stream_time::timer::Timer;
+//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 //! use fluxion_core::StreamItem;
+//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 //! use futures::stream::StreamExt;
+//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 //! use std::time::Duration;
+//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 //! use futures::channel::mpsc;
 //!
-//! # #[cfg(not(target_arch = "wasm32"))]
+//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 //! # async fn example() {
 //! let (tx, rx) = mpsc::unbounded::<TokioTimestamped<i32>>();
 //! let timer = TokioTimer;
@@ -61,6 +66,8 @@
 //!     .map(StreamItem::Value)
 //!     .debounce(Duration::from_millis(100));
 //! # }
+//! # #[cfg(not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))))]
+//! # fn example() {}
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]

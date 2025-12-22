@@ -3,8 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
-use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::{SmolTimer, SmolTimestamped};
+use fluxion_stream_time::SmolTimestamped;
 use futures::channel::mpsc;
 use futures::stream::{Stream, StreamExt};
 
@@ -29,10 +28,6 @@ pub fn person_alice() -> Person {
         name: "Alice".to_string(),
         age: 30,
     }
-}
-
-pub fn timestamped_person(p: Person) -> SmolTimestamped<Person> {
-    SmolTimestamped::new(p, SmolTimer.now())
 }
 
 #[allow(dead_code)]

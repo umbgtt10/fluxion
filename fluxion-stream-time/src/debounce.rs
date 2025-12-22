@@ -74,6 +74,8 @@ where
     /// let item = debounced.next().await.unwrap().unwrap();
     /// assert_eq!(&*item, &person_bob());
     /// # }
+    /// # #[cfg(not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))))]
+    /// # fn main() {}
     /// ```
     fn debounce_with_timer(
         self,
@@ -210,25 +212,29 @@ where
     ///
     /// With the `runtime-tokio` feature:
     /// ```rust,no_run
-    /// # #[cfg(not(target_arch = "wasm32"))]
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use fluxion_stream_time::prelude::*;
-    /// # #[cfg(not(target_arch = "wasm32"))]
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use fluxion_stream_time::{TokioTimestamped, TokioTimer};
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use fluxion_stream_time::timer::Timer;
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use fluxion_core::StreamItem;
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use futures::stream::StreamExt;
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use std::time::Duration;
     ///
-    /// # #[cfg(not(target_arch = "wasm32"))]
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// # #[tokio::main]
     /// # async fn main() {
-    /// # #[cfg(not(target_arch = "wasm32"))]
-    /// # let timer = TokioTimer;
-    /// # #[cfg(not(target_arch = "wasm32"))]
-    /// # let source: futures::stream::Empty<StreamItem<TokioTimestamped<i32>>> = futures::stream::empty();
+    /// let timer = TokioTimer;
+    /// let source: futures::stream::Empty<StreamItem<TokioTimestamped<i32>>> = futures::stream::empty();
     /// // No timer parameter needed!
     /// let debounced = source.debounce(Duration::from_millis(100));
     /// # }
+    /// # #[cfg(not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))))]
+    /// # fn main() {}
     /// ```
     fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>>;
 

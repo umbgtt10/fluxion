@@ -19,13 +19,16 @@ use fluxion_core::{HasTimestamp, Timestamped};
 /// ```rust,no_run
 /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 /// use fluxion_stream_time::{InstantTimestamped, TokioTimer};
+/// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 /// use fluxion_stream_time::timer::Timer;
 ///
-/// # #[cfg(not(target_arch = "wasm32"))]
-/// # fn example() {
-/// # let timer = TokioTimer;
+/// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+/// # fn main() {
+/// let timer = TokioTimer;
 /// let item: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, timer.now());
 /// # }
+/// # #[cfg(not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))))]
+/// # fn main() {}
 /// ```
 #[derive(Debug, Clone)]
 pub struct InstantTimestamped<T, TM: Timer> {

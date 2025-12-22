@@ -70,6 +70,8 @@ where
     /// let item = sampled.next().await.unwrap().unwrap();
     /// assert_eq!(&*item, &person_bob());
     /// # }
+    /// # #[cfg(not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))))]
+    /// # fn main() {}
     /// ```
     fn sample_with_timer(
         self,
