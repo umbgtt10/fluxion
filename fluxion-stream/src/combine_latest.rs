@@ -10,11 +10,11 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Debug;
 use core::pin::Pin;
+use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{Fluxion, StreamItem, Timestamped};
 use futures::future::ready;
 use futures::{Stream, StreamExt};
-use parking_lot::Mutex;
 
 /// Extension trait providing the `combine_latest` operator for timestamped streams.
 ///

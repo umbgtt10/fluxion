@@ -49,7 +49,6 @@ use futures::Stream;
 use parking_lot::Mutex;
 
 type SubjectBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
-
 struct SubjectState<T> {
     closed: bool,
     senders: Vec<UnboundedSender<StreamItem<T>>>,

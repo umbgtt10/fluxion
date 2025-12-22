@@ -19,6 +19,7 @@ extern crate alloc;
 pub mod cancellation_token;
 pub mod fluxion;
 pub mod fluxion_error;
+pub mod fluxion_mutex;
 #[cfg(feature = "std")]
 pub mod fluxion_subject;
 pub mod fluxion_task;
@@ -31,7 +32,6 @@ pub mod timestamped;
 
 pub use self::cancellation_token::CancellationToken;
 pub use self::fluxion::Fluxion;
-#[cfg(feature = "std")]
 pub use self::fluxion_error::IntoFluxionError;
 pub use self::fluxion_error::{FluxionError, Result, ResultExt};
 #[cfg(feature = "std")]

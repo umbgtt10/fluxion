@@ -2,13 +2,13 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::{FilterOrderedExt, MapOrderedExt, TapExt};
 use fluxion_test_utils::person::Person;
 use fluxion_test_utils::test_data::{person_alice, person_bob, TestData};
 use fluxion_test_utils::Sequenced;
 use fluxion_test_utils::{helpers::unwrap_stream, test_channel_with_errors, unwrap_value};
-use parking_lot::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 

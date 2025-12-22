@@ -4,9 +4,9 @@
 
 use alloc::sync::Arc;
 use core::fmt::Debug;
+use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
-use parking_lot::Mutex;
 
 /// Extension trait providing the `scan_ordered` operator for streams.
 ///

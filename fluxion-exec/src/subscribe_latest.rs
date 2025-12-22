@@ -35,10 +35,10 @@ use core::error::Error;
 use core::fmt::Debug;
 use core::future::Future;
 use event_listener::Event;
+use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::{CancellationToken, FluxionError, FluxionTask, Result};
 use futures::lock::Mutex as FutureMutex;
 use futures::{Stream, StreamExt};
-use parking_lot::Mutex;
 
 /// Extension trait providing async subscription with automatic cancellation of outdated work.
 ///

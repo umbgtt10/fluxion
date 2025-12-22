@@ -16,10 +16,10 @@ readme = "README.md"
 normal = ["pin-project"]
 
 [dependencies]
-futures = { workspace = true }
+futures = { workspace = true, default-features = false, features = ["alloc"] }
 pin-project = { workspace = true }
 
-[dev-dependencies]
+[target.'cfg(not(target_os = "none"))'.dev-dependencies]
 criterion = { workspace = true }
 fluxion-test-utils = { workspace = true }
 tokio = { workspace = true }

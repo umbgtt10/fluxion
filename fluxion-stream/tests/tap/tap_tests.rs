@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::HasTimestamp;
 use fluxion_stream::TapExt;
 use fluxion_test_utils::test_data::{
@@ -71,7 +72,7 @@ async fn test_tap_side_effect_called_for_each_value() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_tap_receives_correct_values() -> anyhow::Result<()> {
     // Arrange
-    let observed = Arc::new(parking_lot::Mutex::new(Vec::new()));
+    let observed = Arc::new(Mutex::new(Vec::new()));
     let observed_clone = observed.clone();
 
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
@@ -147,7 +148,7 @@ async fn test_tap_preserves_timestamps() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_tap_multiple_types() -> anyhow::Result<()> {
     // Arrange
-    let observed = Arc::new(parking_lot::Mutex::new(Vec::new()));
+    let observed = Arc::new(Mutex::new(Vec::new()));
     let observed_clone = observed.clone();
 
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
@@ -181,7 +182,7 @@ async fn test_tap_multiple_types() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_tap_maintains_order() -> anyhow::Result<()> {
     // Arrange
-    let observed = Arc::new(parking_lot::Mutex::new(Vec::new()));
+    let observed = Arc::new(Mutex::new(Vec::new()));
     let observed_clone = observed.clone();
 
     let (tx, stream) = test_channel::<Sequenced<TestData>>();

@@ -61,9 +61,9 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt::Debug;
 use core::mem::take;
+use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
-use parking_lot::Mutex;
 
 /// Extension trait providing the [`window_by_count`](Self::window_by_count) operator.
 ///

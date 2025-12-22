@@ -62,6 +62,7 @@ pub use crate::filter_ordered::FilterOrderedExt;
     target_arch = "wasm32"
 ))]
 pub use crate::fluxion_shared::{FluxionShared, ShareExt};
+#[cfg(feature = "std")]
 pub use crate::into_fluxion_stream::IntoFluxionStream;
 pub use crate::map_ordered::MapOrderedExt;
 pub use crate::merge_with::MergedStream;

@@ -18,7 +18,10 @@ futures = { workspace = true }
 tokio = { workspace = true }
 
 [features]
-default = ["runtime-tokio"]
+default = ["std", "runtime-tokio"]
+
+# Standard library support
+std = ["fluxion-core/std", "fluxion-stream/std", "fluxion-exec/std"]
 
 # Base capability for no_std
 alloc = ["fluxion-core/alloc", "fluxion-stream/alloc", "fluxion-exec/alloc"]

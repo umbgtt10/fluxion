@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_stream::{FilterOrderedExt, MapOrderedExt, TapExt};
 use fluxion_test_utils::person::Person;
 use fluxion_test_utils::test_data::{
@@ -9,7 +10,6 @@ use fluxion_test_utils::test_data::{
 };
 use fluxion_test_utils::{assert_no_element_emitted, test_channel};
 use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value, Sequenced};
-use parking_lot::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -71,7 +71,7 @@ async fn test_tap_before_filter_ordered() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_tap_after_map_ordered() -> anyhow::Result<()> {
     // Arrange
-    let observed = Arc::new(parking_lot::Mutex::new(Vec::new()));
+    let observed = Arc::new(Mutex::new(Vec::new()));
     let observed_clone = observed.clone();
 
     let (tx, stream) = test_channel();
@@ -106,7 +106,7 @@ async fn test_tap_after_map_ordered() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_tap_before_map_ordered() -> anyhow::Result<()> {
     // Arrange
-    let observed = Arc::new(parking_lot::Mutex::new(Vec::new()));
+    let observed = Arc::new(Mutex::new(Vec::new()));
     let observed_clone = observed.clone();
 
     let (tx, stream) = test_channel();

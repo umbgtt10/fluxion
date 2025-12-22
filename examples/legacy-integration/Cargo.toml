@@ -12,14 +12,14 @@ fluxion-rx = { workspace = true }
 fluxion-core = { workspace = true, features = ["std"] }
 fluxion-stream = { workspace = true }
 fluxion-exec = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true }
 futures = { workspace = true }
 serde_json = { workspace = true }
 quick-xml = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
-fastrand = { workspace = true }
+fastrand = { workspace = true, features = ["std"] }
 
 [[bin]]
 name = "legacy-integration"

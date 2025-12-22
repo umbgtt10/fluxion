@@ -7,6 +7,7 @@
 //! These tests verify that `on_error` correctly handles errors from upstream
 //! operators in various composition scenarios.
 
+use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::{FluxionError, HasTimestamp, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_stream::{CombineLatestExt, OrderedStreamExt, TakeLatestWhenExt};
@@ -15,7 +16,6 @@ use fluxion_test_utils::{
     test_data::{animal_cat, animal_dog, person_alice, person_bob, person_charlie, TestData},
     unwrap_stream, unwrap_value, Sequenced,
 };
-use parking_lot::Mutex;
 use std::sync::Arc;
 
 #[tokio::test]

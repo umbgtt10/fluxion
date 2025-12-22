@@ -14,4 +14,4 @@ readme = "README.md"
 [dependencies]
 fluxion-core = { workspace = true, features = ["std"] }
 futures = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["rt", "sync", "macros", "time", "test-util"] }

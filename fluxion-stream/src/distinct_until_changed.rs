@@ -5,10 +5,10 @@
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use core::fmt::Debug;
+use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::stream::StreamExt;
 use futures::Stream;
-use parking_lot::Mutex;
 
 /// Extension trait providing the `distinct_until_changed` operator for streams.
 ///

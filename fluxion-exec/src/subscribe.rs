@@ -9,7 +9,6 @@ use core::error::Error;
 use core::fmt::Debug;
 use core::future::Future;
 use fluxion_core::{CancellationToken, FluxionError, Result};
-use futures::channel::mpsc::unbounded;
 use futures::stream::Stream;
 use futures::stream::StreamExt;
 
@@ -20,15 +19,14 @@ use futures::stream::StreamExt;
 pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// Subscribes to the stream with an async handler, processing items sequentially.
     ///
-    /// This method consumes the stream and spawns async tasks to process each item.
-    /// Items are processed in the order they arrive, with each item's handler running
-    /// to completion before the next item is processed (though handlers run concurrently
-    /// via tokio spawn).
+    /// This method consumes the stream and processes each item with the provided handler.
+    /// Items are processed in the order they arrive, with each item's handler completing
+    /// before the next item is processed.
     ///
     /// # Behavior
     ///
-    /// - Processes each stream item with the provided async handler
-    /// - Spawns a new task for each item (non-blocking)
+    /// - Processes each stream item with the provided async handler sequentially
+    /// - Waits for handler completion before processing next item
     /// - Continues until stream ends or cancellation token is triggered
     /// - Errors from handlers are passed to the error callback if provided
     /// - If no error callback provided, errors are collected and returned on completion
@@ -299,8 +297,8 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///
     /// # Thread Safety
     ///
-    /// All spawned tasks run on the tokio runtime. The subscription completes
-    /// when the stream ends, not when all spawned tasks complete.
+    /// Handlers are executed sequentially on the calling task. The subscription
+    /// completes when the stream ends or cancellation is triggered.
     async fn subscribe<F, Fut, E, OnError>(
         self,
         on_next_func: F,
@@ -335,39 +333,24 @@ where
         E: Error + Send + Sync + 'static,
     {
         let cancellation_token = cancellation_token.unwrap_or_default();
-        let (error_tx, mut error_rx) = unbounded();
+        let mut collected_errors = Vec::new();
 
         while let Some(item) = self.next().await {
             if cancellation_token.is_cancelled() {
                 break;
             }
 
-            let on_next_func = on_next_func.clone();
-            let cancellation_token = cancellation_token.clone();
-            let on_error_callback = on_error_callback.clone();
-            let error_tx = error_tx.clone();
+            // Call handler directly (sequential processing)
+            let result = on_next_func(item.clone(), cancellation_token.clone()).await;
 
-            tokio::spawn(async move {
-                let result = on_next_func(item.clone(), cancellation_token).await;
-
-                if let Err(error) = result {
-                    if let Some(on_error_callback) = on_error_callback {
-                        on_error_callback(error);
-                    } else {
-                        // Collect error for later aggregation
-                        let _ = error_tx.unbounded_send(error);
-                    }
+            if let Err(error) = result {
+                if let Some(ref on_error_callback) = on_error_callback {
+                    on_error_callback(error);
+                } else {
+                    // Collect error for later aggregation
+                    collected_errors.push(error);
                 }
-            });
-        }
-
-        // Drop the original sender so the channel closes
-        drop(error_tx);
-
-        // Collect all errors from the channel
-        let mut collected_errors = Vec::new();
-        while let Some(error) = error_rx.next().await {
-            collected_errors.push(error);
+            }
         }
 
         if !collected_errors.is_empty() {

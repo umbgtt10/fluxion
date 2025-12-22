@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::{CombineWithPreviousExt, FilterOrderedExt, MapOrderedExt, OnErrorExt};
 use fluxion_test_utils::{
@@ -10,7 +11,6 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob, person_charlie, person_dave, TestData},
     unwrap_value, Sequenced,
 };
-use parking_lot::Mutex;
 use std::sync::Arc;
 
 #[tokio::test]

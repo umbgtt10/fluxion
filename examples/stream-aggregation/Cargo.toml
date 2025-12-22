@@ -15,5 +15,5 @@ path = "src/rabbitmq_aggregator.rs"
 fluxion-core = { workspace = true, features = ["std"] }
 fluxion-rx = { workspace = true }
 fluxion-exec = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
 futures = { workspace = true }

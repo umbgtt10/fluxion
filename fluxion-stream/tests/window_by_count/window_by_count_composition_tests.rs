@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{
@@ -11,7 +12,6 @@ use fluxion_test_utils::{
     },
     unwrap_stream, unwrap_value, Sequenced,
 };
-use parking_lot::Mutex;
 use std::sync::Arc;
 
 #[tokio::test]

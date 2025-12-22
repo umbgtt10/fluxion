@@ -9,8 +9,8 @@ use alloc::vec;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::pin::Pin;
+use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::{Fluxion, HasTimestamp, StreamItem, Timestamped};
-use futures::lock::Mutex as FutureMutex;
 use futures::stream::{empty, Empty, Stream, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
@@ -23,7 +23,7 @@ use pin_project::pin_project;
 pub struct MergedStream<S, State, Item> {
     #[pin]
     inner: S,
-    state: Arc<FutureMutex<State>>,
+    state: Arc<Mutex<State>>,
     _marker: PhantomData<Item>,
 }
 
@@ -50,7 +50,7 @@ where
     {
         MergedStream {
             inner: empty::<StreamItem<OutWrapper>>(),
-            state: Arc::new(FutureMutex::new(initial_state)),
+            state: Arc::new(Mutex::new(initial_state)),
             _marker: PhantomData,
         }
     }
@@ -95,21 +95,19 @@ where
         <Item as HasTimestamp>::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
         <NewItem as HasTimestamp>::Timestamp: Into<<Item as HasTimestamp>::Timestamp> + Copy,
     {
-        let shared_state = Arc::clone(&self.state);
-        let new_stream_mapped = new_stream.then(move |stream_item| {
+        let shared_state: Arc<Mutex<State>> = Arc::clone(&self.state);
+        let new_stream_mapped = new_stream.map(move |stream_item| {
             let shared_state = Arc::clone(&shared_state);
             let mut process_fn = process_fn.clone();
-            async move {
-                match stream_item {
-                    StreamItem::Value(timestamped_item) => {
-                        let timestamp = timestamped_item.timestamp();
-                        let inner_value = timestamped_item.into_inner();
-                        let mut state = shared_state.lock().await;
-                        let result_value = process_fn(inner_value, &mut *state);
-                        StreamItem::Value(Item::with_timestamp(result_value, timestamp.into()))
-                    }
-                    StreamItem::Error(e) => StreamItem::Error(e),
+            match stream_item {
+                StreamItem::Value(timestamped_item) => {
+                    let timestamp = timestamped_item.timestamp();
+                    let inner_value = timestamped_item.into_inner();
+                    let mut state = shared_state.lock();
+                    let result_value = process_fn(inner_value, &mut *state);
+                    StreamItem::Value(Item::with_timestamp(result_value, timestamp.into()))
                 }
+                StreamItem::Error(e) => StreamItem::Error(e),
             }
         });
 
