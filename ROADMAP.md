@@ -528,37 +528,40 @@ New projects should use tokio or smol runtimes instead.
 - ✅ All tests passing
 
 ### Key Achievement
-**Minimal no_std Support** - 24/27 operators immediately available on embedded systems with just `alloc`. Spawn-based operators clearly gated on runtime features. Zero breaking changes. Phase 1 complete!
+**Minimal no_std Support** - 24/27 operators immediately available on embedded systems with just `alloc`. Spawn-based operators clearly gated on runtime features. Zero breaking changes.
 
-## 🚀 Version 0.6.11 - Async Subject & Embedded Target Support
+## 🚀 Version 0.6.11 - Embedded Target Support & Infrastructure
 
-**Status:** In Progress
+**Status:** Published (2025-12-22)
 
-**Goal:** Make FluxionSubject no_std-compatible and verify embedded compilation
+**Goal:** Verify embedded compilation and establish infrastructure for no_std development
 
 ### Essential Features
-- [ ] Refactor FluxionSubject to use async APIs (`send().await`, `subscribe().await`)
-- [ ] Replace `parking_lot::Mutex` with `futures::lock::Mutex` for cooperative scheduling
-- [ ] Move FluxionSubject from `std` feature to `alloc` feature
-- [ ] Verify compilation against `thumbv7em-none-eabihf` (ARM Cortex-M4F) target
-- [ ] Update all FluxionSubject examples and tests to use async APIs
-- [ ] Document async Subject pattern and rationale (Rust-first vs Rx-first design)
+- ✅ Added embedded target verification script (`test_embedded_target.ps1`)
+- ✅ Verified compilation against `thumbv7em-none-eabihf` (ARM Cortex-M4F) target
+- ✅ Feature flag refinement (`std` implies `alloc`)
+- ✅ Fixed build warnings (tracing, unused variables)
+- ✅ Added test dependencies (thiserror)
+
+### FluxionSubject Async Migration - Deferred
+- ⏸️ Initial async implementation completed but reverted
+- ⏸️ Architectural concerns documented in `RUNTIME_ABSTRACTION_STATUS.md`
+- ⏸️ Will be reconsidered when implementing alternative partition() and publish() operators
+- ⏸️ FluxionSubject remains `std`-only for now (uses `parking_lot::Mutex`)
 
 ### Documentation
-- [ ] Update FluxionSubject documentation explaining async API design
-- [ ] Add embedded target compilation guide
-- [ ] Document difference from traditional Rx Subject (async vs sync send)
-- [ ] Update examples to show `subject.send(item).await?` pattern
+- ✅ Added embedded target compilation guide and CI script
+- ✅ Documented architectural considerations in `RUNTIME_ABSTRACTION_STATUS.md`
+- ✅ Updated CHANGELOG with version 0.6.11 changes
 
 ### Quality Gates
-- [ ] Embedded target test script passes (`test_embedded_target.ps1`)
-- [ ] All FluxionSubject tests updated and passing
-- [ ] Zero breaking changes for non-Subject users
-- [ ] CI includes embedded target verification
-- [ ] Documentation clearly explains async design choice
+- ✅ Embedded target test script passes (`test_embedded_target.ps1`)
+- ✅ CI includes embedded target verification
+- ✅ No breaking changes
+- ✅ All tests passing
 
 ### Key Achievement
-**Async Subject for no_std** - FluxionSubject now works in embedded environments with cooperative async scheduling. Rust-idiomatic async APIs prioritized over traditional Rx synchronous semantics. Subject now available on embedded systems!
+**24/27 Operators on Embedded!** - Core operators work in no_std+alloc environments. FluxionSubject async migration deferred for architectural review. Infrastructure in place for continued no_std development. Phase 1 complete with limitations.
 
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 

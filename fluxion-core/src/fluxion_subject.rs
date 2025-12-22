@@ -11,6 +11,7 @@
 //! - **Hot**: Late subscribers do not receive past items—only items sent after subscribing.
 //! - **Unbounded**: Uses unbounded mpsc channels internally (no backpressure).
 //! - **Thread-safe**: Cheap to clone; all clones share the same internal state.
+//! - **std-only**: Requires the `std` feature (uses `parking_lot::Mutex`).
 //! - **Error/close**: Errors are propagated to all subscribers and terminate the subject.
 //!
 //! ## Example

@@ -420,3 +420,64 @@ stream.throttle(Duration::from_millis(100))
 - No background task needed
 - Honest naming: "publish" (lazy) vs "share" (hot)
 
+---
+
+## 🚧 FluxionSubject Async Migration Considerations
+
+**Status:** Temporary async implementation completed (v0.6.11), but needs reconsideration
+
+**Current Implementation Issues:**
+
+1. **Spin Lock Performance Problem:**
+   - ❌ Currently uses `spin::Mutex` for no_std compatibility
+   - ✅ **Good for no_std**: No OS primitives, predictable embedded behavior
+   - ❌ **Bad for std**: Wastes CPU cycles, poor contention performance, priority inversion risk
+   - **Better approach**: Conditional compilation - `parking_lot::Mutex` for std, `spin::Mutex` for no_std
+
+2. **Unsafe Pin Projection:**
+   - ❌ Current: `unsafe { self.as_mut().map_unchecked_mut(|s| &mut s.inner) }`
+   - Hard to verify correctness, fragile to changes, violates Rust safety principles
+   - **Better approaches:**
+     - **Option A**: Use `pin-project-lite` (already in workspace) for safe projection
+     - **Option B**: Box the receiver (simpler, small overhead): `Pin<Box<Receiver<...>>>`
+
+3. **Cascade Changes Required:**
+   - `fluxion_shared` uses FluxionSubject internally → needs async call updates
+   - `partition` uses FluxionSubject internally → needs async call updates
+   - All call sites need `.await` added to subscribe(), send(), close(), etc.
+
+**Decision Deferred Until:**
+
+This will be reconsidered when we:
+- Implement alternative partition() implementation
+- Create a publish() operator for lazy multi-subscriber pattern
+- Make FluxionSubject fully async and runtime-dependent
+
+**Potential Future Approaches:**
+
+1. **Sync API with Conditional Mutex** (simplest):
+   ```rust
+   #[cfg(feature = "std")]
+   use parking_lot::Mutex;  // OS-backed, efficient
+
+   #[cfg(not(feature = "std"))]
+   use spin::Mutex;  // Spin-based for no_std
+   ```
+   - No async needed if just coordinating between tasks
+   - No cascade changes required
+   - More Rust-idiomatic for non-I/O coordination
+
+2. **True Async with Conditional Locks**:
+   - Use `futures::lock::Mutex` for std (async-aware)
+   - Use spin locks only for no_std
+   - Requires cascade updates but provides proper async semantics
+
+3. **Different APIs per Target**:
+   - Async API for std (with OS mutex)
+   - Sync API for no_std (with spin mutex)
+   - Honest about capability differences
+
+**Key Question:** Does FluxionSubject need to be async at all? If it's just coordinating between tasks (not doing I/O), a sync API with proper mutex selection may be simpler and more appropriate than forcing async with spin locks.
+
+**Current Status:** Working implementation with known limitations, flagged for future architectural review.
+

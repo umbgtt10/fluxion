@@ -5,7 +5,7 @@ All notable changes to the Fluxion project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.11] - Not Published (In Progress)
+## [0.6.11] - 2025-12-22
 
 ### Added
 - **Embedded Target Verification** (`.ci/test_embedded_target.ps1`)
@@ -14,10 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Validates no_std + alloc build for embedded systems
 
 ### Changed
-- **FluxionSubject Feature Gating** (`fluxion-core`)
-  - Temporarily moved `FluxionSubject` from `alloc` to `std` feature gate
-  - Uses `parking_lot::Mutex` for thread-safe synchronous API (std-only)
-  - **Planned for 0.6.11:** Refactor to async API with `futures::lock::Mutex` for no_std support
+- **Feature Flag Refinement** (`fluxion-core/Cargo.toml`)
+  - `std` feature now implies `alloc` feature
+  - FluxionSubject remains behind `std` feature gate (requires parking_lot::Mutex)
 
 ### Fixed
 - **Build Warnings**
@@ -27,25 +26,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Test Dependencies** (`fluxion-core/Cargo.toml`)
   - Added `thiserror` to dev-dependencies for error handling tests
 
-### Technical Details
-- **FluxionSubject Design Decision:**
-  - Current: Synchronous API with `parking_lot::Mutex` (Rx-compatible, std-only)
-  - Future: Async API with `futures::lock::Mutex` (Rust-idiomatic, no_std-compatible)
-  - Rationale: Prioritizing Rust async ecosystem over traditional Rx synchronous semantics
-  - Multi-threading pattern (current) vs multi-tasking pattern (planned)
+### Technical Notes
 
-- **Embedded Compilation:**
-  - Target: `thumbv7em-none-eabihf` (ARM Cortex-M4F with hardware floating point)
-  - Build command: `cargo build --target thumbv7em-none-eabihf --no-default-features --features alloc`
-  - Currently passes without FluxionSubject (24/27 operators available)
+**FluxionSubject Async Migration - Deferred:**
+- Initial async implementation was completed but reverted due to design considerations
+- FluxionSubject currently requires `std` feature (uses `parking_lot::Mutex`)
+- **24/27 operators** available in no_std + alloc (FluxionSubject excluded)
+- Architecture review documented in `RUNTIME_ABSTRACTION_STATUS.md`
+- Async migration will be reconsidered when implementing:
+  - Alternative partition() implementation
+  - New publish() operator
+  - Full runtime abstraction
 
 ### Impact
-- **Warning-Free Builds** - All compilation warnings resolved
-- **Embedded Verification** - Automated CI check for ARM target compilation
-- **Foundation for Async Subject** - Clear path to no_std-compatible FluxionSubject in next update
-
-## [0.6.10] - Not Published (In Progress - Phase 1 Complete)
-
+- **Embedded Support** - 24/27 operators available on ARM Cortex-M and other no_std targets
+- **All 27 operators** available in std environments
+- **No Breaking Changes** - FluxionSubject API remains synchronous
 ### Added
 - **no_std Support (Phase 1) ✅ COMPLETE** (`fluxion-core`, `fluxion-stream`, `fluxion-exec`, `fluxion-ordered-merge`)
   - Added conditional `#![no_std]` attribute to all library crates
