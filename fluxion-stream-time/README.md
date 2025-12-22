@@ -8,10 +8,11 @@ This crate provides specialized time-based operators (`delay`, `debounce`, `thro
 
 fluxion-stream-time supports multiple async runtimes through feature flags:
 
-- **`time-tokio`** (default) - Tokio runtime with `TokioTimer`
-- **`time-smol`** - smol runtime with `SmolTimer`
-- **`time-wasm`** - WebAssembly with `WasmTimer` (Node.js and browser)
-- **`time-async-std`** - async-std runtime ⚠️ **DEPRECATED** (unmaintained)
+- **`runtime-tokio`** (default) - Tokio runtime with `TokioTimer`
+- **`runtime-smol`** - smol runtime with `SmolTimer`
+- **`runtime-wasm`** - WebAssembly with `WasmTimer` (Node.js and browser)
+- **`runtime-async-std`** - async-std runtime ⚠️ **DEPRECATED** (unmaintained)
+- **`runtime-embassy`** - Embassy for embedded/no_std + alloc (requires manual timer implementation)
 
 All operators are fully runtime-agnostic thanks to the `Timer` trait abstraction.
 
@@ -62,11 +63,25 @@ Keeping `fluxion-stream` timestamp-agnostic means:
 - **`TokioTimestamped<T>`** - Type alias for `InstantTimestamped<T, TokioTimer>`
 
 ### Operators
-- **`delay(duration)`** - Delays each emission by a specified duration (or `delay_with_timer` for explicit timer control)
-- **`debounce(duration)`** - Emits values only after a quiet period (or `debounce_with_timer` for explicit timer control)
-- **`throttle(duration)`** - Emits a value and then ignores subsequent values for a duration (or `throttle_with_timer` for explicit timer control)
-- **`sample(duration)`** - Emits the most recent value within periodic time intervals (or `sample_with_timer` for explicit timer control)
-- **`timeout(duration)`** - Errors if no emission within duration (or `timeout_with_timer` for explicit timer control)
+
+All time operators provide two variants:
+
+**1. Convenience Methods** (`.delay()`, `.debounce()`, etc.)
+- Available when compiling with `std` runtime features (tokio, smol, async-std, wasm)
+- Automatically use the default timer for your runtime
+- Simplest API for most use cases
+
+**2. Explicit Timer Methods** (`_with_timer` suffix)
+- Required for `no_std` environments (Embassy)
+- Available in all runtimes when you need custom timer control
+- Explicit timer parameter gives you full control
+
+**Operator List:**
+- **`delay(duration)`** / **`delay_with_timer(duration, timer)`** - Delays each emission by a specified duration
+- **`debounce(duration)`** / **`debounce_with_timer(duration, timer)`** - Emits values only after a quiet period
+- **`throttle(duration)`** / **`throttle_with_timer(duration, timer)`** - Emits a value and then ignores subsequent values for a duration
+- **`sample(duration)`** / **`sample_with_timer(duration, timer)`** - Emits the most recent value within periodic time intervals
+- **`timeout(duration)`** / **`timeout_with_timer(duration, timer)`** - Errors if no emission within duration
 
 ## Quick Reference Table
 
@@ -324,7 +339,7 @@ let timestamped = InstantTimestamped::new(my_value, timer.now());
 - Uses `async-io::Timer` for async sleep operations
 - Supports both single-threaded and multi-threaded execution
 - Multi-threaded tests use `async_core::task::spawn` for true concurrency
-- Tests run with `cargo test --features time-async-std --no-default-features`
+- Tests run with `cargo test --features runtime-async-std --no-default-features`
 
 ### smol
 
@@ -357,7 +372,7 @@ let timestamped = SmolTimestamped::new(my_value, timer.now());
 - Uses `async-io` for timer implementation (shared with async-std)
 - Custom `SmolTimer` based on `async_io::Timer` for sleep operations
 - Standard `std::time::Instant` for monotonic time tracking
-- Tests run with `cargo test --features time-smol --no-default-features`
+- Tests run with `cargo test --features runtime-smol --no-default-features`
 - 10 comprehensive tests validate all time-based operators in single & multi-threaded modes
 - Supports both `smol::block_on()` (single-threaded) and `smol::Executor` (multi-threaded)
 
@@ -394,6 +409,55 @@ let timestamped = InstantTimestamped::new(my_value, timer.now());
 - Tests run with `wasm-pack test --node` or `--headless --chrome`
 - 5 comprehensive tests validate all time-based operators in WASM environments
 
+### Embassy (embedded/no_std + alloc)
+
+> ⚠️ **Note**: Embassy runtime support is in **compilation-only** mode. Tests verify that time operators compile correctly with Embassy, but full runtime testing requires hardware or emulator setup.
+
+Embassy support enables time-based operators in `no_std` + `alloc` embedded environments:
+
+```rust
+#![no_std]
+extern crate alloc;
+
+use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::runtimes::embassy_implementation::EmbassyTimer;
+use fluxion_stream_time::timer::Timer;
+use embassy_time::Duration;
+
+let timer = EmbassyTimer;
+
+// Time operators work the same way in embedded environments
+// But you must use *_with_timer methods (no default timer in no_std)
+let delayed_stream = source_stream
+    .delay_with_timer(Duration::from_millis(100), timer.clone());
+
+let debounced_stream = source_stream
+    .debounce_with_timer(Duration::from_millis(500), timer.clone());
+
+let throttled_stream = source_stream
+    .throttle_with_timer(Duration::from_millis(100), timer.clone());
+```
+
+**Embassy Notes:**
+- Requires `no_std` + `alloc` environment
+- Uses `embassy_time::{Timer, Duration, Instant}` for monotonic time
+- Must use `*_with_timer` methods (convenience methods unavailable in `no_std`)
+- Compilation tests in `tests/embassy/` verify all 5 time operators
+- Full runtime testing requires hardware/emulator (see [embassy tests README](tests/embassy/README.md))
+
+**Why Compilation-Only Tests?**
+- Embassy requires actual hardware or emulator for async execution
+- GitHub Actions CI doesn't provide embedded hardware
+- Compilation tests ensure operators work correctly with Embassy types
+- Full integration tests can be run on target hardware
+
+**Supported Operators:**
+- ✅ `delay_with_timer` - Delays emissions
+- ✅ `debounce_with_timer` - Trailing debounce
+- ✅ `throttle_with_timer` - Leading throttle
+- ✅ `sample_with_timer` - Periodic sampling
+- ✅ `timeout_with_timer` - Watchdog timer
+
 ### async-std Support ⚠️ **DEPRECATED**
 
 > ⚠️ **CRITICAL**: async-std is no longer maintained (discontinued Aug 2024, RUSTSEC-2025-0052).
@@ -413,7 +477,7 @@ async-std support is **fully implemented** via `AsyncStdTimer` using `async-io` 
 **Testing:**
 - Integration tests in `tests/async_std/single_threaded/` and `tests/async_std/multi_threaded/`
 - Tests use real delays with `async_core::task::sleep` and external spawning
-- Run with `cargo test --features time-async-std --no-default-features`
+- Run with `cargo test --features runtime-async-std --no-default-features`
 - See `.ci/async_std_tests.ps1` for CI testing configuration
 
 **Platform Support:**
@@ -538,7 +602,7 @@ WASM support is **fully implemented** via `WasmTimer` using `gloo-timers` and `j
 **Testing:**
 - Integration tests in `tests/wasm/single_threaded/`
 - Tests use real delays with `gloo_timers::future::sleep` (no time control like Tokio)
-- Run with `wasm-pack test --node --features time-wasm`
+- Run with `wasm-pack test --node --features runtime-wasm`
 
 **Platform Support:**
 - ✅ Node.js (v14+)

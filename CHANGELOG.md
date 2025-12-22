@@ -5,6 +5,45 @@ All notable changes to the Fluxion project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.13] - 2025-12-22
+
+### Added
+- **Documentation Consistency & Completeness ✅ COMPLETE**
+  - Updated version references from 0.6.11 → 0.6.13 across all documentation
+  - Added Embassy runtime to all relevant documentation (README, PITCH, operator summary)
+  - Fixed feature flag naming: `time-*` → `runtime-*` throughout fluxion-stream-time README
+  - Documented convenience methods vs explicit timer methods for time operators
+  - Added comprehensive Embassy usage examples and testing approach documentation
+
+### Changed
+- **README.md Enhancements**
+  - Added Embassy as 5th runtime in Runtime Selection section
+  - Updated benefits to mention embedded (Embassy) support
+  - Added note about `no_std` + `alloc` requirements for Embassy
+  - Expanded cross-platform statement to include embedded systems
+
+- **PITCH.md Updates**
+  - Updated runtime support from "4 runtimes" → "5 runtimes" in metrics table
+  - Updated runtime abstraction benefits to include Embassy
+
+- **fluxion-stream-time/README.md Improvements**
+  - Fixed all feature flag names (`time-tokio` → `runtime-tokio`, etc.)
+  - Added `runtime-embassy` to supported runtimes list
+  - Added comprehensive Embassy section with compilation-only testing explanation
+  - Documented convenience methods vs `_with_timer` explicit methods
+  - Clarified when to use each API variant (std vs no_std)
+
+- **docs/FLUXION_OPERATOR_SUMMARY.md**
+  - Added Embassy to runtime support note
+  - Updated runtime list to include embedded environments
+
+### Quality
+- ✅ All documentation synced with sync-readme-examples.ps1
+- ✅ cargo check --workspace passes
+- ✅ cargo doc --no-deps --workspace generates without warnings
+- ✅ cargo clippy passes with zero warnings
+- ✅ Version consistency verified across all files
+
 ## [0.6.12] - 2025-12-22
 
 ### Added

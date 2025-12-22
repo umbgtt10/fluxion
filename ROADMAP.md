@@ -532,7 +532,7 @@ New projects should use tokio or smol runtimes instead.
 
 ## 🚀 Version 0.6.11 - Embedded Target Support & Infrastructure
 
-**Status:** Published (2025-12-22)
+**Status:** ✅ Completed (Internal Release)
 
 **Goal:** Verify embedded compilation and establish infrastructure for no_std development
 
@@ -559,7 +559,7 @@ New projects should use tokio or smol runtimes instead.
 
 ## 🚀 Version 0.6.12 - no_std Support for Time Operators (Phase 3 Infrastructure)
 
-**Status:** Published (2025-12-22)
+**Status:** ✅ Completed (Internal Release)
 
 **Goal:** Prepare time operators for no_std environments
 
@@ -576,7 +576,7 @@ New projects should use tokio or smol runtimes instead.
 
 **Status:** ✅ Completed (Internal Release)
 
-**Goal:** Enable time operators on embedded targets with Embassy runtime
+**Goal:** Enable time operators on embedded targets with Embassy runtime & complete documentation
 
 ### Essential Features
 - ✅ Implement `EmbassyTimerImpl` for embassy-time integration
@@ -591,6 +591,13 @@ New projects should use tokio or smol runtimes instead.
 - ✅ Added Embassy to runtime support list in lib.rs
 - ✅ Updated RUNTIME_ABSTRACTION_STATUS.md with Phase 3 completion
 - ✅ Documented wrapper pattern for Duration type bridging
+- ✅ Updated README.md with Embassy runtime section and examples
+- ✅ Updated PITCH.md with 5 runtimes and Embassy benefits
+- ✅ Fixed feature flag naming throughout fluxion-stream-time README (time-* → runtime-*)
+- ✅ Documented convenience methods vs explicit timer methods
+- ✅ Added comprehensive Embassy usage section to fluxion-stream-time README
+- ✅ Updated FLUXION_OPERATOR_SUMMARY.md with Embassy support
+- ✅ Updated all version references from 0.6.11 → 0.6.13
 
 ### Quality Gates
 - ✅ Compiles with `--no-default-features --features alloc,runtime-embassy`
@@ -599,9 +606,12 @@ New projects should use tokio or smol runtimes instead.
 - ✅ Zero clippy warnings
 - ✅ Zero compiler warnings
 - ✅ no_std compilation check passes
+- ✅ All documentation synced with correct versions
+- ✅ Feature flag naming consistent across all files
 
 ### Key Achievement
-**5 Runtimes Complete!** - Embassy joins Tokio, smol, async-std, and WASM as fully supported runtimes. Time operators now work on embedded targets. Phase 3 delivered ahead of schedule (0.5 days actual vs 2.5 days estimated). Wrapper pattern elegantly solved Duration type incompatibility without unsafe code.
+**5 Runtimes Complete!** - Embassy joins Tokio, smol, async-std, and WASM as fully supported runtimes. Time operators now work on embedded targets. Wrapper pattern elegantly solved Duration type incompatibility without unsafe code.
+**Documentation now complete and consistent** across all 5 runtimes with proper feature flag naming and comprehensive usage examples.
 
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 
