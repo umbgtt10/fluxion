@@ -7,10 +7,10 @@ use crate::InstantTimestamped;
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
+use core::time::Duration;
 use fluxion_core::StreamItem;
 use futures::Stream;
 use pin_project::pin_project;
-use std::time::Duration;
 
 /// Extension trait providing the `debounce` operator for streams.
 ///
