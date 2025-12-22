@@ -17,3 +17,4 @@ fluxion-rx = { workspace = true }
 fluxion-exec = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 futures = { workspace = true }
+async-channel = { workspace = true }

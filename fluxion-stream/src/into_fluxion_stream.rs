@@ -3,10 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use alloc::boxed::Box;
+use async_channel::Receiver;
 use core::fmt::Debug;
 use core::pin::Pin;
 use fluxion_core::{StreamItem, Timestamped};
-use futures::channel::mpsc::UnboundedReceiver;
 use futures::{Stream, StreamExt};
 
 /// Extension trait to convert futures channels into fluxion streams.
@@ -22,9 +22,9 @@ pub trait IntoFluxionStream<T> {
     ///
     /// ```rust
     /// use fluxion_stream::IntoFluxionStream;
-    /// use futures::channel::mpsc;
+    /// use async_channel::unbounded;
     ///
-    /// let (tx, rx) = mpsc::unbounded::<i32>();
+    /// let (tx, rx) = unbounded::<i32>();
     /// let stream = rx.into_fluxion_stream();
     /// ```
     fn into_fluxion_stream(self) -> impl Stream<Item = StreamItem<T>> + Send + Sync;
@@ -89,7 +89,7 @@ pub trait IntoFluxionStream<T> {
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let (tx, rx) = mpsc::unbounded::<SensorReading>();
+    /// let (tx, rx) = async_channel::unbounded::<SensorReading>();
     ///
     /// // Transform SensorReading to DataEvent
     /// let stream = rx.into_fluxion_stream_map(|s| DataEvent::Sensor(s.clone()));
@@ -107,7 +107,7 @@ pub trait IntoFluxionStream<T> {
         U: Timestamped<Inner = U> + Clone + Debug + Ord + Send + Sync + Unpin + 'static;
 }
 
-impl<T: Send + 'static> IntoFluxionStream<T> for UnboundedReceiver<T> {
+impl<T: Send + 'static> IntoFluxionStream<T> for Receiver<T> {
     fn into_fluxion_stream(self) -> impl Stream<Item = StreamItem<T>> + Send + Sync {
         Box::pin(self.map(StreamItem::Value))
     }

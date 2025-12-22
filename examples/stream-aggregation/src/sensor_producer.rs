@@ -5,8 +5,8 @@
 //! Sensor reading producer - simulates Queue 1
 
 use crate::domain::SensorReading;
+use async_channel::Sender;
 use fluxion_core::CancellationToken;
-use futures::channel::mpsc;
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
@@ -24,7 +24,7 @@ impl SensorProducer {
         }
     }
 
-    pub fn start(&mut self, tx: mpsc::UnboundedSender<SensorReading>) {
+    pub fn start(&mut self, tx: Sender<SensorReading>) {
         let cancel_token = self.cancel_token.clone();
         let handle = tokio::spawn(async move {
             Self::run(tx, cancel_token).await;
@@ -39,7 +39,7 @@ impl SensorProducer {
         }
     }
 
-    async fn run(tx: mpsc::UnboundedSender<SensorReading>, cancel_token: CancellationToken) {
+    async fn run(tx: Sender<SensorReading>, cancel_token: CancellationToken) {
         let mut ticker = interval(Duration::from_millis(300));
         let mut timestamp = 0u64;
 
@@ -57,7 +57,7 @@ impl SensorProducer {
                         temperature: (temp_float * 10.0) as i32,
                     };
 
-                    if tx.unbounded_send(reading).is_err() {
+                    if tx.try_send(reading).is_err() {
                         break;
                     }
                     println!("  [Producer<Sensor>] {:.1}°C @ ts {}", temp_float, timestamp);

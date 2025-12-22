@@ -64,15 +64,15 @@ where
     /// }
     ///
     /// # async fn example() {
-    /// let (tx, rx) = futures::channel::mpsc::unbounded();
+    /// let (tx, rx) = async_channel::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// // Only care about changes to user ID, ignore name changes
     /// let mut distinct = stream.distinct_until_changed_by(|a: &User, b: &User| a.id == b.id);
     ///
-    /// tx.unbounded_send(Sequenced::new(User { id: 1, name: "Alice".into() })).unwrap();
-    /// tx.unbounded_send(Sequenced::new(User { id: 1, name: "Alice Updated".into() })).unwrap(); // Filtered
-    /// tx.unbounded_send(Sequenced::new(User { id: 2, name: "Bob".into() })).unwrap(); // Emitted (ID changed)
+    /// tx.try_send(Sequenced::new(User { id: 1, name: "Alice".into() })).unwrap();
+    /// tx.try_send(Sequenced::new(User { id: 1, name: "Alice Updated".into() })).unwrap(); // Filtered
+    /// tx.try_send(Sequenced::new(User { id: 2, name: "Bob".into() })).unwrap(); // Emitted (ID changed)
     ///
     /// let first = distinct.next().await.unwrap().unwrap();
     /// assert_eq!(first.into_inner().id, 1);
@@ -90,7 +90,7 @@ where
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = futures::channel::mpsc::unbounded();
+    /// let (tx, rx) = async_channel::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// // Case-insensitive comparison
@@ -98,10 +98,10 @@ where
     ///     a.to_lowercase() == b.to_lowercase()
     /// });
     ///
-    /// tx.unbounded_send(Sequenced::new("hello".to_string())).unwrap();
-    /// tx.unbounded_send(Sequenced::new("HELLO".to_string())).unwrap(); // Filtered (same ignoring case)
-    /// tx.unbounded_send(Sequenced::new("world".to_string())).unwrap(); // Emitted
-    /// tx.unbounded_send(Sequenced::new("World".to_string())).unwrap(); // Filtered
+    /// tx.try_send(Sequenced::new("hello".to_string())).unwrap();
+    /// tx.try_send(Sequenced::new("HELLO".to_string())).unwrap(); // Filtered (same ignoring case)
+    /// tx.try_send(Sequenced::new("world".to_string())).unwrap(); // Emitted
+    /// tx.try_send(Sequenced::new("World".to_string())).unwrap(); // Filtered
     ///
     /// assert_eq!(distinct.next().await.unwrap().unwrap().into_inner(), "hello");
     /// assert_eq!(distinct.next().await.unwrap().unwrap().into_inner(), "world");
@@ -129,7 +129,7 @@ where
     /// }
     ///
     /// # async fn example() {
-    /// let (tx, rx) = futures::channel::mpsc::unbounded();
+    /// let (tx, rx) = async_channel::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// // Only emit if difference is >= 0.1
@@ -137,11 +137,11 @@ where
     ///     (a.0 - b.0).abs() < 0.1
     /// });
     ///
-    /// tx.unbounded_send(Sequenced::new(OrderedF64(1.0))).unwrap();
-    /// tx.unbounded_send(Sequenced::new(OrderedF64(1.05))).unwrap();  // Filtered (diff < 0.1)
-    /// tx.unbounded_send(Sequenced::new(OrderedF64(1.15))).unwrap();  // Emitted (diff >= 0.1)
-    /// tx.unbounded_send(Sequenced::new(OrderedF64(1.18))).unwrap();  // Filtered
-    /// tx.unbounded_send(Sequenced::new(OrderedF64(1.30))).unwrap();  // Emitted
+    /// tx.try_send(Sequenced::new(OrderedF64(1.0))).unwrap();
+    /// tx.try_send(Sequenced::new(OrderedF64(1.05))).unwrap();  // Filtered (diff < 0.1)
+    /// tx.try_send(Sequenced::new(OrderedF64(1.15))).unwrap();  // Emitted (diff >= 0.1)
+    /// tx.try_send(Sequenced::new(OrderedF64(1.18))).unwrap();  // Filtered
+    /// tx.try_send(Sequenced::new(OrderedF64(1.30))).unwrap();  // Emitted
     ///
     /// assert_eq!(distinct.next().await.unwrap().unwrap().into_inner().0, 1.0);
     /// assert_eq!(distinct.next().await.unwrap().unwrap().into_inner().0, 1.15);

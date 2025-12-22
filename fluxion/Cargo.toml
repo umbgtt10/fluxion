@@ -38,6 +38,7 @@ runtime-async-std = ["alloc", "fluxion-core/runtime-async-std", "fluxion-stream/
 fluxion-test-utils = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
+async-channel = { workspace = true }
 
 [package.metadata.docs.rs]
 all-features = true

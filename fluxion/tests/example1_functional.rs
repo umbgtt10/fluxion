@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use async_channel::unbounded;
 use fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
-use futures::channel::mpsc::unbounded;
 
 #[tokio::test]
 async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
@@ -27,29 +27,29 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
 
     // Send int values first - they will be buffered
     // Use realistic nanosecond timestamps
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(10), 1))?; // 1 sec
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(20), 2))?; // 2 sec
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(30), 3))?; // 3 sec
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(10), 1))?; // 1 sec
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(20), 2))?; // 2 sec
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(30), 3))?; // 3 sec
 
     // Trigger with bool - should emit latest int value (30) with trigger's sequence
-    tx_trigger.unbounded_send(Sequenced::with_timestamp(Value::Bool(true), 4))?; // 4 sec
+    tx_trigger.try_send(Sequenced::with_timestamp(Value::Bool(true), 4))?; // 4 sec
 
     let result1 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(&result1.value, Value::Int(30)));
     assert_eq!(result1.timestamp(), 4);
 
     // After first trigger, send more int values
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(40), 5))?; // 5 sec
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(40), 5))?; // 5 sec
 
     // Need another trigger to emit the buffered value
-    tx_trigger.unbounded_send(Sequenced::with_timestamp(Value::Bool(true), 6))?; // 6 sec
+    tx_trigger.try_send(Sequenced::with_timestamp(Value::Bool(true), 6))?; // 6 sec
 
     let result2 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(&result2.value, Value::Int(40)));
     assert_eq!(result2.timestamp(), 6);
     // Send another int and trigger
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(50), 7))?; // 7 sec
-    tx_trigger.unbounded_send(Sequenced::with_timestamp(Value::Bool(true), 8))?; // 8 sec
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(50), 7))?; // 7 sec
+    tx_trigger.try_send(Sequenced::with_timestamp(Value::Bool(true), 8))?; // 8 sec
 
     let result3 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(&result3.value, Value::Int(50)));

@@ -7,7 +7,6 @@ use fluxion_stream::IntoFluxionStream;
 use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
 use fluxion_stream_time::{TokioTimer, TokioTimestamped};
-use futures::channel::mpsc;
 use futures::stream::StreamExt;
 use std::hint::black_box;
 use std::time::Duration;
@@ -35,13 +34,12 @@ pub fn bench_timeout(c: &mut Criterion) {
                     rt.block_on(async {
                         let timer = TokioTimer;
                         // 2. Create stream and operator
-                        let (tx, rx) = mpsc::unbounded();
+                        let (tx, rx) = async_channel::unbounded();
                         let stream = rx.into_fluxion_stream().timeout(duration);
                         let mut stream = Box::pin(stream);
 
                         // 3. Emit value BEFORE timeout
-                        tx.unbounded_send(TokioTimestamped::new(1, timer.now()))
-                            .unwrap();
+                        tx.try_send(TokioTimestamped::new(1, timer.now())).unwrap();
 
                         // 4. Assert result (should be immediate)
                         let item = stream.next().await;

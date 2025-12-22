@@ -1,11 +1,11 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use async_channel::unbounded;
 use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
-use futures::channel::mpsc::unbounded;
 
 #[tokio::test]
 async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
@@ -32,13 +32,12 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
         });
 
     // Send initial values
-    tx_str.unbounded_send(Sequenced::with_timestamp(Value::Str("initial".into()), 1))?;
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(30), 2))?;
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(60), 3))?; // Passes filter (60 > 50)
-    tx_str.unbounded_send(Sequenced::with_timestamp(Value::Str("updated".into()), 4))?;
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(75), 5))?; // Passes filter (75 > 50)
-
-    // Results: seq 3 (Int 60), seq 4 (Int 60 + Str updated), seq 5 (Int 75)
+    tx_str.try_send(Sequenced::with_timestamp(Value::Str("initial".into()), 1))?;
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(30), 2))?;
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(60), 3))?; // Passes filter (60 > 50)
+    tx_str.try_send(Sequenced::with_timestamp(Value::Str("updated".into()), 4))?;
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(75), 5))?; // Passes filter (75 > 50)
+                                                                    // Results: seq 3 (Int 60), seq 4 (Int 60 + Str updated), seq 5 (Int 75)
     let result1 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     let state1 = result1.into_inner();
     let combined1 = state1.values();

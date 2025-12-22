@@ -658,7 +658,6 @@ pub mod filter_ordered;
     target_arch = "wasm32"
 ))]
 pub mod fluxion_shared;
-#[cfg(feature = "std")]
 pub mod into_fluxion_stream;
 mod logging;
 pub mod map_ordered;
@@ -699,7 +698,6 @@ pub use filter_ordered::FilterOrderedExt;
     target_arch = "wasm32"
 ))]
 pub use fluxion_shared::{FluxionShared, ShareExt};
-#[cfg(feature = "std")]
 pub use into_fluxion_stream::IntoFluxionStream;
 pub use map_ordered::MapOrderedExt;
 pub use merge_with::MergedStream;

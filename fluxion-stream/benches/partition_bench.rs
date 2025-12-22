@@ -2,10 +2,11 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use async_channel::unbounded;
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::{IntoFluxionStream, PartitionExt};
 use fluxion_test_utils::Sequenced;
-use futures::{channel::mpsc::unbounded, future::join, StreamExt};
+use futures::{future::join, StreamExt};
 use std::hint::black_box;
 use tokio::runtime::Runtime;
 
@@ -40,8 +41,7 @@ pub fn bench_partition_balanced(c: &mut Criterion) {
 
                             // Send data
                             for i in 0..size {
-                                let _ =
-                                    tx.unbounded_send(Sequenced::new(vec![i as u8; payload_size]));
+                                let _ = tx.try_send(Sequenced::new(vec![i as u8; payload_size]));
                             }
                             drop(tx);
 
@@ -102,8 +102,7 @@ pub fn bench_partition_imbalanced(c: &mut Criterion) {
 
                             // Send data
                             for i in 0..size {
-                                let _ =
-                                    tx.unbounded_send(Sequenced::new(vec![i as u8; payload_size]));
+                                let _ = tx.try_send(Sequenced::new(vec![i as u8; payload_size]));
                             }
                             drop(tx);
 
@@ -163,8 +162,7 @@ pub fn bench_partition_single_consumer(c: &mut Criterion) {
 
                             // Send data
                             for i in 0..size {
-                                let _ =
-                                    tx.unbounded_send(Sequenced::new(vec![i as u8; payload_size]));
+                                let _ = tx.try_send(Sequenced::new(vec![i as u8; payload_size]));
                             }
                             drop(tx);
 

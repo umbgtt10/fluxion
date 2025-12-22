@@ -5,8 +5,8 @@
 //! System events producer - simulates Queue 3
 
 use crate::domain::SystemEvent;
+use async_channel::Sender;
 use fluxion_core::CancellationToken;
-use futures::channel::mpsc;
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
@@ -24,7 +24,7 @@ impl EventsProducer {
         }
     }
 
-    pub fn start(&mut self, tx: mpsc::UnboundedSender<SystemEvent>) {
+    pub fn start(&mut self, tx: Sender<SystemEvent>) {
         let cancel_token = self.cancel_token.clone();
         let handle = tokio::spawn(async move {
             Self::run(tx, cancel_token).await;
@@ -39,7 +39,7 @@ impl EventsProducer {
         }
     }
 
-    async fn run(tx: mpsc::UnboundedSender<SystemEvent>, cancel_token: CancellationToken) {
+    async fn run(tx: Sender<SystemEvent>, cancel_token: CancellationToken) {
         let mut ticker = interval(Duration::from_millis(500));
         let mut timestamp = 200u64;
 
@@ -60,7 +60,7 @@ impl EventsProducer {
                         severity: "LOW".to_string(),
                     };
 
-                    if tx.unbounded_send(event.clone()).is_err() {
+                    if tx.try_send(event.clone()).is_err() {
                         break;
                     }
                     println!("  [Producer<Events>] {} ({}) @ ts {}", event.event_type, event.severity, timestamp);

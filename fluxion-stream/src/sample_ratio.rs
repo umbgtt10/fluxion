@@ -53,18 +53,23 @@
 //!
 //! # Production Usage
 //!
-//! In production, provide a random seed from `fastrand`:
+//! In production, use the global fastrand function for random sampling:
 //!
-//! ```
+//! ```no_run
 //! use fluxion_stream::prelude::*;
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::Sequenced;
 //!
 //! # #[tokio::main]
 //! # async fn main() {
-//! let (_tx, stream) = test_channel::<Sequenced<i32>>();
+//! let (_tx, rx) = async_channel::unbounded::<Sequenced<i32>>();
+//! let stream = rx.into_fluxion_stream();
 //!
-//! // Random sampling in production
-//! let _sampled = stream.sample_ratio(0.1, fastrand::u64(..)); // Sample ~10%
+//! // Random sampling in production - use fastrand's global RNG
+//! let seed = std::time::SystemTime::now()
+//!     .duration_since(std::time::UNIX_EPOCH)
+//!     .unwrap()
+//!     .as_secs();
+//! let _sampled = stream.sample_ratio(0.1, seed); // Sample ~10%
 //! # }
 //! ```
 //!

@@ -2,10 +2,11 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use async_channel::unbounded;
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::{IntoFluxionStream, ShareExt};
 use fluxion_test_utils::Sequenced;
-use futures::{channel::mpsc::unbounded, future::join_all, StreamExt};
+use futures::{future::join_all, StreamExt};
 use std::hint::black_box;
 use tokio::runtime::Runtime;
 
@@ -48,8 +49,7 @@ pub fn bench_share(c: &mut Criterion) {
 
                                 // Now send data through the channel
                                 for _ in 0..size {
-                                    let _ =
-                                        tx.unbounded_send(Sequenced::new(vec![0u8; payload_size]));
+                                    let _ = tx.try_send(Sequenced::new(vec![0u8; payload_size]));
                                 }
                                 drop(tx); // Close channel to signal completion
 

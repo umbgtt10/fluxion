@@ -42,14 +42,14 @@ pub trait TakeItemsExt<T>: Stream<Item = StreamItem<T>> + Sized {
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = futures::channel::mpsc::unbounded();
+    /// let (tx, rx) = async_channel::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut first_two = stream.take_items(2);
     ///
-    /// tx.unbounded_send(Sequenced::new(1)).unwrap();
-    /// tx.unbounded_send(Sequenced::new(2)).unwrap();
-    /// tx.unbounded_send(Sequenced::new(3)).unwrap();
+    /// tx.try_send(Sequenced::new(1)).unwrap();
+    /// tx.try_send(Sequenced::new(2)).unwrap();
+    /// tx.try_send(Sequenced::new(3)).unwrap();
     /// drop(tx);
     ///
     /// assert_eq!(first_two.next().await.unwrap().unwrap().into_inner(), 1);

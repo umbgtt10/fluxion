@@ -2,13 +2,13 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use async_channel::unbounded;
 use fluxion_core::HasTimestamp;
 use fluxion_core::StreamItem;
 use fluxion_core::Timestamped;
 use fluxion_stream::IntoFluxionStream;
 use fluxion_stream::OrderedStreamExt;
 use fluxion_test_utils::{assert_no_element_emitted, assert_stream_ended, helpers::unwrap_stream};
-use futures::channel::mpsc::unbounded;
 use std::time::Duration;
 use tokio::{spawn, time::sleep};
 
@@ -141,7 +141,7 @@ async fn test_into_fluxion_stream_no_map() -> anyhow::Result<()> {
     };
 
     // Act
-    tx.unbounded_send(reading.clone())?;
+    tx.try_send(reading.clone())?;
 
     // Assert
     let item = unwrap_stream(&mut stream, 500).await;
@@ -169,8 +169,8 @@ async fn test_into_fluxion_stream_basic_transformation() -> anyhow::Result<()> {
     let mut stream = rx.into_fluxion_stream_map(|s| CombinedEvent::Sensor(s.clone()));
 
     // Act
-    tx.unbounded_send(reading1.clone())?;
-    tx.unbounded_send(reading2.clone())?;
+    tx.try_send(reading1.clone())?;
+    tx.try_send(reading2.clone())?;
 
     // Assert
     let item1 = unwrap_stream(&mut stream, 500).await;
@@ -221,7 +221,7 @@ async fn test_into_fluxion_stream_preserves_order() -> anyhow::Result<()> {
     let mut stream = rx.into_fluxion_stream_map(|s| CombinedEvent::Sensor(s.clone()));
 
     for reading in &readings {
-        tx.unbounded_send(reading.clone())?;
+        tx.try_send(reading.clone())?;
     }
 
     // Assert
@@ -247,7 +247,7 @@ async fn test_into_fluxion_stream_multiple_items() -> anyhow::Result<()> {
 
     // Act
     for i in 0..5 {
-        tx.unbounded_send(SensorReading {
+        tx.try_send(SensorReading {
             timestamp: i * 100,
             temperature: (i * 10) as i32,
         })?;
@@ -292,7 +292,7 @@ async fn test_into_fluxion_stream_transformation_logic() -> anyhow::Result<()> {
     };
 
     // Act
-    tx.unbounded_send(original.clone())?;
+    tx.try_send(original.clone())?;
 
     // Assert
     let item = unwrap_stream(&mut stream, 500).await;
@@ -316,12 +316,12 @@ async fn test_into_fluxion_stream_can_combine_with_other_streams() -> anyhow::Re
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
     // Act - merge two transformed streams
-    tx1.unbounded_send(SensorReading {
+    tx1.try_send(SensorReading {
         timestamp: 100,
         temperature: 20,
     })?;
 
-    tx2.unbounded_send(SensorReading {
+    tx2.try_send(SensorReading {
         timestamp: 200,
         temperature: 25,
     })?;
@@ -345,14 +345,14 @@ async fn test_into_fluxion_stream_late_sends() -> anyhow::Result<()> {
     // Act - send items after creating stream with delays
     spawn(async move {
         sleep(Duration::from_millis(10)).await;
-        tx.unbounded_send(SensorReading {
+        tx.try_send(SensorReading {
             timestamp: 100,
             temperature: 20,
         })
         .unwrap();
 
         sleep(Duration::from_millis(10)).await;
-        tx.unbounded_send(SensorReading {
+        tx.try_send(SensorReading {
             timestamp: 200,
             temperature: 25,
         })
@@ -377,7 +377,7 @@ async fn test_into_fluxion_stream_high_volume() -> anyhow::Result<()> {
 
     // Act
     for i in 0..COUNT {
-        tx.unbounded_send(SensorReading {
+        tx.try_send(SensorReading {
             timestamp: i as u64,
             temperature: (i % 100) as i32,
         })?;
@@ -423,9 +423,9 @@ async fn test_two_heterogeneous_streams_packed_into_enum() -> anyhow::Result<()>
     let expected3 = CombinedEvent::Status(expected_status1.clone());
 
     // Act: send one item on each channel in interleaved order
-    tx1.unbounded_send(expected_reading1.clone())?;
-    tx2.unbounded_send(expected_status1.clone())?;
-    tx1.unbounded_send(expected_reading2.clone())?;
+    tx1.try_send(expected_reading1.clone())?;
+    tx2.try_send(expected_status1.clone())?;
+    tx1.try_send(expected_reading2.clone())?;
 
     // Assert: collect the three emitted items and verify ordering and variants
     assert_eq!(

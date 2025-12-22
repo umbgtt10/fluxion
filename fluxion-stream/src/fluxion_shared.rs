@@ -35,7 +35,7 @@
 //! use fluxion_test_utils::Sequenced;
 //!
 //! # async fn example() {
-//! let (tx, rx) = futures::channel::mpsc::unbounded();
+//! let (tx, rx) = async_channel::unbounded();
 //!
 //! // Create a source stream
 //! let source = rx.into_fluxion_stream()
@@ -157,7 +157,7 @@ impl<T: Clone + Send + Sync + 'static> FluxionShared<T> {
     /// use fluxion_test_utils::Sequenced;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = futures::channel::mpsc::unbounded::<Sequenced<i32>>();
+    /// let (tx, rx) = async_channel::unbounded::<Sequenced<i32>>();
     /// let source = rx.into_fluxion_stream();
     /// let shared = source.share();
     ///
@@ -229,7 +229,7 @@ where
     /// use fluxion_test_utils::Sequenced;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = futures::channel::mpsc::unbounded::<Sequenced<i32>>();
+    /// let (tx, rx) = async_channel::unbounded::<Sequenced<i32>>();
     ///
     /// // Source (runs ONCE)
     /// let source = rx.into_fluxion_stream()

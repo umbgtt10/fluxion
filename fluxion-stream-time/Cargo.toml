@@ -50,8 +50,10 @@ async-std = { workspace = true }
 smol = { workspace = true }
 fluxion-stream = { workspace = true }
 fluxion-test-utils = { workspace = true }
+tokio = { workspace = true }
 tokio-stream = { workspace = true }  # Used in doc examples
 criterion = { workspace = true }
+async-channel = { workspace = true }
 # Embassy time with std driver and generic queue for no-hardware testing
 embassy-time = { workspace = true, features = ["std", "generic-queue-8"] }
 

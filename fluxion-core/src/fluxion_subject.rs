@@ -43,37 +43,14 @@ use crate::{FluxionError, StreamItem, SubjectError};
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use async_channel::Sender;
 use core::pin::Pin;
-use core::task::{Context, Poll};
-use futures::channel::mpsc::{self, UnboundedReceiver, UnboundedSender};
-use futures::Stream;
+use futures::stream::Stream;
 
 type SubjectBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
 struct SubjectState<T> {
     closed: bool,
-    senders: Vec<UnboundedSender<StreamItem<T>>>,
-}
-
-// A Sync-capable wrapper around the unbounded receiver used by FluxionSubject subscriptions.
-struct SubjectStream<T> {
-    inner: Arc<Mutex<UnboundedReceiver<StreamItem<T>>>>,
-}
-
-impl<T: Clone + Send + Sync + 'static> SubjectStream<T> {
-    fn into_boxed_stream(rx: UnboundedReceiver<StreamItem<T>>) -> SubjectBoxStream<T> {
-        Box::pin(Self {
-            inner: Arc::new(Mutex::new(rx)),
-        })
-    }
-}
-
-impl<T: Clone + Send + Sync + 'static> Stream for SubjectStream<T> {
-    type Item = StreamItem<T>;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut guard = self.inner.lock();
-        Pin::new(&mut *guard).poll_next(cx)
-    }
+    senders: Vec<Sender<StreamItem<T>>>,
 }
 
 /// A hot, unbounded subject that broadcasts items to all current subscribers.
@@ -110,16 +87,15 @@ impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
             return Err(SubjectError::Closed);
         }
 
-        let (tx, rx) = mpsc::unbounded();
+        let (tx, rx) = async_channel::unbounded();
         state.senders.push(tx);
-        Ok(SubjectStream::into_boxed_stream(rx))
+        Ok(Box::pin(rx))
     }
 
     /// Send an item to all active subscribers.
     ///
     /// Returns a subject-specific error if the operation fails:
     /// - `SubjectError::Closed` if the subject has been closed
-    /// - `SubjectError::NoSubscribers` if no subscribers remain (optional check)
     pub fn send(&self, item: StreamItem<T>) -> Result<(), SubjectError> {
         let mut state = self.state.lock();
         if state.closed {
@@ -129,7 +105,7 @@ impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
         let mut next_senders = Vec::with_capacity(state.senders.len());
 
         for tx in state.senders.drain(..) {
-            if tx.unbounded_send(item.clone()).is_ok() {
+            if tx.try_send(item.clone()).is_ok() {
                 next_senders.push(tx);
             }
         }

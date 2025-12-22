@@ -12,17 +12,18 @@ categories = ["asynchronous", "concurrency"]
 readme = "README.md"
 
 [package.metadata.cargo-udeps]
-ignore = { normal = ["tracing", "async-std", "smol"] }
+ignore = { normal = ["tracing", "async-std", "smol", "spin"] }
 
 [dependencies]
 futures = { workspace = true, default-features = false, features = ["alloc", "async-await"] }
 futures-channel = { workspace = true, default-features = false, features = ["alloc", "sink"] }
+async-channel = { workspace = true, default-features = false, optional = true }
 event-listener = { workspace = true, default-features = false, features = ["portable-atomic"] }
 tracing = { workspace = true, optional = true, default-features = false }
 
 # FluxionSubject dependencies (std-only)
 parking_lot = { workspace = true, optional = true }
-spin = { version = "0.9.8", default-features = false, features = ["mutex", "spin_mutex"] }
+spin = { workspace = true, features = ["mutex", "spin_mutex"] }
 
 # Runtime dependencies (optional, feature-gated)
 # Note: tokio for non-WASM only, smol/async-std available for both
@@ -38,7 +39,7 @@ wasm-bindgen-futures = { workspace = true }
 
 [features]
 default = ["std", "runtime-tokio"]
-std = ["futures/std", "futures/executor", "event-listener/std", "dep:parking_lot"]
+std = ["futures/std", "futures/executor", "event-listener/std", "dep:parking_lot", "dep:async-channel", "async-channel?/std"]
 alloc = []
 
 # Tracing support

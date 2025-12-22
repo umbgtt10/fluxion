@@ -5,9 +5,8 @@
 //! Final consumer - consumes aggregated events from Queue 4
 
 use crate::domain::AggregatedEvent;
+use async_channel::Receiver;
 use fluxion_core::CancellationToken;
-use futures::channel::mpsc;
-use futures::StreamExt;
 use tokio::select;
 use tokio::task::JoinHandle;
 
@@ -26,7 +25,7 @@ impl FinalConsumer {
     }
 
     /// Starts the final consumer task
-    pub fn start(&mut self, rx: mpsc::UnboundedReceiver<AggregatedEvent>) {
+    pub fn start(&mut self, rx: Receiver<AggregatedEvent>) {
         let cancel_token = self.cancel_token.clone();
         let handle = tokio::spawn(async move {
             Self::run(rx, cancel_token).await;
@@ -42,15 +41,12 @@ impl FinalConsumer {
         }
     }
 
-    async fn run(
-        mut rx: mpsc::UnboundedReceiver<AggregatedEvent>,
-        cancel_token: CancellationToken,
-    ) {
+    async fn run(rx: Receiver<AggregatedEvent>, cancel_token: CancellationToken) {
         println!("📥 Final consumer started\n");
 
         loop {
             select! {
-                Some(event) = rx.next() => {
+                Ok(event) = rx.recv() => {
                     let temp_display = event.temperature.map(|t| t as f64 / 10.0).unwrap_or(0.0);
 
                     println!(

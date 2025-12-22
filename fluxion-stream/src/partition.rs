@@ -48,16 +48,16 @@
 //! use futures::StreamExt;
 //!
 //! # async fn example() {
-//! let (tx, rx) = futures::channel::mpsc::unbounded();
+//! let (tx, rx) = async_channel::unbounded();
 //!
 //! // Partition numbers into even and odd
 //! let (mut evens, mut odds) = rx.into_fluxion_stream()
 //!     .partition(|n: &i32| n % 2 == 0);
 //!
-//! tx.unbounded_send(Sequenced::new(1)).unwrap();
-//! tx.unbounded_send(Sequenced::new(2)).unwrap();
-//! tx.unbounded_send(Sequenced::new(3)).unwrap();
-//! tx.unbounded_send(Sequenced::new(4)).unwrap();
+//! tx.try_send(Sequenced::new(1)).unwrap();
+//! tx.try_send(Sequenced::new(2)).unwrap();
+//! tx.try_send(Sequenced::new(3)).unwrap();
+//! tx.try_send(Sequenced::new(4)).unwrap();
 //! drop(tx);
 //!
 //! // Evens: 2, 4
@@ -133,14 +133,14 @@ where
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = futures::channel::mpsc::unbounded();
+    /// let (tx, rx) = async_channel::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// // Partition by even/odd
     /// let (mut evens, mut odds) = stream.partition(|&n| n % 2 == 0);
     ///
-    /// tx.unbounded_send(Sequenced::new(1)).unwrap();
-    /// tx.unbounded_send(Sequenced::new(2)).unwrap();
+    /// tx.try_send(Sequenced::new(1)).unwrap();
+    /// tx.try_send(Sequenced::new(2)).unwrap();
     ///
     /// assert_eq!(odds.next().await.unwrap().unwrap().into_inner(), 1);
     /// assert_eq!(evens.next().await.unwrap().unwrap().into_inner(), 2);
@@ -155,15 +155,15 @@ where
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = futures::channel::mpsc::unbounded();
+    /// let (tx, rx) = async_channel::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// // Partition high/low priority (threshold = 50)
     /// let (mut high, mut low) = stream.partition(|&n| n >= 50);
     ///
-    /// tx.unbounded_send(Sequenced::new(30)).unwrap();  // low
-    /// tx.unbounded_send(Sequenced::new(75)).unwrap();  // high
-    /// tx.unbounded_send(Sequenced::new(50)).unwrap();  // high (boundary)
+    /// tx.try_send(Sequenced::new(30)).unwrap();  // low
+    /// tx.try_send(Sequenced::new(75)).unwrap();  // high
+    /// tx.try_send(Sequenced::new(50)).unwrap();  // high (boundary)
     ///
     /// assert_eq!(low.next().await.unwrap().unwrap().into_inner(), 30);
     /// assert_eq!(high.next().await.unwrap().unwrap().into_inner(), 75);

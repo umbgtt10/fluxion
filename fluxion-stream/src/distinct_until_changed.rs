@@ -49,19 +49,19 @@ where
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = futures::channel::mpsc::unbounded();
+    /// let (tx, rx) = async_channel::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut distinct = stream.distinct_until_changed();
     ///
     /// // Send: 1, 1, 2, 2, 2, 3, 2
-    /// tx.unbounded_send(Sequenced::new(1)).unwrap();
-    /// tx.unbounded_send(Sequenced::new(1)).unwrap(); // Filtered
-    /// tx.unbounded_send(Sequenced::new(2)).unwrap();
-    /// tx.unbounded_send(Sequenced::new(2)).unwrap(); // Filtered
-    /// tx.unbounded_send(Sequenced::new(2)).unwrap(); // Filtered
-    /// tx.unbounded_send(Sequenced::new(3)).unwrap();
-    /// tx.unbounded_send(Sequenced::new(2)).unwrap(); // Emitted (different from 3)
+    /// tx.try_send(Sequenced::new(1)).unwrap();
+    /// tx.try_send(Sequenced::new(1)).unwrap(); // Filtered
+    /// tx.try_send(Sequenced::new(2)).unwrap();
+    /// tx.try_send(Sequenced::new(2)).unwrap(); // Filtered
+    /// tx.try_send(Sequenced::new(2)).unwrap(); // Filtered
+    /// tx.try_send(Sequenced::new(3)).unwrap();
+    /// tx.try_send(Sequenced::new(2)).unwrap(); // Emitted (different from 3)
     ///
     /// // Output: 1, 2, 3, 2
     /// assert_eq!(distinct.next().await.unwrap().unwrap().into_inner(), 1);
@@ -81,17 +81,17 @@ where
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = futures::channel::mpsc::unbounded();
+    /// let (tx, rx) = async_channel::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut changes = stream.distinct_until_changed();
     ///
     /// // Simulate toggle events
-    /// tx.unbounded_send(Sequenced::new(false)).unwrap(); // Initial state
-    /// tx.unbounded_send(Sequenced::new(false)).unwrap(); // No change
-    /// tx.unbounded_send(Sequenced::new(true)).unwrap();  // Changed!
-    /// tx.unbounded_send(Sequenced::new(true)).unwrap();  // No change
-    /// tx.unbounded_send(Sequenced::new(false)).unwrap(); // Changed!
+    /// tx.try_send(Sequenced::new(false)).unwrap(); // Initial state
+    /// tx.try_send(Sequenced::new(false)).unwrap(); // No change
+    /// tx.try_send(Sequenced::new(true)).unwrap();  // Changed!
+    /// tx.try_send(Sequenced::new(true)).unwrap();  // No change
+    /// tx.try_send(Sequenced::new(false)).unwrap(); // Changed!
     ///
     /// // Only state transitions are emitted
     /// assert!(!changes.next().await.unwrap().unwrap().into_inner());
@@ -111,17 +111,17 @@ where
     /// use futures::StreamExt;
     ///
     /// # async fn example() {
-    /// let (tx, rx) = futures::channel::mpsc::unbounded();
+    /// let (tx, rx) = async_channel::unbounded();
     /// let stream = rx.into_fluxion_stream();
     ///
     /// let mut distinct = stream.distinct_until_changed();
     ///
-    /// tx.unbounded_send(Sequenced::new(1)).unwrap();
+    /// tx.try_send(Sequenced::new(1)).unwrap();
     /// let first = distinct.next().await.unwrap().unwrap();
     /// let ts1 = first.timestamp();
     ///
-    /// tx.unbounded_send(Sequenced::new(1)).unwrap(); // Filtered (duplicate)
-    /// tx.unbounded_send(Sequenced::new(2)).unwrap(); // Emitted with its original timestamp
+    /// tx.try_send(Sequenced::new(1)).unwrap(); // Filtered (duplicate)
+    /// tx.try_send(Sequenced::new(2)).unwrap(); // Emitted with its original timestamp
     ///
     /// let second = distinct.next().await.unwrap().unwrap();
     /// let ts2 = second.timestamp();

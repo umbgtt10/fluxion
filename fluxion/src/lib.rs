@@ -17,7 +17,7 @@
 //! Fluxion maintains a clean separation of concerns:
 //!
 //! - **Production code**: Use `FluxionStream` for composable, immutable stream transformations
-//! - **Test code**: Use `futures::channel::mpsc` channels for imperative test setup
+//! - **Test code**: Use `async_channel` for imperative test setup
 //!
 //! This architecture solves the fundamental conflict between:
 //! - Consuming operations (stream extensions that take `self`)
@@ -31,14 +31,14 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     // Create a stream from a futures channel
-//!     let (tx, rx) = futures::channel::mpsc::unbounded::<i32>();
+//!     // Create a stream from an async channel
+//!     let (tx, rx) = async_channel::unbounded::<i32>();
 //!     let stream = rx.into_fluxion_stream();
 //!
 //!     // Send some values
-//!     tx.unbounded_send(1).unwrap();
-//!     tx.unbounded_send(2).unwrap();
-//!     tx.unbounded_send(3).unwrap();
+//!     tx.try_send(1).unwrap();
+//!     tx.try_send(2).unwrap();
+//!     tx.try_send(3).unwrap();
 //!     drop(tx);
 //!
 //!     // Process the stream (unwrap StreamItem values)

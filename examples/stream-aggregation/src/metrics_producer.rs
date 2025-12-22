@@ -5,8 +5,8 @@
 //! Metrics data producer - simulates Queue 2
 
 use crate::domain::MetricData;
+use async_channel::Sender;
 use fluxion_core::CancellationToken;
-use futures::channel::mpsc;
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
@@ -24,7 +24,7 @@ impl MetricsProducer {
         }
     }
 
-    pub fn start(&mut self, tx: mpsc::UnboundedSender<MetricData>) {
+    pub fn start(&mut self, tx: Sender<MetricData>) {
         let cancel_token = self.cancel_token.clone();
         let handle = tokio::spawn(async move {
             Self::run(tx, cancel_token).await;
@@ -39,7 +39,7 @@ impl MetricsProducer {
         }
     }
 
-    async fn run(tx: mpsc::UnboundedSender<MetricData>, cancel_token: CancellationToken) {
+    async fn run(tx: Sender<MetricData>, cancel_token: CancellationToken) {
         let mut ticker = interval(Duration::from_millis(400));
         let mut timestamp = 100u64;
 
@@ -57,7 +57,7 @@ impl MetricsProducer {
                         value,
                     };
 
-                    if tx.unbounded_send(metric).is_err() {
+                    if tx.try_send(metric).is_err() {
                         break;
                     }
                     println!("  [Producer<Metrics>] {}% @ ts {}", value, timestamp);

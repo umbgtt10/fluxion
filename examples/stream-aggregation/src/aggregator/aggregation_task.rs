@@ -10,10 +10,10 @@ use crate::domain::{AggregatedEvent, DataEvent, MetricData, SensorReading, Syste
 use crate::events_producer::EventsProducer;
 use crate::metrics_producer::MetricsProducer;
 use crate::sensor_producer::SensorProducer;
+use async_channel::{unbounded, Receiver, Sender};
 use fluxion_core::CancellationToken;
 use fluxion_exec::SubscribeLatestExt;
 use fluxion_rx::prelude::*;
-use futures::channel::mpsc;
 use std::convert::Infallible;
 use tokio::task::JoinHandle;
 
@@ -43,10 +43,10 @@ impl Aggregator {
     pub fn start(&mut self) {
         // Create channels (simulating RabbitMQ queues)
         // Producers send raw data, aggregator handles sequencing
-        let (sensor_tx, sensor_rx) = mpsc::unbounded();
-        let (metrics_tx, metrics_rx) = mpsc::unbounded();
-        let (events_tx, events_rx) = mpsc::unbounded();
-        let (output_tx, output_rx) = mpsc::unbounded();
+        let (sensor_tx, sensor_rx) = unbounded();
+        let (metrics_tx, metrics_rx) = unbounded();
+        let (events_tx, events_rx) = unbounded();
+        let (output_tx, output_rx) = unbounded();
 
         // Start all tasks concurrently
         if let Some(producer) = &mut self.sensor_producer {
@@ -113,10 +113,10 @@ impl Aggregator {
     }
 
     async fn run(
-        sensor_rx: mpsc::UnboundedReceiver<SensorReading>,
-        metrics_rx: mpsc::UnboundedReceiver<MetricData>,
-        events_rx: mpsc::UnboundedReceiver<SystemEvent>,
-        output_tx: mpsc::UnboundedSender<AggregatedEvent>,
+        sensor_rx: Receiver<SensorReading>,
+        metrics_rx: Receiver<MetricData>,
+        events_rx: Receiver<SystemEvent>,
+        output_tx: Sender<AggregatedEvent>,
         cancel_token: CancellationToken,
     ) {
         println!("🔄 Aggregator started\n");
@@ -147,7 +147,7 @@ impl Aggregator {
                             "\n  [Aggregator] @ {}: Temp={:.1}°C, Metric={:.1}, Alert={}",
                             agg.timestamp, temp_display, metric_display, agg.has_alert
                         );
-                        let _ = tx.unbounded_send(agg);
+                        let _ = tx.try_send(agg);
                         Ok::<(), Infallible>(())
                     }
                 },
