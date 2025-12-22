@@ -28,7 +28,7 @@ Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal order
 - 🔌 **True Runtime Abstraction**: Zero-config for Tokio users, optional runtime selection supporting smol, wasm and async-std with automatic dead code elimination - never think about spawn/timer APIs again
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
-- ✅ **Well Tested**: 890+ tests with comprehensive coverage (Tokio + WASM)
+- ✅ **Well Tested**: 990+ tests with comprehensive coverage (Tokio + WASM)
 
 ### 📋 Independent Code Reviews
 
@@ -54,7 +54,6 @@ fluxion-rx = "0.6.13"
 fluxion-test-utils = "0.6.13"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
-futures = "0.3.31"
 ```
 
 ### Runtime Selection (Optional)
@@ -86,10 +85,10 @@ fluxion-rx = { version = "0.6.13", default-features = false, features = ["runtim
 ### Basic Usage
 
 ```rust
+use async_channel::unbounded;
 use fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
-use futures::channel::mpsc::unbounded;
 
 #[tokio::test]
 async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
@@ -111,29 +110,29 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
 
     // Send int values first - they will be buffered
     // Use realistic nanosecond timestamps
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(10), 1))?; // 1 sec
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(20), 2))?; // 2 sec
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(30), 3))?; // 3 sec
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(10), 1))?; // 1 sec
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(20), 2))?; // 2 sec
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(30), 3))?; // 3 sec
 
     // Trigger with bool - should emit latest int value (30) with trigger's sequence
-    tx_trigger.unbounded_send(Sequenced::with_timestamp(Value::Bool(true), 4))?; // 4 sec
+    tx_trigger.try_send(Sequenced::with_timestamp(Value::Bool(true), 4))?; // 4 sec
 
     let result1 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(&result1.value, Value::Int(30)));
     assert_eq!(result1.timestamp(), 4);
 
     // After first trigger, send more int values
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(40), 5))?; // 5 sec
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(40), 5))?; // 5 sec
 
     // Need another trigger to emit the buffered value
-    tx_trigger.unbounded_send(Sequenced::with_timestamp(Value::Bool(true), 6))?; // 6 sec
+    tx_trigger.try_send(Sequenced::with_timestamp(Value::Bool(true), 6))?; // 6 sec
 
     let result2 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(&result2.value, Value::Int(40)));
     assert_eq!(result2.timestamp(), 6);
     // Send another int and trigger
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(50), 7))?; // 7 sec
-    tx_trigger.unbounded_send(Sequenced::with_timestamp(Value::Bool(true), 8))?; // 8 sec
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(50), 7))?; // 7 sec
+    tx_trigger.try_send(Sequenced::with_timestamp(Value::Bool(true), 8))?; // 8 sec
 
     let result3 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     assert!(matches!(&result3.value, Value::Int(50)));
@@ -153,16 +152,15 @@ fluxion-rx = "0.6.13"
 fluxion-test-utils = "0.6.13"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
-futures = "0.3.31"
 ```
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
 ```rust
+use async_channel::unbounded;
 use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
-use futures::channel::mpsc::unbounded;
 
 #[tokio::test]
 async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
@@ -189,13 +187,12 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
         });
 
     // Send initial values
-    tx_str.unbounded_send(Sequenced::with_timestamp(Value::Str("initial".into()), 1))?;
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(30), 2))?;
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(60), 3))?; // Passes filter (60 > 50)
-    tx_str.unbounded_send(Sequenced::with_timestamp(Value::Str("updated".into()), 4))?;
-    tx_int.unbounded_send(Sequenced::with_timestamp(Value::Int(75), 5))?; // Passes filter (75 > 50)
-
-    // Results: seq 3 (Int 60), seq 4 (Int 60 + Str updated), seq 5 (Int 75)
+    tx_str.try_send(Sequenced::with_timestamp(Value::Str("initial".into()), 1))?;
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(30), 2))?;
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(60), 3))?; // Passes filter (60 > 50)
+    tx_str.try_send(Sequenced::with_timestamp(Value::Str("updated".into()), 4))?;
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(75), 5))?; // Passes filter (75 > 50)
+                                                                    // Results: seq 3 (Int 60), seq 4 (Int 60 + Str updated), seq 5 (Int 75)
     let result1 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     let state1 = result1.into_inner();
     let combined1 = state1.values();
@@ -229,7 +226,6 @@ fluxion-rx = "0.6.13"
 fluxion-test-utils = "0.6.13"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
-futures = "0.3.31"
 ```
 
 **Example: Event Sourcing with Repository Pattern**

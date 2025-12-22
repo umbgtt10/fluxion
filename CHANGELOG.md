@@ -37,12 +37,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added Embassy to runtime support note
   - Updated runtime list to include embedded environments
 
+### Changed
+- **Test Consistency Improvements** (`fluxion-stream-time`)
+  - Refactored all smol runtime tests to match tokio/async-std/embassy pattern
+  - Removed `timestamped_person()` helper function for explicit timer usage
+  - All smol tests now import `SmolTimer` and `Timer` trait explicitly
+  - Inline timestamp creation with `SmolTimestamped::new(value, timer.now())`
+  - Consistent test structure across all 5 runtimes (10 smol tests updated)
+
+### Fixed
+- **Documentation Tests** (`fluxion-stream-time`)
+  - Fixed 8 doctests to compile with proper cfg gates across all runtime features
+  - Changed doctests from `rust,ignore` to `rust,no_run` for better validation
+  - Added fallback `fn main() {}` for non-tokio features using `#[cfg(not(...))]`
+  - All doctests now compile correctly regardless of enabled runtime feature
+  - Doctests for: delay, debounce, throttle, timeout, sample, InstantTimestamped, and lib.rs examples
+
 ### Quality
 - ✅ All documentation synced with sync-readme-examples.ps1
 - ✅ cargo check --workspace passes
 - ✅ cargo doc --no-deps --workspace generates without warnings
 - ✅ cargo clippy passes with zero warnings
 - ✅ Version consistency verified across all files
+- ✅ All 8 doctests compile with smol feature (use fallback main)
+- ✅ All 8 doctests compile with tokio feature (use actual async main)
+- ✅ 67 tests passing (57 tokio + 10 smol)
 
 ## [0.6.12] - 2025-12-22
 

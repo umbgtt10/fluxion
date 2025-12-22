@@ -572,11 +572,11 @@ New projects should use tokio or smol runtimes instead.
 ### Key Achievement
 **Infrastructure Complete** - Time operators ready for no_std. All dependencies configured. Embassy implementation (Phase 3) followed immediately.
 
-## 🚀 Version 0.6.13 - Embassy Timer Implementation (Phase 3 Complete)
+## 🚀 Version 0.6.13 - Embassy Timer Implementation & Test Consistency (Phase 3 Complete)
 
 **Status:** ✅ Completed (Internal Release)
 
-**Goal:** Enable time operators on embedded targets with Embassy runtime & complete documentation
+**Goal:** Enable time operators on embedded targets with Embassy runtime, complete documentation, and improve test consistency
 
 ### Essential Features
 - ✅ Implement `EmbassyTimerImpl` for embassy-time integration
@@ -586,6 +586,20 @@ New projects should use tokio or smol runtimes instead.
 - ✅ Export `EmbassyTimerImpl` and `EmbassyTimestamped<T>` type alias
 - ✅ All 5 time operators work with Embassy timer
 - ✅ Compiles in no_std + alloc + runtime-embassy configuration
+
+### Test Consistency Improvements
+- ✅ Refactored all smol runtime tests to match tokio/async-std/embassy pattern
+- ✅ Removed `timestamped_person()` helper function for explicit timer usage
+- ✅ All smol tests now import `SmolTimer` and `Timer` trait explicitly
+- ✅ Inline timestamp creation with `SmolTimestamped::new(value, timer.now())`
+- ✅ Consistent test structure across all 5 runtimes (10 smol tests updated)
+
+### Documentation Test Fixes
+- ✅ Fixed 8 doctests to compile with proper cfg gates across all runtime features
+- ✅ Changed doctests from `rust,ignore` to `rust,no_run` for better validation
+- ✅ Added fallback `fn main() {}` for non-tokio features using `#[cfg(not(...))]`
+- ✅ All doctests now compile correctly regardless of enabled runtime feature
+- ✅ Doctests for: delay, debounce, throttle, timeout, sample, InstantTimestamped, and lib.rs examples
 
 ### Documentation
 - ✅ Added Embassy to runtime support list in lib.rs
@@ -602,7 +616,9 @@ New projects should use tokio or smol runtimes instead.
 ### Quality Gates
 - ✅ Compiles with `--no-default-features --features alloc,runtime-embassy`
 - ✅ std build still works (no regressions)
-- ✅ Full CI passes (68/68 tests)
+- ✅ Full CI passes (67 tests: 57 tokio + 10 smol)
+- ✅ All 8 doctests compile with smol feature (use fallback main)
+- ✅ All 8 doctests compile with tokio feature (use actual async main)
 - ✅ Zero clippy warnings
 - ✅ Zero compiler warnings
 - ✅ no_std compilation check passes
@@ -612,6 +628,7 @@ New projects should use tokio or smol runtimes instead.
 ### Key Achievement
 **5 Runtimes Complete!** - Embassy joins Tokio, smol, async-std, and WASM as fully supported runtimes. Time operators now work on embedded targets. Wrapper pattern elegantly solved Duration type incompatibility without unsafe code.
 **Documentation now complete and consistent** across all 5 runtimes with proper feature flag naming and comprehensive usage examples.
+**Test consistency achieved** - All runtime tests now follow the same explicit timer pattern, improving maintainability and reducing confusion.
 
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 
