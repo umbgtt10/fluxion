@@ -9,42 +9,69 @@ use fluxion_stream_time::timer::Timer as TimerTrait;
 use fluxion_stream_time::{prelude::*, EmbassyTimestamped};
 use std::time::Duration;
 
-/// Test basic throttle functionality with Embassy timer
-///
-/// NOTE: This test runs within a Tokio runtime as a test harness
-/// (Embassy executor requires nightly features for #[embassy_executor::task]).
-/// However, it validates Embassy timer integration with the throttle operator.
+/// Test basic throttle functionality with Embassy timer.
+/// Runs on Embassy executor with nightly Rust.
 #[test]
 fn test_throttle_basic() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-
-    rt.block_on(async {
-        // Arrange
-        let timer = EmbassyTimerImpl;
-        let (tx, stream) = test_channel::<EmbassyTimestamped<Person>>();
-        let mut throttled = stream.throttle(Duration::from_millis(100));
-
-        // Act - send first value (should emit immediately)
-        tx.unbounded_send(EmbassyTimestamped::new(person_alice(), timer.now()))
-            .unwrap();
-
-        // First value should emit immediately
-        let result = unwrap_stream(&mut throttled, 50).await;
-        assert_eq!(result.unwrap().value, person_alice());
-
-        // Send second value immediately (should be dropped by throttle)
-        tx.unbounded_send(EmbassyTimestamped::new(person_bob(), timer.now()))
-            .unwrap();
-
-        // Wait for throttle period to expire
-        Timer::after(embassy_time::Duration::from_millis(150)).await;
-
-        // Send third value (throttle period expired, should emit)
-        tx.unbounded_send(EmbassyTimestamped::new(person_bob(), timer.now()))
-            .unwrap();
-
-        // Third value should emit
-        let result = unwrap_stream(&mut throttled, 200).await;
-        assert_eq!(result.unwrap().value, person_bob());
+    use std::panic;
+    let result = panic::catch_unwind(|| {
+        let executor = Box::leak(Box::new(embassy_executor::Executor::new()));
+        executor.run(|spawner| {
+            spawner.must_spawn(test_impl());
+        });
     });
+
+    // Verify the panic occurred with expected message
+    assert!(result.is_err(), "Expected test to panic to exit executor");
+    if let Err(err) = result {
+        if let Some(msg) = err.downcast_ref::<&str>() {
+            assert!(
+                msg.contains("Test passed"),
+                "Expected 'Test passed' panic message, got: {}",
+                msg
+            );
+        } else if let Some(msg) = err.downcast_ref::<String>() {
+            assert!(
+                msg.contains("Test passed"),
+                "Expected 'Test passed' panic message, got: {}",
+                msg
+            );
+        } else {
+            panic!("Unexpected panic payload");
+        }
+    }
+}
+
+#[embassy_executor::task]
+async fn test_impl() {
+    // Arrange
+    let timer = EmbassyTimerImpl;
+    let (tx, stream) = test_channel::<EmbassyTimestamped<Person>>();
+    let mut throttled = stream.throttle(Duration::from_millis(100));
+
+    // Act - send first value (should emit immediately)
+    tx.unbounded_send(EmbassyTimestamped::new(person_alice(), timer.now()))
+        .unwrap();
+
+    // First value should emit immediately
+    let result = unwrap_stream(&mut throttled, 50).await;
+    assert_eq!(result.unwrap().value, person_alice());
+
+    // Send second value immediately (should be dropped by throttle)
+    tx.unbounded_send(EmbassyTimestamped::new(person_bob(), timer.now()))
+        .unwrap();
+
+    // Wait for throttle period to expire
+    Timer::after(embassy_time::Duration::from_millis(150)).await;
+
+    // Send third value (throttle period expired, should emit)
+    tx.unbounded_send(EmbassyTimestamped::new(person_bob(), timer.now()))
+        .unwrap();
+
+    // Third value should emit
+    let result = unwrap_stream(&mut throttled, 200).await;
+    assert_eq!(result.unwrap().value, person_bob());
+
+    // Exit executor by panicking (Embassy executor.run() never returns)
+    panic!("Test passed - using panic to exit executor");
 }

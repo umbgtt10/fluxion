@@ -6,17 +6,19 @@ Usage:
   .\.ci\embassy_tests.ps1
 
 This runs:
-  - cargo test --package fluxion-stream-time --features runtime-embassy --no-default-features --test all_tests
+  - cargo +nightly test --package fluxion-stream-time --features runtime-embassy --no-default-features --test all_tests
 
 Prerequisites:
-  - embassy-time and embassy-executor dev-dependencies will be resolved automatically
+  - Nightly Rust toolchain (embassy-executor tests require nightly)
+  - embassy-time and embassy-executor dev-dependencies resolved automatically
 
 Notes:
   - Tests run in fluxion-stream-time crate only
-  - Uses Embassy timer with std driver (generic-queue-8 feature)
+  - Uses Embassy executor with #[embassy_executor::test] attribute (requires nightly)
+  - Embassy timer with std driver (generic-queue-8 feature)
   - Requires runtime-embassy feature flag
-  - Tests validate Embassy timer integration (runs within Tokio executor as test harness)
-  - Embassy's actual executor requires nightly Rust features
+  - Tests validate authentic Embassy runtime behavior (no Tokio harness)
+  - Library code remains stable-compatible; only tests use nightly
 #>
 
 Set-StrictMode -Version Latest
@@ -37,10 +39,20 @@ function Invoke-StepAction {
   }
 }
 
-Write-Output "Starting Embassy tests..."
+Write-Output "Starting Embassy tests (uses Embassy executor with tasks)..."
 
-Invoke-StepAction "Run Embassy tests (fluxion-stream-time)" {
-  cargo test --package fluxion-stream-time --features runtime-embassy --no-default-features --test all_tests -- --test-threads=1
+# Check if nightly toolchain is available
+Write-Output "Checking for nightly toolchain..."
+$nightlyCheck = cargo +nightly --version 2>&1
+if ($LASTEXITCODE -ne 0) {
+  Write-Warning "Nightly Rust toolchain not found. Embassy tests require nightly for embassy_executor::task macro."
+  Write-Output "Install with: rustup toolchain install nightly"
+  Write-Output "Skipping Embassy tests."
+  exit 0
+}
+
+Invoke-StepAction "Run Embassy tests with executor (fluxion-stream-time)" {
+  cargo +nightly test --package fluxion-stream-time --features runtime-embassy --no-default-features --test all_tests -- --test-threads=1
 }
 
 Write-Output "Embassy tests completed successfully."

@@ -30,8 +30,8 @@ Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal order
 - 🔄 **Rx-Style Operators**: 29 implemented operators (42 total planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, `share`, `partition`, `tap`, etc.)
 - ⏱️ **Temporal Ordering**: Guaranteed ordering semantics via `Timestamped` trait
 - ⚡ **Async Execution**: Efficient async processing with `subscribe` and `subscribe_latest`
-- 🌐 **Multi-Runtime Support**: Works with Tokio (default), smol, WebAssembly (WASM), and async-std (deprecated) via Timer trait abstraction
-- 🔌 **True Runtime Abstraction**: Zero-config for Tokio users, optional runtime selection supporting smol, wasm and async-std with automatic dead code elimination - never think about spawn/timer APIs again
+- 🌐 **Multi-Runtime Support**: Works with Tokio (default), smol, WebAssembly (WASM), Embassy (embedded), and async-std (deprecated) via Timer trait abstraction
+- 🔌 **True Runtime Abstraction**: Zero-config for Tokio users, optional runtime selection supporting smol, WASM, Embassy, and async-std with automatic dead code elimination - never think about spawn/timer APIs again
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
 - ✅ **Well Tested**: 990+ tests with comprehensive coverage (Tokio + WASM)

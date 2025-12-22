@@ -42,8 +42,8 @@ runtime-embassy = ["alloc", "dep:embassy-time"]
 
 [dev-dependencies]
 anyhow = { workspace = true }
-# Embassy executor and timer with software queue for testing
-embassy-executor = { version = "0.6", features = ["nightly", "arch-std", "executor-thread"] }
+# Embassy executor with test macro (requires nightly)
+embassy-executor = { version = "0.9.1", features = ["nightly", "arch-std", "executor-thread"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 async-std = { workspace = true }

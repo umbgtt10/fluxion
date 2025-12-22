@@ -2,6 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+// Required for #[embassy_executor::task] macro on nightly
+#![cfg_attr(feature = "runtime-embassy", feature(impl_trait_in_assoc_type))]
+
 #[cfg(all(
     feature = "runtime-tokio",
     not(feature = "runtime-async-std"),
