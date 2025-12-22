@@ -2,6 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+// Most tests in this file require std feature for IntoFluxionError, user_error(), etc.
+#![cfg(feature = "std")]
+
 use fluxion_core::{FluxionError, IntoFluxionError, Result, ResultExt};
 use std::io;
 

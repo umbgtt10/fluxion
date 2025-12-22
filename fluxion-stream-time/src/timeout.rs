@@ -8,6 +8,9 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::time::Duration;
+
+#[cfg(not(feature = "std"))]
+use alloc::boxed::Box;
 use fluxion_core::{FluxionError, StreamItem};
 use futures::Stream;
 use pin_project::pin_project;

@@ -11,7 +11,7 @@ categories = ["asynchronous", "data-structures"]
 readme = "../README.md"
 
 [dependencies]
-fluxion-core = { workspace = true }
+fluxion-core = { workspace = true, features = ["std"] }
 fluxion-stream = { workspace = true }
 fluxion-exec = { workspace = true }
 futures = { workspace = true }

@@ -481,3 +481,357 @@ This will be reconsidered when we:
 
 **Current Status:** Working implementation with known limitations, flagged for future architectural review.
 
+---
+
+## 🔄 FluxionError no_std Design Considerations
+
+**Current Implementation Issues:**
+
+1. **Phantom Variants in no_std:**
+   - `UserError(Box<dyn core::error::Error>)` variant exists but can't be constructed without std
+   - `MultipleErrors` aggregates UserErrors that can't be created in no_std
+   - Pattern matching includes unreachable branches in no_std mode
+   - Enum discriminant is larger than necessary (4 variants vs 2 needed)
+
+2. **Current Feature-Gating Strategy:**
+   ```rust
+   // Enum has all variants in both modes
+   pub enum FluxionError {
+       StreamProcessingError { context: String },
+       UserError(Box<dyn core::error::Error>),  // Can't construct in no_std
+       MultipleErrors { ... },
+       TimeoutError { context: String },
+   }
+
+   // Only constructors are feature-gated
+   #[cfg(feature = "std")]
+   pub fn user_error(...) -> Self { ... }
+   ```
+
+3. **Available in no_std:**
+   - ✅ `stream_error()` - Creates `StreamProcessingError`
+   - ✅ `timeout_error()` - Creates `TimeoutError`
+   - ✅ `is_recoverable()`, `is_permanent()` - Query methods
+   - ✅ `ResultExt` trait (`.context()`, `.with_context()`)
+   - ✅ `Result<T>` type alias
+   - ❌ `user_error()` - Requires `std::error::Error`
+   - ❌ `from_user_errors()` - Requires `std::error::Error`
+   - ❌ `IntoFluxionError` trait - Requires `std::error::Error`
+
+**Better Approach - Static Splitting with `#[cfg]`:**
+
+```rust
+#[cfg(feature = "std")]
+pub enum FluxionError {
+    StreamProcessingError { context: String },
+    UserError(Box<dyn std::error::Error + Send + Sync>),
+    MultipleErrors { count: usize, errors: Vec<FluxionError> },
+    TimeoutError { context: String },
+}
+
+#[cfg(not(feature = "std"))]
+pub enum FluxionError {
+    StreamProcessingError { context: String },
+    TimeoutError { context: String },
+    // MultipleErrors could stay if needed for aggregating multiple stream/timeout errors
+}
+```
+
+**Benefits:**
+- ✅ Clearer API - variants only exist when usable
+- ✅ Smaller enum in no_std (2 variants vs 4)
+- ✅ Pattern matching correctness - can't accidentally match `UserError` in no_std
+- ✅ No "phantom" variants that can't be constructed
+- ✅ More idiomatic for no_std libraries
+
+**Trade-offs:**
+- ⚠️ Code duplication for shared variants
+- ⚠️ Need to duplicate `impl` blocks or use macros for shared methods
+- ⚠️ Display/Clone implementations need conditional logic
+
+**Alternative - Trait-Based Design:**
+
+Could abstract error handling behind a trait with different implementations per target, but this adds complexity and is probably overkill for this use case.
+
+**Decision:** Deferred for future refactoring. Current implementation works correctly (all operators only use `stream_error()` and `timeout_error()` which work in both modes). The refactoring would be cleaner but isn't blocking any functionality.
+
+**When to Revisit:** When implementing Phase 2 (poll-based partition) or if embedded users report confusion about available error constructors.
+
+---
+
+## 🔧 Architecture Refactoring: Cascading cfg Dependencies
+
+**Problem Identified:** Cascading conditional compilation as code smell
+
+**Current Situation:**
+
+Single stdlib dependency (`std::error::Error`) creates cascade through multiple modules:
+
+```rust
+// 1. std::error::Error not available in no_std
+↓
+// 2. IntoFluxionError trait depends on it
+#[cfg(feature = "std")]
+pub trait IntoFluxionError { ... }
+↓
+// 3. Export must match definition
+#[cfg(feature = "std")]
+pub use self::fluxion_error::IntoFluxionError;
+↓
+// 4. Similar cascade for FluxionSubject, SubjectError, etc.
+```
+
+**Why This is a Problem:**
+
+1. **Tight Coupling:** Error handling concerns bleed across module boundaries
+2. **Fragile:** Single stdlib dependency forces `#[cfg]` guards everywhere
+3. **Maintenance Burden:** Every new error-related feature needs conditional compilation in multiple places
+4. **Abstraction Leakage:** Implementation detail (Error trait location) affects API surface
+
+**Root Causes:**
+
+1. `FluxionError` tries to be both:
+   - Simple string-based errors (no_std compatible)
+   - Rich trait object wrappers (std-only)
+   - → Should probably be separate types
+
+2. `IntoFluxionError` trait exposed at crate root:
+   - Only useful with std
+   - Forces cascade into lib.rs exports
+   - → Might belong in a std-only submodule
+
+3. `SubjectError` and `FluxionSubject` tightly coupled:
+   - SubjectError only exists because FluxionSubject is std-only
+   - → Reconsider FluxionSubject std requirement (see above)
+
+**Potential Solutions:**
+
+**Option 1: Split Error Types by Feature**
+```rust
+// Core error (always available)
+pub enum CoreError {
+    StreamProcessing { context: String },
+    Timeout { context: String },
+}
+
+// Extended error (std-only)
+#[cfg(feature = "std")]
+pub enum FluxionError {
+    Core(CoreError),
+    User(Box<dyn std::error::Error + Send + Sync>),
+    Multiple { ... },
+}
+
+// In no_std: just use CoreError
+#[cfg(not(feature = "std"))]
+pub type FluxionError = CoreError;
+```
+
+**Option 2: Error Handling in Separate Crate**
+```rust
+// fluxion-error crate (optional dependency)
+// fluxion-core stays error-agnostic
+// Users choose error strategy
+```
+
+**Option 3: Trait-Based Error Abstraction**
+```rust
+pub trait FluxionErrorTrait {
+    fn stream_error(context: String) -> Self;
+    fn timeout_error(context: String) -> Self;
+}
+
+// Different impls for std/no_std
+// Operators are generic over error type
+```
+
+**Broader Architectural Questions:**
+
+1. **Does FluxionCore need error handling at all?**
+   - Could operators just propagate `Result<T, E>` generically?
+   - Error construction could be user responsibility
+   - → Simpler, more flexible, no std dependency
+
+2. **Is IntoFluxionError the right pattern?**
+   - Feels like premature abstraction
+   - Users can write their own `From` implementations
+   - → Consider removing entirely
+
+3. **Should subjects be in core?**
+   - FluxionSubject conceptually separate from streaming operators
+   - Could be separate crate: `fluxion-subjects`
+   - → Cleaner boundaries, no cascade
+
+**Refactoring Initiative Scope:**
+
+- **Phase 1:** Split FluxionError (see section above) - 1-2 days
+- **Phase 2:** Review IntoFluxionError necessity - 0.5 days
+- **Phase 3:** Reconsider FluxionSubject placement - 1 day
+- **Phase 4:** Evaluate generic error handling - 2-3 days (larger design change)
+
+**Decision:** Document as technical debt. Address during major version bump when breaking changes are acceptable. Current implementation works, but architecture deserves reconsideration.
+
+**Priority:** Medium - improves maintainability and no_std ergonomics, but not blocking functionality.
+
+---
+
+## 🔧 Workspace Feature Management Overhead
+
+**Problem Identified:** no_std support creates maintenance burden through workspace feature management
+
+**Current Implementation:**
+
+```toml
+# Workspace Cargo.toml (root)
+[workspace.dependencies]
+fluxion-core = { version = "0.6.11", path = "fluxion-core", default-features = false }
+#                                                              ^^^^^^^^^^^^^^^^^^^
+#                                                              Required for no_std
+```
+
+**Consequence:** Every dependent crate must explicitly opt-in to std:
+
+```toml
+# fluxion-stream/Cargo.toml
+fluxion-core = { workspace = true, features = ["std"] }
+#                                  ^^^^^^^^^^^^^^^^^^^
+#                                  Must add manually
+
+# fluxion-exec/Cargo.toml
+fluxion-core = { workspace = true, features = ["std"] }
+
+# fluxion-ordered-merge/Cargo.toml
+fluxion-core = { workspace = true, features = ["std"] }
+
+# fluxion-test-utils/Cargo.toml
+fluxion-core = { workspace = true, features = ["std"] }
+
+# fluxion/Cargo.toml (main crate)
+fluxion-core = { workspace = true, features = ["std"] }
+
+# examples/stream-aggregation/Cargo.toml
+fluxion-core = { workspace = true, features = ["std"] }
+
+# examples/legacy-integration/Cargo.toml
+fluxion-core = { workspace = true, features = ["std"] }
+
+# ... 7 crates total
+```
+
+**Why This Design?**
+
+Enables fluxion-stream-time to opt-in to no_std:
+```toml
+# fluxion-stream-time/Cargo.toml (no_std capable)
+fluxion-core = { workspace = true, default-features = false, features = ["alloc"] }
+#                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#                                  Gets no_std + alloc
+```
+
+**The Cascade:**
+
+1. **Workspace Decision:** `default-features = false` enables no_std use cases
+2. **→ All std crates:** Must add `features = ["std"]` manually (7 crates affected)
+3. **→ Maintenance:** Every new crate/package must remember this requirement
+4. **→ Error-prone:** Forgetting causes confusing compilation errors
+5. **→ CI Complexity:** Need feature-gating tests to catch mistakes
+
+**Metrics:**
+
+- **Files modified for no_std:** 13
+  - 1 workspace Cargo.toml (1 line changed)
+  - fluxion-core: 2 files (lib.rs, fluxion_error.rs)
+  - fluxion-stream-time: 6 files (Cargo.toml, lib.rs, 4 operators)
+  - 7 dependent packages: Cargo.toml updates
+
+- **Lines of `#[cfg]` guards added:** ~30+
+- **Conditional exports:** 3 (IntoFluxionError, FluxionSubject, SubjectError)
+- **Crates requiring manual feature:** 7/9 workspace crates
+
+**Alternative Approaches:**
+
+**Option 1: Separate no_std Crates**
+```
+fluxion/
+  fluxion-core/          (std-only, simple)
+  fluxion-core-nostd/    (no_std variant)
+  fluxion-stream-time/   (depends on appropriate core)
+```
+- ✅ No feature flag complexity
+- ✅ Clear separation of concerns
+- ❌ Code duplication
+- ❌ Version management complexity
+
+**Option 2: Reverse Default (std requires opt-in)**
+```toml
+[workspace.dependencies]
+fluxion-core = { version = "0.6.11", path = "fluxion-core" }
+# Default is no_std+alloc
+
+# Crates wanting std:
+fluxion-core = { workspace = true, features = ["std"] }
+```
+- ❌ Doesn't solve problem, just inverts it
+- ❌ Breaking change for existing users
+- ❌ Most users want std by default
+
+**Option 3: Feature Unification (one feature to rule them all)**
+```toml
+[features]
+default = ["std"]
+std = ["fluxion-core/std", "fluxion-stream/std", "fluxion-stream-time/std"]
+no_std = ["alloc"]
+```
+- ✅ User sets feature once at top level
+- ✅ Propagates automatically
+- ⚠️ Requires workspace-level feature propagation (complex)
+- ⚠️ Still doesn't solve internal crate dependencies
+
+**Option 4: Build Profiles / Target-Specific Configs**
+```toml
+[target.'cfg(not(target_os = "none"))'.dependencies]
+fluxion-core = { workspace = true, features = ["std"] }
+
+[target.'cfg(target_os = "none")'.dependencies]
+fluxion-core = { workspace = true, default-features = false, features = ["alloc"] }
+```
+- ✅ Automatic based on target
+- ⚠️ Limited target detection
+- ⚠️ Assumes target_os correlates with std availability
+
+**Reality Check:**
+
+This is **standard Rust no_std pattern** across the ecosystem:
+- tokio, async-std, futures: same approach
+- serde, serde_json: same approach
+- Most production no_std libraries: same approach
+
+**The cost of no_std support is inherent in Rust's design, not unique to Fluxion.**
+
+**Assessment:**
+
+- **Is this a problem?** Yes - creates maintenance overhead and error potential
+- **Is there a better solution?** Not really - this is idiomatic Rust no_std
+- **Should we change it?** No - stick with ecosystem conventions
+- **Should we document it?** Yes - make the trade-offs explicit
+
+**Recommendations:**
+
+1. **Documentation:** Clearly document the workspace pattern in CONTRIBUTING.md
+2. **CI Protection:** Current feature-gating tests catch mistakes (already done ✅)
+3. **Linting:** Consider workspace-level clippy rule for missing std feature
+4. **Templates:** Provide Cargo.toml templates for new crates
+5. **Acceptance:** Recognize this as cost of no_std, not architectural flaw
+
+**Future Consideration:**
+
+If Rust adds workspace-level feature propagation (RFC proposed), could simplify:
+```toml
+# Hypothetical future syntax
+[workspace]
+default-features = ["std"]  # Propagates to all workspace members
+```
+
+**Priority:** Low - this is idiomatic Rust, documentation improvement only.
+
+**Estimated Documentation Effort:** 0.5 days (add to CONTRIBUTING.md, update README)

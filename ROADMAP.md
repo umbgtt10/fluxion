@@ -543,12 +543,6 @@ New projects should use tokio or smol runtimes instead.
 - ✅ Fixed build warnings (tracing, unused variables)
 - ✅ Added test dependencies (thiserror)
 
-### FluxionSubject Async Migration - Deferred
-- ⏸️ Initial async implementation completed but reverted
-- ⏸️ Architectural concerns documented in `RUNTIME_ABSTRACTION_STATUS.md`
-- ⏸️ Will be reconsidered when implementing alternative partition() and publish() operators
-- ⏸️ FluxionSubject remains `std`-only for now (uses `parking_lot::Mutex`)
-
 ### Documentation
 - ✅ Added embedded target compilation guide and CI script
 - ✅ Documented architectural considerations in `RUNTIME_ABSTRACTION_STATUS.md`

@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 #![cfg_attr(
     not(any(
+        feature = "std",
         feature = "runtime-tokio",
         feature = "runtime-smol",
         feature = "runtime-async-std",
@@ -30,7 +31,9 @@ pub mod timestamped;
 
 pub use self::cancellation_token::CancellationToken;
 pub use self::fluxion::Fluxion;
-pub use self::fluxion_error::{FluxionError, IntoFluxionError, Result, ResultExt};
+#[cfg(feature = "std")]
+pub use self::fluxion_error::IntoFluxionError;
+pub use self::fluxion_error::{FluxionError, Result, ResultExt};
 #[cfg(feature = "std")]
 pub use self::fluxion_subject::FluxionSubject;
 pub use self::fluxion_task::FluxionTask;

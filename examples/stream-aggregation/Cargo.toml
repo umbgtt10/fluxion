@@ -12,7 +12,7 @@ name = "rabbitmq_aggregator"
 path = "src/rabbitmq_aggregator.rs"
 
 [dependencies]
-fluxion-core = { workspace = true }
+fluxion-core = { workspace = true, features = ["std"] }
 fluxion-rx = { workspace = true }
 fluxion-exec = { workspace = true }
 tokio = { workspace = true }

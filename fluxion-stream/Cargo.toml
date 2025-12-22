@@ -12,7 +12,7 @@ categories = ["asynchronous", "concurrency"]
 readme = "README.md"
 
 [dependencies]
-fluxion-core = { workspace = true }
+fluxion-core = { workspace = true, features = ["std"] }
 fluxion-ordered-merge = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }

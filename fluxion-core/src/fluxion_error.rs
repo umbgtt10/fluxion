@@ -68,12 +68,6 @@ pub enum FluxionError {
     },
 }
 
-#[cfg(feature = "std")]
-use std::error::Error as StdError;
-
-#[cfg(not(feature = "std"))]
-use core::error::Error as StdError;
-
 // Manual Display implementation (required for no_std)
 impl Display for FluxionError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -90,7 +84,8 @@ impl Display for FluxionError {
     }
 }
 
-impl StdError for FluxionError {}
+#[cfg(feature = "std")]
+impl std::error::Error for FluxionError {}
 
 impl FluxionError {
     /// Create a stream processing error with the given context
@@ -108,7 +103,8 @@ impl FluxionError {
     }
 
     /// Wrap a user error
-    pub fn user_error(error: impl core::error::Error + Send + Sync + 'static) -> Self {
+    #[cfg(feature = "std")]
+    pub fn user_error(error: impl std::error::Error + Send + Sync + 'static) -> Self {
         Self::UserError(Box::new(error))
     }
 
@@ -136,9 +132,10 @@ impl FluxionError {
     /// let result = FluxionError::from_user_errors(errors);
     /// assert!(matches!(result, FluxionError::MultipleErrors { count: 2, .. }));
     /// ```
+    #[cfg(feature = "std")]
     pub fn from_user_errors<E>(errors: Vec<E>) -> Self
     where
-        E: core::error::Error + Send + Sync + 'static,
+        E: std::error::Error + Send + Sync + 'static,
     {
         let count = errors.len();
         let fluxion_errors = errors
@@ -193,6 +190,7 @@ pub type Result<T> = core::result::Result<T, FluxionError>;
 /// This trait is automatically implemented for all types that implement
 /// `std::error::Error + Send + Sync + 'static`, allowing easy conversion
 /// to `FluxionError`.
+#[cfg(feature = "std")]
 pub trait IntoFluxionError {
     /// Convert this error into a `FluxionError` with additional context
     fn into_fluxion_error(self, context: &str) -> FluxionError;
@@ -206,7 +204,8 @@ pub trait IntoFluxionError {
     }
 }
 
-impl<E: core::error::Error + Send + Sync + 'static> IntoFluxionError for E {
+#[cfg(feature = "std")]
+impl<E: std::error::Error + Send + Sync + 'static> IntoFluxionError for E {
     fn into_fluxion_error(self, _context: &str) -> FluxionError {
         FluxionError::user_error(self)
     }

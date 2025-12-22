@@ -15,9 +15,9 @@ readme = "README.md"
 development = ["async-std", "smol", "tokio-stream"]
 
 [dependencies]
-fluxion-core = { workspace = true }
-futures = { workspace = true }
-tracing = { workspace = true, optional = true }
+fluxion-core = { workspace = true, default-features = false, features = ["alloc"] }
+futures = { workspace = true, default-features = false, features = ["alloc"] }
+tracing = { workspace = true, optional = true, default-features = false }
 pin-project = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -29,11 +29,15 @@ gloo-timers = { workspace = true, optional = true, features = ["futures"] }
 js-sys = { workspace = true, optional = true }
 
 [features]
-default = ["runtime-tokio"]
-runtime-tokio = []
-runtime-async-std = ["dep:async-io"]
-runtime-smol = ["dep:async-io"]
-runtime-wasm = ["dep:gloo-timers", "dep:js-sys"]
+default = ["std", "runtime-tokio"]
+std = ["fluxion-core/std", "futures/std"]
+alloc = ["fluxion-core/alloc"]
+
+# Runtime features require std
+runtime-tokio = ["std"]
+runtime-async-std = ["std", "dep:async-io"]
+runtime-smol = ["std", "dep:async-io"]
+runtime-wasm = ["std", "dep:gloo-timers", "dep:js-sys"]
 tracing = ["dep:tracing", "fluxion-core/tracing"]
 
 [dev-dependencies]

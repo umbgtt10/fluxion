@@ -9,7 +9,7 @@ publish = false
 
 [dependencies]
 fluxion-rx = { workspace = true }
-fluxion-core = { workspace = true }
+fluxion-core = { workspace = true, features = ["std"] }
 fluxion-stream = { workspace = true }
 fluxion-exec = { workspace = true }
 tokio = { workspace = true }
