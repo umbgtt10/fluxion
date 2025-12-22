@@ -100,11 +100,11 @@ impl FluxionTask {
     {
         let cancel = CancellationToken::new();
         let cancel_clone = cancel.clone();
-        let future = f(cancel_clone);
+        let _future = f(cancel_clone);
 
         // Feature-gated spawn implementations (mutually exclusive priority order)
         #[cfg(target_arch = "wasm32")]
-        wasm_bindgen_futures::spawn_local(future);
+        wasm_bindgen_futures::spawn_local(_future);
 
         #[cfg(all(
             not(target_arch = "wasm32"),
@@ -116,14 +116,14 @@ impl FluxionTask {
                 not(feature = "runtime-smol")
             ))
         ))]
-        tokio::spawn(future);
+        tokio::spawn(_future);
 
         #[cfg(all(
             not(target_arch = "wasm32"),
             feature = "runtime-smol",
             not(feature = "runtime-tokio")
         ))]
-        smol::spawn(future).detach();
+        smol::spawn(_future).detach();
 
         #[cfg(all(
             not(target_arch = "wasm32"),
@@ -131,7 +131,7 @@ impl FluxionTask {
             not(feature = "runtime-tokio"),
             not(feature = "runtime-smol")
         ))]
-        async_std::task::spawn(future);
+        async_std::task::spawn(_future);
 
         Self { cancel }
     }

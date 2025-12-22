@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::{fluxion_error::FluxionError, HasTimestamp, Timestamped};
+use core::cmp::Ordering;
 
 /// A stream item that can be either a value or an error.
 ///
@@ -29,23 +30,23 @@ impl<T: PartialEq> PartialEq for StreamItem<T> {
 impl<T: Eq> Eq for StreamItem<T> {}
 
 impl<T: PartialOrd> PartialOrd for StreamItem<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
             (StreamItem::Value(a), StreamItem::Value(b)) => a.partial_cmp(b),
-            (StreamItem::Error(_), StreamItem::Error(_)) => Some(std::cmp::Ordering::Equal),
-            (StreamItem::Error(_), StreamItem::Value(_)) => Some(std::cmp::Ordering::Less),
-            (StreamItem::Value(_), StreamItem::Error(_)) => Some(std::cmp::Ordering::Greater),
+            (StreamItem::Error(_), StreamItem::Error(_)) => Some(Ordering::Equal),
+            (StreamItem::Error(_), StreamItem::Value(_)) => Some(Ordering::Less),
+            (StreamItem::Value(_), StreamItem::Error(_)) => Some(Ordering::Greater),
         }
     }
 }
 
 impl<T: Ord> Ord for StreamItem<T> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
             (StreamItem::Value(a), StreamItem::Value(b)) => a.cmp(b),
-            (StreamItem::Error(_), StreamItem::Error(_)) => std::cmp::Ordering::Equal,
-            (StreamItem::Error(_), StreamItem::Value(_)) => std::cmp::Ordering::Less,
-            (StreamItem::Value(_), StreamItem::Error(_)) => std::cmp::Ordering::Greater,
+            (StreamItem::Error(_), StreamItem::Error(_)) => Ordering::Equal,
+            (StreamItem::Error(_), StreamItem::Value(_)) => Ordering::Less,
+            (StreamItem::Value(_), StreamItem::Error(_)) => Ordering::Greater,
         }
     }
 }

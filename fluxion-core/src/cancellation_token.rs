@@ -10,9 +10,9 @@
 use alloc::sync::Arc;
 use core::future::Future;
 use core::pin::Pin;
+use core::sync::atomic::{AtomicBool, Ordering};
 use core::task::{Context, Poll};
 use event_listener::{Event, EventListener};
-use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Runtime-agnostic cancellation token.
 ///

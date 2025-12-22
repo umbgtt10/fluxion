@@ -5,6 +5,45 @@ All notable changes to the Fluxion project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.11] - Not Published (In Progress)
+
+### Added
+- **Embedded Target Verification** (`.ci/test_embedded_target.ps1`)
+  - Added script to verify compilation against `thumbv7em-none-eabihf` (ARM Cortex-M4F)
+  - Automated target installation check
+  - Validates no_std + alloc build for embedded systems
+
+### Changed
+- **FluxionSubject Feature Gating** (`fluxion-core`)
+  - Temporarily moved `FluxionSubject` from `alloc` to `std` feature gate
+  - Uses `parking_lot::Mutex` for thread-safe synchronous API (std-only)
+  - **Planned for 0.6.11:** Refactor to async API with `futures::lock::Mutex` for no_std support
+
+### Fixed
+- **Build Warnings**
+  - Added `default-features = false` to workspace `tracing` dependency
+  - Fixed unused variable warning in `fluxion_task.rs` (renamed `future` to `_future`)
+
+- **Test Dependencies** (`fluxion-core/Cargo.toml`)
+  - Added `thiserror` to dev-dependencies for error handling tests
+
+### Technical Details
+- **FluxionSubject Design Decision:**
+  - Current: Synchronous API with `parking_lot::Mutex` (Rx-compatible, std-only)
+  - Future: Async API with `futures::lock::Mutex` (Rust-idiomatic, no_std-compatible)
+  - Rationale: Prioritizing Rust async ecosystem over traditional Rx synchronous semantics
+  - Multi-threading pattern (current) vs multi-tasking pattern (planned)
+
+- **Embedded Compilation:**
+  - Target: `thumbv7em-none-eabihf` (ARM Cortex-M4F with hardware floating point)
+  - Build command: `cargo build --target thumbv7em-none-eabihf --no-default-features --features alloc`
+  - Currently passes without FluxionSubject (24/27 operators available)
+
+### Impact
+- **Warning-Free Builds** - All compilation warnings resolved
+- **Embedded Verification** - Automated CI check for ARM target compilation
+- **Foundation for Async Subject** - Clear path to no_std-compatible FluxionSubject in next update
+
 ## [0.6.10] - Not Published (In Progress - Phase 1 Complete)
 
 ### Added

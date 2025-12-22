@@ -22,4 +22,4 @@ impl fmt::Display for SubjectError {
     }
 }
 
-impl std::error::Error for SubjectError {}
+impl core::error::Error for SubjectError {}

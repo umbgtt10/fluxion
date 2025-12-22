@@ -21,6 +21,8 @@
 //! ```
 
 use alloc::boxed::Box;
+use alloc::format;
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::{self, Display, Formatter};
 
@@ -106,7 +108,7 @@ impl FluxionError {
     }
 
     /// Wrap a user error
-    pub fn user_error(error: impl std::error::Error + Send + Sync + 'static) -> Self {
+    pub fn user_error(error: impl core::error::Error + Send + Sync + 'static) -> Self {
         Self::UserError(Box::new(error))
     }
 
@@ -136,7 +138,7 @@ impl FluxionError {
     /// ```
     pub fn from_user_errors<E>(errors: Vec<E>) -> Self
     where
-        E: std::error::Error + Send + Sync + 'static,
+        E: core::error::Error + Send + Sync + 'static,
     {
         let count = errors.len();
         let fluxion_errors = errors
@@ -184,7 +186,7 @@ impl FluxionError {
 ///     Ok("processed".to_string())
 /// }
 /// ```
-pub type Result<T> = std::result::Result<T, FluxionError>;
+pub type Result<T> = core::result::Result<T, FluxionError>;
 
 /// Extension trait for converting errors into `FluxionError`
 ///
@@ -204,7 +206,7 @@ pub trait IntoFluxionError {
     }
 }
 
-impl<E: std::error::Error + Send + Sync + 'static> IntoFluxionError for E {
+impl<E: core::error::Error + Send + Sync + 'static> IntoFluxionError for E {
     fn into_fluxion_error(self, _context: &str) -> FluxionError {
         FluxionError::user_error(self)
     }
@@ -229,7 +231,7 @@ pub trait ResultExt<T> {
         F: FnOnce() -> String;
 }
 
-impl<T, E> ResultExt<T> for std::result::Result<T, E>
+impl<T, E> ResultExt<T> for core::result::Result<T, E>
 where
     E: Into<FluxionError>,
 {

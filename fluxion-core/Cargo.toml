@@ -15,11 +15,13 @@ readme = "README.md"
 ignore = { normal = ["tracing", "async-std", "smol"] }
 
 [dependencies]
-futures = { workspace = true, features = ["alloc", "async-await"] }
-parking_lot = { workspace = true }
-event-listener = { workspace = true }
-thiserror = { workspace = true }
-tracing = { workspace = true, optional = true }
+futures = { workspace = true, default-features = false, features = ["alloc", "async-await"] }
+futures-channel = { workspace = true, default-features = false, features = ["alloc"] }
+event-listener = { workspace = true, default-features = false, features = ["portable-atomic"] }
+tracing = { workspace = true, optional = true, default-features = false }
+
+# FluxionSubject dependencies (std-only)
+parking_lot = { workspace = true, optional = true }
 
 # Runtime dependencies (optional, feature-gated)
 # Note: tokio for non-WASM only, smol/async-std available for both
@@ -35,8 +37,8 @@ wasm-bindgen-futures = { workspace = true }
 
 [features]
 default = ["std", "runtime-tokio"]
-std = ["futures/std", "parking_lot/send_guard", "event-listener/std"]
-alloc = ["futures/alloc", "futures/async-await"]
+std = ["futures/std", "futures/executor", "event-listener/std", "dep:parking_lot"]
+alloc = []
 
 # Tracing support
 tracing = ["dep:tracing"]
@@ -48,6 +50,8 @@ runtime-async-std = ["std", "dep:async-std"]
 # runtime-wasm doesn't need a feature flag since wasm-bindgen-futures is always available on WASM
 
 [dev-dependencies]
+thiserror = { workspace = true }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { workspace = true }
 criterion = { workspace = true }

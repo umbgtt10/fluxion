@@ -348,7 +348,7 @@ pub fn partition<F>(self, predicate: F) -> PartitionedStream<T, S, F> {
 
 **Phase 2 (Pending):**
 - 📋 partition() works via poll-based implementation (26/27)
-- 📋 Tests pass on embedded target (thumbv7em-none-eabihf)
+- ✅ Tests pass on embedded target (thumbv7em-none-eabihf)
 
 **Phase 3 (Pending):**
 - 📋 Time operators work with embassy-time (all operators with timer)
