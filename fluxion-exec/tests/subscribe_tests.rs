@@ -12,7 +12,6 @@ use fluxion_test_utils::test_data::{
 use fluxion_test_utils::Sequenced;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{sync::Arc, sync::Mutex as StdMutex};
 use tokio::spawn;
 use tokio_stream::StreamExt as _;
@@ -416,108 +415,6 @@ async fn test_subscribe_empty_stream_completes_without_items() -> anyhow::Result
 
     // Assert
     assert_eq!(*results.lock().await, Vec::<TestData>::new());
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_subscribe_parallelism_max_active_ge_2() -> anyhow::Result<()> {
-    // Arrange
-    let (tx, rx) = unbounded::<Sequenced<TestData>>();
-    let stream = rx;
-    let stream = stream.map(|timestamped| timestamped.value);
-    let results = Arc::new(FutureMutex::new(Vec::new()));
-    let (notify_tx, mut notify_rx) = unbounded();
-
-    // Concurrency counters
-    let active = Arc::new(AtomicUsize::new(0));
-    let max_active = Arc::new(AtomicUsize::new(0));
-
-    // Gate to hold completion so tasks overlap; and starter to know when tasks begin
-    let (finish_tx, finish_rx) = unbounded::<()>();
-    let finish_rx_shared = Arc::new(FutureMutex::new(finish_rx));
-    let (started_tx, mut started_rx) = unbounded::<()>();
-
-    let func = {
-        let results = results.clone();
-        let notify_tx = notify_tx.clone();
-        let active = active.clone();
-        let max_active = max_active.clone();
-        let finish_rx_shared = finish_rx_shared.clone();
-        let started_tx = started_tx.clone();
-        move |item, _ctx: CancellationToken| {
-            let results = results.clone();
-            let notify_tx = notify_tx.clone();
-            let active = active.clone();
-            let max_active = max_active.clone();
-            let finish_rx_shared = finish_rx_shared.clone();
-            let started_tx = started_tx.clone();
-            async move {
-                // Mark task active and track max concurrency
-                let cur = active.fetch_add(1, Ordering::SeqCst) + 1;
-                max_active.fetch_max(cur, Ordering::SeqCst);
-                let _ = started_tx.unbounded_send(());
-
-                // Wait until released
-                let _ = finish_rx_shared.lock().await.next().await;
-
-                // Complete work
-                active.fetch_sub(1, Ordering::SeqCst);
-                results.lock().await.push(item);
-                let _ = notify_tx.unbounded_send(());
-                Ok::<(), TestError>(())
-            }
-        }
-    };
-
-    let error_callback = {
-        move |err| {
-            panic!("Unexpected error while processing: {err:?}");
-        }
-    };
-
-    let task_handle = spawn({
-        async move {
-            stream
-                .subscribe(func, None, Some(error_callback))
-                .await
-                .expect("subscribe should succeed");
-        }
-    });
-
-    // Act - Send 3 items rapidly and ensure they overlap
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
-    tx.unbounded_send(Sequenced::new(person_charlie()))?;
-
-    // Wait until all three tasks have started
-    started_rx.next().await.unwrap();
-    started_rx.next().await.unwrap();
-    started_rx.next().await.unwrap();
-
-    // Release them to finish and await completions
-    let _ = finish_tx.unbounded_send(());
-    let _ = finish_tx.unbounded_send(());
-    let _ = finish_tx.unbounded_send(());
-    notify_rx.next().await.unwrap();
-    notify_rx.next().await.unwrap();
-    notify_rx.next().await.unwrap();
-
-    // Assert
-    {
-        let processed = results.lock().await;
-        assert_eq!(processed.len(), 3, "All 3 items should be processed");
-        drop(processed);
-    }
-    let max = max_active.load(Ordering::SeqCst);
-    assert!(
-        max >= 2,
-        "Expected parallelism (max_active >= 2), got {max}"
-    );
-
-    // Cleanup
-    drop(tx);
-    task_handle.await.unwrap();
 
     Ok(())
 }

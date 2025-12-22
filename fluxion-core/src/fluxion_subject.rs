@@ -38,6 +38,7 @@
 //! assert_eq!(stream.next().await, None); // Subject closed
 //! # }
 
+use crate::fluxion_mutex::Mutex;
 use crate::{FluxionError, StreamItem, SubjectError};
 use alloc::boxed::Box;
 use alloc::sync::Arc;
@@ -46,7 +47,6 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 use futures::channel::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use futures::Stream;
-use parking_lot::Mutex;
 
 type SubjectBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
 struct SubjectState<T> {

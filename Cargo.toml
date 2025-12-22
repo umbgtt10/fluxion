@@ -24,7 +24,7 @@ repository = "https://github.com/umbgtt10/fluxion"
 futures = { version = "0.3.31", default-features = false, features = ["alloc"] }
 futures-util = { version = "0.3.31", default-features = false, features = ["alloc"] }
 futures-channel = { version = "0.3.31", default-features = false, features = ["alloc"] }
-tokio = { version = "1.48.0", default-features = false }
+tokio = { version = "1.48.0", default-features = false, features = ["macros", "time", "rt-multi-thread"] }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
 tokio-util = "0.7.17"
 pin-project = "1.1.10"
