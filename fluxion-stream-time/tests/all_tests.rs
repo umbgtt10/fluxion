@@ -2,7 +2,12 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+#[cfg(all(
+    feature = "runtime-tokio",
+    not(feature = "runtime-async-std"),
+    not(feature = "runtime-smol"),
+    not(target_arch = "wasm32")
+))]
 pub mod tokio;
 
 #[cfg(all(
@@ -16,6 +21,7 @@ pub mod async_std;
 #[cfg(all(
     feature = "runtime-smol",
     not(feature = "runtime-tokio"),
+    not(feature = "runtime-async-std"),
     not(target_arch = "wasm32")
 ))]
 pub mod smol;
@@ -23,5 +29,10 @@ pub mod smol;
 #[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
 pub mod wasm;
 
-#[cfg(feature = "runtime-embassy")]
+#[cfg(all(
+    feature = "runtime-embassy",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-async-std")
+))]
 pub mod embassy;

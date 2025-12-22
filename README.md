@@ -7,6 +7,12 @@
 [![Crates.io](https://img.shields.io/crates/v/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
 [![Downloads](https://img.shields.io/crates/d/fluxion-rx.svg)](https://crates.io/crates/fluxion-rx)
 
+[![Tokio](https://img.shields.io/badge/runtime-tokio-brightgreen.svg)](https://tokio.rs/)
+[![smol](https://img.shields.io/badge/runtime-smol-blue.svg)](https://github.com/smol-rs/smol)
+[![async-std](https://img.shields.io/badge/runtime-async--std-orange.svg)](https://async.rs/)
+[![WASM](https://img.shields.io/badge/runtime-wasm-purple.svg)](https://webassembly.org/)
+[![Embassy](https://img.shields.io/badge/runtime-embassy-red.svg)](https://embassy.dev/)
+
 Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal ordering guarantees and a fluent, ergonomic API. It emphasizes correctness and reliability, backed by 900+ comprehensive tests, a 7.6:1 test-to-code ratio, zero warnings, zero unwraps, and no unsafe code. The library includes comprehensive performance benchmarks, is published on crates.io, and demonstrates production-quality Rust engineering.
 
 **📊 [See why Fluxion sets new standards for quality →](PITCH.md)**
