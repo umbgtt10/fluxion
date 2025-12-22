@@ -284,7 +284,8 @@ where
 #[cfg(all(
     feature = "runtime-async-std",
     not(feature = "runtime-tokio"),
-    not(feature = "runtime-smol")
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-embassy")
 ))]
 impl<S, T> DebounceWithDefaultTimerExt<T> for S
 where
@@ -295,5 +296,23 @@ where
 
     fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
         DebounceExt::debounce_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
+    }
+}
+
+#[cfg(all(
+    feature = "runtime-embassy",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-async-std")
+))]
+impl<S, T> DebounceWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>>,
+    T: Send,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>;
+
+    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        DebounceExt::debounce_with_timer(self, duration, crate::runtimes::EmbassyTimerImpl)
     }
 }

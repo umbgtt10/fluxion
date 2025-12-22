@@ -259,3 +259,21 @@ where
         DelayExt::delay_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
     }
 }
+
+#[cfg(all(
+    feature = "runtime-embassy",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-async-std")
+))]
+impl<S, T> DelayWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>>,
+    T: Send,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>;
+
+    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        DelayExt::delay_with_timer(self, duration, crate::runtimes::EmbassyTimerImpl)
+    }
+}

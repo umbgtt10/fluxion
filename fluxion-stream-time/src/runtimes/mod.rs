@@ -25,3 +25,9 @@ pub use wasm_impl::wasm_implementation;
 
 #[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
 mod wasm_impl;
+
+#[cfg(feature = "runtime-embassy")]
+pub use embassy_impl::embassy_implementation::{EmbassyInstant, EmbassyTimerImpl};
+
+#[cfg(feature = "runtime-embassy")]
+mod embassy_impl;

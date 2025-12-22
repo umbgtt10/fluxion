@@ -229,3 +229,20 @@ where
         TimeoutExt::timeout_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
     }
 }
+
+#[cfg(all(
+    feature = "runtime-embassy",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-async-std")
+))]
+impl<S, T> TimeoutWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>>,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>;
+
+    fn timeout(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        TimeoutExt::timeout_with_timer(self, duration, crate::runtimes::EmbassyTimerImpl)
+    }
+}

@@ -16,7 +16,8 @@ This mirrors the GitHub Actions `ci.yml` steps:
     - .\.ci\tokio_tests.ps1 (Tokio tests with nextest)
     - .\.ci\wasm_tests.ps1 (WASM tests with wasm-pack)
     - .\.ci\async_std_tests.ps1 (async-std tests)
-    - .ci\smol_tests.ps1 (smol tests)
+    - .\.ci\smol_tests.ps1 (smol tests)
+    - .\.ci\embassy_tests.ps1 (Embassy timer tests)
   - cargo doc --no-deps
   - cargo-audit (install if missing)
 
@@ -25,7 +26,7 @@ Notes:
   - Some commands (clippy with -D warnings) will fail the run if any warnings remain.
   - Running with `--all-features` may take longer but reduces false-positives.
   - WASM tests require Node.js to be installed.
-  - All test scripts (.ci\tokio_tests.ps1, .ci\wasm_tests.ps1, .ci\async_std_tests.ps1, .ci\smol_tests.ps1) can be run standalone.
+  - All test scripts (.ci\tokio_tests.ps1, .ci\wasm_tests.ps1, .ci\async_std_tests.ps1, .ci\smol_tests.ps1, .ci\embassy_tests.ps1) can be run standalone.
 #>
 
 Set-StrictMode -Version Latest
@@ -61,9 +62,10 @@ if ($rc -ne 0) {
   exit $rc
 }
 
-Invoke-StepAction "Cargo check (all targets & features)" { cargo check --all-targets --all-features --verbose }
-Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-targets --all-features -- -D warnings }
-Invoke-StepAction "Release build" { cargo build --release --all-targets --all-features --verbose }
+# Note: Embassy tests excluded from --all-features builds as they require --no-default-features
+Invoke-StepAction "Cargo check (all targets & features)" { cargo check --all-features --verbose --lib --bins --examples }
+Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-features --lib --bins --examples -- -D warnings }
+Invoke-StepAction "Release build" { cargo build --release --all-features --verbose --lib --bins --examples }
 Invoke-StepAction "Benchmark compilation" { cargo bench --no-run --all-features --verbose }
 Invoke-StepAction "Docs (deny doc warnings)" { cargo doc --no-deps --all-features --verbose }
 
@@ -82,7 +84,8 @@ if (-not (Get-Command cargo-udeps -ErrorAction SilentlyContinue)) {
 Write-Output "=== Run cargo +nightly udeps (check for unused deps) ==="
 $stdoutFile = [System.IO.Path]::GetTempFileName()
 $stderrFile = [System.IO.Path]::GetTempFileName()
-$cargoArgs = @('+nightly','udeps','--all-targets','--all-features','--workspace')
+# Note: Exclude tests to avoid Embassy/Tokio feature conflicts
+$cargoArgs = @('+nightly','udeps','--all-features','--workspace','--lib','--bins','--examples')
 $proc = Start-Process -FilePath 'cargo' -ArgumentList $cargoArgs -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
 
 $stdOut = Get-Content -Raw -Path $stdoutFile -ErrorAction SilentlyContinue

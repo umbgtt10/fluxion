@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Time operators compile with `--no-default-features --features alloc`
   - All 5 time operators (debounce, throttle, delay, sample, timeout) work in no_std
 
+- **Embassy Timer Implementation (5th Runtime) ✅ COMPLETE** (`fluxion-stream-time`)
+  - Added `EmbassyTimerImpl` for embedded/no_std targets using `embassy-time` crate
+  - Added `EmbassyInstant` wrapper type bridging `embassy_time::Duration` ↔ `core::time::Duration`
+  - Added `runtime-embassy` feature flag (`alloc` + `dep:embassy-time`)
+  - Added `EmbassyTimestamped<T>` type alias for convenience
+  - All 5 time operators (debounce, throttle, delay, sample, timeout) work with Embassy runtime
+  - **5 runtimes now supported**: Tokio, smol, async-std, WASM, Embassy
+  - Embassy timer is no_std compatible (requires only `alloc` feature)
+
 - **Architecture Documentation** (`RUNTIME_ABSTRACTION_STATUS.md`)
   - Comprehensive documentation of cascading `#[cfg]` dependencies as architectural code smell
   - Analysis of workspace feature management overhead (13 files modified, 7 crates affected)
@@ -31,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Workspace Dependencies** (`Cargo.toml`)
   - Set `fluxion-core = { ..., default-features = false }` at workspace level
   - All 7 dependent crates now explicitly add `features = ["std"]`
+  - Added `embassy-time = "0.3"` to workspace dependencies
   - Enables per-package feature selection (fluxion-stream-time can use no_std)
 
 - **Error Handling** (`fluxion-core/src/fluxion_error.rs`)
@@ -72,15 +82,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Operator Availability:**
 - **no_std + alloc (24/27):** All core and time operators except share, subscribe_latest, partition
-- **std + runtime (27/27):** All operators fully available
+- **no_std + alloc + runtime-embassy (24/27):** Time operators work with Embassy timer
+- **std + runtime (27/27):** All operators fully available with Tokio/smol/async-std
 - Time operators use Timer trait (already runtime-agnostic)
 - Zero operator changes needed (architecture validated)
+- Embassy wrapper pattern solves Duration type incompatibility elegantly
 
 **Architectural Considerations:**
 - FluxionError could be split by feature (std/no_std variants)
 - IntoFluxionError trait may be removable (users can implement From)
 - Feature propagation creates maintenance burden (documented as acceptable)
 - Refactoring initiatives documented for future major version
+
+**Embassy Timer Implementation:**
+- EmbassyInstant wrapper bridges `embassy_time::Instant` with `core::time::Duration`
+- Conversion functions: `to_embassy_duration()`, `to_core_duration()`
+- Arithmetic traits implemented: Add/Sub for Duration operations
+- No target-specific dependencies (works on any embedded platform)
+- Compiles with `--no-default-features --features alloc,runtime-embassy`
 
 ### Impact
 - **Embedded Support Extended** - Time operators now available on microcontrollers

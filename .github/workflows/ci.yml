@@ -220,6 +220,9 @@ jobs:
       - name: Run smol tests (fluxion-stream-time)
         run: cargo test --package fluxion-stream-time --features runtime-smol --no-default-features --test all_tests --verbose
 
+      - name: Run Embassy tests (fluxion-stream-time)
+        run: cargo test --package fluxion-stream-time --features runtime-embassy --no-default-features --test all_tests -- --test-threads=1
+
       - name: Install cargo-audit
         run: cargo install --locked cargo-audit
 

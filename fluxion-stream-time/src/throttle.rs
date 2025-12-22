@@ -259,3 +259,21 @@ where
         ThrottleExt::throttle_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
     }
 }
+
+#[cfg(all(
+    feature = "runtime-embassy",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-async-std")
+))]
+impl<S, T> ThrottleWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>> + Send,
+    T: Send,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>;
+
+    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        ThrottleExt::throttle_with_timer(self, duration, crate::runtimes::EmbassyTimerImpl)
+    }
+}

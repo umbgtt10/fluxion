@@ -16,6 +16,7 @@ Test scripts called:
   - .\.ci\tokio_tests.ps1 (native Tokio tests with nextest)
   - .\.ci\wasm_tests.ps1 (WASM tests with wasm-pack)
   - .\.ci\smol_tests.ps1 (smol runtime tests)
+  - .\.ci\embassy_tests.ps1 (Embassy timer tests)
   - .\.ci\async_std_tests.ps1 (async-std tests - deprecated runtime)
 
 Warning:
@@ -151,8 +152,9 @@ Invoke-WorkspaceUpgrade
 Invoke-StepAction "Refresh lockfile" { cargo update }
 
 Invoke-StepAction "Format check" { cargo fmt --all -- --check }
-Invoke-StepAction "Build (all targets & features)" { cargo build --all-targets --all-features --verbose }
-Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-targets --all-features -- -D warnings }
+# Note: Embassy tests excluded from --all-features build as they require --no-default-features
+Invoke-StepAction "Build (all targets & features)" { cargo build --all-features --verbose --lib --bins --examples }
+Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-features --lib --bins --examples -- -D warnings }
 
 # Run Tokio tests
 Write-Color "=== Running Tokio tests ===" Cyan
@@ -178,6 +180,15 @@ Write-Color "=== Running smol tests ===" Cyan
 $rc = $LASTEXITCODE
 if ($rc -ne 0) {
   Write-Color "smol tests failed (exit code $rc)" Red
+  exit $rc
+}
+
+# Run Embassy tests
+Write-Color "=== Running Embassy tests ===" Cyan
+& .\.ci\embassy_tests.ps1
+$rc = $LASTEXITCODE
+if ($rc -ne 0) {
+  Write-Color "Embassy tests failed (exit code $rc)" Red
   exit $rc
 }
 

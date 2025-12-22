@@ -557,6 +557,52 @@ New projects should use tokio or smol runtimes instead.
 ### Key Achievement
 **24/27 Operators on Embedded!** - Core operators work in no_std+alloc environments. FluxionSubject async migration deferred for architectural review. Infrastructure in place for continued no_std development. Phase 1 complete with limitations.
 
+## 🚀 Version 0.6.12 - no_std Support for Time Operators (Phase 3 Infrastructure)
+
+**Status:** Published (2025-12-22)
+
+**Goal:** Prepare time operators for no_std environments
+
+### Essential Features
+- ✅ Added `#![cfg_attr(not(feature = "std"), no_std)]` to fluxion-stream-time
+- ✅ Added conditional Box imports for no_std
+- ✅ Time operators compile with `--no-default-features --features alloc`
+- ✅ Architecture documentation in RUNTIME_ABSTRACTION_STATUS.md
+
+### Key Achievement
+**Infrastructure Complete** - Time operators ready for no_std. All dependencies configured. Embassy implementation (Phase 3) followed immediately.
+
+## 🚀 Version 0.6.13 - Embassy Timer Implementation (Phase 3 Complete)
+
+**Status:** ✅ Completed (Internal Release)
+
+**Goal:** Enable time operators on embedded targets with Embassy runtime
+
+### Essential Features
+- ✅ Implement `EmbassyTimerImpl` for embassy-time integration
+- ✅ Create `EmbassyInstant` wrapper bridging embassy_time::Duration ↔ core::time::Duration
+- ✅ Add `runtime-embassy` feature flag (alloc + dep:embassy-time)
+- ✅ Add `embassy-time = "0.5"` to workspace dependencies
+- ✅ Export `EmbassyTimerImpl` and `EmbassyTimestamped<T>` type alias
+- ✅ All 5 time operators work with Embassy timer
+- ✅ Compiles in no_std + alloc + runtime-embassy configuration
+
+### Documentation
+- ✅ Added Embassy to runtime support list in lib.rs
+- ✅ Updated RUNTIME_ABSTRACTION_STATUS.md with Phase 3 completion
+- ✅ Documented wrapper pattern for Duration type bridging
+
+### Quality Gates
+- ✅ Compiles with `--no-default-features --features alloc,runtime-embassy`
+- ✅ std build still works (no regressions)
+- ✅ Full CI passes (68/68 tests)
+- ✅ Zero clippy warnings
+- ✅ Zero compiler warnings
+- ✅ no_std compilation check passes
+
+### Key Achievement
+**5 Runtimes Complete!** - Embassy joins Tokio, smol, async-std, and WASM as fully supported runtimes. Time operators now work on embedded targets. Phase 3 delivered ahead of schedule (0.5 days actual vs 2.5 days estimated). Wrapper pattern elegantly solved Duration type incompatibility without unsafe code.
+
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 
 **Status:** Planned

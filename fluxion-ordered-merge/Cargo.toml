@@ -16,7 +16,6 @@ readme = "README.md"
 normal = ["pin-project"]
 
 [dependencies]
-fluxion-core = { workspace = true, features = ["std"] }
 futures = { workspace = true }
 pin-project = { workspace = true }
 

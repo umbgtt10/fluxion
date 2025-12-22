@@ -22,3 +22,6 @@ pub mod smol;
 
 #[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
 pub mod wasm;
+
+#[cfg(feature = "runtime-embassy")]
+pub mod embassy;

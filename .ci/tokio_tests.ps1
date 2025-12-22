@@ -11,7 +11,7 @@ This runs:
 
 Notes:
   - Installs cargo-nextest if not found
-  - All tests run with --all-features --all-targets
+  - Embassy tests excluded from --all-features runs (require --no-default-features)
 #>
 
 Set-StrictMode -Version Latest
@@ -45,7 +45,8 @@ if (-not (Get-Command cargo-nextest -ErrorAction SilentlyContinue)) {
 }
 
 Invoke-StepAction "Run nextest (Tokio runtime tests)" {
-  cargo nextest run --all-features --all-targets --verbose
+  # Exclude embassy tests which require --no-default-features
+  cargo nextest run --all-features --verbose --lib --bins --examples
 }
 
 Invoke-StepAction "Run doc tests" {

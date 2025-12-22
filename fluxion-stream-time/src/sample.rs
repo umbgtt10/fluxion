@@ -261,3 +261,21 @@ where
         SampleExt::sample_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
     }
 }
+
+#[cfg(all(
+    feature = "runtime-embassy",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-async-std")
+))]
+impl<S, T> SampleWithDefaultTimerExt<T> for S
+where
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>>,
+    T: Send + Clone,
+{
+    type Timestamped = InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>;
+
+    fn sample(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
+        SampleExt::sample_with_timer(self, duration, crate::runtimes::EmbassyTimerImpl)
+    }
+}

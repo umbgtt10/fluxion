@@ -21,10 +21,11 @@
 //! # Runtime Support
 //!
 //! Enable runtime-specific features in your `Cargo.toml`:
-//! - `time-tokio` (default) - Tokio runtime support with `TokioTimer`
-//! - `time-smol` - smol runtime support with `SmolTimer`
-//! - `time-wasm` - WebAssembly support with `WasmTimer`
-//! - `time-async-std` - async-std runtime ⚠️ **DEPRECATED** (unmaintained, RUSTSEC-2025-0052)
+//! - `runtime-tokio` (default) - Tokio runtime support with `TokioTimer`
+//! - `runtime-smol` - smol runtime support with `SmolTimer`
+//! - `runtime-wasm` - WebAssembly support with `WasmTimer`
+//! - `runtime-embassy` - Embassy (embedded) runtime support with `EmbassyTimerImpl` (no_std)
+//! - `runtime-async-std` - async-std runtime ⚠️ **DEPRECATED** (unmaintained, RUSTSEC-2025-0052)
 //!
 //! ⚠️ **Note**: async-std is discontinued. Use tokio or smol for new projects.
 //!
@@ -102,3 +103,9 @@ pub use runtimes::SmolTimer;
 
 #[cfg(all(feature = "runtime-smol", not(target_arch = "wasm32")))]
 pub type SmolTimestamped<T> = InstantTimestamped<T, SmolTimer>;
+
+#[cfg(feature = "runtime-embassy")]
+pub use runtimes::EmbassyTimerImpl;
+
+#[cfg(feature = "runtime-embassy")]
+pub type EmbassyTimestamped<T> = InstantTimestamped<T, EmbassyTimerImpl>;
