@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::types::WithPrevious;
+use alloc::boxed::Box;
 use core::fmt::Debug;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};

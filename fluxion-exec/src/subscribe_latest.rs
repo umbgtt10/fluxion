@@ -2,9 +2,36 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+//! Latest-value stream subscription with automatic cancellation.
+//!
+//! # Runtime Requirements
+//!
+//! This operator requires one of the following runtime features:
+//! - `runtime-tokio` (default)
+//! - `runtime-smol`
+//! - `runtime-async-std`
+//! - Or compiling for `wasm32` target
+//!
+//! It is not available when compiling without a runtime (no_std + alloc only).
+//!
+//! ## Alternatives for no_std
+//!
+//! Use time-based operators with `subscribe()` for rate limiting:
+//! ```ignore
+//! stream.throttle(Duration::from_millis(100))
+//!       .subscribe(slow_handler)
+//! ```
+
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use async_trait::async_trait;
+use core::error::Error;
 use core::fmt::Debug;
 use core::future::Future;
 use event_listener::Event;
@@ -12,7 +39,6 @@ use fluxion_core::{CancellationToken, FluxionError, FluxionTask, Result};
 use futures::lock::Mutex as FutureMutex;
 use futures::{Stream, StreamExt};
 use parking_lot::Mutex;
-use std::error::Error;
 
 /// Extension trait providing async subscription with automatic cancellation of outdated work.
 ///
@@ -416,7 +442,7 @@ where
     ) -> Result<()>
     where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
-        Fut: Future<Output = std::result::Result<(), E>> + Send + 'static,
+        Fut: Future<Output = core::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
         E: Error + Send + Sync + 'static,
         T: Debug + Clone + Send + Sync + 'static;
@@ -436,7 +462,7 @@ where
     ) -> Result<()>
     where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
-        Fut: Future<Output = std::result::Result<(), E>> + Send + 'static,
+        Fut: Future<Output = core::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
         E: Error + Send + Sync + 'static,
         T: Debug + Clone + Send + Sync + 'static,

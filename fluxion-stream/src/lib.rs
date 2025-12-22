@@ -2,6 +2,17 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+#![cfg_attr(
+    not(any(
+        feature = "runtime-tokio",
+        feature = "runtime-smol",
+        feature = "runtime-async-std",
+        target_arch = "wasm32"
+    )),
+    no_std
+)]
+#![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
+
 //! Stream operators with temporal ordering guarantees.
 //!
 //! This crate provides reactive stream combinators that maintain temporal ordering
@@ -632,7 +643,6 @@
 //! [`take_while_with`]: TakeWhileExt::take_while_with
 //! [`combine_with_previous`]: CombineWithPreviousExt::combine_with_previous
 
-#![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 extern crate alloc;
 
 pub mod combine_latest;
@@ -641,6 +651,12 @@ pub mod distinct_until_changed;
 pub mod distinct_until_changed_by;
 pub mod emit_when;
 pub mod filter_ordered;
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
 pub mod fluxion_shared;
 pub mod into_fluxion_stream;
 mod logging;
@@ -648,6 +664,12 @@ pub mod map_ordered;
 pub mod merge_with;
 pub mod on_error;
 pub mod ordered_merge;
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
 pub mod partition;
 pub mod prelude;
 pub mod sample_ratio;
@@ -669,12 +691,24 @@ pub use distinct_until_changed::DistinctUntilChangedExt;
 pub use distinct_until_changed_by::DistinctUntilChangedByExt;
 pub use emit_when::EmitWhenExt;
 pub use filter_ordered::FilterOrderedExt;
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
 pub use fluxion_shared::{FluxionShared, ShareExt};
 pub use into_fluxion_stream::IntoFluxionStream;
 pub use map_ordered::MapOrderedExt;
 pub use merge_with::MergedStream;
 pub use on_error::OnErrorExt;
 pub use ordered_merge::OrderedStreamExt;
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
 pub use partition::{PartitionExt, PartitionedStream};
 pub use sample_ratio::SampleRatioExt;
 pub use scan_ordered::ScanOrderedExt;

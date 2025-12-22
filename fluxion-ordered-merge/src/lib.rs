@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+#![no_std]
 #![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 
 extern crate alloc;

@@ -7,6 +7,20 @@
 //! A [`FluxionShared`] converts a cold stream into a hot, multi-subscriber source.
 //! It consumes the original stream and broadcasts each item to all active subscribers.
 //!
+//! # Runtime Requirements
+//!
+//! This operator requires one of the following runtime features:
+//! - `runtime-tokio` (default)
+//! - `runtime-smol`
+//! - `runtime-async-std`
+//! - Or compiling for `wasm32` target
+//!
+//! It is not available when compiling without a runtime (no_std + alloc only).
+//!
+//! ## Alternatives for no_std
+//!
+//! - Use [`FluxionSubject`] directly for manual multicast control
+//!
 //! ## Characteristics
 //!
 //! - **Hot**: Late subscribers do not receive past items—only items emitted after subscribing.
@@ -48,6 +62,12 @@
 //!
 //! Both are subscription factories with the same `subscribe()` pattern.
 
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
 use alloc::boxed::Box;
 use core::pin::Pin;
 use fluxion_core::{FluxionSubject, FluxionTask, StreamItem, SubjectError};

@@ -28,6 +28,19 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 
 [features]
-default = []
+default = ["std", "runtime-tokio"]
+std = [
+    "fluxion-core/std",
+    "futures/std",
+    "parking_lot/send_guard",
+    "event-listener/std"
+]
+alloc = ["fluxion-core/alloc"]
+
+# Tracing support
 tracing = ["dep:tracing"]
 
+# Runtime features (for subscribe_latest)
+runtime-tokio = ["std", "fluxion-core/runtime-tokio"]
+runtime-smol = ["std", "fluxion-core/runtime-smol"]
+runtime-async-std = ["std", "fluxion-core/runtime-async-std"]

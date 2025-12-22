@@ -501,6 +501,35 @@ New projects should use tokio or smol runtimes instead.
 ### Key Achievement
 **Risk-Free Foundation** - Systematic core/alloc imports enabling future no_std support with zero behavioral or performance changes. Standard library re-exports ensure 100% compatibility. All 816 tests passing confirms zero behavioral impact.
 
+## 🚀 Version 0.6.10 - no_std Support (Phase 1)
+
+**Status:** ✅ Completed (Internal Release)
+
+**Goal:** Enable no_std compilation with 24/27 operators immediately available
+
+### Essential Features
+- ✅ Add conditional `#![no_std]` to library crates (fluxion-core, fluxion-stream, fluxion-exec)
+- ✅ Feature-gate spawn-based operators (share, subscribe_latest, partition)
+- ✅ Configure dependencies for no_std (futures, parking_lot, event-listener with explicit features)
+- ✅ Remove thiserror dependency, implement manual Display/Error traits
+- ✅ Embedded target compilation verified (`--no-default-features --features alloc`)
+- ✅ 24/27 operators work in no_std+alloc environments
+
+### Documentation
+- ✅ Updated README with no_std usage patterns
+- ✅ Documented operator availability (24/27 in no_std, 3 require std)
+- ✅ Documented feature flags (std, alloc, runtime-*)
+
+### Quality Gates
+- ✅ Compiles with `--no-default-features --features alloc`
+- ✅ All 24 non-spawn operators available on embedded targets
+- ✅ Zero behavioral changes for existing std users
+- ✅ CI green for all runtimes + no_std build check
+- ✅ All tests passing
+
+### Key Achievement
+**Minimal no_std Support** - 24/27 operators immediately available on embedded systems with just `alloc`. Spawn-based operators clearly gated on runtime features. Zero breaking changes. Phase 1 complete!
+
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 
 **Status:** Planned

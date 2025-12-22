@@ -6,6 +6,7 @@ use crate::ordered_merge::ordered_merge_with_index;
 use crate::types::CombinedState;
 use alloc::boxed::Box;
 use alloc::sync::Arc;
+use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Debug;
 use core::pin::Pin;

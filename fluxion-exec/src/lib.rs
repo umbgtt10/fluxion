@@ -2,6 +2,17 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+#![cfg_attr(
+    not(any(
+        feature = "runtime-tokio",
+        feature = "runtime-smol",
+        feature = "runtime-async-std",
+        target_arch = "wasm32"
+    )),
+    no_std
+)]
+#![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
+
 //! Async execution utilities for stream processing.
 //!
 //! This crate provides subscription-based execution patterns for consuming streams
@@ -327,15 +338,25 @@
 //! [`subscribe`]: SubscribeExt::subscribe
 //! [`subscribe_latest`]: SubscribeLatestExt::subscribe_latest
 
-#![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
-
 extern crate alloc;
 
 #[macro_use]
 mod logging;
 pub mod subscribe;
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
 pub mod subscribe_latest;
 
 // Re-export commonly used types
 pub use subscribe::SubscribeExt;
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
 pub use subscribe_latest::SubscribeLatestExt;

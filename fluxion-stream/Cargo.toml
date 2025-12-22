@@ -23,8 +23,23 @@ fastrand = { workspace = true }
 tracing = { workspace = true, optional = true }
 
 [features]
-default = []
+default = ["std", "runtime-tokio"]
+std = [
+    "fluxion-core/std",
+    "fluxion-core/alloc",
+    "futures/std",
+    "futures-util/std",
+    "parking_lot/send_guard"
+]
+alloc = ["fluxion-core/alloc"]
+
+# Tracing support
 tracing = ["dep:tracing"]
+
+# Runtime features (for spawn-based operators)
+runtime-tokio = ["std", "fluxion-core/runtime-tokio"]
+runtime-smol = ["std", "fluxion-core/runtime-smol"]
+runtime-async-std = ["std", "fluxion-core/runtime-async-std"]
 
 [dev-dependencies]
 fluxion-test-utils = { workspace = true }

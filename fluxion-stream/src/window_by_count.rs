@@ -56,9 +56,11 @@
 //! is propagated immediately. This ensures clean error boundaries without
 //! emitting potentially incomplete data.
 
+use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt::Debug;
+use core::mem::take;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{future::ready, Stream, StreamExt};
 use parking_lot::Mutex;
@@ -234,7 +236,7 @@ where
                     *last_ts = Some(timestamp);
 
                     if buffer.len() >= window_size {
-                        let window = std::mem::take(buffer);
+                        let window = take(buffer);
                         *buffer = Vec::with_capacity(window_size);
                         let ts = last_ts.take().expect("timestamp must exist");
                         Some(StreamItem::Value(Out::with_timestamp(window, ts.into())))
@@ -260,7 +262,7 @@ where
             let (buffer, last_ts) = &mut *guard;
 
             if !buffer.is_empty() {
-                let window = std::mem::take(buffer);
+                let window = take(buffer);
                 let ts = last_ts
                     .take()
                     .expect("timestamp must exist for partial window");
