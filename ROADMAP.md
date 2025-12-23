@@ -630,6 +630,19 @@ New projects should use tokio or smol runtimes instead.
 **Documentation now complete and consistent** across all 5 runtimes with proper feature flag naming and comprehensive usage examples.
 **Test consistency achieved** - All runtime tests now follow the same explicit timer pattern, improving maintainability and reducing confusion.
 
+## 🚀 Version 0.6.14 - Polishing, Planning and Test Applications
+
+**Status:** Ongoing
+
+**Goal:** Polish the workspace and provide another test application demonstrating wasm usage
+
+### Essential Features
+- [ ] Fix unstable tests
+- [ ] Get code coverage back to 88% or higher
+- [ ] Create a WASM example application demonstrating browser usage with time-based operators
+- [ ] Prepare future roadmap based on current status
+
+
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 
 **Status:** Planned

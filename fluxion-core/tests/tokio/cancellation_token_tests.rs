@@ -351,7 +351,6 @@ async fn test_cancellation_with_select_macro() {
         }
     });
     #[deny(clippy::never_loop)]
-    
     // Give the worker task a chance to start waiting
     tokio::time::sleep(Duration::from_millis(10)).await;
 
