@@ -11,6 +11,7 @@ workspace = true
 exclude-tests = true
 exclude-files = [
   "**/examples/**",
+  "**/benches/**",
   "**/tests/async-std/**",
   "**/tests/smol/**",
   "**/tests/wasm/**",
