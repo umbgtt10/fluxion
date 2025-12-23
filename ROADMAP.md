@@ -640,8 +640,8 @@ New projects should use tokio or smol runtimes instead.
 - [ ] Fix unstable tests
 - [ ] Get code coverage back to 88% or higher
 - [ ] Create a WASM example application demonstrating browser usage with time-based operators
+- [ ] Create a simple no-std-compatible example
 - [ ] Prepare future roadmap based on current status
-
 
 ## 🚀 Version 0.7.0 - Full Runtime Abstraction
 
