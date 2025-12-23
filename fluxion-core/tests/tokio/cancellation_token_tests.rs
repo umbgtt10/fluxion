@@ -336,6 +336,7 @@ async fn test_cancellation_with_select_macro() {
     let token = CancellationToken::new();
     let token_work = token.clone();
 
+    #[allow(clippy::never_loop)]
     let worker = tokio::spawn(async move {
         loop {
             futures::select! {
@@ -349,7 +350,8 @@ async fn test_cancellation_with_select_macro() {
             }
         }
     });
-
+    #[deny(clippy::never_loop)]
+    
     // Give the worker task a chance to start waiting
     tokio::time::sleep(Duration::from_millis(10)).await;
 
