@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluxion WASM Dashboard - Time Operators Demo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌊 Fluxion WASM Dashboard</h1>
+            <p class="subtitle">Real-time demonstration of time-based stream operators</p>
+        </header>
+
+        <main>
+            <!-- Control Panel -->
+            <section class="control-panel">
+                <h2>Controls</h2>
+                <div class="button-group">
+                    <button id="startBtn" class="btn btn-primary">▶️ Start Sensors</button>
+                    <button id="stopBtn" class="btn btn-secondary">⏹️ Stop</button>
+                    <button id="resetBtn" class="btn btn-secondary">🔄 Reset</button>
+                    <button id="exportBtn" class="btn btn-secondary">💾 Export Data</button>
+                </div>
+            </section>
+
+            <!-- Sensor Status -->
+            <section class="sensor-grid">
+                <div class="sensor-card">
+                    <h3>Sensor 1</h3>
+                    <p class="sensor-rate">100 Hz</p>
+                    <canvas id="sensor1Chart" width="300" height="150"></canvas>
+                    <div class="sensor-value" id="sensor1Value">--</div>
+                </div>
+                <div class="sensor-card">
+                    <h3>Sensor 2</h3>
+                    <p class="sensor-rate">50 Hz</p>
+                    <canvas id="sensor2Chart" width="300" height="150"></canvas>
+                    <div class="sensor-value" id="sensor2Value">--</div>
+                </div>
+                <div class="sensor-card">
+                    <h3>Sensor 3</h3>
+                    <p class="sensor-rate">25 Hz</p>
+                    <canvas id="sensor3Chart" width="300" height="150"></canvas>
+                    <div class="sensor-value" id="sensor3Value">--</div>
+                </div>
+            </section>
+
+            <!-- Time Operators -->
+            <section class="operators">
+                <h2>Time Operators</h2>
+                <div class="operator-grid">
+                    <div class="operator-card">
+                        <div class="operator-header">
+                            <h3>🔍 Debounce</h3>
+                            <button id="debounceToggle" class="btn-toggle">OFF</button>
+                        </div>
+                        <p class="operator-desc">Filters rapid changes, emits after stability period</p>
+                        <div class="operator-config">
+                            <label>Duration: <span id="debounceDuration">300</span>ms</label>
+                            <input type="range" id="debounceSlider" min="100" max="1000" value="300" step="100">
+                        </div>
+                        <div class="operator-stats">
+                            <span>Events: <strong id="debounceEvents">0</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="operator-card">
+                        <div class="operator-header">
+                            <h3>🚦 Throttle</h3>
+                            <button id="throttleToggle" class="btn-toggle">OFF</button>
+                        </div>
+                        <p class="operator-desc">Rate limiting, maximum emission frequency</p>
+                        <div class="operator-config">
+                            <label>Duration: <span id="throttleDuration">100</span>ms</label>
+                            <input type="range" id="throttleSlider" min="50" max="500" value="100" step="50">
+                        </div>
+                        <div class="operator-stats">
+                            <span>Events: <strong id="throttleEvents">0</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="operator-card">
+                        <div class="operator-header">
+                            <h3>⏱️ Delay</h3>
+                            <button id="delayToggle" class="btn-toggle">OFF</button>
+                        </div>
+                        <p class="operator-desc">Artificial latency for testing/simulation</p>
+                        <div class="operator-config">
+                            <label>Duration: <span id="delayDuration">500</span>ms</label>
+                            <input type="range" id="delaySlider" min="100" max="2000" value="500" step="100">
+                        </div>
+                        <div class="operator-stats">
+                            <span>Events: <strong id="delayEvents">0</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="operator-card">
+                        <div class="operator-header">
+                            <h3>📊 Sample</h3>
+                            <button id="sampleToggle" class="btn-toggle">OFF</button>
+                        </div>
+                        <p class="operator-desc">Regular interval sampling regardless of source rate</p>
+                        <div class="operator-config">
+                            <label>Duration: <span id="sampleDuration">1000</span>ms</label>
+                            <input type="range" id="sampleSlider" min="500" max="3000" value="1000" step="500">
+                        </div>
+                        <div class="operator-stats">
+                            <span>Events: <strong id="sampleEvents">0</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="operator-card">
+                        <div class="operator-header">
+                            <h3>⏰ Timeout</h3>
+                            <button id="timeoutToggle" class="btn-toggle">OFF</button>
+                        </div>
+                        <p class="operator-desc">Detects stale streams and provides fallbacks</p>
+                        <div class="operator-config">
+                            <label>Duration: <span id="timeoutDuration">5000</span>ms</label>
+                            <input type="range" id="timeoutSlider" min="1000" max="10000" value="5000" step="1000">
+                        </div>
+                        <div class="operator-stats">
+                            <span>Timeouts: <strong id="timeoutCount">0</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Output Visualization -->
+            <section class="output-section">
+                <h2>Combined Output Stream</h2>
+                <canvas id="outputChart" width="900" height="200"></canvas>
+                <div class="output-legend">
+                    <span class="legend-item"><span class="dot raw"></span> Raw Events</span>
+                    <span class="legend-item"><span class="dot processed"></span> Processed Events</span>
+                </div>
+            </section>
+
+            <!-- Metrics -->
+            <section class="metrics">
+                <h2>Performance Metrics</h2>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Events Received</div>
+                        <div class="metric-value" id="eventsReceived">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Events Emitted</div>
+                        <div class="metric-value" id="eventsEmitted">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Drop Rate</div>
+                        <div class="metric-value" id="dropRate">0%</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Avg Latency</div>
+                        <div class="metric-value" id="avgLatency">--</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pipeline Visualization -->
+            <section class="pipeline">
+                <h2>Stream Pipeline</h2>
+                <div class="pipeline-flow">
+                    <div class="pipeline-node">Sensors</div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-node">Combine Latest</div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-node">Debounce</div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-node">Throttle</div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-node">Delay</div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-node">Sample</div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-node">Timeout</div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-node">Output</div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Built with <a href="https://github.com/umbgtt10/fluxion" target="_blank">Fluxion</a> - A reactive streaming library for Rust</p>
+        </footer>
+    </div>
+
+    <script type="module" src="./bootstrap.js"></script>
+</body>
+</html>
