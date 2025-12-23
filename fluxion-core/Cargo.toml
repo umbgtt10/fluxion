@@ -39,8 +39,8 @@ wasm-bindgen-futures = { workspace = true }
 
 [features]
 default = ["std", "runtime-tokio"]
-std = ["futures/std", "futures/executor", "event-listener/std", "dep:parking_lot", "dep:async-channel", "async-channel?/std"]
-alloc = []
+std = ["futures/std", "futures/executor", "event-listener/std", "dep:parking_lot", "async-channel?/std"]
+alloc = ["dep:async-channel"]
 
 # Tracing support
 tracing = ["dep:tracing"]
