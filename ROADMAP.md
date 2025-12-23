@@ -682,15 +682,16 @@ New projects should use tokio or smol runtimes instead.
 **Goal:** Ensure strict consistency in the code, comments, test code and documentation
 
 **Essential Features:**
-- [ ] Remove remaining sleeps from the tests
-- [ ] Review and finalize unstable doc
+- [ ] Remove remaining sleeps from the tests if any
+- [ ] Review and finalize unstable doc tests
 - [ ] Review and finalize toml files
 - [ ] Review and finalize comments in the source code
 - [ ] Tighten the CI pipeline to the maximum
-- [ ] Create a WASM example application
+- [ ] Consider inmplementing a feature-branched Poll-based `partition` for no_std
+- [ ] Consider the implementation of `publish` operator for lazy multi-subscriber pattern
 
 ### Documentation
-- [ ] Docs finalized and reviews by all AI agents
+- [ ] Docs finalized and reviewed by all AI agents
 
 ### Quality Gates
 - [ ] Zero compilation errors

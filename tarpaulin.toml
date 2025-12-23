@@ -7,11 +7,11 @@ out = ["Html", "Xml"]
 
 [run]
 fail-under = 85
+exclude-tests = true
+exclude = [
+  "fluxion-test-utils",
+]
 exclude-files = [
-  "examples/**",
-  "*/tests/**",
-  "**/tests/**",
-  "fluxion-stream-time/tests/**",
-  "fluxion-test-utils/src/**",
+  "**/examples/**"
 ]
 
