@@ -2,9 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream_time::runtimes::wasm_implementation::WasmTimer;
+use fluxion_stream_time::prelude::*; // Now includes WasmTimer and InstantTimestamped!
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::InstantTimestamped;
 use futures::channel::mpsc;
 use gloo_timers::future::TimeoutFuture;
 

@@ -9,7 +9,6 @@ use crate::ui::UI;
 use fluxion_core::StreamItem;
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::runtimes::wasm_implementation::WasmTimer;
 use fluxion_stream_time::timer::Timer;
 use fluxion_stream_time::InstantTimestamped;
 use futures::channel::mpsc;

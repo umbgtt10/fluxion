@@ -4,10 +4,13 @@
 
 use wasm_bindgen::prelude::*;
 
+mod stream_aggregator;
 mod app_streaming;
 mod chart;
+mod integration;
+mod sensor_value_source;
+mod raw_sensor_value;
 mod sensors;
-mod stream_data;
 mod ui;
 
 use app_streaming::Dashboard;
