@@ -12,19 +12,18 @@ use std::time::Duration;
 #[test]
 fn test_sample_smol_single_threaded() {
     smol::block_on(async {
+        // Arrange
         let (tx, rx) = test_channel();
         let mut sampled = rx.sample(Duration::from_millis(100));
         let timer = SmolTimer;
 
-        // Send one item
+        // Act
         tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
             .unwrap();
 
-        // Wait for sample period to complete
         smol::Timer::after(Duration::from_millis(150)).await;
 
-        // Should receive the sampled item
-        let result = sampled.next().await;
-        assert!(result.is_some());
+        // Assert
+        assert!(sampled.next().await.is_some());
     });
 }

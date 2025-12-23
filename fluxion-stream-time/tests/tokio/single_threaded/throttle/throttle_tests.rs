@@ -107,3 +107,38 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_throttle_zero_duration() -> anyhow::Result<()> {
+    // Arrange
+    let timer = TokioTimer;
+    pause();
+
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let mut throttled = stream.throttle(Duration::from_millis(0));
+
+    // Act & Assert - zero duration means all values pass through (no throttling)
+    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    // Advance to allow zero-duration sleep to complete and unwrap_stream timeout to work
+    advance(Duration::from_millis(100)).await;
+    assert_eq!(
+        unwrap_stream(&mut throttled, 100).await.unwrap().value,
+        person_alice()
+    );
+
+    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    advance(Duration::from_millis(100)).await;
+    assert_eq!(
+        unwrap_stream(&mut throttled, 100).await.unwrap().value,
+        person_bob()
+    );
+
+    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    advance(Duration::from_millis(100)).await;
+    assert_eq!(
+        unwrap_stream(&mut throttled, 100).await.unwrap().value,
+        person_charlie()
+    );
+
+    Ok(())
+}

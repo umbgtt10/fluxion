@@ -49,29 +49,23 @@ async fn test_impl() {
     let (tx, stream) = test_channel::<EmbassyTimestamped<Person>>();
     let mut throttled = stream.throttle(Duration::from_millis(100));
 
-    // Act - send first value (should emit immediately)
+    // Act & Assert
     tx.unbounded_send(EmbassyTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
-    // First value should emit immediately
     let result = unwrap_stream(&mut throttled, 50).await;
     assert_eq!(result.unwrap().value, person_alice());
 
-    // Send second value immediately (should be dropped by throttle)
     tx.unbounded_send(EmbassyTimestamped::new(person_bob(), timer.now()))
         .unwrap();
 
-    // Wait for throttle period to expire
     Timer::after(embassy_time::Duration::from_millis(150)).await;
 
-    // Send third value (throttle period expired, should emit)
     tx.unbounded_send(EmbassyTimestamped::new(person_bob(), timer.now()))
         .unwrap();
 
-    // Third value should emit
     let result = unwrap_stream(&mut throttled, 200).await;
     assert_eq!(result.unwrap().value, person_bob());
 
-    // Exit executor by panicking (Embassy executor.run() never returns)
     panic!("Test passed - using panic to exit executor");
 }

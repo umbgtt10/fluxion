@@ -11,6 +11,7 @@ use std::time::Duration;
 
 #[test]
 fn test_delay_smol_multi_threaded() {
+    // Arrange
     let executor = smol::Executor::new();
     futures::executor::block_on(executor.run(async {
         let (tx, rx) = test_channel();
@@ -19,6 +20,7 @@ fn test_delay_smol_multi_threaded() {
 
         executor
             .spawn(async move {
+                // Act
                 tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
                     .unwrap();
             })
@@ -28,6 +30,7 @@ fn test_delay_smol_multi_threaded() {
         let result = delayed.next().await;
         let elapsed = start.elapsed();
 
+        // Assert
         assert!(result.is_some());
         assert!(elapsed >= Duration::from_millis(40)); // Allow 10ms tolerance
     }));

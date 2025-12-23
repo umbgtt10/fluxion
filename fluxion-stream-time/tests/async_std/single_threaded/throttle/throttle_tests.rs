@@ -18,7 +18,7 @@ async fn test_throttle_basic() {
     let (tx, stream) = test_channel::<AsyncStdTimestamped<Person>>();
     let mut throttled = stream.throttle(Duration::from_millis(100));
 
-    // Act - first emission goes through immediately
+    // Act
     tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 

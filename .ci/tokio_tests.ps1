@@ -45,12 +45,12 @@ if (-not (Get-Command cargo-nextest -ErrorAction SilentlyContinue)) {
 }
 
 Invoke-StepAction "Run nextest (Tokio runtime tests)" {
-  # Exclude embassy tests which require --no-default-features
-  cargo nextest run --all-features --verbose --lib --bins --examples
+  # Exclude embassy tests which require --no-default-features and nightly features
+  cargo nextest run --verbose --lib --bins --tests --examples
 }
 
 Invoke-StepAction "Run doc tests" {
-  cargo test --all-features --doc --verbose
+  cargo test --doc --verbose
 }
 
 Write-Output "Tokio tests completed successfully."

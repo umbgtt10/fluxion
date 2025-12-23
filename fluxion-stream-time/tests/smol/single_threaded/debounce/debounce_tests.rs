@@ -12,11 +12,12 @@ use std::time::Duration;
 #[test]
 fn test_debounce_smol_single_threaded() {
     smol::block_on(async {
+        // Arrange
         let (tx, rx) = test_channel();
         let mut debounced = rx.debounce(Duration::from_millis(100));
         let timer = SmolTimer;
 
-        // Send multiple items quickly
+        // Act
         tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
             .unwrap();
         smol::Timer::after(Duration::from_millis(10)).await;
@@ -24,8 +25,7 @@ fn test_debounce_smol_single_threaded() {
             .unwrap();
         drop(tx);
 
-        // Should only get the last item after debounce period
-        let result = debounced.next().await;
-        assert!(result.is_some());
+        // Assert
+        assert!(debounced.next().await.is_some());
     });
 }

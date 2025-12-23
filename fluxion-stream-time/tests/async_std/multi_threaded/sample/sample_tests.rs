@@ -3,7 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::async_std::helpers::{person_alice, test_channel, unwrap_stream, Person};
-
 use fluxion_stream_time::runtimes::AsyncStdTimer;
 use fluxion_stream_time::timer::Timer;
 use fluxion_stream_time::{prelude::*, InstantTimestamped};
@@ -17,7 +16,6 @@ async fn test_sample_across_threads() {
     let timer = AsyncStdTimer;
     let (tx, stream) = test_channel::<AsyncStdTimestamped<Person>>();
 
-    // Spawn on different thread
     let handle = async_std::task::spawn(async move {
         let mut sampled = stream.sample(Duration::from_millis(100));
         unwrap_stream(&mut sampled, 200).await
@@ -27,7 +25,6 @@ async fn test_sample_across_threads() {
     tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
-    // Wait for sample period
     async_io::Timer::after(Duration::from_millis(150)).await;
     drop(tx);
 

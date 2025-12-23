@@ -11,6 +11,7 @@ use std::time::Duration;
 
 #[test]
 fn test_timeout_smol_multi_threaded() {
+    // Arrange
     let executor = smol::Executor::new();
     futures::executor::block_on(executor.run(async {
         let (tx, rx) = test_channel();
@@ -19,12 +20,13 @@ fn test_timeout_smol_multi_threaded() {
 
         executor
             .spawn(async move {
+                // Act
                 tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
                     .unwrap();
             })
             .detach();
 
-        let result = timed.next().await;
-        assert!(result.is_some());
+        // Assert
+        assert!(timed.next().await.is_some());
     }));
 }

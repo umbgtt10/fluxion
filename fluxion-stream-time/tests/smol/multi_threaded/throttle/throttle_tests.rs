@@ -11,6 +11,7 @@ use std::time::Duration;
 
 #[test]
 fn test_throttle_smol_multi_threaded() {
+    // Arrange
     let executor = smol::Executor::new();
     futures::executor::block_on(executor.run(async {
         let (tx, rx) = test_channel();
@@ -19,6 +20,7 @@ fn test_throttle_smol_multi_threaded() {
 
         executor
             .spawn(async move {
+                // Act
                 tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
                     .unwrap();
                 // Wait for throttled result
@@ -28,7 +30,7 @@ fn test_throttle_smol_multi_threaded() {
             })
             .detach();
 
-        let result1 = throttled.next().await;
-        assert!(result1.is_some());
+        // Assert
+        assert!(throttled.next().await.is_some());
     }));
 }

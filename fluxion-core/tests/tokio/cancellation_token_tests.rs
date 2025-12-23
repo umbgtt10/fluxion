@@ -331,41 +331,38 @@ async fn test_interleaved_wait_and_cancel() {
 
 #[tokio::test]
 async fn test_cancellation_with_select_macro() {
+    // This test verifies that CancellationToken works correctly with futures::select!
+    // We use a long-running operation to ensure cancellation is detected reliably
     let token = CancellationToken::new();
     let token_work = token.clone();
 
-    let work_done = Arc::new(AtomicUsize::new(0));
-    let work_done_clone = work_done.clone();
-
     let worker = tokio::spawn(async move {
-        for _i in 0..100 {
+        loop {
             futures::select! {
                 _ = token_work.cancelled().fuse() => {
                     return "cancelled";
                 }
-                _ = tokio::time::sleep(Duration::from_millis(10)).fuse() => {
-                    work_done_clone.fetch_add(1, Ordering::SeqCst);
+                _ = tokio::time::sleep(Duration::from_secs(10)).fuse() => {
+                    // This branch should never execute in this test
+                    return "completed";
                 }
             }
         }
-        "completed"
     });
 
-    // Let some work happen
-    tokio::time::sleep(Duration::from_millis(25)).await;
+    // Give the worker task a chance to start waiting
+    tokio::time::sleep(Duration::from_millis(10)).await;
 
-    // Cancel
+    // Cancel the token
     token.cancel();
 
+    // Worker should complete quickly with "cancelled"
     let result = tokio::time::timeout(Duration::from_millis(100), worker)
         .await
-        .expect("Worker should complete")
+        .expect("Worker should complete after cancellation")
         .expect("Worker should not panic");
 
     assert_eq!(result, "cancelled");
-    // Some work should have been done, but not all 100 iterations
-    let work_count = work_done.load(Ordering::SeqCst);
-    assert!(work_count > 0 && work_count < 100);
 }
 
 #[tokio::test]

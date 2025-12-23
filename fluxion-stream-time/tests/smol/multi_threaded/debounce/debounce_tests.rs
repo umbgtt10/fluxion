@@ -11,6 +11,7 @@ use std::time::Duration;
 
 #[test]
 fn test_debounce_smol_multi_threaded() {
+    // Arrange
     let executor = smol::Executor::new();
     futures::executor::block_on(executor.run(async {
         let (tx, rx) = test_channel();
@@ -19,6 +20,7 @@ fn test_debounce_smol_multi_threaded() {
 
         executor
             .spawn(async move {
+                // Act
                 tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
                     .unwrap();
                 smol::Timer::after(Duration::from_millis(10)).await;
@@ -27,8 +29,7 @@ fn test_debounce_smol_multi_threaded() {
             })
             .detach();
 
-        // Should only get the last item after debounce period
-        let result = debounced.next().await;
-        assert!(result.is_some());
+        // Assert
+        assert!(debounced.next().await.is_some());
     }));
 }

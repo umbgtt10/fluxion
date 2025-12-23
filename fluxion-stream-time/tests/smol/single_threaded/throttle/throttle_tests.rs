@@ -12,11 +12,12 @@ use std::time::Duration;
 #[test]
 fn test_throttle_smol_single_threaded() {
     smol::block_on(async {
+        // Arrange
         let (tx, rx) = test_channel();
         let mut throttled = rx.throttle(Duration::from_millis(50));
         let timer = SmolTimer;
 
-        // Send first item
+        // Act & Assert
         tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
             .unwrap();
         let result1 = throttled.next().await;

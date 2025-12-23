@@ -24,7 +24,9 @@ async fn test_timeout_basic() {
 
     gloo_timers::future::sleep(Duration::from_millis(50)).await;
 
-    // Assert - should succeed before timeout
-    let result = unwrap_stream(&mut timed, 200).await;
-    assert_eq!(result.unwrap().value, person_alice());
+    // Assert
+    assert_eq!(
+        unwrap_stream(&mut timed, 200).await.unwrap().value,
+        person_alice()
+    );
 }

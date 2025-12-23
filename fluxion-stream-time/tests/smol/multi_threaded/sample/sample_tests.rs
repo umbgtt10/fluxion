@@ -11,6 +11,7 @@ use std::time::Duration;
 
 #[test]
 fn test_sample_smol_multi_threaded() {
+    // Arrange
     let executor = smol::Executor::new();
     futures::executor::block_on(executor.run(async {
         let (tx, rx) = test_channel();
@@ -19,6 +20,7 @@ fn test_sample_smol_multi_threaded() {
 
         executor
             .spawn(async move {
+                // Act
                 for _ in 0..5 {
                     tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
                         .unwrap();
@@ -27,8 +29,7 @@ fn test_sample_smol_multi_threaded() {
             })
             .detach();
 
-        // Should receive sampled items
-        let result = sampled.next().await;
-        assert!(result.is_some());
+        // Assert
+        assert!(sampled.next().await.is_some());
     }));
 }

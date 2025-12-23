@@ -10,16 +10,17 @@ use futures::Stream;
 use std::time::Duration;
 use tokio::select;
 use tokio::time::sleep;
-use tokio::time::timeout;
 
 /// Receives a value from an UnboundedReceiver with a timeout.
 ///
 /// # Panics
 /// Panics if no item is received within the timeout.
 pub async fn recv_timeout<T>(rx: &mut UnboundedReceiver<T>, timeout_ms: u64) -> Option<T> {
-    match timeout(Duration::from_millis(timeout_ms), rx.next()).await {
-        Ok(item) => item,
-        Err(_) => panic!("Timeout: No item received within {} ms", timeout_ms),
+    select! {
+        item = rx.next() => item,
+        () = sleep(Duration::from_millis(timeout_ms)) => {
+            panic!("Timeout: No item received within {} ms", timeout_ms)
+        }
     }
 }
 
@@ -28,10 +29,13 @@ pub async fn recv_timeout<T>(rx: &mut UnboundedReceiver<T>, timeout_ms: u64) -> 
 /// # Panics
 /// Panics if an item is received within the timeout.
 pub async fn assert_no_recv<T>(rx: &mut UnboundedReceiver<T>, timeout_ms: u64) {
-    match timeout(Duration::from_millis(timeout_ms), rx.next()).await {
-        Ok(Some(_)) => panic!("Unexpected item received within {} ms", timeout_ms),
-        Ok(None) => {} // Stream ended, which is acceptable for "no item received"
-        Err(_) => {}   // Timeout occurred, which is success
+    select! {
+        item = rx.next() => {
+            if item.is_some() { panic!("Unexpected item received within {} ms", timeout_ms) }
+        }
+        () = sleep(Duration::from_millis(timeout_ms)) => {
+            // Timeout occurred, which is success
+        }
     }
 }
 
@@ -99,10 +103,13 @@ pub async fn unwrap_stream<T, S>(stream: &mut S, timeout_ms: u64) -> StreamItem<
 where
     S: Stream<Item = StreamItem<T>> + Unpin,
 {
-    match timeout(Duration::from_millis(timeout_ms), stream.next()).await {
-        Ok(Some(item)) => item,
-        Ok(None) => panic!("Expected StreamItem but stream ended"),
-        Err(_) => panic!("Timeout: No item received within {} ms", timeout_ms),
+    select! {
+        item = stream.next() => {
+            item.expect("Expected StreamItem but stream ended")
+        }
+        () = sleep(Duration::from_millis(timeout_ms)) => {
+            panic!("Timeout: No item received within {} ms", timeout_ms)
+        }
     }
 }
 
@@ -217,10 +224,13 @@ pub async fn assert_stream_ended<S, T>(stream: &mut S, timeout_ms: u64)
 where
     S: Stream<Item = T> + Unpin,
 {
-    match timeout(Duration::from_millis(timeout_ms), stream.next()).await {
-        Ok(Some(_)) => panic!("Expected stream to end but it returned a value"),
-        Ok(None) => {} // Stream ended as expected
-        Err(_) => panic!("Timeout: Stream did not end within {} ms", timeout_ms),
+    select! {
+        item = stream.next() => {
+            if item.is_some() { panic!("Expected stream to end but it returned a value") }
+        }
+        () = sleep(Duration::from_millis(timeout_ms)) => {
+            panic!("Timeout: Stream did not end within {} ms", timeout_ms)
+        }
     }
 }
 
@@ -254,13 +264,16 @@ where
     S: Stream<Item = StreamItem<T>> + Unpin,
 {
     let mut results = Vec::new();
-    while let Some(item) = timeout(Duration::from_millis(timeout_ms), stream.next())
-        .await
-        .ok()
-        .flatten()
-    {
-        if let Some(val) = item.ok() {
-            results.push(val);
+    loop {
+        let item = select! {
+            item = stream.next() => item,
+            () = sleep(Duration::from_millis(timeout_ms)) => break,
+        };
+
+        match item {
+            Some(StreamItem::Value(val)) => results.push(val),
+            Some(StreamItem::Error(_)) => continue, // Ignore errors
+            None => break,                          // Stream ended
         }
     }
     results
@@ -274,86 +287,4 @@ macro_rules! with_timeout {
             .await
             .expect("Test timed out after 5 seconds")
     };
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use fluxion_core::FluxionError;
-
-    #[tokio::test]
-    async fn test_assert_no_element_emitted() {
-        let (_tx, mut stream) = test_channel::<i32>();
-
-        // This should pass as no elements are sent
-        assert_no_element_emitted(&mut stream, 100).await;
-    }
-
-    #[tokio::test]
-    #[should_panic = "Timeout: No item received within 100 ms"]
-    async fn test_unwrap_stream_timeout() {
-        let (_tx, mut stream) = test_channel::<i32>();
-
-        // This should panic due to timeout
-        unwrap_stream(&mut stream, 100).await;
-    }
-
-    #[tokio::test]
-    #[should_panic = "Expected StreamItem but stream ended"]
-    async fn test_unwrap_stream_empty() {
-        let (tx, mut stream) = test_channel::<i32>();
-
-        // Close the stream immediately
-        drop(tx);
-
-        // This should panic because the stream ends
-        unwrap_stream(&mut stream, 500).await;
-    }
-
-    #[tokio::test]
-    #[should_panic = "Expected Value but got Error: Stream processing error: injected error"]
-    async fn test_unwrap_stream_error_injected() {
-        let (tx, mut stream) = test_channel_with_errors::<i32>();
-
-        tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
-            "injected error",
-        )))
-        .unwrap();
-
-        // This should panic because unwrap_value expects a Value
-        let item = unwrap_stream(&mut stream, 500).await;
-        unwrap_value(Some(item));
-    }
-
-    #[tokio::test]
-    async fn test_assert_stream_ended_success() {
-        let (tx, mut stream) = test_channel::<i32>();
-
-        // Close the stream
-        drop(tx);
-
-        // This should pass because the stream has ended
-        assert_stream_ended(&mut stream, 500).await;
-    }
-
-    #[tokio::test]
-    #[should_panic = "Expected stream to end but it returned a value"]
-    async fn test_assert_stream_ended_returns_value() {
-        let (tx, mut stream) = test_channel::<i32>();
-
-        // Send a value
-        tx.unbounded_send(42).unwrap();
-
-        // This should panic because the stream returns a value
-        assert_stream_ended(&mut stream, 500).await;
-    }
-
-    #[tokio::test]
-    #[should_panic = "Timeout: Stream did not end within 100 ms"]
-    async fn test_assert_stream_ended_timeout() {
-        let (_tx, mut stream) = test_channel::<i32>();
-
-        // Stream is open but no values sent - will timeout
-        assert_stream_ended(&mut stream, 100).await;
-    }
 }

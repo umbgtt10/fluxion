@@ -17,13 +17,12 @@ async fn test_timeout_across_threads() {
     let timer = AsyncStdTimer;
     let (tx, stream) = test_channel::<AsyncStdTimestamped<Person>>();
 
-    // Spawn on different thread
     let handle = async_std::task::spawn(async move {
         let mut timed = stream.timeout(Duration::from_millis(200));
         timed.next().await
     });
 
-    // Act - send before timeout
+    // Act
     tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
     drop(tx);

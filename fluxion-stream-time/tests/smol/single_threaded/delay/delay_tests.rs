@@ -12,10 +12,12 @@ use std::time::Duration;
 #[test]
 fn test_delay_smol_single_threaded() {
     smol::block_on(async {
+        // Arrange
         let (tx, rx) = test_channel();
         let mut delayed = rx.delay(Duration::from_millis(50));
         let timer = SmolTimer;
 
+        // Act
         tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
             .unwrap();
         drop(tx);
@@ -24,6 +26,7 @@ fn test_delay_smol_single_threaded() {
         let result = delayed.next().await;
         let elapsed = start.elapsed();
 
+        // Assert
         assert!(result.is_some());
         assert!(elapsed >= Duration::from_millis(40)); // Allow 10ms tolerance
     });

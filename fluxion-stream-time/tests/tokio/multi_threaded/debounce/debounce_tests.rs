@@ -13,7 +13,6 @@ async fn test_debounce_across_threads() -> anyhow::Result<()> {
     let timer = TokioTimer;
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
 
-    // Spawn on different thread
     let handle = tokio::spawn(async move {
         let mut debounced = stream.debounce(Duration::from_millis(100));
         unwrap_stream(&mut debounced, 200).await
@@ -24,8 +23,7 @@ async fn test_debounce_across_threads() -> anyhow::Result<()> {
     drop(tx);
 
     // Assert
-    let result = handle.await.unwrap();
-    assert_eq!(result.unwrap().value, person_alice());
+    assert_eq!(handle.await.unwrap().unwrap().value, person_alice());
 
     Ok(())
 }

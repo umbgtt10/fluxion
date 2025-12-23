@@ -22,11 +22,11 @@ async fn test_debounce_basic() {
     tx.unbounded_send(WasmTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
-    // Note: WASM tests cannot use pause/advance like Tokio
-    // Tests must use real delays with gloo_timers::sleep
     gloo_timers::future::sleep(Duration::from_millis(150)).await;
 
     // Assert
-    let result = unwrap_stream(&mut debounced, 200).await;
-    assert_eq!(result.unwrap().value, person_alice());
+    assert_eq!(
+        unwrap_stream(&mut debounced, 200).await.unwrap().value,
+        person_alice()
+    );
 }

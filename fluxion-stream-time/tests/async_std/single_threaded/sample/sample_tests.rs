@@ -22,7 +22,6 @@ async fn test_sample_basic() {
     tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
-    // Wait for sample period
     async_io::Timer::after(Duration::from_millis(150)).await;
 
     // Assert

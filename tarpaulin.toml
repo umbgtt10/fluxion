@@ -9,18 +9,19 @@ out = ["Html", "Xml"]
 fail-under = 85
 exclude-files = [
   "examples/**",
-  "fluxion-stream-time/tests/wasm/*",
-  "fluxion-stream-time/tests/wasm/**",
   "fluxion-stream-time/tests/async_std/*",
   "fluxion-stream-time/tests/async_std/**",
+  "fluxion-stream-time/tests/embassy/*",
+  "fluxion-stream-time/tests/embassy/**",
   "fluxion-stream-time/tests/smol/*",
   "fluxion-stream-time/tests/smol/**",
+  "fluxion-stream-time/tests/wasm/*",
+  "fluxion-stream-time/tests/wasm/**",
   "fluxion-core/tests/wasm/*",
   "fluxion-core/tests/wasm/**",
   "fluxion-core/tests/smol/*",
   "fluxion-core/tests/smol/**",
   "fluxion-core/tests/async_std/*",
   "fluxion-core/tests/async_std/**",
-  "fluxion-test-utils/**",
 ]
 

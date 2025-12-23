@@ -18,7 +18,7 @@ async fn test_timeout_basic() {
     let (tx, stream) = test_channel::<AsyncStdTimestamped<Person>>();
     let mut timed = stream.timeout(Duration::from_millis(200));
 
-    // Act - send before timeout
+    // Act
     tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 

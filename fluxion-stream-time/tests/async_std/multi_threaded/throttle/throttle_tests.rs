@@ -3,7 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::async_std::helpers::{person_alice, test_channel, Person};
-
 use fluxion_stream_time::runtimes::AsyncStdTimer;
 use fluxion_stream_time::timer::Timer;
 use fluxion_stream_time::{prelude::*, InstantTimestamped};
@@ -17,14 +16,13 @@ async fn test_throttle_across_threads() {
     let timer = AsyncStdTimer;
     let (tx, stream) = test_channel::<AsyncStdTimestamped<Person>>();
 
-    // Spawn on different thread
     let handle = async_std::task::spawn(async move {
         use futures::StreamExt;
         let mut throttled = stream.throttle(Duration::from_millis(100));
         throttled.next().await
     });
 
-    // Act - first emission goes through immediately
+    // Act
     tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
     drop(tx);

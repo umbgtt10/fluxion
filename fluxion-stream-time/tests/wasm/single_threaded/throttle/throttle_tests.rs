@@ -25,6 +25,8 @@ async fn test_throttle_basic() {
     gloo_timers::future::sleep(Duration::from_millis(50)).await;
 
     // Assert
-    let result = unwrap_stream(&mut throttled, 200).await;
-    assert_eq!(result.unwrap().value, person_alice());
+    assert_eq!(
+        unwrap_stream(&mut throttled, 200).await.unwrap().value,
+        person_alice()
+    );
 }

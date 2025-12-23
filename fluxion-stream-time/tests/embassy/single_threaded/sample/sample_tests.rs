@@ -7,13 +7,11 @@ use embassy_time::Timer;
 use fluxion_stream_time::runtimes::EmbassyTimerImpl;
 use fluxion_stream_time::timer::Timer as TimerTrait;
 use fluxion_stream_time::{prelude::*, EmbassyTimestamped};
+use std::panic;
 use std::time::Duration;
 
-/// Test basic sample functionality with Embassy timer.
-/// Runs on Embassy executor with nightly Rust.
 #[test]
 fn test_sample_basic() {
-    use std::panic;
     let result = panic::catch_unwind(|| {
         let executor = Box::leak(Box::new(embassy_executor::Executor::new()));
         executor.run(|spawner| {
@@ -49,22 +47,19 @@ async fn test_impl() {
     let (tx, stream) = test_channel::<EmbassyTimestamped<Person>>();
     let mut sampled = stream.sample(Duration::from_millis(100));
 
-    // Act - send first value
+    // Act
     tx.unbounded_send(EmbassyTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
-    // Wait a bit, then send second value
     Timer::after(embassy_time::Duration::from_millis(50)).await;
     tx.unbounded_send(EmbassyTimestamped::new(person_bob(), timer.now()))
         .unwrap();
 
-    // Wait for sample period
     Timer::after(embassy_time::Duration::from_millis(100)).await;
 
-    // Assert - should get the latest value (Bob) after sample period
+    // Assert
     let result = unwrap_stream(&mut sampled, 200).await;
     assert_eq!(result.unwrap().value, person_bob());
 
-    // Exit executor by panicking (Embassy executor.run() never returns)
     panic!("Test passed - using panic to exit executor");
 }

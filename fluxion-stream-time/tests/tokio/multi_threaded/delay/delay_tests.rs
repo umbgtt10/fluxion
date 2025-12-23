@@ -14,7 +14,6 @@ async fn test_delay_across_threads() -> anyhow::Result<()> {
     let timer = TokioTimer;
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
 
-    // Spawn on different thread
     let handle = tokio::spawn(async move {
         let mut delayed = stream.delay(Duration::from_millis(50));
         delayed.next().await
@@ -25,8 +24,10 @@ async fn test_delay_across_threads() -> anyhow::Result<()> {
     drop(tx);
 
     // Assert
-    let result = handle.await.unwrap();
-    assert_eq!(result.unwrap().unwrap().value, person_alice());
+    assert_eq!(
+        handle.await.unwrap().unwrap().unwrap().value,
+        person_alice()
+    );
 
     Ok(())
 }

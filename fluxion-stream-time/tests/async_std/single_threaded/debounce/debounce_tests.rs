@@ -22,7 +22,6 @@ async fn test_debounce_basic() {
     tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
-    // Wait for debounce period to elapse
     async_io::Timer::after(Duration::from_millis(150)).await;
 
     // Assert
