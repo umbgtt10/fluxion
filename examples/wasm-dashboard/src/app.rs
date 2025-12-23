@@ -10,11 +10,10 @@ use crate::ui::UI;
 
 /// Main dashboard application
 pub struct Dashboard {
-    window: Window,
-    document: Document,
+    _window: Window,
+    _document: Document,
     ui: UI,
     simulator: SensorSimulator,
-    running: bool,
 }
 
 impl Dashboard {
@@ -25,11 +24,10 @@ impl Dashboard {
         web_sys::console::log_1(&"✅ Dashboard initialized".into());
 
         Ok(Self {
-            window,
-            document,
+            _window: window,
+            _document: document,
             ui,
             simulator,
-            running: false,
         })
     }
 
@@ -39,16 +37,8 @@ impl Dashboard {
         // Set up event listeners
         self.ui.setup_controls(&mut self.simulator)?;
 
-        // Main update loop will be driven by animation frames
-        self.running = true;
-
         web_sys::console::log_1(&"✅ Dashboard running".into());
 
         Ok(())
-    }
-
-    pub fn stop(&mut self) {
-        self.running = false;
-        web_sys::console::log_1(&"⏹️ Dashboard stopped".into());
     }
 }

@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 /// Simulated sensor data generators
+#[allow(dead_code)]
 pub struct SensorSimulator {
     pub sensor1_hz: f64,
     pub sensor2_hz: f64,
@@ -14,6 +15,7 @@ pub struct SensorSimulator {
     pub timeout_enabled: bool,
 }
 
+#[allow(dead_code)]
 impl SensorSimulator {
     pub fn new() -> Self {
         Self {

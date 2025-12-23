@@ -22,7 +22,8 @@ impl UI {
         })
     }
 
-    pub fn setup_controls(&self, simulator: &mut SensorSimulator) -> Result<(), JsValue> {
+    #[allow(dead_code)]
+    pub fn setup_controls(&self, _simulator: &mut SensorSimulator) -> Result<(), JsValue> {
         // Start button
         self.setup_button("startBtn", || {
             web_sys::console::log_1(&"🚀 Starting sensors...".into());
@@ -89,6 +90,7 @@ impl UI {
         self.setup_button(id, callback)
     }
 
+    #[allow(dead_code)]
     pub fn update_metrics(&self, received: u32, emitted: u32) -> Result<(), JsValue> {
         if let Some(element) = self.document.get_element_by_id("eventsReceived") {
             element.set_text_content(Some(&received.to_string()));

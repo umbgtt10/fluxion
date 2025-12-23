@@ -3,15 +3,14 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use web_sys::{Document, HtmlElement, Window};
 
-mod app;
+mod app_streaming;
 mod chart;
 mod sensors;
+mod stream_data;
 mod ui;
 
-use app::Dashboard;
+use app_streaming::Dashboard;
 
 /// Entry point called from JavaScript
 #[wasm_bindgen(start)]
@@ -38,22 +37,4 @@ pub async fn start_dashboard() -> Result<(), JsValue> {
     dashboard.run().await?;
 
     Ok(())
-}
-
-/// Get window and document helpers
-fn get_window() -> Result<Window, JsValue> {
-    web_sys::window().ok_or_else(|| JsValue::from_str("No window object"))
-}
-
-fn get_document() -> Result<Document, JsValue> {
-    get_window()?
-        .document()
-        .ok_or_else(|| JsValue::from_str("No document object"))
-}
-
-fn get_element_by_id(id: &str) -> Result<HtmlElement, JsValue> {
-    Ok(get_document()?
-        .get_element_by_id(id)
-        .ok_or_else(|| JsValue::from_str(&format!("Element {} not found", id)))?
-        .dyn_into::<HtmlElement>()?)
 }

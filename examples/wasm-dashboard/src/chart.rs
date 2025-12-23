@@ -6,6 +6,8 @@ use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 /// Simple chart renderer for visualizing sensor data
+#[derive(Clone)]
+#[allow(dead_code)]
 pub struct Chart {
     canvas: HtmlCanvasElement,
     ctx: CanvasRenderingContext2d,
@@ -13,6 +15,7 @@ pub struct Chart {
     max_points: usize,
 }
 
+#[allow(dead_code)]
 impl Chart {
     pub fn new(canvas: HtmlCanvasElement) -> Result<Self, wasm_bindgen::JsValue> {
         let ctx = canvas
@@ -35,6 +38,13 @@ impl Chart {
         }
     }
 
+    pub fn clear(&self) -> Result<(), wasm_bindgen::JsValue> {
+        let width = self.canvas.width() as f64;
+        let height = self.canvas.height() as f64;
+        self.ctx.clear_rect(0.0, 0.0, width, height);
+        Ok(())
+    }
+
     pub fn render(&self) -> Result<(), wasm_bindgen::JsValue> {
         let width = self.canvas.width() as f64;
         let height = self.canvas.height() as f64;
@@ -43,7 +53,7 @@ impl Chart {
         self.ctx.clear_rect(0.0, 0.0, width, height);
 
         // Draw background
-        self.ctx.set_fill_style(&"#1a1a2e".into());
+        self.ctx.set_fill_style_str("#1a1a2e");
         self.ctx.fill_rect(0.0, 0.0, width, height);
 
         if self.data_points.is_empty() {
@@ -51,7 +61,7 @@ impl Chart {
         }
 
         // Draw grid lines
-        self.ctx.set_stroke_style(&"#16213e".into());
+        self.ctx.set_stroke_style_str("#16213e");
         self.ctx.set_line_width(1.0);
         for i in 0..5 {
             let y = (i as f64 * height) / 4.0;
@@ -62,7 +72,7 @@ impl Chart {
         }
 
         // Draw data line
-        self.ctx.set_stroke_style(&"#0f3460".into());
+        self.ctx.set_stroke_style_str("#0f3460");
         self.ctx.set_line_width(2.0);
         self.ctx.begin_path();
 
