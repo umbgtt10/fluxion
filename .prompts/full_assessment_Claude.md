@@ -7,6 +7,8 @@ When computing metrics, do not consider:
 When counting unwrap() and expect() usages, highlight in the report whether these are in test code, fluxion-test-utils, benchmark code, comments or in productive code.
 For those in productive code highlight whether they are justified or should be replaced with proper error handling.
 
+Pay special attention to the outer README file and the PITCH document.
+
 Add this on top:
 Reviewer: Claude Opus Copilot
 Date: <date>
