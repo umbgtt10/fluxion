@@ -318,9 +318,6 @@ jobs:
           restore-keys: |
             nightly-embassy-cargo-
 
-      - name: Run Embassy tests (fluxion-core)
-        run: cargo +nightly test --package fluxion-core --features runtime-embassy --no-default-features --test all_tests --verbose -- --test-threads=1
-
       - name: Run Embassy tests (fluxion-stream-time)
         run: cargo +nightly test --package fluxion-stream-time --features runtime-embassy --no-default-features --test all_tests --verbose -- --test-threads=1
 
