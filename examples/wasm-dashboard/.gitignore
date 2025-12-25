@@ -1,0 +1,19 @@
+# Build output
+dist/
+
+# Rust build artifacts
+target/
+Cargo.lock
+
+# WASM build artifacts
+pkg/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
