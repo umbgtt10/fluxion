@@ -687,6 +687,10 @@ New projects should use tokio or smol runtimes instead.
 **Feature Completeness:**
 - [ ] Consider implementing feature-branched Poll-based `partition` for no_std
 - [ ] Consider implementing `publish` operator for lazy multi-subscriber pattern
+- [ ] Address WASM SubscribeExt limitation (see `fluxion-exec/WASM_LIMITATIONS.md`)
+  - [ ] Either implement error-free callback variant for WASM
+  - [ ] Or implement string-based error collection for WASM
+  - [ ] Or document as permanent limitation and recommend spawn_local pattern
 - [ ] Final operator API review (no breaking changes after this)
 
 **Performance:**
