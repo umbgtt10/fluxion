@@ -630,72 +630,87 @@ New projects should use tokio or smol runtimes instead.
 **Documentation now complete and consistent** across all 5 runtimes with proper feature flag naming and comprehensive usage examples.
 **Test consistency achieved** - All runtime tests now follow the same explicit timer pattern, improving maintainability and reducing confusion.
 
-## 🚀 Version 0.6.14 - Polishing, Planning and Test Applications
+## 🚀 Version 0.7.0 - Testing Infrastructure & Example Applications
 
-**Status:** Ongoing
+**Status:** Planned
 
-**Goal:** Polish the workspace and provide another test application demonstrating wasm usage
+**Goal:** Complete testing infrastructure, demonstrate runtime capabilities, and prepare for production
+
+**Note:** Versions 0.6.8-0.6.13 already delivered the complete runtime abstraction originally planned for 0.7.0. This release focuses on testing infrastructure and real-world examples.
 
 ### Essential Features
-- [ ] Fix unstable tests
-- [ ] Get code coverage back to 88% or higher
-- [ ] Create a WASM example application demonstrating browser usage with time-based operators
-- [ ] Prepare future roadmap based on current status
 
+**Testing Infrastructure:**
+- [x] ~~Implement `testing_time` module~~ → **Superseded by Timer abstraction (0.6.2-0.6.13)** - All operators tested with controlled time across all 5 runtimes
+- [ ] Fix unstable tests across the workspace
+- [ ] Improve time operator test coverage - Currently ~50-60% per operator (debounce: 29/50, throttle: 24/42, timeout: 16/32, delay: 27/41, sample: 18/37)
+  - Missing edge case coverage in tokio tests
+  - Need additional test scenarios to exercise untested code paths
+- [ ] Consolidate unwrap_stream and unwrap_value in the test utils
 
-## 🚀 Version 0.7.0 - Full Runtime Abstraction
-
-**Status:** Planned
-
-**Goal:** Enable Fluxion to run on multiple async runtimes and in WASM environments
-
-**Essential Features:**
-- [ ] Runtime abstraction layer - Abstract spawn, channels, and time primitives
-- [ ] Feature flags for runtime selection (`tokio`, `async-std`, `wasm-bindgen`)
-- [ ] WASM compatibility - Remove OS-specific dependencies
-- [ ] `wasm-bindgen-futures` integration for browser environments
-- [ ] Conditional compilation for different runtime backends
-- [ ] Time/scheduling abstraction compatible with WASM constraints
-- [ ] Implement `testing_time` module for simulating time in tests across runtimes
+**Example Applications:**
+- [ ] Create WASM example application demonstrating browser usage with time-based operators
+- [ ] Create simple no_std-compatible embedded example (Embassy runtime)
 
 **Documentation:**
-- [ ] Runtime selection guide (choosing between Tokio, async-std, etc.)
-- [ ] WASM integration examples
-- [ ] Browser-based reactive streams example
-- [ ] Migration guide for runtime-specific code
-- [ ] Performance characteristics across runtimes
+- [ ] Update examples README with all 5 runtime examples
+- [ ] Future roadmap update based on 0.6.x achievements
 
 **Quality Gates:**
-- [ ] All time-related tests are parameterized over every possible runtime and pass
 - [ ] WASM example compiles and runs in browser
-- [ ] CI tests against multiple runtimes
-- [ ] Zero clippy warnings across all feature combinations
+- [ ] Embedded example compiles for ARM Cortex-M targets
+- [ ] Code coverage ≥88%
+- [ ] Zero unstable tests
+- [ ] Zero clippy warnings
 - [ ] Zero compiler warnings
-- [ ] Doc tests for all runtime configurations
-- [ ] CI green
+- [ ] CI green for all configurations
+
+**Key Achievement:**
+**Production-Ready Examples** - Real-world examples demonstrate WASM and embedded capabilities. Timer abstraction (0.6.2-0.6.13) already provides deterministic time control across all 5 runtimes.
 
 
-## 🚀 Version 0.8.0 - Polishing and Consolidating
+## 🚀 Version 0.8.0 - Final Polish & Production Readiness
 
 **Status:** Planned
 
-**Goal:** Ensure strict consistency in the code, comments, test code and documentation
+**Goal:** Final polish and preparation for 1.0.0 release
 
-**Essential Features:**
-- [ ] Remove remaining sleeps from the tests
-- [ ] Review and finalize unstable doc
-- [ ] Review and finalize toml files
-- [ ] Review and finalize comments in the source code
-- [ ] Tighten the CI pipeline to the maximum
-- [ ] Create a WASM example application
+### Essential Features
 
-### Documentation
-- [ ] Docs finalized and reviews by all AI agents
+**Code Quality:**
+- [ ] Review and finalize all doc tests (ensure no `ignore` flags)
+- [ ] Review and finalize all Cargo.toml files
+- [ ] Review and finalize code comments across all crates
+- [ ] Remove any remaining test sleeps (should use testing_time)
+- [ ] Tighten CI pipeline to maximum strictness
+
+**Feature Completeness:**
+- [ ] Consider implementing feature-branched Poll-based `partition` for no_std
+- [ ] Consider implementing `publish` operator for lazy multi-subscriber pattern
+- [ ] Final operator API review (no breaking changes after this)
+
+**Performance:**
+- [ ] Comprehensive benchmark suite for all operators
+- [ ] Performance regression tests in CI
+- [ ] Document performance characteristics
+
+**Documentation:**
+- [ ] Final documentation review across all crates
+- [ ] Ensure all examples are up-to-date
+- [ ] Migration guide from 0.6.x to 0.8.0
+- [ ] Prepare 1.0.0 release announcement
 
 ### Quality Gates
-- [ ] Zero compilation errors
+- [ ] Zero compilation errors across all feature combinations
 - [ ] Zero clippy warnings
-- [ ] CI green
+- [ ] Zero compiler warnings
+- [ ] Code coverage ≥90%
+- [ ] All benchmarks pass
+- [ ] CI green with maximum strictness
+- [ ] Documentation complete and consistent
+
+**Key Achievement:**
+**1.0.0-Ready** - Codebase polished to production quality. API stable. Performance validated. Documentation complete. Ready for semantic versioning commitment.
 
 ## 🚀 Version 1.0.0 - Production Ready
 
@@ -863,4 +878,4 @@ New projects should use tokio or smol runtimes instead.
 - Breaking changes are only introduced in major versions (post-1.0)
 - Security fixes may be backported to previous minor versions
 
-**Last Updated:** December 18, 2025
+**Last Updated:** December 23, 2025

@@ -48,6 +48,7 @@ use core::pin::Pin;
 use futures::stream::Stream;
 
 type SubjectBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
+
 struct SubjectState<T> {
     closed: bool,
     senders: Vec<Sender<StreamItem<T>>>,

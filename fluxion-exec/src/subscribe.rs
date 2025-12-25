@@ -15,6 +15,13 @@ use futures::stream::StreamExt;
 /// Extension trait providing async subscription capabilities for streams.
 ///
 /// This trait enables processing stream items with async handlers in a sequential manner.
+///
+/// # Platform-Specific Implementations
+///
+/// This trait has two implementations selected at compile-time:
+/// - **Non-WASM targets**: Requires `Send + Sync` bounds for multi-threaded safety
+/// - **WASM targets**: Omits `Send + Sync` bounds (single-threaded environment)
+#[cfg(not(target_family = "wasm"))]
 #[async_trait]
 pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// Subscribes to the stream with an async handler, processing items sequentially.
@@ -313,6 +320,33 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
         E: Error + Send + Sync + 'static;
 }
 
+/// Extension trait providing async subscription capabilities for streams (WASM version).
+///
+/// This is the WASM-specific implementation that omits `Send + Sync` bounds
+/// since WASM runs in a single-threaded environment.
+#[cfg(target_family = "wasm")]
+#[async_trait(?Send)]
+pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
+    /// Subscribes to the stream with an async handler, processing items sequentially.
+    ///
+    /// See the non-WASM documentation for detailed examples and usage patterns.
+    /// This WASM version has identical behavior but without thread-safety requirements.
+    async fn subscribe<F, Fut, E, OnError>(
+        self,
+        on_next_func: F,
+        cancellation_token: Option<CancellationToken>,
+        on_error_callback: Option<OnError>,
+    ) -> Result<()>
+    where
+        F: Fn(T, CancellationToken) -> Fut + Clone + 'static,
+        Fut: Future<Output = core::result::Result<(), E>> + 'static,
+        OnError: Fn(E) + Clone + 'static,
+        T: Debug + Clone + 'static,
+        E: Error + 'static;
+}
+
+// Non-WASM implementation with Send + Sync bounds
+#[cfg(not(target_family = "wasm"))]
 #[async_trait]
 impl<S, T> SubscribeExt<T> for S
 where
@@ -331,6 +365,56 @@ where
         OnError: Fn(E) + Clone + Send + Sync + 'static,
         T: Debug + Send + Clone + 'static,
         E: Error + Send + Sync + 'static,
+    {
+        let cancellation_token = cancellation_token.unwrap_or_default();
+        let mut collected_errors = Vec::new();
+
+        while let Some(item) = self.next().await {
+            if cancellation_token.is_cancelled() {
+                break;
+            }
+
+            // Call handler directly (sequential processing)
+            let result = on_next_func(item.clone(), cancellation_token.clone()).await;
+
+            if let Err(error) = result {
+                if let Some(ref on_error_callback) = on_error_callback {
+                    on_error_callback(error);
+                } else {
+                    // Collect error for later aggregation
+                    collected_errors.push(error);
+                }
+            }
+        }
+
+        if !collected_errors.is_empty() {
+            Err(FluxionError::from_user_errors(collected_errors))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+// WASM implementation without Send + Sync bounds
+#[cfg(target_family = "wasm")]
+#[async_trait(?Send)]
+impl<S, T> SubscribeExt<T> for S
+where
+    S: Stream<Item = T> + Unpin + 'static,
+    T: 'static,
+{
+    async fn subscribe<F, Fut, E, OnError>(
+        mut self,
+        on_next_func: F,
+        cancellation_token: Option<CancellationToken>,
+        on_error_callback: Option<OnError>,
+    ) -> Result<()>
+    where
+        F: Fn(T, CancellationToken) -> Fut + Clone + 'static,
+        Fut: Future<Output = core::result::Result<(), E>> + 'static,
+        OnError: Fn(E) + Clone + 'static,
+        T: Debug + Clone + 'static,
+        E: Error + 'static,
     {
         let cancellation_token = cancellation_token.unwrap_or_default();
         let mut collected_errors = Vec::new();

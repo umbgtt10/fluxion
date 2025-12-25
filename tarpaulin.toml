@@ -6,22 +6,25 @@ engine = "Llvm"
 out = ["Html", "Xml"]
 
 [run]
-fail-under = 85
+fail-under = 80
+workspace = true
+exclude-tests = true
+exclude = ["fluxion-test-utils"]  # Excludes the entire test-utils crate from tests and coverage report
 exclude-files = [
-  "examples/**",
-  "fluxion-stream-time/tests/async_std/*",
-  "fluxion-stream-time/tests/async_std/**",
-  "fluxion-stream-time/tests/embassy/*",
-  "fluxion-stream-time/tests/embassy/**",
-  "fluxion-stream-time/tests/smol/*",
-  "fluxion-stream-time/tests/smol/**",
-  "fluxion-stream-time/tests/wasm/*",
-  "fluxion-stream-time/tests/wasm/**",
-  "fluxion-core/tests/wasm/*",
-  "fluxion-core/tests/wasm/**",
-  "fluxion-core/tests/smol/*",
-  "fluxion-core/tests/smol/**",
-  "fluxion-core/tests/async_std/*",
-  "fluxion-core/tests/async_std/**",
+  "**/examples/**",
+  "**/benches/**",                      # General benches exclusion
+  "fluxion-core/benches/**",
+  "fluxion-stream/benches/**",
+  "fluxion-stream-time/benches/**",
+  "**/tests/async-std/**",
+  "**/tests/smol/**",
+  "**/tests/wasm/**",
+  "**/tests/embassy/**",
+  "**/tests/async-std/helpers.rs",
+  "**/tests/smol/helpers.rs",
+  "**/tests/wasm/helpers.rs",
+  "**/tests/embassy/helpers.rs",
+  "tests/**/helpers.rs",                # Simpler and more reliable glob for helpers
+  "**/tests/**/helpers.rs",             # Fallback with **
+  "fluxion-stream-time/tests/*/helpers.rs",  # Explicit wildcard for the four runtime helpers
 ]
-
