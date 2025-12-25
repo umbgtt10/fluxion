@@ -58,8 +58,6 @@ pub async fn start_dashboard() -> Result<(), JsValue> {
         let streams = SensorStreams::new(sensors);
         let updater = DashboardUpdater::new(&streams, ui.clone(), close_cancel_token.clone());
 
-        web_sys::console::log_1(&"✅ Sensors and streams created, updater running".into());
-
         updater.run().await;
 
         web_sys::console::log_1(&"✅ Dashboard shutdown complete".into());

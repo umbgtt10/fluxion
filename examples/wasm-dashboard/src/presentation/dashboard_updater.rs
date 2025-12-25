@@ -49,25 +49,21 @@ impl DashboardUpdater {
     /// blocks waiting for the cancellation token to be triggered (e.g., by
     /// the close button). When cancelled, it returns and all tasks are dropped.
     pub async fn run(self) {
-        let mut tasks = Vec::new();
         let mut streams = self.streams.into_iter();
 
         // Wire sensor 1
         if let Some(stream) = streams.next() {
-            let task = Self::wire_sensor1(stream, self.ui.clone(), self.cancel_token.clone());
-            tasks.push(task);
+            Self::wire_sensor1(stream, self.ui.clone(), self.cancel_token.clone());
         }
 
         // Wire sensor 2
         if let Some(stream) = streams.next() {
-            let task = Self::wire_sensor2(stream, self.ui.clone(), self.cancel_token.clone());
-            tasks.push(task);
+            Self::wire_sensor2(stream, self.ui.clone(), self.cancel_token.clone());
         }
 
         // Wire sensor 3
         if let Some(stream) = streams.next() {
-            let task = Self::wire_sensor3(stream, self.ui.clone(), self.cancel_token.clone());
-            tasks.push(task);
+            Self::wire_sensor3(stream, self.ui.clone(), self.cancel_token.clone());
         }
 
         // Block until cancellation token is triggered
@@ -82,35 +78,29 @@ impl DashboardUpdater {
         mut stream: fluxion_stream::fluxion_shared::SharedBoxStream<SensorValue>,
         ui: Rc<RefCell<DashboardUI>>,
         cancel_token: CancellationToken,
-    ) -> FluxionTask {
-        FluxionTask::spawn(move |task_token| async move {
-            web_sys::console::log_1(&"📡 Sensor 1 task started".into());
-            while !cancel_token.is_cancelled() && !task_token.is_cancelled() {
+    ) {
+        wasm_bindgen_futures::spawn_local(async move {
+            while !cancel_token.is_cancelled() {
                 match stream.next().await {
                     Some(StreamItem::Value(sensor_value)) => {
-                        web_sys::console::log_1(&format!("Sensor 1: {}", sensor_value.value).into());
                         ui.borrow_mut().update_sensor1(sensor_value.value);
                     }
                     Some(StreamItem::Error(e)) => {
                         web_sys::console::error_1(&format!("Sensor 1 error: {:?}", e).into());
                     }
-                    None => {
-                        web_sys::console::log_1(&"Sensor 1 stream ended".into());
-                        break;
-                    }
+                    None => break,
                 }
             }
-            web_sys::console::log_1(&"📡 Sensor 1 task stopped".into());
-        })
+        });
     }
 
     fn wire_sensor2(
         mut stream: fluxion_stream::fluxion_shared::SharedBoxStream<SensorValue>,
         ui: Rc<RefCell<DashboardUI>>,
         cancel_token: CancellationToken,
-    ) -> FluxionTask {
-        FluxionTask::spawn(move |task_token| async move {
-            while !cancel_token.is_cancelled() && !task_token.is_cancelled() {
+    ) {
+        wasm_bindgen_futures::spawn_local(async move {
+            while !cancel_token.is_cancelled() {
                 match stream.next().await {
                     Some(StreamItem::Value(sensor_value)) => {
                         ui.borrow_mut().update_sensor2(sensor_value.value);
@@ -121,16 +111,16 @@ impl DashboardUpdater {
                     None => break,
                 }
             }
-        })
+        });
     }
 
     fn wire_sensor3(
         mut stream: fluxion_stream::fluxion_shared::SharedBoxStream<SensorValue>,
         ui: Rc<RefCell<DashboardUI>>,
         cancel_token: CancellationToken,
-    ) -> FluxionTask {
-        FluxionTask::spawn(move |task_token| async move {
-            while !cancel_token.is_cancelled() && !task_token.is_cancelled() {
+    ) {
+        wasm_bindgen_futures::spawn_local(async move {
+            while !cancel_token.is_cancelled() {
                 match stream.next().await {
                     Some(StreamItem::Value(sensor_value)) => {
                         ui.borrow_mut().update_sensor3(sensor_value.value);
@@ -141,6 +131,6 @@ impl DashboardUpdater {
                     None => break,
                 }
             }
-        })
+        });
     }
 }

@@ -43,11 +43,9 @@ impl Sensor {
         let (min_value, max_value) = value_range;
 
         let task = FluxionTask::spawn(move |task_cancel| async move {
-            web_sys::console::log_1(&format!("🔧 Sensor task started (range {}-{})", min_value, max_value).into());
             loop {
                 // Check both external and task cancellation tokens
                 if cancel_token.is_cancelled() || task_cancel.is_cancelled() {
-                    web_sys::console::log_1(&"🔧 Sensor task cancelled".into());
                     break;
                 }
 
@@ -56,11 +54,8 @@ impl Sensor {
                 let value_range = (max_value - min_value) as f64;
                 let value = min_value + (random_ratio * value_range) as u32;
 
-                web_sys::console::log_1(&format!("🔧 Sensor generating value: {}", value).into());
-
                 // Send value (ignore errors if receiver dropped)
                 if sender.send(value).await.is_err() {
-                    web_sys::console::log_1(&"🔧 Sensor receiver dropped".into());
                     break;
                 }
 
@@ -71,7 +66,6 @@ impl Sensor {
 
                 TimeoutFuture::new(delay_ms as u32).await;
             }
-            web_sys::console::log_1(&"🔧 Sensor task ended".into());
         });
 
         Self { receiver, task }
