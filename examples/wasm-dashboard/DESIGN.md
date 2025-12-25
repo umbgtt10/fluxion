@@ -48,31 +48,31 @@ pub struct SensorStream {
 impl SensorStream {
     pub fn new(period_range_ms: (u64, u64), value_range: (u32, u32)) -> Self {
         let (sender, receiver) = async_channel::unbounded();
-        
+
         let task = FluxionTask::spawn(|cancel| async move {
             loop {
                 if cancel.is_cancelled() {
                     break;
                 }
-                
+
                 // Generate random value in range
                 let value = generate_random_value(value_range);
-                
+
                 // Send value (ignore errors if receiver dropped)
                 let _ = sender.send(value).await;
-                
+
                 // Wait random period (1-5 Hz)
                 let delay_ms = generate_random_delay(period_range_ms);
                 TimeoutFuture::new(delay_ms).await;
             }
         });
-        
+
         Self {
             receiver,
             _task: task,
         }
     }
-    
+
     /// Returns a cloneable receiver for this sensor's data
     pub fn receiver(&self) -> async_channel::Receiver<u32> {
         self.receiver.clone()
@@ -107,7 +107,7 @@ impl RawStreams {
 #### 6. Task Lifecycle
 - **Creation**: Tasks spawned in `SensorStream::new()`
 - **Running**: Continuous loop generating values until cancelled
-- **Cancellation**: 
+- **Cancellation**:
   - Automatic when `SensorStream` is dropped
   - Manual via stored `FluxionTask` reference if needed
 - **Cleanup**: Channel automatically closed when sender dropped

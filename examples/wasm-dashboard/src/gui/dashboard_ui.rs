@@ -2,13 +2,14 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::CancellationToken;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{Document, HtmlButtonElement, HtmlElement};
 
-/// Shared dashboard UI with 11 hooking points (9 windows + 2 buttons)
+/// Shared dashboard UI with 12 hooking points (9 windows + 3 buttons)
 pub struct DashboardUI {
     // 3 sensor windows (top section)
     sensor1_window: HtmlElement,
@@ -25,14 +26,18 @@ pub struct DashboardUI {
     sample_window: HtmlElement,
     window_window: HtmlElement,
 
-    // 2 control buttons
+    // 3 control buttons
     start_button: HtmlButtonElement,
     stop_button: HtmlButtonElement,
+    close_button: HtmlButtonElement,
 }
 
 impl DashboardUI {
     /// Creates a new DashboardUI wrapped in Rc<RefCell<>> for sharing across subscribe closures
-    pub fn new(document: &Document) -> Result<Rc<RefCell<Self>>, JsValue> {
+    pub fn new(
+        document: &Document,
+        cancel_token: CancellationToken,
+    ) -> Result<Rc<RefCell<Self>>, JsValue> {
         let ui = Self {
             // Get sensor windows
             sensor1_window: Self::get_element(document, "sensor1Window")?,
@@ -52,9 +57,32 @@ impl DashboardUI {
             // Get buttons
             start_button: Self::get_button(document, "startBtn")?,
             stop_button: Self::get_button(document, "stopBtn")?,
+            close_button: Self::get_button(document, "closeBtn")?,
         };
 
-        Ok(Rc::new(RefCell::new(ui)))
+        let ui_rc = Rc::new(RefCell::new(ui));
+        Self::wire_close_button(&ui_rc, cancel_token);
+        Ok(ui_rc)
+    }
+
+    fn wire_close_button(ui_rc: &Rc<RefCell<Self>>, cancel_token: CancellationToken) {
+        let close_button = ui_rc.borrow().close_button.clone();
+        let close_closure = Closure::wrap(Box::new(move || {
+            web_sys::console::log_1(&"❌ Closing dashboard...".into());
+
+            // Trigger cancellation token (stops all tasks)
+            cancel_token.cancel();
+
+            // Close the window
+            if let Some(window) = web_sys::window() {
+                let _ = window.close();
+            }
+        }) as Box<dyn FnMut()>);
+
+        close_button
+            .add_event_listener_with_callback("click", close_closure.as_ref().unchecked_ref())
+            .unwrap();
+        close_closure.forget();
     }
 
     fn get_element(document: &Document, id: &str) -> Result<HtmlElement, JsValue> {
@@ -153,5 +181,9 @@ impl DashboardUI {
 
     pub fn stop_button(&self) -> &HtmlButtonElement {
         &self.stop_button
+    }
+
+    pub fn close_button(&self) -> &HtmlButtonElement {
+        &self.close_button
     }
 }

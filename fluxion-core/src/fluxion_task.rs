@@ -93,6 +93,7 @@ impl FluxionTask {
     /// drop(task);
     /// # }
     /// ```
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn spawn<F, Fut>(f: F) -> Self
     where
         F: FnOnce(CancellationToken) -> Fut + Send + 'static,
@@ -102,12 +103,7 @@ impl FluxionTask {
         let cancel_clone = cancel.clone();
         let _future = f(cancel_clone);
 
-        // Feature-gated spawn implementations (mutually exclusive priority order)
-        #[cfg(target_arch = "wasm32")]
-        wasm_bindgen_futures::spawn_local(_future);
-
         #[cfg(all(
-            not(target_arch = "wasm32"),
             feature = "runtime-tokio",
             not(all(feature = "runtime-smol", not(feature = "runtime-tokio"))),
             not(all(
@@ -118,16 +114,11 @@ impl FluxionTask {
         ))]
         tokio::spawn(_future);
 
-        #[cfg(all(
-            not(target_arch = "wasm32"),
-            feature = "runtime-smol",
-            not(feature = "runtime-tokio")
-        ))]
+        #[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
         smol::spawn(_future).detach();
 
         #[cfg(all(
             not(target_arch = "wasm32"),
-            feature = "runtime-async-std",
             not(feature = "runtime-tokio"),
             not(feature = "runtime-smol")
         ))]
@@ -137,6 +128,29 @@ impl FluxionTask {
     }
 
     /// Manually cancel the task.
+    ///Spawn a background task with cancellation support (WASM version without Send bounds).
+    ///
+    /// This is the WASM-specific version of `spawn` that does not require `Send` bounds
+    /// since WASM is single-threaded. The closure and future only need to be `'static`.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - A closure that receives a `CancellationToken` and returns a future
+    #[cfg(target_arch = "wasm32")]
+    pub fn spawn<F, Fut>(f: F) -> Self
+    where
+        F: FnOnce(CancellationToken) -> Fut + 'static,
+        Fut: Future<Output = ()> + 'static,
+    {
+        let cancel = CancellationToken::new();
+        let cancel_clone = cancel.clone();
+        let _future = f(cancel_clone);
+
+        wasm_bindgen_futures::spawn_local(_future);
+
+        Self { cancel }
+    }
+
     ///
     /// This signals the task to stop but doesn't wait for it to complete.
     /// The task will stop at its next cancellation checkpoint.
