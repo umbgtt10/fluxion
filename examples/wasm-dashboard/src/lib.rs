@@ -4,16 +4,9 @@
 
 use wasm_bindgen::prelude::*;
 
-mod stream_aggregator;
-mod app_streaming;
-mod chart;
-mod integration;
-mod sensor_value_source;
-mod raw_sensor_value;
-mod sensors;
-mod ui;
+mod gui;
 
-use app_streaming::Dashboard;
+use gui::DashboardUI;
 
 /// Entry point called from JavaScript
 #[wasm_bindgen(start)]
@@ -33,11 +26,13 @@ pub async fn start_dashboard() -> Result<(), JsValue> {
     let window = web_sys::window().ok_or("No window")?;
     let document = window.document().ok_or("No document")?;
 
-    // Initialize the dashboard
-    let mut dashboard = Dashboard::new(window, document)?;
+    // Create GUI with 11 hooking points (9 windows + 2 buttons)
+    let ui = DashboardUI::new(&document)?;
 
-    // Start the main loop
-    dashboard.run().await?;
+    web_sys::console::log_1(&"✅ Dashboard UI created with 11 hooking points".into());
+
+    // Enable start button by default
+    ui.borrow_mut().enable_start();
 
     Ok(())
 }

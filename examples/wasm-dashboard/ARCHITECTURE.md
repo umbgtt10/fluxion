@@ -140,7 +140,7 @@ impl SharedTimestampedStreams {
         let sensor3 = raw.sensor3.into_fluxion_stream()
             .map_ordered(|v| Timestamped::new(v))
             .share();
-        
+
         Self { sensor1, sensor2, sensor3 }
     }
 }
@@ -171,9 +171,9 @@ impl SharedMergedStream {
             .share();  // Share for 6 subscribers: 1 GUI + 5 operators
         Self { merged }
     }
-    
-    pub fn subscribe_for_gui(&self) 
-        -> Result<FluxionStream<Timestamped<SummedValue>>, SubjectError> 
+
+    pub fn subscribe_for_gui(&self)
+        -> Result<FluxionStream<Timestamped<SummedValue>>, SubjectError>
     {
         Ok(FluxionStream::new(self.merged.subscribe()?))
     }
@@ -202,7 +202,7 @@ impl TimeBoundStreams {
             .sample(Duration::from_millis(duration_ms));
         let window = FluxionStream::new(merged.merged.subscribe().unwrap())
             .window(Duration::from_millis(duration_ms));
-        
+
         Self { debounce, throttle, buffer, sample, window }
     }
 }
@@ -234,7 +234,7 @@ impl DashboardUI {
         // Initialize all 11 GUI elements
         // Returns Rc<RefCell<T>> for sharing among 9 subscribes
     }
-    
+
     // 11 hooking points
     pub fn update_sensor1(&mut self, value: u32) { /* ... */ }
     pub fn update_sensor2(&mut self, value: u32) { /* ... */ }
