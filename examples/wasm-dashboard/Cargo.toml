@@ -9,6 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 fluxion-core = { path = "../../fluxion-core", default-features = false, features = ["alloc"] }
+fluxion-exec = { path = "../../fluxion-exec", default-features = false }
 fluxion-stream = { path = "../../fluxion-stream", default-features = false, features = ["alloc"] }
 fluxion-stream-time = { path = "../../fluxion-stream-time", default-features = false, features = ["runtime-wasm"] }
 

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluxion WASM Dashboard - Reactive Operators Demo</title>
+    <link data-trunk rel="css" href="www/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌊 Fluxion WASM Dashboard</h1>
+            <p class="subtitle">Real-time demonstration of reactive stream operators</p>
+        </header>
+
+        <main>
+            <!-- Control Panel -->
+            <section class="control-panel">
+                <h2>Controls</h2>
+                <div class="button-group">
+                    <button id="startBtn" class="btn btn-primary">▶️ Start</button>
+                    <button id="stopBtn" class="btn btn-danger" disabled>⏹️ Stop</button>
+                    <button id="closeBtn" class="btn btn-secondary">❌ Close</button>
+                </div>
+            </section>
+
+            <!-- Sensor Windows (Top Section - 3 windows) -->
+            <section class="sensor-section">
+                <h2>📡 Raw Sensor Streams</h2>
+                <div class="sensor-grid">
+                    <div class="window-card sensor">
+                        <h3>Sensor 1</h3>
+                        <p class="window-desc">Values: 1-9 | Frequency: 1-5 Hz</p>
+                        <div id="sensor1Window" class="data-window">
+                            <div class="waiting">Waiting for data...</div>
+                        </div>
+                    </div>
+                    <div class="window-card sensor">
+                        <h3>Sensor 2</h3>
+                        <p class="window-desc">Values: 10-90 | Frequency: 1-5 Hz</p>
+                        <div id="sensor2Window" class="data-window">
+                            <div class="waiting">Waiting for data...</div>
+                        </div>
+                    </div>
+                    <div class="window-card sensor">
+                        <h3>Sensor 3</h3>
+                        <p class="window-desc">Values: 100-900 | Frequency: 1-5 Hz</p>
+                        <div id="sensor3Window" class="data-window">
+                            <div class="waiting">Waiting for data...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Processed Streams (Bottom Section - 6 windows) -->
+            <section class="processed-section">
+                <h2>⚙️ Processed Streams</h2>
+                <div class="processed-grid">
+                    <div class="window-card processed">
+                        <h3>Combined (Latest)</h3>
+                        <p class="window-desc">Sum of latest values from all sensors</p>
+                        <div id="combinedWindow" class="data-window">
+                            <div class="waiting">Waiting for data...</div>
+                        </div>
+                    </div>
+                    <div class="window-card processed">
+                        <h3>Debounced</h3>
+                        <p class="window-desc">Only emits after 500ms of inactivity</p>
+                        <div id="debounceWindow" class="data-window">
+                            <div class="waiting">Waiting for data...</div>
+                        </div>
+                    </div>
+                    <div class="window-card processed">
+                        <h3>Throttled</h3>
+                        <p class="window-desc">Max one emission per 500ms</p>
+                        <div id="throttleWindow" class="data-window">
+                            <div class="waiting">Waiting for data...</div>
+                        </div>
+                    </div>
+                    <div class="window-card processed">
+                        <h3>Buffered</h3>
+                        <p class="window-desc">Collects values for 1 second</p>
+                        <div id="bufferWindow" class="data-window">
+                            <div class="waiting">Waiting for data...</div>
+                        </div>
+                    </div>
+                    <div class="window-card processed">
+                        <h3>Sampled</h3>
+                        <p class="window-desc">Samples latest value every 1 second</p>
+                        <div id="sampleWindow" class="data-window">
+                            <div class="waiting">Waiting for data...</div>
+                        </div>
+                    </div>
+                    <div class="window-card processed">
+                        <h3>Windowed</h3>
+                        <p class="window-desc">Counts emissions in 1 second windows</p>
+                        <div id="windowWindow" class="data-window">
+                            <div class="waiting">Waiting for data...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Built with 🦀 Rust + WASM | Powered by Fluxion Reactive Streams</p>
+        </footer>
+    </div>
+
+    <script type="module">
+        // Wait for WASM to load, then start dashboard
+        window.addEventListener('TrunkApplicationStarted', async () => {
+            console.log('WASM loaded, starting dashboard...');
+            await window.wasmBindings.start_dashboard();
+        });
+    </script>
+</body>
+</html>

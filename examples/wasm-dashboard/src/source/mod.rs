@@ -10,6 +10,10 @@
 
 mod raw_streams;
 mod sensor;
+mod sensor_streams;
+mod sensor_value;
 
 pub use raw_streams::Sensors;
 pub use sensor::Sensor;
+pub use sensor_streams::SensorStreams;
+pub use sensor_value::SensorValue;

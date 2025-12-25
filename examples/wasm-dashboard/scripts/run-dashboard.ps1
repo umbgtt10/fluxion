@@ -46,14 +46,12 @@ Stop-ProcessOnPort -PortNum $Port
 
 # Build the WASM application with trunk
 Write-Host "Building WASM dashboard with trunk..." -ForegroundColor Green
-$indexPath = Join-Path $DashboardDir "www\index.html"
-Write-Host "Building from: $indexPath" -ForegroundColor Cyan
 
 # Change to dashboard directory for trunk build
 Push-Location $DashboardDir
 try {
-    # Use explicit call operator and double-dash separator for positional args
-    $buildResult = & trunk build --release -- "$indexPath" 2>&1
+    # Build with trunk (index.html is in root)
+    $buildResult = & trunk build --release 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Trunk build failed!"
         Write-Host $buildResult
@@ -81,8 +79,12 @@ Write-Host "Server directory: $DistDir" -ForegroundColor Cyan
 Write-Host "Server will serve files from: $DistDir" -ForegroundColor Cyan
 $ServerJob = Start-Job -ScriptBlock {
     param($Dir, $P)
-    # Refresh PATH for Python
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    # Use full Python path to avoid PATH issues
+    $pythonExe = "C:\Users\$env:USERNAME\AppData\Local\Programs\Python\Python312\python.exe"
+    if (-not (Test-Path $pythonExe)) {
+        # Try alternative locations
+        $pythonExe = Get-ChildItem -Path "$env:LOCALAPPDATA\Programs\Python" -Recurse -Filter python.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+    }
     # Change to dist directory
     Set-Location $Dir
     # Verify we're in the right place
@@ -90,7 +92,7 @@ $ServerJob = Start-Job -ScriptBlock {
     Write-Host "Files available:"
     Get-ChildItem | ForEach-Object { Write-Host "  - $($_.Name)" }
     # Start HTTP server
-    python -m http.server $P
+    & $pythonExe -m http.server $P
 } -ArgumentList $DistDir, $Port
 
 # Wait a moment for server to start

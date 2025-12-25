@@ -65,26 +65,6 @@ impl DashboardUI {
         Ok(ui_rc)
     }
 
-    fn wire_close_button(ui_rc: &Rc<RefCell<Self>>, cancel_token: CancellationToken) {
-        let close_button = ui_rc.borrow().close_button.clone();
-        let close_closure = Closure::wrap(Box::new(move || {
-            web_sys::console::log_1(&"❌ Closing dashboard...".into());
-
-            // Trigger cancellation token (stops all tasks)
-            cancel_token.cancel();
-
-            // Close the window
-            if let Some(window) = web_sys::window() {
-                let _ = window.close();
-            }
-        }) as Box<dyn FnMut()>);
-
-        close_button
-            .add_event_listener_with_callback("click", close_closure.as_ref().unchecked_ref())
-            .unwrap();
-        close_closure.forget();
-    }
-
     fn get_element(document: &Document, id: &str) -> Result<HtmlElement, JsValue> {
         Ok(document
             .get_element_by_id(id)
@@ -185,5 +165,25 @@ impl DashboardUI {
 
     pub fn close_button(&self) -> &HtmlButtonElement {
         &self.close_button
+    }
+
+    fn wire_close_button(ui_rc: &Rc<RefCell<Self>>, cancel_token: CancellationToken) {
+        let close_button = ui_rc.borrow().close_button.clone();
+        let close_closure = Closure::wrap(Box::new(move || {
+            web_sys::console::log_1(&"❌ Closing dashboard...".into());
+
+            // Trigger cancellation token (stops all tasks)
+            cancel_token.cancel();
+
+            // Close the window
+            if let Some(window) = web_sys::window() {
+                let _ = window.close();
+            }
+        }) as Box<dyn FnMut()>);
+
+        close_button
+            .add_event_listener_with_callback("click", close_closure.as_ref().unchecked_ref())
+            .unwrap();
+        close_closure.forget();
     }
 }
