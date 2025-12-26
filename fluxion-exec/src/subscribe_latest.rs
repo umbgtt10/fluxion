@@ -135,7 +135,7 @@ where
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
-    ///         None::<fn(std::io::Error)>,
+    ///         |_| {}, // Ignore errors
     ///         None
     ///     ).await
     /// });

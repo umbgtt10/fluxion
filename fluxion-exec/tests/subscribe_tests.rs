@@ -65,7 +65,7 @@ async fn test_subscribe_processes_items_when_waiting_per_item() -> anyhow::Resul
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, None, error_callback)
+                .subscribe(func, error_callback, None)
                 .await
                 .expect("subscribe should succeed");
         }
@@ -160,7 +160,7 @@ async fn test_subscribe_reports_errors_for_animals_and_collects_people() -> anyh
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, None, error_callback)
+                .subscribe(func, error_callback, None)
                 .await
                 .expect("subscribe should succeed");
         }
@@ -236,7 +236,7 @@ async fn test_subscribe_cancels_midstream_no_post_cancel_processing() -> anyhow:
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, Some(cancellation_token), error_callback)
+                .subscribe(func, error_callback, Some(cancellation_token))
                 .await
                 .expect("subscribe should succeed");
         }
@@ -318,7 +318,7 @@ async fn test_subscribe_errors_then_cancellation_no_post_cancel_processing() -> 
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, Some(cancellation_token), error_callback)
+                .subscribe(func, error_callback, Some(cancellation_token))
                 .await
                 .expect("subscribe should succeed");
         }
@@ -400,7 +400,7 @@ async fn test_subscribe_empty_stream_completes_without_items() -> anyhow::Result
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, None, error_callback)
+                .subscribe(func, error_callback, None)
                 .await
                 .expect("subscribe should succeed");
         }
@@ -450,7 +450,7 @@ async fn test_subscribe_high_volume_processes_all() -> anyhow::Result<()> {
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, None, error_callback)
+                .subscribe(func, error_callback, None)
                 .await
                 .expect("subscribe should succeed");
         }
@@ -512,7 +512,7 @@ async fn test_subscribe_precancelled_token_processes_nothing() -> anyhow::Result
     spawn({
         async move {
             stream
-                .subscribe(func, Some(cancellation_token), error_callback)
+                .subscribe(func, error_callback, Some(cancellation_token))
                 .await
                 .expect("subscribe should succeed");
         }
@@ -560,9 +560,13 @@ async fn test_subscribe_error_aggregation_without_callback() -> anyhow::Result<(
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, None, move |err| {
-                    errors_clone.lock().unwrap().push(err.to_string());
-                })
+                .subscribe(
+                    func,
+                    move |err| {
+                        errors_clone.lock().unwrap().push(err.to_string());
+                    },
+                    None,
+                )
                 .await
         }
     });

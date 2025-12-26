@@ -8,7 +8,6 @@ use crate::domain::{events::UnifiedEvent, repository::OrderAnalytics, Timestampe
 use crate::processing::event_handler::{print_final_analytics, process_event};
 use anyhow::Result;
 use fluxion_core::{stream_item::StreamItem, CancellationToken};
-use fluxion_exec::ignore_errors;
 use fluxion_exec::subscribe::SubscribeExt;
 use futures::lock::Mutex as FutureMutex;
 use futures::Stream;
@@ -84,8 +83,8 @@ impl EventProcessor {
                         }
                     }
                 },
+                |_| {},
                 Some(cancel.clone()),
-                ignore_errors,
             )
             .await;
 

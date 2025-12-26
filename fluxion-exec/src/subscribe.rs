@@ -86,8 +86,8 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///             Ok::<(), std::io::Error>(())
     ///         }
     ///     },
+    ///     |_err| {}, // Ignore errors
     ///     None, // No cancellation
-    ///     |_err| {} // Ignore errors
     /// ).await.unwrap();
     ///
     /// // Wait for all 5 items to be processed
@@ -151,13 +151,13 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///             res
     ///         }
     ///     },
-    ///     None,
-    ///     Some(move |_err| {
+    ///     move |_err| {
     ///         let count = error_count_clone.clone();
     ///         tokio::spawn(async move {
     ///             *count.lock().await += 1;
     ///         });
-    ///     })
+    ///     },
+    ///     None,
     /// ).await.unwrap();
     ///
     /// // Wait for 5 items
@@ -212,8 +212,8 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
+    ///         |_| {}, // Ignore errors
     ///         Some(cancel_token),
-    ///         |_| {} // Ignore errors
     ///     ).await
     /// });
     ///
@@ -276,8 +276,8 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     ///             Ok::<(), std::io::Error>(())
     ///         }
     ///     },
+    ///     |err| eprintln!("DB Error: {}", err),
     ///     None,
-    ///     Some(|err| eprintln!("DB Error: {}", err))
     /// ).await.unwrap();
     ///
     /// // Wait for 2 events
@@ -295,8 +295,8 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     async fn subscribe<F, Fut, E, OnError>(
         self,
         on_next_func: F,
-        cancellation_token: Option<CancellationToken>,
         on_error_callback: OnError,
+        cancellation_token: Option<CancellationToken>,
     ) -> Result<()>
     where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
@@ -315,8 +315,8 @@ where
     async fn subscribe<F, Fut, E, OnError>(
         mut self,
         on_next_func: F,
-        cancellation_token: Option<CancellationToken>,
         on_error_callback: OnError,
+        cancellation_token: Option<CancellationToken>,
     ) -> Result<()>
     where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
