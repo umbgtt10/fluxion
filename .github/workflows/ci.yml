@@ -93,7 +93,7 @@ jobs:
           cargo clippy --all-targets --workspace --exclude wasm-dashboard --features "runtime-tokio,runtime-async-std,runtime-smol,runtime-wasm" -- -D warnings
 
       - name: Generate docs (deny doc warnings)
-        run: cargo doc --no-deps --all-features --verbose
+        run: cargo doc --no-deps --all-features --workspace --exclude wasm-dashboard --verbose
 
       - name: Upload docs
         uses: actions/upload-artifact@v4

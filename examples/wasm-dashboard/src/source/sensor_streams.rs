@@ -4,9 +4,8 @@
 
 use super::raw_streams::Sensors;
 use super::sensor_value::SensorValue;
-use fluxion_core::Timestamped;
 use fluxion_stream::fluxion_shared::SharedBoxStream;
-use fluxion_stream::{IntoFluxionStream, MapOrderedExt, ShareExt};
+use fluxion_stream::{IntoFluxionStream, ShareExt};
 use fluxion_stream_time::runtimes::wasm_implementation::WasmTimer;
 use fluxion_stream_time::timer::Timer;
 
@@ -43,7 +42,10 @@ impl SensorStreams {
         let sensor1 = sensors
             .sensor1
             .receiver()
-            .into_fluxion_stream_map(move |value| SensorValue::with_timestamp(value, timer1.now()))
+            .into_fluxion_stream_map(move |value| SensorValue {
+                timestamp: timer1.now(),
+                value,
+            })
             .share();
 
         // Create shared stream for sensor 2 (values 10-90)
@@ -51,7 +53,10 @@ impl SensorStreams {
         let sensor2 = sensors
             .sensor2
             .receiver()
-            .into_fluxion_stream_map(move |value| SensorValue::with_timestamp(value, timer2.now()))
+            .into_fluxion_stream_map(move |value| SensorValue {
+                timestamp: timer2.now(),
+                value,
+            })
             .share();
 
         // Create shared stream for sensor 3 (values 100-900)
@@ -59,7 +64,10 @@ impl SensorStreams {
         let sensor3 = sensors
             .sensor3
             .receiver()
-            .into_fluxion_stream_map(move |value| SensorValue::with_timestamp(value, timer3.now()))
+            .into_fluxion_stream_map(move |value| SensorValue {
+                timestamp: timer3.now(),
+                value,
+            })
             .share();
 
         Self {

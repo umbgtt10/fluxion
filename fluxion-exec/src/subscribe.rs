@@ -13,7 +13,8 @@ use futures::stream::StreamExt;
 /// Extension trait providing async subscription capabilities for streams.
 ///
 /// This trait enables processing stream items with async handlers in a sequential manner.
-#[async_trait]
+#[cfg(target_arch = "wasm32")]
+#[async_trait(?Send)]
 pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
     /// Subscribes to the stream with an async handler, processing items sequentially.
     ///
@@ -299,6 +300,24 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
         cancellation_token: Option<CancellationToken>,
     ) -> Result<()>
     where
+        F: Fn(T, CancellationToken) -> Fut + Clone + 'static,
+        Fut: Future<Output = core::result::Result<(), E>> + 'static,
+        OnError: Fn(E) + Clone + 'static,
+        T: Debug + Clone + 'static,
+        E: 'static;
+}
+
+// Non-WASM version with Send + Sync bounds for multi-threaded runtimes
+#[cfg(not(target_arch = "wasm32"))]
+#[async_trait]
+pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
+    async fn subscribe<F, Fut, E, OnError>(
+        self,
+        on_next_func: F,
+        on_error_callback: OnError,
+        cancellation_token: Option<CancellationToken>,
+    ) -> Result<()>
+    where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
         Fut: Future<Output = core::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
@@ -306,6 +325,33 @@ pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
         E: Send + 'static;
 }
 
+// WASM implementation
+#[cfg(target_arch = "wasm32")]
+#[async_trait(?Send)]
+impl<S, T> SubscribeExt<T> for S
+where
+    S: Stream<Item = T> + Unpin + 'static,
+    T: 'static,
+{
+    async fn subscribe<F, Fut, E, OnError>(
+        self,
+        on_next_func: F,
+        on_error_callback: OnError,
+        cancellation_token: Option<CancellationToken>,
+    ) -> Result<()>
+    where
+        F: Fn(T, CancellationToken) -> Fut + Clone + 'static,
+        Fut: Future<Output = core::result::Result<(), E>> + 'static,
+        OnError: Fn(E) + Clone + 'static,
+        T: Debug + Clone + 'static,
+        E: 'static,
+    {
+        subscribe_impl(self, on_next_func, on_error_callback, cancellation_token).await
+    }
+}
+
+// Non-WASM implementation with Send + Sync bounds
+#[cfg(not(target_arch = "wasm32"))]
 #[async_trait]
 impl<S, T> SubscribeExt<T> for S
 where
@@ -313,7 +359,7 @@ where
     T: Send + 'static,
 {
     async fn subscribe<F, Fut, E, OnError>(
-        mut self,
+        self,
         on_next_func: F,
         on_error_callback: OnError,
         cancellation_token: Option<CancellationToken>,
@@ -325,21 +371,38 @@ where
         T: Debug + Send + Clone + 'static,
         E: Send + 'static,
     {
-        let cancellation_token = cancellation_token.unwrap_or_default();
+        subscribe_impl(self, on_next_func, on_error_callback, cancellation_token).await
+    }
+}
 
-        while let Some(item) = self.next().await {
-            if cancellation_token.is_cancelled() {
-                break;
-            }
+// Shared implementation for both WASM and non-WASM
+async fn subscribe_impl<S, T, F, Fut, E, OnError>(
+    mut stream: S,
+    on_next_func: F,
+    on_error_callback: OnError,
+    cancellation_token: Option<CancellationToken>,
+) -> Result<()>
+where
+    S: Stream<Item = T> + Unpin,
+    F: Fn(T, CancellationToken) -> Fut + Clone,
+    Fut: Future<Output = core::result::Result<(), E>>,
+    OnError: Fn(E) + Clone,
+    T: Debug + Clone,
+{
+    let cancellation_token = cancellation_token.unwrap_or_default();
 
-            // Call handler directly (sequential processing)
-            let result = on_next_func(item.clone(), cancellation_token.clone()).await;
-
-            if let Err(error) = result {
-                on_error_callback(error);
-            }
+    while let Some(item) = stream.next().await {
+        if cancellation_token.is_cancelled() {
+            break;
         }
 
-        Ok(())
+        // Call handler directly (sequential processing)
+        let result = on_next_func(item.clone(), cancellation_token.clone()).await;
+
+        if let Err(error) = result {
+            on_error_callback(error);
+        }
     }
+
+    Ok(())
 }
