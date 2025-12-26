@@ -7,12 +7,16 @@ use wasm_bindgen::prelude::*;
 
 mod gui;
 mod presentation;
+mod processing;
 mod source;
 
-use crate::source::{CombinedStream, ResultStreams, SensorStreams};
+use crate::source::Sensors;
+use crate::{
+    processing::{CombinedStream, ResultStreams},
+    source::SensorStreams,
+};
 use gui::DashboardUI;
 use presentation::DashboardUpdater;
-use source::Sensors;
 
 /// Entry point called from JavaScript
 #[wasm_bindgen(start)]

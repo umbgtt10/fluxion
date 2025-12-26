@@ -131,6 +131,11 @@ impl DashboardUI {
             .set_inner_html(&format!("<div class='value'>{}</div>", count));
     }
 
+    pub fn update_timeout_error(&mut self, error: &str) {
+        self.timeout_window
+            .set_inner_html(&format!("<div class='value'>{}</div>", error));
+    }
+
     // ==================== Button control methods ====================
 
     pub fn enable_start(&mut self) {

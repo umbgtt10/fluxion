@@ -3,7 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::gui::DashboardUI;
-use crate::source::{CombinedStream, SensorStreams, SensorValue, WasmStream};
+use crate::processing::WasmStream;
+use crate::source::{SensorStreams, SensorValue};
+use crate::CombinedStream;
 use fluxion_core::{CancellationToken, FluxionTask, StreamItem};
 use fluxion_exec::SubscribeExt;
 use fluxion_stream::fluxion_shared::SharedBoxStream;
@@ -427,6 +429,7 @@ impl DashboardUpdater {
                                     web_sys::console::error_1(
                                         &format!("Timeout stream error: {:?}", e).into(),
                                     );
+                                    ui.borrow_mut().update_timeout_error(&format!("{:?}", e));
                                 }
                             }
                             Ok::<_, std::convert::Infallible>(())

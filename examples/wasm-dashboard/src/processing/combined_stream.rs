@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use super::sensor_streams::SensorStreams;
+use crate::source::SensorStreams;
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::fluxion_shared::SharedBoxStream;
 use fluxion_stream::{CombineLatestExt, MapOrderedExt, ShareExt};
