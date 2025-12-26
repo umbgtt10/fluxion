@@ -111,6 +111,12 @@ pub use runtimes::SmolTimer;
 #[cfg(all(feature = "runtime-smol", not(target_arch = "wasm32")))]
 pub type SmolTimestamped<T> = InstantTimestamped<T, SmolTimer>;
 
+#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
+pub use runtimes::wasm_implementation::WasmTimer;
+
+#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
+pub type WasmTimestamped<T> = InstantTimestamped<T, WasmTimer>;
+
 #[cfg(feature = "runtime-embassy")]
 pub use runtimes::EmbassyTimerImpl;
 

@@ -13,7 +13,7 @@ use gui::DashboardUI;
 use presentation::DashboardUpdater;
 use source::Sensors;
 
-use crate::source::SensorStreams;
+use crate::source::{CombinedStream, SensorStreams};
 
 /// Entry point called from JavaScript
 #[wasm_bindgen(start)]
@@ -54,7 +54,13 @@ pub async fn start_dashboard() -> Result<(), JsValue> {
     wasm_bindgen_futures::spawn_local(async move {
         let sensors = Sensors::new(close_cancel_token.clone());
         let streams = SensorStreams::new(sensors);
-        let updater = DashboardUpdater::new(&streams, ui.clone(), close_cancel_token.clone());
+        let combined_stream = CombinedStream::new(&streams);
+        let updater = DashboardUpdater::new(
+            &streams,
+            combined_stream.subscribe(),
+            ui.clone(),
+            close_cancel_token.clone(),
+        );
 
         updater.run().await;
 

@@ -104,4 +104,19 @@ impl SensorStreams {
             self.sensor3.subscribe().unwrap(),
         ]
     }
+
+    /// Returns a reference to sensor1 shared stream
+    pub fn sensor1(&self) -> &fluxion_stream::FluxionShared<SensorValue> {
+        &self.sensor1
+    }
+
+    /// Returns a reference to sensor2 shared stream
+    pub fn sensor2(&self) -> &fluxion_stream::FluxionShared<SensorValue> {
+        &self.sensor2
+    }
+
+    /// Returns a reference to sensor3 shared stream
+    pub fn sensor3(&self) -> &fluxion_stream::FluxionShared<SensorValue> {
+        &self.sensor3
+    }
 }

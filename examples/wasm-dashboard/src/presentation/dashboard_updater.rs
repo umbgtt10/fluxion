@@ -4,7 +4,7 @@
 
 use crate::gui::DashboardUI;
 use crate::source::{SensorStreams, SensorValue};
-use fluxion_core::{CancellationToken, FluxionTask, StreamItem};
+use fluxion_core::{CancellationToken, StreamItem};
 use fluxion_stream::fluxion_shared::SharedBoxStream;
 use futures::StreamExt;
 use std::cell::RefCell;
@@ -16,6 +16,7 @@ use std::rc::Rc;
 /// and update the corresponding GUI windows.
 pub struct DashboardUpdater {
     streams: Vec<SharedBoxStream<SensorValue>>,
+    combined_stream: SharedBoxStream<u32>,
     ui: Rc<RefCell<DashboardUI>>,
     cancel_token: CancellationToken,
 }
@@ -26,10 +27,12 @@ impl DashboardUpdater {
     /// # Arguments
     ///
     /// * `sensor_streams` - Shared sensor streams container
+    /// * `combined_stream` - Subscription to the combined/filtered stream
     /// * `ui` - Shared dashboard UI instance
     /// * `cancel_token` - Token to stop all update tasks
     pub fn new(
         sensor_streams: &SensorStreams,
+        combined_stream: impl Into<SharedBoxStream<u32>>,
         ui: Rc<RefCell<DashboardUI>>,
         cancel_token: CancellationToken,
     ) -> Self {
@@ -38,6 +41,7 @@ impl DashboardUpdater {
 
         Self {
             streams,
+            combined_stream: combined_stream.into(),
             ui,
             cancel_token,
         }
@@ -65,6 +69,13 @@ impl DashboardUpdater {
         if let Some(stream) = streams.next() {
             Self::wire_sensor3(stream, self.ui.clone(), self.cancel_token.clone());
         }
+
+        // Wire combined stream
+        Self::wire_combined(
+            self.combined_stream,
+            self.ui.clone(),
+            self.cancel_token.clone(),
+        );
 
         // Block until cancellation token is triggered
         self.cancel_token.cancelled().await;
@@ -127,6 +138,28 @@ impl DashboardUpdater {
                     }
                     Some(StreamItem::Error(e)) => {
                         web_sys::console::error_1(&format!("Sensor 3 error: {:?}", e).into());
+                    }
+                    None => break,
+                }
+            }
+        });
+    }
+
+    fn wire_combined(
+        mut stream: SharedBoxStream<u32>,
+        ui: Rc<RefCell<DashboardUI>>,
+        cancel_token: CancellationToken,
+    ) {
+        wasm_bindgen_futures::spawn_local(async move {
+            while !cancel_token.is_cancelled() {
+                match stream.next().await {
+                    Some(StreamItem::Value(sum)) => {
+                        ui.borrow_mut().update_combined(sum);
+                    }
+                    Some(StreamItem::Error(e)) => {
+                        web_sys::console::error_1(
+                            &format!("Combined stream error: {:?}", e).into(),
+                        );
                     }
                     None => break,
                 }
