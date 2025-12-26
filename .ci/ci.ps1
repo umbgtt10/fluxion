@@ -63,11 +63,12 @@ if ($rc -ne 0) {
 }
 
 # Note: Embassy tests excluded from --all-features builds as they require --no-default-features
-Invoke-StepAction "Cargo check (all targets & features)" { cargo check --all-features --verbose --lib --bins --examples }
-Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-features --lib --bins --examples -- -D warnings }
-Invoke-StepAction "Release build" { cargo build --release --all-features --verbose --lib --bins --examples }
-Invoke-StepAction "Benchmark compilation" { cargo bench --no-run --all-features --verbose }
-Invoke-StepAction "Docs (deny doc warnings)" { cargo doc --no-deps --all-features --verbose }
+# Note: wasm-dashboard excluded as it requires wasm32 target
+Invoke-StepAction "Cargo check (all targets & features)" { cargo check --all-features --verbose --lib --bins --examples --workspace --exclude wasm-dashboard }
+Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-features --lib --bins --examples --workspace --exclude wasm-dashboard -- -D warnings }
+Invoke-StepAction "Release build" { cargo build --release --all-features --verbose --lib --bins --examples --workspace --exclude wasm-dashboard }
+Invoke-StepAction "Benchmark compilation" { cargo bench --no-run --all-features --verbose --workspace --exclude wasm-dashboard }
+Invoke-StepAction "Docs (deny doc warnings)" { cargo doc --no-deps --all-features --verbose --workspace --exclude wasm-dashboard }
 
 Invoke-StepAction "Install nightly toolchain" { rustup toolchain install nightly }
 
@@ -85,7 +86,8 @@ Write-Output "=== Run cargo +nightly udeps (check for unused deps) ==="
 $stdoutFile = [System.IO.Path]::GetTempFileName()
 $stderrFile = [System.IO.Path]::GetTempFileName()
 # Note: Exclude tests to avoid Embassy/Tokio feature conflicts
-$cargoArgs = @('+nightly','udeps','--all-features','--workspace','--lib','--bins','--examples')
+# Note: Exclude wasm-dashboard as it requires wasm32 target
+$cargoArgs = @('+nightly','udeps','--all-features','--workspace','--lib','--bins','--examples','--exclude','wasm-dashboard')
 $proc = Start-Process -FilePath 'cargo' -ArgumentList $cargoArgs -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
 
 $stdOut = Get-Content -Raw -Path $stdoutFile -ErrorAction SilentlyContinue

@@ -1,0 +1,38 @@
+[package]
+name = "wasm-dashboard"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+fluxion-core = { path = "../../fluxion-core", default-features = false, features = ["alloc"] }
+fluxion-exec = { path = "../../fluxion-exec", default-features = false }
+fluxion-stream = { path = "../../fluxion-stream", default-features = false, features = ["alloc"] }
+fluxion-stream-time = { path = "../../fluxion-stream-time", default-features = false, features = ["runtime-wasm"] }
+
+async-channel = { workspace = true }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+console_error_panic_hook = "0.1"
+futures = { version = "0.3", default-features = false, features = ["alloc"] }
+gloo-timers = { version = "0.3", features = ["futures"] }
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    "console",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "HtmlInputElement",
+    "HtmlButtonElement",
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d",
+    "Window",
+    "Performance",
+    "Event",
+]

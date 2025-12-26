@@ -82,8 +82,8 @@ jobs:
         run: |
           echo "=== no_std Compilation Check ==="
           echo "Verifying no_std support with alloc feature..."
-          cargo check --no-default-features --features alloc --verbose
-          cargo build --no-default-features --features alloc --verbose
+          cargo check --no-default-features --features alloc --workspace --exclude wasm-dashboard --verbose
+          cargo build --no-default-features --features alloc --workspace --exclude wasm-dashboard --verbose
           echo "✅ no_std compilation successful!"
           echo "   24/27 operators available on embedded targets"
 

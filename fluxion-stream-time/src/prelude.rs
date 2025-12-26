@@ -29,6 +29,14 @@
 //! ## Types
 //!
 //! - [`InstantTimestamped`] - Wrapper with monotonic Instant timestamp
+//!
+//! ## Runtime Timers (feature-gated)
+//!
+//! - `TokioTimer` - Available with `runtime-tokio` feature
+//! - `AsyncStdTimer` - Available with `runtime-async-std` feature ⚠️ DEPRECATED
+//! - `SmolTimer` - Available with `runtime-smol` feature
+//! - `WasmTimer` - Available with `runtime-wasm` feature on wasm32 targets
+//! - `EmbassyTimerImpl` - Available with `runtime-embassy` feature
 
 // For debounce, export both traits - they don't conflict since methods have different names
 pub use crate::debounce::{DebounceExt, DebounceWithDefaultTimerExt};
@@ -38,3 +46,19 @@ pub use crate::throttle::{ThrottleExt, ThrottleWithDefaultTimerExt};
 pub use crate::timeout::{TimeoutExt, TimeoutWithDefaultTimerExt};
 
 pub use crate::InstantTimestamped;
+
+// Re-export runtime-specific timers
+#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+pub use crate::TokioTimer;
+
+#[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
+pub use crate::AsyncStdTimer;
+
+#[cfg(all(feature = "runtime-smol", not(target_arch = "wasm32")))]
+pub use crate::SmolTimer;
+
+#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
+pub use crate::runtimes::wasm_implementation::WasmTimer;
+
+#[cfg(feature = "runtime-embassy")]
+pub use crate::EmbassyTimerImpl;

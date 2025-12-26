@@ -105,8 +105,18 @@ function Invoke-WorkspaceUpgrade {
 
   Write-Color "Falling back to per-crate upgrades (will respect available cargo-edit flags)..." Cyan
 
-  # Obtain workspace members from cargo metadata
-  $metaRaw = & cargo metadata --format-version 1 --no-deps 2>&1 | Out-String
+  # Obtain workspace members from cargo metadata (capture stdout only, ignore stderr warnings)
+  $tempOut = [System.IO.Path]::GetTempFileName()
+  $tempErr = [System.IO.Path]::GetTempFileName()
+  $proc = Start-Process -FilePath 'cargo' -ArgumentList @('metadata','--format-version','1','--no-deps') -NoNewWindow -Wait -PassThru -RedirectStandardOutput $tempOut -RedirectStandardError $tempErr
+  $metaRaw = Get-Content -Raw $tempOut -ErrorAction SilentlyContinue
+  Remove-Item $tempOut,$tempErr -ErrorAction SilentlyContinue
+
+  if ($proc.ExitCode -ne 0) {
+    Write-Color "cargo metadata failed with exit code $($proc.ExitCode)" Red
+    exit 1
+  }
+
   try {
     $meta = $metaRaw | ConvertFrom-Json
   } catch {
@@ -153,8 +163,9 @@ Invoke-StepAction "Refresh lockfile" { cargo update }
 
 Invoke-StepAction "Format check" { cargo fmt --all -- --check }
 # Note: Embassy tests excluded from --all-features build as they require --no-default-features
-Invoke-StepAction "Build (all targets & features)" { cargo build --all-features --verbose --lib --bins --examples }
-Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-features --lib --bins --examples -- -D warnings }
+# Note: wasm-dashboard excluded as it requires wasm32 target
+Invoke-StepAction "Build (all targets & features)" { cargo build --all-features --verbose --lib --bins --examples --workspace --exclude wasm-dashboard }
+Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-features --lib --bins --examples --workspace --exclude wasm-dashboard -- -D warnings }
 
 # Run Tokio tests
 Write-Color "=== Running Tokio tests ===" Cyan

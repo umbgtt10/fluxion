@@ -65,7 +65,7 @@ foreach ($crate in $cratesWithoutFeatures) {
 
 Write-Output ""
 Write-Output "Step 2: cargo check --no-default-features --features alloc (workspace)"
-cargo check --no-default-features --features alloc --verbose
+cargo check --no-default-features --features alloc --verbose --lib --bins --workspace --exclude wasm-dashboard
 if ($LASTEXITCODE -ne 0) {
   Write-Error "no_std check failed with exit code $LASTEXITCODE"
   exit $LASTEXITCODE
@@ -73,7 +73,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Output ""
 Write-Output "Step 3: cargo build --no-default-features --features alloc (workspace)"
-cargo build --no-default-features --features alloc --verbose
+cargo build --no-default-features --features alloc --verbose --lib --bins --workspace --exclude wasm-dashboard
 if ($LASTEXITCODE -ne 0) {
   Write-Error "no_std build failed with exit code $LASTEXITCODE"
   exit $LASTEXITCODE

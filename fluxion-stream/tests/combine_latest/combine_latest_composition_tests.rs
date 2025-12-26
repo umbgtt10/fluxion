@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -33,9 +33,9 @@ async fn test_fluxion_stream_combine_latest_composition() -> anyhow::Result<()> 
     let inner = element.clone().into_inner();
     let state = inner.values();
     assert_eq!(state.len(), 3);
-    assert_eq!(&state[0], &person_alice());
-    assert_eq!(&state[1], &animal_dog());
-    assert_eq!(&state[2], &plant_rose());
+    assert_eq!(state[0], person_alice());
+    assert_eq!(state[1], animal_dog());
+    assert_eq!(state[2], plant_rose());
 
     Ok(())
 }
