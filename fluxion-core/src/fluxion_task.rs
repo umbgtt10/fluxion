@@ -118,6 +118,7 @@ impl FluxionTask {
         smol::spawn(_future).detach();
 
         #[cfg(all(
+            feature = "runtime-async-std",
             not(target_arch = "wasm32"),
             not(feature = "runtime-tokio"),
             not(feature = "runtime-smol")
