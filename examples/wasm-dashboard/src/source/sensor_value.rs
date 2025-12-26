@@ -21,13 +21,16 @@ impl HasTimestamp for SensorValue {
 }
 
 impl Timestamped for SensorValue {
-    type Inner = u32;
+    type Inner = Self;
 
-    fn with_timestamp(value: u32, timestamp: WasmInstant) -> Self {
-        Self { timestamp, value }
+    fn with_timestamp(value: Self, timestamp: WasmInstant) -> Self {
+        Self {
+            timestamp,
+            value: value.value,
+        }
     }
 
-    fn into_inner(self) -> u32 {
-        self.value
+    fn into_inner(self) -> Self {
+        self
     }
 }

@@ -151,7 +151,7 @@ impl Aggregator {
                         Ok::<(), Infallible>(())
                     }
                 },
-                None::<fn(Infallible)>,
+                |_| {},
                 Some(cancel_token),
             )
             .await;

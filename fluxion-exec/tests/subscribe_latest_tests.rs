@@ -3,7 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::CancellationToken;
-use fluxion_core::FluxionError;
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;
 use fluxion_test_utils::test_data::{
     animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
@@ -61,7 +60,7 @@ async fn test_subscribe_latest_no_skipping_no_error_no_cancellation() -> anyhow:
     spawn({
         async move {
             stream
-                .subscribe_latest(func, Some(error_callback), None)
+                .subscribe_latest(func, error_callback, None)
                 .await
                 .expect("subscribe_latest should succeed");
         }
@@ -175,7 +174,7 @@ async fn test_subscribe_latest_with_skipping_no_error_no_cancellation() -> anyho
     spawn({
         async move {
             stream
-                .subscribe_latest(func, Some(error_callback), None)
+                .subscribe_latest(func, error_callback, None)
                 .await
                 .expect("subscribe_latest should succeed");
         }
@@ -257,7 +256,7 @@ async fn test_subscribe_latest_no_skipping_with_error_no_cancellation() -> anyho
     spawn({
         async move {
             stream
-                .subscribe_latest(func, Some(error_callback), None)
+                .subscribe_latest(func, error_callback, None)
                 .await
                 .expect("subscribe_latest should succeed");
         }
@@ -334,7 +333,7 @@ async fn test_subscribe_latest_no_skipping_no_errors_with_cancellation() -> anyh
 
         async move {
             stream
-                .subscribe_latest(func, Some(error_callback), Some(cancellation_token))
+                .subscribe_latest(func, error_callback, Some(cancellation_token))
                 .await
                 .expect("subscribe_latest should succeed");
         }
@@ -413,7 +412,7 @@ async fn test_subscribe_latest_no_skipping_with_cancellation_and_errors() -> any
 
         async move {
             stream
-                .subscribe_latest(func, Some(error_callback), Some(cancellation_token))
+                .subscribe_latest(func, error_callback, Some(cancellation_token))
                 .await
                 .expect("subscribe_latest should succeed");
         }
@@ -509,7 +508,7 @@ async fn test_subscribe_latest_no_skipping_no_error_no_cancellation_no_concurren
     spawn({
         async move {
             stream
-                .subscribe_latest(func, Some(error_callback), None)
+                .subscribe_latest(func, error_callback, None)
                 .await
                 .expect("subscribe_latest should succeed");
         }
@@ -573,7 +572,7 @@ async fn test_subscribe_latest_no_skipping_no_error_no_cancellation_token_empty_
     let task_handle = tokio::spawn({
         async move {
             stream
-                .subscribe_latest(func, Some(error_callback), None)
+                .subscribe_latest(func, error_callback, None)
                 .await
                 .expect("subscribe_latest should succeed");
         }
@@ -651,7 +650,7 @@ async fn test_subscribe_latest_high_volume() -> anyhow::Result<()> {
     spawn({
         async move {
             stream
-                .subscribe_latest(func, Some(error_callback), None)
+                .subscribe_latest(func, error_callback, None)
                 .await
                 .expect("subscribe_latest should succeed");
         }
@@ -728,7 +727,7 @@ async fn test_subscribe_latest_single_item() -> anyhow::Result<()> {
     let task_handle = tokio::spawn({
         async move {
             stream
-                .subscribe_latest(func, Some(error_callback), None)
+                .subscribe_latest(func, error_callback, None)
                 .await
                 .expect("subscribe_latest should succeed");
         }
@@ -756,12 +755,16 @@ async fn test_subscribe_latest_single_item() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_subscribe_latest_error_aggregation_without_callback() -> anyhow::Result<()> {
+async fn test_subscribe_latest_error_aggregation_with_callback() -> anyhow::Result<()> {
+    use std::sync::Mutex as StdMutex;
+
     // Arrange
     let (tx, rx) = unbounded::<Sequenced<TestData>>();
     let stream = rx;
     let stream = stream.map(|timestamped| timestamped.value);
     let (notify_tx, mut notify_rx) = unbounded();
+    let errors = Arc::new(StdMutex::new(Vec::new()));
+    let errors_clone = errors.clone();
 
     let func = {
         let notify_tx = notify_tx.clone();
@@ -781,7 +784,13 @@ async fn test_subscribe_latest_error_aggregation_without_callback() -> anyhow::R
     let task_handle = tokio::spawn({
         async move {
             stream
-                .subscribe_latest(func, Option::<fn(TestError)>::None, None) // No error callback
+                .subscribe_latest(
+                    func,
+                    move |err| {
+                        errors_clone.lock().unwrap().push(err.to_string());
+                    },
+                    None,
+                )
                 .await
         }
     });
@@ -801,18 +810,12 @@ async fn test_subscribe_latest_error_aggregation_without_callback() -> anyhow::R
 
     drop(tx);
 
-    // Assert - Should return MultipleErrors with 2 errors
+    // Assert - Should complete successfully, errors handled by callback
     let result = task_handle.await.unwrap();
-    assert!(result.is_err(), "Expected error aggregation");
+    assert!(result.is_ok(), "Expected success with error callback");
 
-    let err = result.unwrap_err();
-    match err {
-        FluxionError::MultipleErrors { count, errors } => {
-            assert_eq!(count, 2, "Expected 2 errors");
-            assert_eq!(errors.len(), 2, "Expected 2 error entries");
-        }
-        other => panic!("Expected MultipleErrors, got: {:?}", other),
-    }
+    let collected_errors = errors.lock().unwrap();
+    assert_eq!(collected_errors.len(), 2, "Expected 2 errors collected");
 
     Ok(())
 }

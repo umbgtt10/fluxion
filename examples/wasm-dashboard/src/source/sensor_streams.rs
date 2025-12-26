@@ -4,12 +4,10 @@
 
 use super::raw_streams::Sensors;
 use super::sensor_value::SensorValue;
-use fluxion_core::{StreamItem, Timestamped};
 use fluxion_stream::fluxion_shared::SharedBoxStream;
 use fluxion_stream::{IntoFluxionStream, ShareExt};
 use fluxion_stream_time::runtimes::wasm_implementation::WasmTimer;
 use fluxion_stream_time::timer::Timer;
-use futures::StreamExt;
 
 /// Container for three shared timestamped sensor streams (Phase 2)
 ///
@@ -44,12 +42,9 @@ impl SensorStreams {
         let sensor1 = sensors
             .sensor1
             .receiver()
-            .into_fluxion_stream()
-            .map(move |item| match item {
-                StreamItem::Value(value) => {
-                    StreamItem::Value(SensorValue::with_timestamp(value, timer1.now()))
-                }
-                StreamItem::Error(e) => StreamItem::Error(e),
+            .into_fluxion_stream_map(move |value| SensorValue {
+                timestamp: timer1.now(),
+                value,
             })
             .share();
 
@@ -58,12 +53,9 @@ impl SensorStreams {
         let sensor2 = sensors
             .sensor2
             .receiver()
-            .into_fluxion_stream()
-            .map(move |item| match item {
-                StreamItem::Value(value) => {
-                    StreamItem::Value(SensorValue::with_timestamp(value, timer2.now()))
-                }
-                StreamItem::Error(e) => StreamItem::Error(e),
+            .into_fluxion_stream_map(move |value| SensorValue {
+                timestamp: timer2.now(),
+                value,
             })
             .share();
 
@@ -72,12 +64,9 @@ impl SensorStreams {
         let sensor3 = sensors
             .sensor3
             .receiver()
-            .into_fluxion_stream()
-            .map(move |item| match item {
-                StreamItem::Value(value) => {
-                    StreamItem::Value(SensorValue::with_timestamp(value, timer3.now()))
-                }
-                StreamItem::Error(e) => StreamItem::Error(e),
+            .into_fluxion_stream_map(move |value| SensorValue {
+                timestamp: timer3.now(),
+                value,
             })
             .share();
 

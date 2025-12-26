@@ -22,7 +22,6 @@ pub mod timestamped;
 
 pub use self::cancellation_token::CancellationToken;
 pub use self::fluxion::Fluxion;
-pub use self::fluxion_error::IntoFluxionError;
 pub use self::fluxion_error::{FluxionError, Result, ResultExt};
 #[cfg(feature = "alloc")]
 pub use self::fluxion_subject::FluxionSubject;

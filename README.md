@@ -90,7 +90,8 @@ fluxion-rx = { version = "0.6.13", default-features = false, features = ["runtim
 
 ### Basic Usage
 
-```rustuse async_channel::unbounded;
+```rust
+use async_channel::unbounded;
 use fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
@@ -161,7 +162,8 @@ anyhow = "1.0.100"
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rustuse async_channel::unbounded;
+```rust
+use async_channel::unbounded;
 use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
@@ -234,7 +236,8 @@ anyhow = "1.0.100"
 
 **Example: Event Sourcing with Repository Pattern**
 
-```rustuse fluxion_stream::MergedStream;
+```rust
+use fluxion_stream::MergedStream;
 use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
 
 #[tokio::test]
@@ -384,14 +387,16 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Sequential Processing:**
 
 **Dependencies:**
-```toml[dependencies]
+```toml
+[dependencies]
 fluxion-exec = "0.6.13"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 ```
 
 **Example:**
-```rustuse fluxion_core::CancellationToken;
+```rust
+use fluxion_core::CancellationToken;
 use fluxion_exec::subscribe::SubscribeExt;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
@@ -440,7 +445,7 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
     // Step 4: Subscribe to the stream
     let task = spawn(async move {
         stream
-            .subscribe(process_func, None, None::<fn(TestError)>)
+            .subscribe(process_func, |_| {}, None)
             .await
             .expect("subscribe should succeed");
     });
@@ -484,14 +489,16 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 **Latest-Value Processing (with auto-cancellation):**
 
 **Dependencies:**
-```toml[dependencies]
+```toml
+[dependencies]
 fluxion-exec = "0.6.13"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 ```
 
 **Example:**
-```rustuse fluxion_core::CancellationToken;
+```rust
+use fluxion_core::CancellationToken;
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;

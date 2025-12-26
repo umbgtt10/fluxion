@@ -83,8 +83,8 @@ impl EventProcessor {
                         }
                     }
                 },
+                |_| {},
                 Some(cancel.clone()),
-                None::<fn(ProcessingError)>,
             )
             .await;
 

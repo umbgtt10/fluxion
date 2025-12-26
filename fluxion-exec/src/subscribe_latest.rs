@@ -29,14 +29,11 @@
     target_arch = "wasm32"
 ))]
 use alloc::sync::Arc;
-use alloc::vec::Vec;
 use async_trait::async_trait;
-use core::error::Error;
 use core::fmt::Debug;
 use core::future::Future;
 use event_listener::Event;
-use fluxion_core::fluxion_mutex::Mutex;
-use fluxion_core::{CancellationToken, FluxionError, FluxionTask, Result};
+use fluxion_core::{CancellationToken, FluxionTask, Result};
 use futures::lock::Mutex as FutureMutex;
 use futures::{Stream, StreamExt};
 
@@ -67,24 +64,21 @@ where
     ///
     /// * `on_next_func` - Async function called for each item. Should check the cancellation
     ///                    token periodically to enable responsive cancellation.
-    /// * `on_error_callback` - Optional error handler for processing failures
+    /// * `on_error_callback` - Error handler for processing failures
     /// * `cancellation_token` - Optional token to stop all processing
     ///
     /// # Type Parameters
     ///
     /// * `F` - Function type for the item handler
     /// * `Fut` - Future type returned by the handler
-    /// * `E` - Error type that implements `std::error::Error`
+    /// * `E` - Error type
     /// * `OnError` - Function type for error handling
     ///
     /// # Errors
     ///
-    /// Returns `Err(FluxionError::MultipleErrors)` if any items failed to process and
-    /// no error callback was provided. If an error callback is provided, errors are
-    /// passed to it and the function returns `Ok(())` on stream completion.
-    ///
-    /// Processing continues with new items even if previous items failed, unless the
-    /// cancellation token is triggered.
+    /// Returns `Ok(())` on stream completion. Errors from item handlers are passed
+    /// to the error callback. Processing continues with new items even if previous
+    /// items failed, unless the cancellation token is triggered.
     ///
     /// # See Also
     ///
@@ -141,7 +135,7 @@ where
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
-    ///         None::<fn(std::io::Error)>,
+    ///         |_| {}, // Ignore errors
     ///         None
     ///     ).await
     /// });
@@ -227,7 +221,7 @@ where
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
-    ///         None::<fn(std::io::Error)>,
+    ///         |_| {}, // Ignore errors
     ///         Some(token_clone)
     ///     ).await
     /// });
@@ -300,7 +294,7 @@ where
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
-    ///         None::<fn(std::io::Error)>,
+    ///         |_| {}, // Ignore errors
     ///         None
     ///     ).await
     /// });
@@ -387,7 +381,7 @@ where
     ///                 Ok::<(), std::io::Error>(())
     ///             }
     ///         },
-    ///         None::<fn(std::io::Error)>,
+    ///         |_| {}, // Ignore errors
     ///         None
     ///     ).await
     /// });
@@ -437,14 +431,14 @@ where
     async fn subscribe_latest<F, Fut, E, OnError>(
         self,
         on_next_func: F,
-        on_error_callback: Option<OnError>,
+        on_error_callback: OnError,
         cancellation_token: Option<CancellationToken>,
     ) -> Result<()>
     where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
         Fut: Future<Output = core::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
-        E: Error + Send + Sync + 'static,
+        E: Send + 'static,
         T: Debug + Clone + Send + Sync + 'static;
 }
 
@@ -457,28 +451,25 @@ where
     async fn subscribe_latest<F, Fut, E, OnError>(
         self,
         on_next_func: F,
-        on_error_callback: Option<OnError>,
+        on_error_callback: OnError,
         cancellation_token: Option<CancellationToken>,
     ) -> Result<()>
     where
         F: Fn(T, CancellationToken) -> Fut + Clone + Send + Sync + 'static,
         Fut: Future<Output = core::result::Result<(), E>> + Send + 'static,
         OnError: Fn(E) + Clone + Send + Sync + 'static,
-        E: Error + Send + Sync + 'static,
+        E: Send + 'static,
         T: Debug + Clone + Send + Sync + 'static,
     {
         let state = Arc::new(Context::default());
         let cancellation_token = cancellation_token.unwrap_or_default();
         let state_for_wait = state.clone();
-        let errors: Arc<Mutex<Vec<E>>> = Arc::new(Mutex::new(Vec::new()));
-        let errors_clone = errors.clone();
 
         self.for_each(move |new_data| {
             let on_next_func = on_next_func.clone();
             let state = state.clone();
             let cancellation_token = cancellation_token.clone();
             let on_error_callback = on_error_callback.clone();
-            let errors = errors.clone();
             async move {
                 if cancellation_token.is_cancelled() {
                     return;
@@ -499,12 +490,7 @@ where
                             if let Err(error) =
                                 on_next_func(item.clone(), cancellation_token.clone()).await
                             {
-                                if let Some(on_error_callback) = on_error_callback.clone() {
-                                    on_error_callback(error);
-                                } else {
-                                    // Collect error for later aggregation
-                                    errors.lock().push(error);
-                                }
+                                on_error_callback(error);
                             }
 
                             // Check if a new item arrived while we were processing
@@ -527,14 +513,7 @@ where
         // Wait for any remaining processing tasks to complete
         state_for_wait.wait_for_processing_complete().await;
 
-        // Check if any errors were collected
-        let collected_errors = errors_clone.lock().drain(..).collect::<Vec<_>>();
-
-        if collected_errors.is_empty() {
-            Ok(())
-        } else {
-            Err(FluxionError::from_user_errors(collected_errors))
-        }
+        Ok(())
     }
 }
 

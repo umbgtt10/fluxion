@@ -101,8 +101,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                     Ok::<_, std::io::Error>(())
                 },
-                None, // No cancellation token
-                None  // No error callback
+                |_| {},  // No error callback
+                None     // No cancellation token
             )
             .await
     });
@@ -196,8 +196,8 @@ stream.subscribe(
         process_item(item).await?;
         Ok::<_, MyError>(())
     },
-    Some(cancellation_token), // Optional
-    Some(|error| eprintln!("Error: {:?}", error)) // Optional
+    |error| eprintln!("Error: {:?}", error), // Error callback
+    Some(cancellation_token) // Optional cancellation
 ).await?;
 ```
 
@@ -280,8 +280,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     save_to_db(&event).await?;
                     Ok::<_, Box<dyn std::error::Error>>(())
                 },
-                None,
-                Some(|err| eprintln!("Failed to save event: {}", err))
+                |err| eprintln!("Failed to save event: {}", err),
+                None
             )
             .await
     });
@@ -380,14 +380,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("Processed: {}", item);
                     Ok(())
                 },
-                None,
-                Some(move |err| {
+                move |err| {
                     eprintln!("Error occurred: {}", err);
                     let count = error_count_clone.clone();
                     tokio::spawn(async move {
                         *count.lock().await += 1;
                     });
-                })
+                },
+                None
             )
             .await
     });
@@ -434,8 +434,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     tokio::time::sleep(Duration::from_millis(100)).await;
                     Ok::<_, std::io::Error>(())
                 },
-                Some(cancel_token),
-                None
+                |_| {},
+                Some(cancel_token)
             )
             .await
     });
@@ -512,31 +512,25 @@ stream.subscribe(
         risky_operation(item).await?;
         Ok::<_, MyError>(())
     },
-    None,
-    Some(|error| {
+    |error| {
         eprintln!("Error: {}", error);
         // Log to monitoring service
         // Increment error counter
         // etc.
-    })
+    },
+    None
 ).await?; // Returns Ok(()) even if individual items failed
 ```
 
-### Without Error Callback
+### Ignoring Errors
 
-Errors are collected and returned as `MultipleErrors`:
+If you want to ignore errors and continue processing:
 
 ```rust
-match stream.subscribe(handler, None, None).await {
-    Ok(()) => println!("All items processed successfully"),
-    Err(FluxionError::MultipleErrors(errors)) => {
-        eprintln!("Failed to process {} items", errors.len());
-        for err in errors {
-            eprintln!("  - {}", err);
-        }
-    }
-    Err(e) => eprintln!("Unexpected error: {}", e),
-}
+use fluxion_exec::ignore_errors;
+
+stream.subscribe(handler, ignore_errors, None).await?;
+// All items processed, errors are silently ignored
 ```
 
 ### Fail-Fast Pattern
@@ -626,7 +620,7 @@ stream.subscribe(
             }
         }
     },
-    None,
+    |_| {},
     None
 ).await?;
 ```
@@ -652,7 +646,7 @@ stream.subscribe(
             process(item).await
         }
     },
-    None,
+    |_| {},
     None
 ).await?;
 ```
@@ -668,7 +662,7 @@ stream
             process_batch(&batch).await?;
             Ok::<_, MyError>(())
         },
-        None,
+        |_| {},
         None
     )
     .await?;
@@ -683,7 +677,7 @@ stream
         |item, _| async move {
             process_important(item).await
         },
-        None,
+        |_| {},
         None
     )
     .await?;
@@ -711,7 +705,7 @@ payment_stream.subscribe(
     |payment, _| async move {
         process_payment(payment).await  // Every payment processed
     },
-    None,
+    |_| {},
     None
 ).await?;
 ```
@@ -738,7 +732,7 @@ stream.subscribe(
         tokio::time::sleep(Duration::from_secs(1)).await;  // Non-blocking
         Ok(())
     },
-    None,
+    |_| {},
     None
 ).await?;
 ```
@@ -752,7 +746,7 @@ stream.subscribe(
         expensive_computation(data);  // Blocks!
         Ok(())
     },
-    None,
+    |_| {},
     None
 ).await?;
 ```
@@ -767,7 +761,7 @@ stream.subscribe(
         }).await??;
         Ok::<_, Box<dyn std::error::Error>>(())
     },
-    None,
+    |_| {},
     None
 ).await?;
 ```

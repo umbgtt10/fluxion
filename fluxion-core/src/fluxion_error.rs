@@ -20,10 +20,8 @@
 //! }
 //! ```
 
-use alloc::boxed::Box;
 use alloc::format;
 use alloc::string::String;
-use alloc::vec::Vec;
 use core::fmt::{self, Display, Formatter};
 
 /// Root error type for all Fluxion operations
@@ -39,23 +37,6 @@ pub enum FluxionError {
     StreamProcessingError {
         /// Description of what went wrong during stream processing
         context: String,
-    },
-
-    /// Custom error from user code
-    ///
-    /// This wraps errors produced by user-provided functions and callbacks,
-    /// allowing them to be propagated through the Fluxion error system.
-    UserError(Box<dyn core::error::Error + Send + Sync>),
-
-    /// Multiple errors occurred
-    ///
-    /// When processing multiple items in parallel, multiple failures can occur.
-    /// This variant aggregates them.
-    MultipleErrors {
-        /// Number of errors that occurred
-        count: usize,
-        /// The individual errors (limited to prevent unbounded growth)
-        errors: Vec<FluxionError>,
     },
 
     /// Timeout occurred
@@ -74,10 +55,6 @@ impl Display for FluxionError {
         match self {
             Self::StreamProcessingError { context } => {
                 write!(f, "Stream processing error: {}", context)
-            }
-            Self::UserError(err) => write!(f, "User error: {}", err),
-            Self::MultipleErrors { count, .. } => {
-                write!(f, "Multiple errors occurred: {} errors", count)
             }
             Self::TimeoutError { context } => write!(f, "Timeout error: {}", context),
         }
@@ -102,51 +79,6 @@ impl FluxionError {
         }
     }
 
-    /// Wrap a user error
-    pub fn user_error(error: impl core::error::Error + Send + Sync + 'static) -> Self {
-        Self::UserError(Box::new(error))
-    }
-
-    /// Aggregate multiple user errors into a `MultipleErrors` variant
-    ///
-    /// This is useful for collecting errors from stream subscribers that don't have
-    /// error callbacks, allowing them to be propagated as a single error.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fluxion_core::FluxionError;
-    ///
-    /// #[derive(Debug, thiserror::Error)]
-    /// #[error("Custom error: {msg}")]
-    /// struct CustomError {
-    ///     msg: String,
-    /// }
-    ///
-    /// let errors = vec![
-    ///     CustomError { msg: "first".to_string() },
-    ///     CustomError { msg: "second".to_string() },
-    /// ];
-    ///
-    /// let result = FluxionError::from_user_errors(errors);
-    /// assert!(matches!(result, FluxionError::MultipleErrors { count: 2, .. }));
-    /// ```
-    pub fn from_user_errors<E>(errors: Vec<E>) -> Self
-    where
-        E: core::error::Error + Send + Sync + 'static,
-    {
-        let count = errors.len();
-        let fluxion_errors = errors
-            .into_iter()
-            .map(|e| Self::UserError(Box::new(e)))
-            .collect();
-
-        Self::MultipleErrors {
-            count,
-            errors: fluxion_errors,
-        }
-    }
-
     /// Check if this is a recoverable error
     ///
     /// Some errors indicate transient failures that could succeed on retry.
@@ -157,13 +89,10 @@ impl FluxionError {
 
     /// Check if this error indicates a permanent failure
     ///
-    /// User errors and stream processing errors are considered permanent.
+    /// Stream processing errors are considered permanent.
     #[must_use]
     pub const fn is_permanent(&self) -> bool {
-        matches!(
-            self,
-            Self::StreamProcessingError { .. } | Self::UserError(_)
-        )
+        matches!(self, Self::StreamProcessingError { .. })
     }
 }
 
@@ -182,30 +111,6 @@ impl FluxionError {
 /// }
 /// ```
 pub type Result<T> = core::result::Result<T, FluxionError>;
-
-/// Extension trait for converting errors into `FluxionError`
-///
-/// This trait is automatically implemented for all types that implement
-/// `std::error::Error + Send + Sync + 'static`, allowing easy conversion
-/// to `FluxionError`.
-pub trait IntoFluxionError {
-    /// Convert this error into a `FluxionError` with additional context
-    fn into_fluxion_error(self, context: &str) -> FluxionError;
-
-    /// Convert this error into a `FluxionError` without additional context
-    fn into_fluxion(self) -> FluxionError
-    where
-        Self: Sized,
-    {
-        self.into_fluxion_error("")
-    }
-}
-
-impl<E: core::error::Error + Send + Sync + 'static> IntoFluxionError for E {
-    fn into_fluxion_error(self, _context: &str) -> FluxionError {
-        FluxionError::user_error(self)
-    }
-}
 
 /// Helper trait for adding context to `Result`s
 ///
@@ -233,10 +138,13 @@ where
     fn context(self, context: impl Into<String>) -> Result<T> {
         self.map_err(|e| {
             let context = context.into();
-            match e.into() {
-                FluxionError::UserError(inner) => FluxionError::StreamProcessingError {
-                    context: format!("{context}: {inner}"),
-                },
+            let error = e.into();
+            match error {
+                FluxionError::StreamProcessingError { context: inner } => {
+                    FluxionError::StreamProcessingError {
+                        context: format!("{context}: {inner}"),
+                    }
+                }
                 other => other,
             }
         })
@@ -248,10 +156,13 @@ where
     {
         self.map_err(|e| {
             let context = f();
-            match e.into() {
-                FluxionError::UserError(inner) => FluxionError::StreamProcessingError {
-                    context: format!("{context}: {inner}"),
-                },
+            let error = e.into();
+            match error {
+                FluxionError::StreamProcessingError { context: inner } => {
+                    FluxionError::StreamProcessingError {
+                        context: format!("{context}: {inner}"),
+                    }
+                }
                 other => other,
             }
         })
@@ -263,14 +174,6 @@ impl Clone for FluxionError {
         match self {
             Self::StreamProcessingError { context } => Self::StreamProcessingError {
                 context: context.clone(),
-            },
-            // For UserError, we can't clone the boxed error, so convert to string
-            Self::UserError(e) => Self::StreamProcessingError {
-                context: format!("User error: {}", e),
-            },
-            Self::MultipleErrors { count, errors } => Self::MultipleErrors {
-                count: *count,
-                errors: errors.clone(),
             },
             Self::TimeoutError { context } => Self::TimeoutError {
                 context: context.clone(),

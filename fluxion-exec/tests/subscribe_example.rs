@@ -51,7 +51,7 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
     // Step 4: Subscribe to the stream
     let task = spawn(async move {
         stream
-            .subscribe(process_func, None, None::<fn(TestError)>)
+            .subscribe(process_func, |_| {}, None)
             .await
             .expect("subscribe should succeed");
     });

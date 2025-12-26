@@ -45,13 +45,13 @@ impl CombinedStream {
                 |state| {
                     // Only pass through even sums
                     let values = state.values();
-                    let sum = values.iter().sum::<u32>();
+                    let sum: u32 = values.iter().map(|v| v.value).sum();
                     sum % 2 == 0
                 },
             )
             .map_ordered(|state| {
                 let values = state.values();
-                let sum = values.iter().sum::<u32>();
+                let sum: u32 = values.iter().map(|v| v.value).sum();
                 WasmTimestamped::with_timestamp(sum, state.timestamp())
             })
             .share();
