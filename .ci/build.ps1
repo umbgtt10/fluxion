@@ -111,12 +111,12 @@ function Invoke-WorkspaceUpgrade {
   $proc = Start-Process -FilePath 'cargo' -ArgumentList @('metadata','--format-version','1','--no-deps') -NoNewWindow -Wait -PassThru -RedirectStandardOutput $tempOut -RedirectStandardError $tempErr
   $metaRaw = Get-Content -Raw $tempOut -ErrorAction SilentlyContinue
   Remove-Item $tempOut,$tempErr -ErrorAction SilentlyContinue
-  
+
   if ($proc.ExitCode -ne 0) {
     Write-Color "cargo metadata failed with exit code $($proc.ExitCode)" Red
     exit 1
   }
-  
+
   try {
     $meta = $metaRaw | ConvertFrom-Json
   } catch {
