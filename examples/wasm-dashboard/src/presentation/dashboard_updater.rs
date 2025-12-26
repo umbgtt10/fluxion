@@ -3,10 +3,11 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::gui::DashboardUI;
-use crate::source::{SensorStreams, SensorValue};
+use crate::source::{CombinedStream, SensorStreams, SensorValue, WasmStream};
 use fluxion_core::{CancellationToken, FluxionTask, StreamItem};
 use fluxion_exec::SubscribeExt;
 use fluxion_stream::fluxion_shared::SharedBoxStream;
+use fluxion_stream_time::WasmTimestamped;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -16,7 +17,12 @@ use std::rc::Rc;
 /// and update the corresponding GUI windows.
 pub struct DashboardUpdater {
     streams: Vec<SharedBoxStream<SensorValue>>,
-    combined_stream: SharedBoxStream<u32>,
+    combined_stream: SharedBoxStream<WasmTimestamped<u32>>,
+    debounce_stream: WasmStream<u32>,
+    delay_stream: WasmStream<u32>,
+    sample_stream: WasmStream<u32>,
+    throttle_stream: WasmStream<u32>,
+    timeout_stream: WasmStream<u32>,
     ui: Rc<RefCell<DashboardUI>>,
     cancel_token: CancellationToken,
     tasks: Vec<FluxionTask>,
@@ -33,16 +39,27 @@ impl DashboardUpdater {
     /// * `cancel_token` - Token to stop all update tasks
     pub fn new(
         sensor_streams: &SensorStreams,
-        combined_stream: impl Into<SharedBoxStream<u32>>,
+        combined_stream: &CombinedStream,
+        debounce_stream: WasmStream<u32>,
+        delay_stream: WasmStream<u32>,
+        sample_stream: WasmStream<u32>,
+        throttle_stream: WasmStream<u32>,
+        timeout_stream: WasmStream<u32>,
         ui: Rc<RefCell<DashboardUI>>,
         cancel_token: CancellationToken,
     ) -> Self {
-        // Get independent subscriptions for each sensor
+        // Get independent subscriptions for each sensor stream and combined stream
         let streams = sensor_streams.subscribe();
+        let combined_stream = combined_stream.subscribe();
 
         Self {
             streams,
-            combined_stream: combined_stream.into(),
+            combined_stream,
+            debounce_stream,
+            delay_stream,
+            sample_stream,
+            throttle_stream,
+            timeout_stream,
             ui,
             cancel_token,
             tasks: Vec::new(),
@@ -78,6 +95,41 @@ impl DashboardUpdater {
         // Wire combined stream
         let task = Self::wire_combined(
             self.combined_stream,
+            self.ui.clone(),
+            self.cancel_token.clone(),
+        );
+        self.tasks.push(task);
+
+        let task = Self::wire_debounce(
+            self.debounce_stream,
+            self.ui.clone(),
+            self.cancel_token.clone(),
+        );
+        self.tasks.push(task);
+
+        let task = Self::wire_delay(
+            self.delay_stream,
+            self.ui.clone(),
+            self.cancel_token.clone(),
+        );
+        self.tasks.push(task);
+
+        let task = Self::wire_sample(
+            self.sample_stream,
+            self.ui.clone(),
+            self.cancel_token.clone(),
+        );
+        self.tasks.push(task);
+
+        let task = Self::wire_throttle(
+            self.throttle_stream,
+            self.ui.clone(),
+            self.cancel_token.clone(),
+        );
+        self.tasks.push(task);
+
+        let task = Self::wire_timeout(
+            self.timeout_stream,
             self.ui.clone(),
             self.cancel_token.clone(),
         );
@@ -186,7 +238,7 @@ impl DashboardUpdater {
     }
 
     fn wire_combined(
-        stream: SharedBoxStream<u32>,
+        stream: SharedBoxStream<WasmTimestamped<u32>>,
         ui: Rc<RefCell<DashboardUI>>,
         cancel_token: CancellationToken,
     ) -> FluxionTask {
@@ -198,7 +250,7 @@ impl DashboardUpdater {
                         async move {
                             match item {
                                 StreamItem::Value(sum) => {
-                                    ui.borrow_mut().update_combined(sum);
+                                    ui.borrow_mut().update_combined(sum.value);
                                 }
                                 StreamItem::Error(e) => {
                                     web_sys::console::error_1(
@@ -212,6 +264,177 @@ impl DashboardUpdater {
                     |err| {
                         web_sys::console::error_1(
                             &format!("Combined stream error: {:?}", err).into(),
+                        )
+                    },
+                    Some(cancel_token),
+                )
+                .await;
+        })
+    }
+
+    fn wire_debounce(
+        stream: WasmStream<u32>,
+        ui: Rc<RefCell<DashboardUI>>,
+        cancel_token: CancellationToken,
+    ) -> FluxionTask {
+        FluxionTask::spawn(move |_task_cancel| async move {
+            let _ = stream
+                .subscribe(
+                    move |item, _token| {
+                        let ui = ui.clone();
+                        async move {
+                            match item {
+                                StreamItem::Value(value) => {
+                                    ui.borrow_mut().update_debounce(value);
+                                }
+                                StreamItem::Error(e) => {
+                                    web_sys::console::error_1(
+                                        &format!("Debounce stream error: {:?}", e).into(),
+                                    );
+                                }
+                            }
+                            Ok::<_, std::convert::Infallible>(())
+                        }
+                    },
+                    |err| {
+                        web_sys::console::error_1(
+                            &format!("Debounce stream error: {:?}", err).into(),
+                        )
+                    },
+                    Some(cancel_token),
+                )
+                .await;
+        })
+    }
+
+    pub fn wire_delay(
+        stream: WasmStream<u32>,
+        ui: Rc<RefCell<DashboardUI>>,
+        cancel_token: CancellationToken,
+    ) -> FluxionTask {
+        FluxionTask::spawn(move |_task_cancel| async move {
+            let _ = stream
+                .subscribe(
+                    move |item, _token| {
+                        let ui = ui.clone();
+                        async move {
+                            match item {
+                                StreamItem::Value(value) => {
+                                    ui.borrow_mut().update_delay(value);
+                                }
+                                StreamItem::Error(e) => {
+                                    web_sys::console::error_1(
+                                        &format!("Delay stream error: {:?}", e).into(),
+                                    );
+                                }
+                            }
+                            Ok::<_, std::convert::Infallible>(())
+                        }
+                    },
+                    |err| {
+                        web_sys::console::error_1(&format!("Delay stream error: {:?}", err).into())
+                    },
+                    Some(cancel_token),
+                )
+                .await;
+        })
+    }
+
+    pub fn wire_sample(
+        stream: WasmStream<u32>,
+        ui: Rc<RefCell<DashboardUI>>,
+        cancel_token: CancellationToken,
+    ) -> FluxionTask {
+        FluxionTask::spawn(move |_task_cancel| async move {
+            let _ = stream
+                .subscribe(
+                    move |item, _token| {
+                        let ui = ui.clone();
+                        async move {
+                            match item {
+                                StreamItem::Value(value) => {
+                                    ui.borrow_mut().update_sample(value);
+                                }
+                                StreamItem::Error(e) => {
+                                    web_sys::console::error_1(
+                                        &format!("Sample stream error: {:?}", e).into(),
+                                    );
+                                }
+                            }
+                            Ok::<_, std::convert::Infallible>(())
+                        }
+                    },
+                    |err| {
+                        web_sys::console::error_1(&format!("Sample stream error: {:?}", err).into())
+                    },
+                    Some(cancel_token),
+                )
+                .await;
+        })
+    }
+
+    pub fn wire_throttle(
+        stream: WasmStream<u32>,
+        ui: Rc<RefCell<DashboardUI>>,
+        cancel_token: CancellationToken,
+    ) -> FluxionTask {
+        FluxionTask::spawn(move |_task_cancel| async move {
+            let _ = stream
+                .subscribe(
+                    move |item, _token| {
+                        let ui = ui.clone();
+                        async move {
+                            match item {
+                                StreamItem::Value(value) => {
+                                    ui.borrow_mut().update_throttle(value);
+                                }
+                                StreamItem::Error(e) => {
+                                    web_sys::console::error_1(
+                                        &format!("Throttle stream error: {:?}", e).into(),
+                                    );
+                                }
+                            }
+                            Ok::<_, std::convert::Infallible>(())
+                        }
+                    },
+                    |err| {
+                        web_sys::console::error_1(
+                            &format!("Throttle stream error: {:?}", err).into(),
+                        )
+                    },
+                    Some(cancel_token),
+                )
+                .await;
+        })
+    }
+
+    pub fn wire_timeout(
+        stream: WasmStream<u32>,
+        ui: Rc<RefCell<DashboardUI>>,
+        cancel_token: CancellationToken,
+    ) -> FluxionTask {
+        FluxionTask::spawn(move |_task_cancel| async move {
+            let _ = stream
+                .subscribe(
+                    move |item, _token| {
+                        let ui = ui.clone();
+                        async move {
+                            match item {
+                                StreamItem::Value(value) => {
+                                    ui.borrow_mut().update_timeout(value);
+                                }
+                                StreamItem::Error(e) => {
+                                    web_sys::console::error_1(
+                                        &format!("Timeout stream error: {:?}", e).into(),
+                                    );
+                                }
+                            }
+                            Ok::<_, std::convert::Infallible>(())
+                        }
+                    },
+                    |err| {
+                        web_sys::console::error_1(
+                            &format!("Timeout stream error: {:?}", err).into(),
                         )
                     },
                     Some(cancel_token),

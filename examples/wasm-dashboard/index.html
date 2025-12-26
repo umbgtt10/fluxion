@@ -52,21 +52,33 @@
                 </div>
             </section>
 
+            <!-- Combined Stream Window (Middle Section - 1 window) -->
+            <section class="combined-section">
+                <h2>🔗 Combined Stream</h2>
+                <div class="window-card combined">
+                    <h3>CombineLatest + Filter + Sum</h3>
+                    <p class="window-desc">Sum of all sensors (even numbers only: 112-998)</p>
+                    <div id="combinedWindow" class="data-window large">
+                        <div class="waiting">Waiting for data...</div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Processed Streams (Bottom Section - 6 windows) -->
             <section class="processed-section">
                 <h2>⚙️ Processed Streams</h2>
                 <div class="processed-grid">
                     <div class="window-card processed">
-                        <h3>Combined (Latest)</h3>
-                        <p class="window-desc">Sum of latest values from all sensors if even. Filtered otherwise.</p>
-                        <div id="combinedWindow" class="data-window">
+                        <h3>Debounced</h3>
+                        <p class="window-desc">Only emits after 500ms of inactivity</p>
+                        <div id="debounceWindow" class="data-window">
                             <div class="waiting">Waiting for data...</div>
                         </div>
                     </div>
                     <div class="window-card processed">
-                        <h3>Debounced</h3>
-                        <p class="window-desc">Only emits after 500ms of inactivity</p>
-                        <div id="debounceWindow" class="data-window">
+                        <h3>Delayed</h3>
+                        <p class="window-desc">Delays values by 1 second</p>
+                        <div id="delayWindow" class="data-window">
                             <div class="waiting">Waiting for data...</div>
                         </div>
                     </div>
@@ -78,13 +90,6 @@
                         </div>
                     </div>
                     <div class="window-card processed">
-                        <h3>Buffered</h3>
-                        <p class="window-desc">Collects values for 1 second</p>
-                        <div id="bufferWindow" class="data-window">
-                            <div class="waiting">Waiting for data...</div>
-                        </div>
-                    </div>
-                    <div class="window-card processed">
                         <h3>Sampled</h3>
                         <p class="window-desc">Samples latest value every 1 second</p>
                         <div id="sampleWindow" class="data-window">
@@ -92,9 +97,9 @@
                         </div>
                     </div>
                     <div class="window-card processed">
-                        <h3>Windowed</h3>
-                        <p class="window-desc">Counts emissions in 1 second windows</p>
-                        <div id="windowWindow" class="data-window">
+                        <h3>Timedout</h3>
+                        <p class="window-desc">Timeouts after 1 second windows</p>
+                        <div id="timeoutWindow" class="data-window">
                             <div class="waiting">Waiting for data...</div>
                         </div>
                     </div>

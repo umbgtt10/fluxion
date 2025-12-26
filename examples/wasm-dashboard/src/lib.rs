@@ -9,11 +9,10 @@ mod gui;
 mod presentation;
 mod source;
 
+use crate::source::{CombinedStream, ResultStreams, SensorStreams};
 use gui::DashboardUI;
 use presentation::DashboardUpdater;
 use source::Sensors;
-
-use crate::source::{CombinedStream, SensorStreams};
 
 /// Entry point called from JavaScript
 #[wasm_bindgen(start)]
@@ -41,7 +40,9 @@ pub async fn start_dashboard() -> Result<(), JsValue> {
     web_sys::console::log_1(&"✅ Starting....".into());
 
     // Create GUI with 12 hooking points (9 windows + 3 buttons)
-    let ui = DashboardUI::new(&document, close_cancel_token.clone())?;
+    let ui = DashboardUI::new(&document)?;
+    ui.borrow_mut()
+        .wire_ct_to_close_button(close_cancel_token.clone());
 
     web_sys::console::log_1(
         &"✅ Dashboard UI created with 12 hooking points (close button wired)".into(),
@@ -55,9 +56,16 @@ pub async fn start_dashboard() -> Result<(), JsValue> {
         let sensors = Sensors::new(close_cancel_token.clone());
         let streams = SensorStreams::new(sensors);
         let combined_stream = CombinedStream::new(&streams);
+        let result_streams = ResultStreams::new(&combined_stream);
+
         let updater = DashboardUpdater::new(
             &streams,
-            combined_stream.subscribe(),
+            &combined_stream,
+            result_streams.subscribe_debounce(),
+            result_streams.subscribe_delay(),
+            result_streams.subscribe_sample(),
+            result_streams.subscribe_throttle(),
+            result_streams.subscribe_timeout(),
             ui.clone(),
             close_cancel_token.clone(),
         );

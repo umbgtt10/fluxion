@@ -7,7 +7,6 @@ use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::fluxion_shared::SharedBoxStream;
 use fluxion_stream::{CombineLatestExt, MapOrderedExt, ShareExt};
 use fluxion_stream_time::WasmTimestamped;
-use futures::StreamExt;
 
 /// Combined and filtered stream from all three sensors.
 ///
@@ -62,12 +61,7 @@ impl CombinedStream {
     /// Returns a subscription to the combined stream.
     ///
     /// Multiple subscriptions can be created (for GUI and operators).
-    pub fn subscribe(&self) -> SharedBoxStream<u32> {
-        Box::pin(
-            self.combined
-                .subscribe()
-                .unwrap()
-                .map(|item| item.map(|timestamped| timestamped.into_inner())),
-        )
+    pub fn subscribe(&self) -> SharedBoxStream<WasmTimestamped<u32>> {
+        Box::pin(self.combined.subscribe().unwrap())
     }
 }

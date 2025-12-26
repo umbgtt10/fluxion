@@ -76,16 +76,9 @@
                         </div>
                     </div>
                     <div class="window-card operator">
-                        <h3>🚦 Throttle</h3>
-                        <p class="window-desc">Rate limiting (max 300ms interval)</p>
-                        <div id="throttleWindow" class="data-window">
-                            <div class="waiting">Waiting for data...</div>
-                        </div>
-                    </div>
-                    <div class="window-card operator">
-                        <h3>📦 Buffer</h3>
-                        <p class="window-desc">Collects values over time (500ms)</p>
-                        <div id="bufferWindow" class="data-window">
+                        <h3>📦 Delay</h3>
+                        <p class="window-desc">Delays values over time (500ms)</p>
+                        <div id="delayWindow" class="data-window">
                             <div class="waiting">Waiting for data...</div>
                         </div>
                     </div>
@@ -97,9 +90,16 @@
                         </div>
                     </div>
                     <div class="window-card operator">
-                        <h3>🪟 Window</h3>
+                        <h3>🚦 Throttle</h3>
+                        <p class="window-desc">Rate limiting (max 300ms interval)</p>
+                        <div id="throttleWindow" class="data-window">
+                            <div class="waiting">Waiting for data...</div>
+                        </div>
+                    </div>
+                    <div class="window-card operator">
+                        <h3>🪟 Timeout</h3>
                         <p class="window-desc">Sliding time window (1000ms)</p>
-                        <div id="windowWindow" class="data-window">
+                        <div id="timeoutWindow" class="data-window">
                             <div class="waiting">Waiting for data...</div>
                         </div>
                     </div>
@@ -113,3 +113,5 @@
     </div>
 
     <!-- Load WASM module -->
+</body>
+</html>

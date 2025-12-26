@@ -22,9 +22,9 @@ pub struct DashboardUI {
     // 5 time-bound operator windows (bottom section)
     debounce_window: HtmlElement,
     throttle_window: HtmlElement,
-    buffer_window: HtmlElement,
+    delay_window: HtmlElement,
     sample_window: HtmlElement,
-    window_window: HtmlElement,
+    timeout_window: HtmlElement,
 
     // 3 control buttons
     start_button: HtmlButtonElement,
@@ -34,10 +34,7 @@ pub struct DashboardUI {
 
 impl DashboardUI {
     /// Creates a new DashboardUI wrapped in Rc<RefCell<>> for sharing across subscribe closures
-    pub fn new(
-        document: &Document,
-        cancel_token: CancellationToken,
-    ) -> Result<Rc<RefCell<Self>>, JsValue> {
+    pub fn new(document: &Document) -> Result<Rc<RefCell<Self>>, JsValue> {
         let ui = Self {
             // Get sensor windows
             sensor1_window: Self::get_element(document, "sensor1Window")?,
@@ -49,10 +46,10 @@ impl DashboardUI {
 
             // Get operator windows
             debounce_window: Self::get_element(document, "debounceWindow")?,
-            throttle_window: Self::get_element(document, "throttleWindow")?,
-            buffer_window: Self::get_element(document, "bufferWindow")?,
+            delay_window: Self::get_element(document, "delayWindow")?,
             sample_window: Self::get_element(document, "sampleWindow")?,
-            window_window: Self::get_element(document, "windowWindow")?,
+            throttle_window: Self::get_element(document, "throttleWindow")?,
+            timeout_window: Self::get_element(document, "timeoutWindow")?,
 
             // Get buttons
             start_button: Self::get_button(document, "startBtn")?,
@@ -61,25 +58,29 @@ impl DashboardUI {
         };
 
         let ui_rc = Rc::new(RefCell::new(ui));
-        Self::wire_close_button(&ui_rc, cancel_token);
         Ok(ui_rc)
     }
 
-    fn get_element(document: &Document, id: &str) -> Result<HtmlElement, JsValue> {
-        Ok(document
-            .get_element_by_id(id)
-            .ok_or_else(|| JsValue::from_str(&format!("Element {} not found", id)))?
-            .dyn_into::<HtmlElement>()?)
-    }
-
-    fn get_button(document: &Document, id: &str) -> Result<HtmlButtonElement, JsValue> {
-        Ok(document
-            .get_element_by_id(id)
-            .ok_or_else(|| JsValue::from_str(&format!("Button {} not found", id)))?
-            .dyn_into::<HtmlButtonElement>()?)
-    }
-
     // ==================== Update methods for sensor windows (3) ====================
+
+    pub fn wire_ct_to_close_button(&mut self, cancel_token: CancellationToken) {
+        let close_closure = Closure::wrap(Box::new(move || {
+            web_sys::console::log_1(&"❌ Closing dashboard...".into());
+
+            // Trigger cancellation token (stops all tasks)
+            cancel_token.cancel();
+
+            // Close the window
+            if let Some(window) = web_sys::window() {
+                let _ = window.close();
+            }
+        }) as Box<dyn FnMut()>);
+
+        self.close_button
+            .add_event_listener_with_callback("click", close_closure.as_ref().unchecked_ref())
+            .unwrap();
+        close_closure.forget();
+    }
 
     pub fn update_sensor1(&mut self, value: u32) {
         self.sensor1_window
@@ -110,23 +111,14 @@ impl DashboardUI {
             .set_inner_html(&format!("<div class='value'>{}</div>", value));
     }
 
-    pub fn update_throttle(&mut self, value: u32) {
-        self.throttle_window
+    pub fn update_delay(&mut self, value: u32) {
+        self.delay_window
             .set_inner_html(&format!("<div class='value'>{}</div>", value));
     }
 
-    pub fn update_buffer(&mut self, values: &[u32]) {
-        let items_html = values
-            .iter()
-            .map(|v| format!("<span class='buffer-item'>{}</span>", v))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        self.buffer_window.set_inner_html(&format!(
-            "<div class='buffer-count'>{} items</div><div class='buffer-items'>{}</div>",
-            values.len(),
-            items_html
-        ));
+    pub fn update_throttle(&mut self, value: u32) {
+        self.throttle_window
+            .set_inner_html(&format!("<div class='value'>{}</div>", value));
     }
 
     pub fn update_sample(&mut self, value: u32) {
@@ -134,11 +126,9 @@ impl DashboardUI {
             .set_inner_html(&format!("<div class='value'>{}</div>", value));
     }
 
-    pub fn update_window(&mut self, count: usize) {
-        self.window_window.set_inner_html(&format!(
-            "<div class='window-count'>{} items in window</div>",
-            count
-        ));
+    pub fn update_timeout(&mut self, count: u32) {
+        self.timeout_window
+            .set_inner_html(&format!("<div class='value'>{}</div>", count));
     }
 
     // ==================== Button control methods ====================
@@ -153,37 +143,17 @@ impl DashboardUI {
         self.stop_button.set_disabled(false);
     }
 
-    // ==================== Button accessors for event wiring ====================
-
-    pub fn start_button(&self) -> &HtmlButtonElement {
-        &self.start_button
+    fn get_element(document: &Document, id: &str) -> Result<HtmlElement, JsValue> {
+        Ok(document
+            .get_element_by_id(id)
+            .ok_or_else(|| JsValue::from_str(&format!("Element {} not found", id)))?
+            .dyn_into::<HtmlElement>()?)
     }
 
-    pub fn stop_button(&self) -> &HtmlButtonElement {
-        &self.stop_button
-    }
-
-    pub fn close_button(&self) -> &HtmlButtonElement {
-        &self.close_button
-    }
-
-    fn wire_close_button(ui_rc: &Rc<RefCell<Self>>, cancel_token: CancellationToken) {
-        let close_button = ui_rc.borrow().close_button.clone();
-        let close_closure = Closure::wrap(Box::new(move || {
-            web_sys::console::log_1(&"❌ Closing dashboard...".into());
-
-            // Trigger cancellation token (stops all tasks)
-            cancel_token.cancel();
-
-            // Close the window
-            if let Some(window) = web_sys::window() {
-                let _ = window.close();
-            }
-        }) as Box<dyn FnMut()>);
-
-        close_button
-            .add_event_listener_with_callback("click", close_closure.as_ref().unchecked_ref())
-            .unwrap();
-        close_closure.forget();
+    fn get_button(document: &Document, id: &str) -> Result<HtmlButtonElement, JsValue> {
+        Ok(document
+            .get_element_by_id(id)
+            .ok_or_else(|| JsValue::from_str(&format!("Button {} not found", id)))?
+            .dyn_into::<HtmlButtonElement>()?)
     }
 }
