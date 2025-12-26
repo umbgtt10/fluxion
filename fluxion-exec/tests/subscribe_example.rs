@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::CancellationToken;
+use fluxion_exec::ignore_errors;
 use fluxion_exec::subscribe::SubscribeExt;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
@@ -51,7 +52,7 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
     // Step 4: Subscribe to the stream
     let task = spawn(async move {
         stream
-            .subscribe(process_func, None, None::<fn(TestError)>)
+            .subscribe(process_func, None, ignore_errors)
             .await
             .expect("subscribe should succeed");
     });

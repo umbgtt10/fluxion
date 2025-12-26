@@ -360,3 +360,33 @@ pub use subscribe::SubscribeExt;
     target_arch = "wasm32"
 ))]
 pub use subscribe_latest::SubscribeLatestExt;
+
+/// Helper function to ignore errors in subscribe callbacks.
+///
+/// This provides a convenient way to explicitly ignore errors when using
+/// [`SubscribeExt::subscribe`] or [`SubscribeLatestExt::subscribe_latest`].
+///
+/// # Examples
+///
+/// ```
+/// use fluxion_exec::{SubscribeExt, ignore_errors};
+/// use futures::stream;
+///
+/// # #[tokio::main]
+/// # async fn main() {
+/// let stream = stream::iter(vec![1, 2, 3]);
+///
+/// stream.subscribe(
+///     |item, _token| async move {
+///         println!("Processing: {}", item);
+///         Ok::<(), std::io::Error>(())
+///     },
+///     None,
+///     ignore_errors  // Explicitly ignore errors
+/// ).await.unwrap();
+/// # }
+/// ```
+#[inline]
+pub fn ignore_errors<E>(_error: E) {
+    // Intentionally empty - discards the error
+}

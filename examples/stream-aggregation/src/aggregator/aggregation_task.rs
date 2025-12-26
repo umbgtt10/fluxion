@@ -12,6 +12,7 @@ use crate::metrics_producer::MetricsProducer;
 use crate::sensor_producer::SensorProducer;
 use async_channel::{unbounded, Receiver, Sender};
 use fluxion_core::CancellationToken;
+use fluxion_exec::ignore_errors;
 use fluxion_exec::SubscribeLatestExt;
 use fluxion_rx::prelude::*;
 use std::convert::Infallible;
@@ -151,7 +152,7 @@ impl Aggregator {
                         Ok::<(), Infallible>(())
                     }
                 },
-                None::<fn(Infallible)>,
+                ignore_errors,
                 Some(cancel_token),
             )
             .await;

@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::CancellationToken;
+use fluxion_exec::ignore_errors;
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
@@ -49,7 +50,7 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
     };
 
     spawn(async move {
-        rx.subscribe_latest(process, None::<fn(Err)>, None)
+        rx.subscribe_latest(process, ignore_errors, None)
             .await
             .unwrap();
     });

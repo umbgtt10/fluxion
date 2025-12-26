@@ -3,7 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::CancellationToken;
-use fluxion_core::FluxionError;
 use fluxion_exec::subscribe::SubscribeExt;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
@@ -66,7 +65,7 @@ async fn test_subscribe_processes_items_when_waiting_per_item() -> anyhow::Resul
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, None, Some(error_callback))
+                .subscribe(func, None, error_callback)
                 .await
                 .expect("subscribe should succeed");
         }
@@ -161,7 +160,7 @@ async fn test_subscribe_reports_errors_for_animals_and_collects_people() -> anyh
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, None, Some(error_callback))
+                .subscribe(func, None, error_callback)
                 .await
                 .expect("subscribe should succeed");
         }
@@ -237,7 +236,7 @@ async fn test_subscribe_cancels_midstream_no_post_cancel_processing() -> anyhow:
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, Some(cancellation_token), Some(error_callback))
+                .subscribe(func, Some(cancellation_token), error_callback)
                 .await
                 .expect("subscribe should succeed");
         }
@@ -319,7 +318,7 @@ async fn test_subscribe_errors_then_cancellation_no_post_cancel_processing() -> 
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, Some(cancellation_token), Some(error_callback))
+                .subscribe(func, Some(cancellation_token), error_callback)
                 .await
                 .expect("subscribe should succeed");
         }
@@ -401,7 +400,7 @@ async fn test_subscribe_empty_stream_completes_without_items() -> anyhow::Result
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, None, Some(error_callback))
+                .subscribe(func, None, error_callback)
                 .await
                 .expect("subscribe should succeed");
         }
@@ -451,7 +450,7 @@ async fn test_subscribe_high_volume_processes_all() -> anyhow::Result<()> {
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, None, Some(error_callback))
+                .subscribe(func, None, error_callback)
                 .await
                 .expect("subscribe should succeed");
         }
@@ -513,7 +512,7 @@ async fn test_subscribe_precancelled_token_processes_nothing() -> anyhow::Result
     spawn({
         async move {
             stream
-                .subscribe(func, Some(cancellation_token), Some(error_callback))
+                .subscribe(func, Some(cancellation_token), error_callback)
                 .await
                 .expect("subscribe should succeed");
         }
@@ -540,6 +539,8 @@ async fn test_subscribe_error_aggregation_without_callback() -> anyhow::Result<(
     let stream = rx;
     let stream = stream.map(|timestamped| timestamped.value);
     let (notify_tx, mut notify_rx) = unbounded();
+    let errors = Arc::new(StdMutex::new(Vec::new()));
+    let errors_clone = errors.clone();
 
     let func = {
         let notify_tx = notify_tx.clone();
@@ -559,7 +560,9 @@ async fn test_subscribe_error_aggregation_without_callback() -> anyhow::Result<(
     let task_handle = spawn({
         async move {
             stream
-                .subscribe(func, None, Option::<fn(TestError)>::None) // No error callback
+                .subscribe(func, None, move |err| {
+                    errors_clone.lock().unwrap().push(err.to_string());
+                })
                 .await
         }
     });
@@ -579,18 +582,12 @@ async fn test_subscribe_error_aggregation_without_callback() -> anyhow::Result<(
 
     drop(tx);
 
-    // Assert - Should return MultipleErrors with 2 errors
+    // Assert - Should complete successfully, errors handled by callback
     let result = task_handle.await.unwrap();
-    assert!(result.is_err(), "Expected error aggregation");
+    assert!(result.is_ok(), "Expected success with error callback");
 
-    let err = result.unwrap_err();
-    match err {
-        FluxionError::MultipleErrors { count, errors } => {
-            assert_eq!(count, 2, "Expected 2 errors");
-            assert_eq!(errors.len(), 2, "Expected 2 error entries");
-        }
-        other => panic!("Expected MultipleErrors, got: {:?}", other),
-    }
+    let collected_errors = errors.lock().unwrap();
+    assert_eq!(collected_errors.len(), 2, "Expected 2 errors collected");
 
     Ok(())
 }
