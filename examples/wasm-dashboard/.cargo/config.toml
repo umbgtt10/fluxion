@@ -1,0 +1,8 @@
+# Cargo configuration for wasm-dashboard
+# This tells rust-analyzer and cargo to use the wasm32 target by default
+
+[build]
+target = "wasm32-unknown-unknown"
+
+[target.wasm32-unknown-unknown]
+rustflags = []

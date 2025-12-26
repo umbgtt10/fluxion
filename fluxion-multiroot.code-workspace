@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "examples/wasm-dashboard"
+		},
+		{
+			"path": "examples/stream-aggregation"
+		},
+		{
+			"path": "examples/legacy-integration"
+		}
+	],
+	"settings": {
+		"rust-analyzer.check.extraArgs": [
+			"--exclude=wasm-dashboard",
+			"--exclude=stream-aggregation",
+			"--exclude=legacy-integration"
+		]
+	}
+}
