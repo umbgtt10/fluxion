@@ -163,9 +163,8 @@ Invoke-StepAction "Refresh lockfile" { cargo update }
 
 Invoke-StepAction "Format check" { cargo fmt --all -- --check }
 # Note: Embassy tests excluded from --all-features build as they require --no-default-features
-# Note: wasm-dashboard excluded as it requires wasm32 target
-Invoke-StepAction "Build (all targets & features)" { cargo build --all-features --verbose --lib --bins --examples --workspace --exclude wasm-dashboard }
-Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-features --lib --bins --examples --workspace --exclude wasm-dashboard -- -D warnings }
+Invoke-StepAction "Build (all targets & features)" { cargo build --all-features --verbose --lib --bins --examples --workspace }
+Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-features --lib --bins --examples --workspace -- -D warnings }
 
 # Run Tokio tests
 Write-Color "=== Running Tokio tests ===" Cyan
@@ -213,11 +212,15 @@ if ($rc -ne 0) {
 }
 
 Invoke-StepAction "Run stream-aggregation example" {
-  cargo run --release --package rabbitmq-aggregator-example
+  Push-Location examples\stream-aggregation
+  cargo run --release
+  Pop-Location
 }
 
 Invoke-StepAction "Run legacy-integration example" {
-  cargo run --release --bin legacy-integration
+  Push-Location examples\legacy-integration
+  cargo run --release
+  Pop-Location
 }
 
 Write-Color "Upgrade + build + test sequence completed successfully." Green

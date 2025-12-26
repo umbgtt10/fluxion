@@ -46,12 +46,11 @@ if (-not (Get-Command cargo-nextest -ErrorAction SilentlyContinue)) {
 
 Invoke-StepAction "Run nextest (Tokio runtime tests)" {
   # Exclude embassy tests which require --no-default-features and nightly features
-  # Exclude wasm-dashboard which requires wasm32 target
-  cargo nextest run --verbose --lib --bins --tests --examples --workspace --exclude wasm-dashboard
+  cargo nextest run --verbose --lib --bins --tests --examples --workspace
 }
 
 Invoke-StepAction "Run doc tests" {
-  cargo test --doc --verbose --workspace --exclude wasm-dashboard
+  cargo test --doc --verbose --workspace
 }
 
 Write-Output "Tokio tests completed successfully."

@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 
+# Independent workspace for target-specific rust-analyzer support
+[workspace]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -13,7 +16,7 @@ fluxion-exec = { path = "../../fluxion-exec", default-features = false }
 fluxion-stream = { path = "../../fluxion-stream", default-features = false, features = ["alloc"] }
 fluxion-stream-time = { path = "../../fluxion-stream-time", default-features = false, features = ["runtime-wasm"] }
 
-async-channel = { workspace = true }
+async-channel = { version = "2.5", default-features = false }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"

@@ -689,6 +689,17 @@ New projects should use tokio or smol runtimes instead.
 - [ ] Consider implementing `publish` operator for lazy multi-subscriber pattern
 - [ ] Final operator API review (no breaking changes after this)
 
+**Workspace Architecture:**
+- [x] Phase 0: Examples as independent workspaces (completed Dec 26, 2025)
+- [ ] Evaluate Phase 0 results after 2-4 weeks of usage
+- [ ] Implement Phases 1-5 of workspace restructuring if needed:
+  - [ ] Phase 1: Extract shared implementations (fluxion-runtime, fluxion-exec-core, fluxion-time-core)
+  - [ ] Phase 2: Create fluxion-wasm crate
+  - [ ] Phase 3: Create fluxion-embassy crate
+  - [ ] Phase 4: Consolidate test infrastructure (113 → ~30 files)
+  - [ ] Phase 5: Update docs/CI, refactor workflows
+- [ ] See `docs/WORKSPACE_RESTRUCTURING_PROPOSAL.md` for full architecture plan
+
 **Performance:**
 - [ ] Comprehensive benchmark suite for all operators
 - [ ] Performance regression tests in CI

@@ -8,9 +8,6 @@ members = [
     "fluxion-exec",
     "fluxion-test-utils",
     "fluxion-stream-time",
-    "examples/stream-aggregation",
-    "examples/legacy-integration",
-    "examples/wasm-dashboard",
 ]
 
 [workspace.package]

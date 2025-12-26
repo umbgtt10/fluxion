@@ -1,25 +1,28 @@
 [package]
 name = "legacy-integration"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
+version = "0.6.13"
+edition = "2021"
+authors = ["umberto.gotti@umbertogotti.dev"]
+license = "Apache-2.0"
+repository = "https://github.com/umbgtt10/fluxion"
 publish = false
 
+# Independent workspace (no longer part of root workspace)
+[workspace]
+
 [dependencies]
-fluxion-rx = { workspace = true }
-fluxion-core = { workspace = true, features = ["std"] }
-fluxion-stream = { workspace = true }
-fluxion-exec = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
-serde = { workspace = true }
-futures = { workspace = true }
-serde_json = { workspace = true }
-quick-xml = { workspace = true }
-anyhow = { workspace = true }
-thiserror = { workspace = true }
-fastrand = { workspace = true, features = ["std"] }
+fluxion-rx = { path = "../../fluxion" }
+fluxion-core = { path = "../../fluxion-core", features = ["std"] }
+fluxion-stream = { path = "../../fluxion-stream" }
+fluxion-exec = { path = "../../fluxion-exec" }
+tokio = { version = "1.48", features = ["full"] }
+serde = { version = "1.0.217", features = ["derive"] }
+futures = { version = "0.3.31", default-features = false, features = ["alloc"] }
+serde_json = { version = "1.0.135" }
+quick-xml = { version = "0.37.3", features = ["serialize"] }
+anyhow = { version = "1.0.99" }
+thiserror = { version = "2.0.9" }
+fastrand = { version = "2.3.0", features = ["std"] }
 
 [[bin]]
 name = "legacy-integration"

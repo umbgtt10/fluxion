@@ -1,20 +1,23 @@
 [package]
 name = "rabbitmq-aggregator-example"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
+version = "0.6.13"
+edition = "2021"
+authors = ["umberto.gotti@umbertogotti.dev"]
+license = "Apache-2.0"
+repository = "https://github.com/umbgtt10/fluxion"
 publish = false
+
+# Independent workspace (no longer part of root workspace)
+[workspace]
 
 [[bin]]
 name = "rabbitmq_aggregator"
 path = "src/rabbitmq_aggregator.rs"
 
 [dependencies]
-fluxion-core = { workspace = true, features = ["std"] }
-fluxion-rx = { workspace = true }
-fluxion-exec = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
-futures = { workspace = true }
-async-channel = { workspace = true }
+fluxion-core = { path = "../../fluxion-core", features = ["std"] }
+fluxion-rx = { path = "../../fluxion" }
+fluxion-exec = { path = "../../fluxion-exec" }
+tokio = { version = "1.48", features = ["full"] }
+futures = { version = "0.3.31", default-features = false, features = ["alloc"] }
+async-channel = { version = "2.5", default-features = false }
