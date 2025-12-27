@@ -2,13 +2,11 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-mod config;
 mod gui;
 mod presentation;
 mod processing;
 mod source;
 
-use crate::config::DashboardConfig;
 use crate::source::Sensors;
 use crate::{
     processing::{CombinedStream, ResultStreams},
@@ -83,16 +81,8 @@ async fn start(ui: Rc<RefCell<DashboardUI>>, stop_token: CancellationToken) {
     ui_clone.borrow_mut().enable_stop();
 
     web_sys::console::log_1(&"✅ Started".into());
-    // Load configuration
-    let config = match DashboardConfig::load() {
-        Ok(cfg) => cfg,
-        Err(e) => {
-            web_sys::console::error_1(&format!("Failed to load config: {}", e).into());
-            return;
-        }
-    };
 
-    let sensors = Sensors::new(config, stop_token.clone());
+    let sensors = Sensors::new(stop_token.clone());
     let streams = SensorStreams::new(sensors);
     let combined_stream = CombinedStream::new(&streams);
     let result_streams = ResultStreams::new(&combined_stream);

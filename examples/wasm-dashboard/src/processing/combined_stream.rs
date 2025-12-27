@@ -45,7 +45,7 @@ impl CombinedStream {
                     // Only pass through even sums
                     let values = state.values();
                     let sum: u32 = values.iter().map(|v| v.value).sum();
-                    sum % 2 == 0
+                    sum % 3 == 0
                 },
             )
             .map_ordered(|state| {

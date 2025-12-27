@@ -30,8 +30,6 @@ pub struct DashboardUI {
     start_button: HtmlButtonElement,
     stop_button: HtmlButtonElement,
     close_button: HtmlButtonElement,
-
-    close_token: CancellationToken,
 }
 
 impl DashboardUI {
@@ -60,7 +58,6 @@ impl DashboardUI {
             start_button: Self::get_button(document, "startBtn")?,
             stop_button: Self::get_button(document, "stopBtn")?,
             close_button: Self::get_button(document, "closeBtn")?,
-            close_token: close_token.clone(),
         };
 
         let ui_rc = Rc::new(RefCell::new(ui));

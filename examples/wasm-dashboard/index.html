@@ -56,8 +56,8 @@
             <section class="combined-section">
                 <h2>🔗 Combined Stream</h2>
                 <div class="window-card combined">
-                    <h3>CombineLatest + Filter + Sum</h3>
-                    <p class="window-desc">Sum of all sensors (even numbers only: 112-998)</p>
+                    <h3>CombineLatest -> Sum -> Filter</h3>
+                    <p class="window-desc">Sum of all sensors. Then filter numbers not divisible by 3.</p>
                     <div id="combinedWindow" class="data-window large">
                         <div class="waiting">Waiting for data...</div>
                     </div>
@@ -70,21 +70,21 @@
                 <div class="processed-grid">
                     <div class="window-card processed">
                         <h3>Debounced</h3>
-                        <p class="window-desc">Only emits after 500ms of inactivity</p>
+                        <p class="window-desc">Only emits after 700ms of inactivity</p>
                         <div id="debounceWindow" class="data-window">
                             <div class="waiting">Waiting for data...</div>
                         </div>
                     </div>
                     <div class="window-card processed">
                         <h3>Delayed</h3>
-                        <p class="window-desc">Delays values by 1 second</p>
+                        <p class="window-desc">Delays all values by 1 second</p>
                         <div id="delayWindow" class="data-window">
                             <div class="waiting">Waiting for data...</div>
                         </div>
                     </div>
                     <div class="window-card processed">
                         <h3>Throttled</h3>
-                        <p class="window-desc">Max one emission per 500ms</p>
+                        <p class="window-desc">Max one emission per 800ms</p>
                         <div id="throttleWindow" class="data-window">
                             <div class="waiting">Waiting for data...</div>
                         </div>
@@ -97,8 +97,8 @@
                         </div>
                     </div>
                     <div class="window-card processed">
-                        <h3>Timedout</h3>
-                        <p class="window-desc">Timeouts after 1 second windows</p>
+                        <h3>Timeout</h3>
+                        <p class="window-desc">Errors if no emission within 2 seconds</p>
                         <div id="timeoutWindow" class="data-window">
                             <div class="waiting">Waiting for data...</div>
                         </div>
@@ -109,6 +109,8 @@
 
         <footer>
             <p>Built with 🦀 Rust + WASM | Powered by Fluxion Reactive Streams</p>
+            <p>Author: Umberto Gotti</p>
+            <p>Email: umberto.gotti@umbertogotti.dev</p>
         </footer>
     </div>
 

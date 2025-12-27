@@ -36,62 +36,62 @@ impl<'a> ResultStreams<'a> {
         Self { combined_stream }
     }
 
-    /// Creates a new debounced stream (200ms).
+    /// Creates a new debounced stream (700ms).
     ///
     /// Note: Each call creates a new stream subscription. Not shareable in WASM.
     pub fn subscribe_debounce(&self) -> WasmStream<u32> {
         Box::pin(
             self.combined_stream
                 .subscribe()
-                .debounce(Duration::from_millis(200))
+                .debounce(Duration::from_millis(700))
                 .map(|item| item.map(|timestamped| timestamped.into_inner())),
         )
     }
 
-    /// Creates a new delayed stream (500ms).
+    /// Creates a new delayed stream (1000ms).
     ///
     /// Note: Each call creates a new stream subscription. Not shareable in WASM.
     pub fn subscribe_delay(&self) -> WasmStream<u32> {
         Box::pin(
             self.combined_stream
                 .subscribe()
-                .delay(Duration::from_millis(500))
+                .delay(Duration::from_millis(1000))
                 .map(|item| item.map(|timestamped| timestamped.into_inner())),
         )
     }
 
-    /// Creates a new sampled stream (400ms).
+    /// Creates a new sampled stream (1000ms).
     ///
     /// Note: Each call creates a new stream subscription. Not shareable in WASM.
     pub fn subscribe_sample(&self) -> WasmStream<u32> {
         Box::pin(
             self.combined_stream
                 .subscribe()
-                .sample(Duration::from_millis(400))
+                .sample(Duration::from_millis(1000))
                 .map(|item| item.map(|timestamped| timestamped.into_inner())),
         )
     }
 
-    /// Creates a new throttled stream (300ms).
+    /// Creates a new throttled stream (800ms).
     ///
     /// Note: Each call creates a new stream subscription. Not shareable in WASM.
     pub fn subscribe_throttle(&self) -> WasmStream<u32> {
         Box::pin(
             self.combined_stream
                 .subscribe()
-                .throttle(Duration::from_millis(300))
+                .throttle(Duration::from_millis(800))
                 .map(|item| item.map(|timestamped| timestamped.into_inner())),
         )
     }
 
-    /// Creates a new stream with timeout (600ms).
+    /// Creates a new stream with timeout (2000ms).
     ///
     /// Note: Each call creates a new stream subscription. Not shareable in WASM.
     pub fn subscribe_timeout(&self) -> WasmStream<u32> {
         Box::pin(
             self.combined_stream
                 .subscribe()
-                .timeout(Duration::from_millis(600))
+                .timeout(Duration::from_millis(2000))
                 .map(|item| item.map(|timestamped| timestamped.into_inner())),
         )
     }
