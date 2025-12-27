@@ -5,7 +5,7 @@
 use crate::source::SensorStreams;
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::fluxion_shared::SharedBoxStream;
-use fluxion_stream::{CombineLatestExt, MapOrderedExt, ShareExt};
+use fluxion_stream::{CombineLatestExt, FluxionShared, MapOrderedExt, ShareExt};
 use fluxion_stream_time::WasmTimestamped;
 
 /// Combined and filtered stream from all three sensors.
@@ -15,7 +15,7 @@ use fluxion_stream_time::WasmTimestamped;
 ///
 /// The shared output can be subscribed to multiple times (GUI + operators).
 pub struct CombinedStream {
-    combined: fluxion_stream::FluxionShared<WasmTimestamped<u32>>,
+    combined: FluxionShared<WasmTimestamped<u32>>,
 }
 
 impl CombinedStream {

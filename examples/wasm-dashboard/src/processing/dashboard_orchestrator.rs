@@ -10,7 +10,9 @@ use fluxion_exec::SubscribeExt;
 use fluxion_stream::fluxion_shared::SharedBoxStream;
 use fluxion_stream_time::WasmTimestamped;
 use std::cell::RefCell;
+use std::convert::Infallible;
 use std::rc::Rc;
+use web_sys::console;
 
 /// Pure orchestrator - Wires streams to UI updates
 ///
@@ -22,15 +24,15 @@ use std::rc::Rc;
 ///
 /// Generic over both the stream source and the UI target, making it
 /// completely testable and reusable.
-pub struct DashboardUpdater<P: StreamProvider, S: DashboardSink + 'static> {
+pub struct DashboardOrchestrator<P: StreamProvider, S: DashboardSink + 'static> {
     provider: P,
     sink: Rc<RefCell<S>>,
     stop_token: CancellationToken,
     tasks: Vec<FluxionTask>,
 }
 
-impl<P: StreamProvider, S: DashboardSink + 'static> DashboardUpdater<P, S> {
-    /// Creates a new updater
+impl<P: StreamProvider, S: DashboardSink + 'static> DashboardOrchestrator<P, S> {
+    /// Creates a new orchestrator
     ///
     /// # Arguments
     ///
@@ -102,7 +104,7 @@ impl<P: StreamProvider, S: DashboardSink + 'static> DashboardUpdater<P, S> {
         // Block until cancellation token is triggered
         self.stop_token.cancelled().await;
 
-        web_sys::console::log_1(&"🛑 Dashboard shutting down...".into());
+        console::log_1(&"🛑 Dashboard shutting down...".into());
 
         // Tasks are automatically cancelled and dropped here
         drop(self.tasks);
@@ -124,15 +126,15 @@ impl<P: StreamProvider, S: DashboardSink + 'static> DashboardUpdater<P, S> {
                                     sink.borrow_mut().update_sensor1(sensor_value.value);
                                 }
                                 StreamItem::Error(e) => {
-                                    web_sys::console::error_1(
+                                    console::error_1(
                                         &format!("Sensor 1 stream error: {:?}", e).into(),
                                     );
                                 }
                             }
-                            Ok::<_, std::convert::Infallible>(())
+                            Ok::<_, Infallible>(())
                         }
                     },
-                    |err| web_sys::console::error_1(&format!("Sensor 1 error: {:?}", err).into()),
+                    |err| console::error_1(&format!("Sensor 1 error: {:?}", err).into()),
                     Some(stop_token),
                 )
                 .await;
@@ -155,15 +157,15 @@ impl<P: StreamProvider, S: DashboardSink + 'static> DashboardUpdater<P, S> {
                                     sink.borrow_mut().update_sensor2(sensor_value.value);
                                 }
                                 StreamItem::Error(e) => {
-                                    web_sys::console::error_1(
+                                    console::error_1(
                                         &format!("Sensor 2 stream error: {:?}", e).into(),
                                     );
                                 }
                             }
-                            Ok::<_, std::convert::Infallible>(())
+                            Ok::<_, Infallible>(())
                         }
                     },
-                    |err| web_sys::console::error_1(&format!("Sensor 2 error: {:?}", err).into()),
+                    |err| console::error_1(&format!("Sensor 2 error: {:?}", err).into()),
                     Some(stop_token),
                 )
                 .await;
@@ -186,15 +188,15 @@ impl<P: StreamProvider, S: DashboardSink + 'static> DashboardUpdater<P, S> {
                                     sink.borrow_mut().update_sensor3(sensor_value.value);
                                 }
                                 StreamItem::Error(e) => {
-                                    web_sys::console::error_1(
+                                    console::error_1(
                                         &format!("Sensor 3 stream error: {:?}", e).into(),
                                     );
                                 }
                             }
-                            Ok::<_, std::convert::Infallible>(())
+                            Ok::<_, Infallible>(())
                         }
                     },
-                    |err| web_sys::console::error_1(&format!("Sensor 3 error: {:?}", err).into()),
+                    |err| console::error_1(&format!("Sensor 3 error: {:?}", err).into()),
                     Some(stop_token),
                 )
                 .await;
@@ -217,19 +219,15 @@ impl<P: StreamProvider, S: DashboardSink + 'static> DashboardUpdater<P, S> {
                                     sink.borrow_mut().update_combined(sum.value);
                                 }
                                 StreamItem::Error(e) => {
-                                    web_sys::console::error_1(
+                                    console::error_1(
                                         &format!("Combined stream error: {:?}", e).into(),
                                     );
                                 }
                             }
-                            Ok::<_, std::convert::Infallible>(())
+                            Ok::<_, Infallible>(())
                         }
                     },
-                    |err| {
-                        web_sys::console::error_1(
-                            &format!("Combined stream error: {:?}", err).into(),
-                        )
-                    },
+                    |err| console::error_1(&format!("Combined stream error: {:?}", err).into()),
                     Some(stop_token),
                 )
                 .await;
@@ -252,19 +250,15 @@ impl<P: StreamProvider, S: DashboardSink + 'static> DashboardUpdater<P, S> {
                                     sink.borrow_mut().update_debounce(value);
                                 }
                                 StreamItem::Error(e) => {
-                                    web_sys::console::error_1(
+                                    console::error_1(
                                         &format!("Debounce stream error: {:?}", e).into(),
                                     );
                                 }
                             }
-                            Ok::<_, std::convert::Infallible>(())
+                            Ok::<_, Infallible>(())
                         }
                     },
-                    |err| {
-                        web_sys::console::error_1(
-                            &format!("Debounce stream error: {:?}", err).into(),
-                        )
-                    },
+                    |err| console::error_1(&format!("Debounce stream error: {:?}", err).into()),
                     Some(stop_token),
                 )
                 .await;
@@ -287,17 +281,15 @@ impl<P: StreamProvider, S: DashboardSink + 'static> DashboardUpdater<P, S> {
                                     sink.borrow_mut().update_delay(value);
                                 }
                                 StreamItem::Error(e) => {
-                                    web_sys::console::error_1(
+                                    console::error_1(
                                         &format!("Delay stream error: {:?}", e).into(),
                                     );
                                 }
                             }
-                            Ok::<_, std::convert::Infallible>(())
+                            Ok::<_, Infallible>(())
                         }
                     },
-                    |err| {
-                        web_sys::console::error_1(&format!("Delay stream error: {:?}", err).into())
-                    },
+                    |err| console::error_1(&format!("Delay stream error: {:?}", err).into()),
                     Some(stop_token),
                 )
                 .await;
@@ -320,17 +312,15 @@ impl<P: StreamProvider, S: DashboardSink + 'static> DashboardUpdater<P, S> {
                                     sink.borrow_mut().update_sample(value);
                                 }
                                 StreamItem::Error(e) => {
-                                    web_sys::console::error_1(
+                                    console::error_1(
                                         &format!("Sample stream error: {:?}", e).into(),
                                     );
                                 }
                             }
-                            Ok::<_, std::convert::Infallible>(())
+                            Ok::<_, Infallible>(())
                         }
                     },
-                    |err| {
-                        web_sys::console::error_1(&format!("Sample stream error: {:?}", err).into())
-                    },
+                    |err| console::error_1(&format!("Sample stream error: {:?}", err).into()),
                     Some(stop_token),
                 )
                 .await;
@@ -353,19 +343,15 @@ impl<P: StreamProvider, S: DashboardSink + 'static> DashboardUpdater<P, S> {
                                     sink.borrow_mut().update_throttle(value);
                                 }
                                 StreamItem::Error(e) => {
-                                    web_sys::console::error_1(
+                                    console::error_1(
                                         &format!("Throttle stream error: {:?}", e).into(),
                                     );
                                 }
                             }
-                            Ok::<_, std::convert::Infallible>(())
+                            Ok::<_, Infallible>(())
                         }
                     },
-                    |err| {
-                        web_sys::console::error_1(
-                            &format!("Throttle stream error: {:?}", err).into(),
-                        )
-                    },
+                    |err| console::error_1(&format!("Throttle stream error: {:?}", err).into()),
                     Some(stop_token),
                 )
                 .await;
@@ -388,20 +374,16 @@ impl<P: StreamProvider, S: DashboardSink + 'static> DashboardUpdater<P, S> {
                                     sink.borrow_mut().update_timeout(value);
                                 }
                                 StreamItem::Error(e) => {
-                                    web_sys::console::error_1(
+                                    console::error_1(
                                         &format!("Timeout stream error: {:?}", e).into(),
                                     );
                                     sink.borrow_mut().show_timeout_error(&format!("{:?}", e));
                                 }
                             }
-                            Ok::<_, std::convert::Infallible>(())
+                            Ok::<_, Infallible>(())
                         }
                     },
-                    |err| {
-                        web_sys::console::error_1(
-                            &format!("Timeout stream error: {:?}", err).into(),
-                        )
-                    },
+                    |err| console::error_1(&format!("Timeout stream error: {:?}", err).into()),
                     Some(stop_token),
                 )
                 .await;

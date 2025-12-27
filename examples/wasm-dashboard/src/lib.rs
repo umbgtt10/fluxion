@@ -8,7 +8,7 @@ mod source;
 
 use crate::source::{Sensors, SourceLayer};
 use crate::{
-    processing::{DashboardUpdater, ProcessingLayer},
+    processing::{DashboardOrchestrator, ProcessingLayer},
     source::SensorStreams,
 };
 use fluxion_core::CancellationToken;
@@ -16,6 +16,7 @@ use gui::DashboardUI;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
+use web_sys::{console, window};
 
 /// Entry point called from JavaScript
 #[wasm_bindgen(start)]
@@ -24,7 +25,7 @@ pub fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
     // Log initialization
-    web_sys::console::log_1(&"🚀 Fluxion WASM Dashboard initializing...".into());
+    console::log_1(&"🚀 Fluxion WASM Dashboard initializing...".into());
 
     Ok(())
 }
@@ -32,10 +33,10 @@ pub fn main() -> Result<(), JsValue> {
 /// Initialize and start the dashboard
 #[wasm_bindgen]
 pub async fn start_dashboard() -> Result<(), JsValue> {
-    let window = web_sys::window().ok_or("No window")?;
+    let window = window().ok_or("No window")?;
     let document = window.document().ok_or("No document")?;
 
-    web_sys::console::log_1(&"✅ Starting....".into());
+    console::log_1(&"✅ Starting....".into());
 
     let close_token = CancellationToken::new();
     let ui = DashboardUI::new(&document, close_token.clone())?;
@@ -61,15 +62,15 @@ pub async fn start_dashboard() -> Result<(), JsValue> {
             }
         })));
 
-    web_sys::console::log_1(
+    console::log_1(
         &"✅ Dashboard UI created with 12 hooking points (close button wired)".into(),
     );
 
-    web_sys::console::log_1(&"✅ Dashboard running".into());
+    console::log_1(&"✅ Dashboard running".into());
 
     close_token.cancelled().await;
 
-    web_sys::console::log_1(&"✅ Cancelled! No longer waiting for close cancellation".into());
+    console::log_1(&"✅ Cancelled! No longer waiting for close cancellation".into());
 
     Ok(())
 }
@@ -78,7 +79,7 @@ async fn start(ui: Rc<RefCell<DashboardUI>>, stop_token: CancellationToken) {
     let ui_clone = ui.clone();
     ui_clone.borrow_mut().enable_stop();
 
-    web_sys::console::log_1(&"✅ Started".into());
+    console::log_1(&"✅ Started".into());
 
     // Create source layer
     let sensors = Sensors::new(stop_token.clone());
@@ -88,12 +89,12 @@ async fn start(ui: Rc<RefCell<DashboardUI>>, stop_token: CancellationToken) {
     // Create processing layer
     let processing_layer = ProcessingLayer::new(&source_layer);
 
-    // Create updater with both traits
-    let updater = DashboardUpdater::new(processing_layer, ui_clone, stop_token);
+    // Create orchestrator with both traits
+    let orchestrator = DashboardOrchestrator::new(processing_layer, ui_clone, stop_token);
 
-    web_sys::console::log_1(&"✅ Running".into());
+    console::log_1(&"✅ Running".into());
 
-    updater.run().await;
+    orchestrator.run().await;
 
-    web_sys::console::log_1(&"✅ Dashboard shutdown complete".into());
+    console::log_1(&"✅ Dashboard shutdown complete".into());
 }

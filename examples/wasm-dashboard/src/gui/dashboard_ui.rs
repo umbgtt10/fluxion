@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{Document, HtmlButtonElement, HtmlElement};
+use web_sys::{console, window, Document, HtmlButtonElement, HtmlElement};
 
 /// Shared dashboard UI with 12 hooking points (9 windows + 3 buttons)
 pub struct DashboardUI {
@@ -89,12 +89,12 @@ impl DashboardUI {
 
     fn wire_close_button_to_application_closure(&mut self, close_token: CancellationToken) {
         let close_closure = Closure::wrap(Box::new(move || {
-            web_sys::console::log_1(&"❌ Closing dashboard...".into());
+            console::log_1(&"❌ Closing dashboard...".into());
 
             close_token.cancel();
 
             // Close the window
-            if let Some(window) = web_sys::window() {
+            if let Some(window) = window() {
                 let _ = window.close();
             }
         }) as Box<dyn FnMut()>);
