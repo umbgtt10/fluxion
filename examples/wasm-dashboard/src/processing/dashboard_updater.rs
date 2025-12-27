@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::gui::DashboardUI;
+use crate::gui::DashboardSink;
 use crate::processing::WasmStream;
 use crate::source::{SensorStreams, SensorValue};
 use crate::CombinedStream;
@@ -13,11 +13,12 @@ use fluxion_stream_time::WasmTimestamped;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// Manages subscriptions that wire streams to GUI updates
+/// Manages stream subscriptions and wires them to UI updates
 ///
-/// Creates and manages background tasks that consume stream data
-/// and update the corresponding GUI windows.
-pub struct DashboardUpdater {
+/// This is the core business logic that orchestrates stream processing
+/// and coordinates updates to the dashboard. It depends on the DashboardSink
+/// trait rather than concrete UI types, making it testable and flexible.
+pub struct DashboardUpdater<T: DashboardSink + 'static> {
     streams: Vec<SharedBoxStream<SensorValue>>,
     combined_stream: SharedBoxStream<WasmTimestamped<u32>>,
     debounce_stream: WasmStream<u32>,
@@ -25,19 +26,19 @@ pub struct DashboardUpdater {
     sample_stream: WasmStream<u32>,
     throttle_stream: WasmStream<u32>,
     timeout_stream: WasmStream<u32>,
-    ui: Rc<RefCell<DashboardUI>>,
+    ui: Rc<RefCell<T>>,
     stop_token: CancellationToken,
     tasks: Vec<FluxionTask>,
 }
 
-impl DashboardUpdater {
+impl<T: DashboardSink + 'static> DashboardUpdater<T> {
     /// Creates a new updater (does not start tasks yet)
     ///
     /// # Arguments
     ///
     /// * `sensor_streams` - Shared sensor streams container
     /// * `combined_stream` - Subscription to the combined/filtered stream
-    /// * `ui` - Shared dashboard UI instance
+    /// * `ui` - Shared dashboard UI instance implementing DashboardSink
     /// * `cancel_token` - Token to stop all update tasks
     pub fn new(
         sensor_streams: &SensorStreams,
@@ -47,7 +48,7 @@ impl DashboardUpdater {
         sample_stream: WasmStream<u32>,
         throttle_stream: WasmStream<u32>,
         timeout_stream: WasmStream<u32>,
-        ui: Rc<RefCell<DashboardUI>>,
+        ui: Rc<RefCell<T>>,
         stop_token: CancellationToken,
     ) -> Self {
         // Get independent subscriptions for each sensor stream and combined stream
@@ -140,7 +141,7 @@ impl DashboardUpdater {
 
     fn wire_sensor1(
         stream: SharedBoxStream<SensorValue>,
-        ui: Rc<RefCell<DashboardUI>>,
+        ui: Rc<RefCell<T>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
@@ -171,7 +172,7 @@ impl DashboardUpdater {
 
     fn wire_sensor2(
         stream: SharedBoxStream<SensorValue>,
-        ui: Rc<RefCell<DashboardUI>>,
+        ui: Rc<RefCell<T>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
@@ -202,7 +203,7 @@ impl DashboardUpdater {
 
     fn wire_sensor3(
         stream: SharedBoxStream<SensorValue>,
-        ui: Rc<RefCell<DashboardUI>>,
+        ui: Rc<RefCell<T>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
@@ -233,7 +234,7 @@ impl DashboardUpdater {
 
     fn wire_combined(
         stream: SharedBoxStream<WasmTimestamped<u32>>,
-        ui: Rc<RefCell<DashboardUI>>,
+        ui: Rc<RefCell<T>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
@@ -268,7 +269,7 @@ impl DashboardUpdater {
 
     fn wire_debounce(
         stream: WasmStream<u32>,
-        ui: Rc<RefCell<DashboardUI>>,
+        ui: Rc<RefCell<T>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
@@ -301,9 +302,9 @@ impl DashboardUpdater {
         })
     }
 
-    pub fn wire_delay(
+    fn wire_delay(
         stream: WasmStream<u32>,
-        ui: Rc<RefCell<DashboardUI>>,
+        ui: Rc<RefCell<T>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
@@ -334,9 +335,9 @@ impl DashboardUpdater {
         })
     }
 
-    pub fn wire_sample(
+    fn wire_sample(
         stream: WasmStream<u32>,
-        ui: Rc<RefCell<DashboardUI>>,
+        ui: Rc<RefCell<T>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
@@ -367,9 +368,9 @@ impl DashboardUpdater {
         })
     }
 
-    pub fn wire_throttle(
+    fn wire_throttle(
         stream: WasmStream<u32>,
-        ui: Rc<RefCell<DashboardUI>>,
+        ui: Rc<RefCell<T>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
@@ -402,9 +403,9 @@ impl DashboardUpdater {
         })
     }
 
-    pub fn wire_timeout(
+    fn wire_timeout(
         stream: WasmStream<u32>,
-        ui: Rc<RefCell<DashboardUI>>,
+        ui: Rc<RefCell<T>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
@@ -421,7 +422,7 @@ impl DashboardUpdater {
                                     web_sys::console::error_1(
                                         &format!("Timeout stream error: {:?}", e).into(),
                                     );
-                                    ui.borrow_mut().update_timeout_error(&format!("{:?}", e));
+                                    ui.borrow_mut().show_timeout_error(&format!("{:?}", e));
                                 }
                             }
                             Ok::<_, std::convert::Infallible>(())

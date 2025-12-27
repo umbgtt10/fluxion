@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use super::DashboardSink;
 use fluxion_core::CancellationToken;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -182,5 +183,48 @@ impl DashboardUI {
             .get_element_by_id(id)
             .ok_or_else(|| JsValue::from_str(&format!("Button {} not found", id)))?
             .dyn_into::<HtmlButtonElement>()?)
+    }
+}
+
+// Implement DashboardSink trait for DashboardUI
+impl DashboardSink for DashboardUI {
+    fn update_sensor1(&mut self, value: u32) {
+        self.update_sensor1(value);
+    }
+
+    fn update_sensor2(&mut self, value: u32) {
+        self.update_sensor2(value);
+    }
+
+    fn update_sensor3(&mut self, value: u32) {
+        self.update_sensor3(value);
+    }
+
+    fn update_combined(&mut self, value: u32) {
+        self.update_combined(value);
+    }
+
+    fn update_debounce(&mut self, value: u32) {
+        self.update_debounce(value);
+    }
+
+    fn update_delay(&mut self, value: u32) {
+        self.update_delay(value);
+    }
+
+    fn update_throttle(&mut self, value: u32) {
+        self.update_throttle(value);
+    }
+
+    fn update_sample(&mut self, value: u32) {
+        self.update_sample(value);
+    }
+
+    fn update_timeout(&mut self, count: u32) {
+        self.update_timeout(count);
+    }
+
+    fn show_timeout_error(&mut self, error: &str) {
+        self.update_timeout_error(error);
     }
 }

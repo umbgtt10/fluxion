@@ -3,18 +3,16 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 mod gui;
-mod presentation;
 mod processing;
 mod source;
 
 use crate::source::Sensors;
 use crate::{
-    processing::{CombinedStream, ResultStreams},
+    processing::{CombinedStream, DashboardUpdater, ResultStreams},
     source::SensorStreams,
 };
 use fluxion_core::CancellationToken;
 use gui::DashboardUI;
-use presentation::DashboardUpdater;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;

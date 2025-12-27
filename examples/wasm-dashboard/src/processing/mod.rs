@@ -2,12 +2,15 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Processing layer - Combined streams .
+//! Processing layer - Stream orchestration and business logic.
 //!
-//! This module provides combined streams processing logic for the dashboard.
+//! This module provides stream processing, coordination, and wiring logic
+//! for the dashboard. It is independent of UI implementation details.
 
 mod combined_stream;
+mod dashboard_updater;
 mod result_streams;
 
 pub use combined_stream::CombinedStream;
+pub use dashboard_updater::DashboardUpdater;
 pub use result_streams::{ResultStreams, WasmStream};
