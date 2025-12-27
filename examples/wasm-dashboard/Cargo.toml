@@ -23,6 +23,8 @@ js-sys = "0.3"
 console_error_panic_hook = "0.1"
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
 gloo-timers = { version = "0.3", features = ["futures"] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+toml = { version = "0.9", default-features = false, features = ["parse", "serde"] }
 
 [dependencies.web-sys]
 version = "0.3"

@@ -30,11 +30,16 @@ pub struct DashboardUI {
     start_button: HtmlButtonElement,
     stop_button: HtmlButtonElement,
     close_button: HtmlButtonElement,
+
+    close_token: CancellationToken,
 }
 
 impl DashboardUI {
     /// Creates a new DashboardUI wrapped in Rc<RefCell<>> for sharing across subscribe closures
-    pub fn new(document: &Document) -> Result<Rc<RefCell<Self>>, JsValue> {
+    pub fn new(
+        document: &Document,
+        close_token: CancellationToken,
+    ) -> Result<Rc<RefCell<Self>>, JsValue> {
         let ui = Self {
             // Get sensor windows
             sensor1_window: Self::get_element(document, "sensor1Window")?,
@@ -55,20 +60,40 @@ impl DashboardUI {
             start_button: Self::get_button(document, "startBtn")?,
             stop_button: Self::get_button(document, "stopBtn")?,
             close_button: Self::get_button(document, "closeBtn")?,
+            close_token: close_token.clone(),
         };
 
         let ui_rc = Rc::new(RefCell::new(ui));
+        ui_rc
+            .borrow_mut()
+            .wire_close_button_to_application_closure(close_token);
+
         Ok(ui_rc)
     }
 
     // ==================== Update methods for sensor windows (3) ====================
 
-    pub fn wire_ct_to_close_button(&mut self, cancel_token: CancellationToken) {
+    pub fn wire_closure_to_start_button(&mut self, start_closure: Closure<dyn FnMut()>) {
+        self.start_button
+            .add_event_listener_with_callback("click", start_closure.as_ref().unchecked_ref())
+            .unwrap();
+
+        start_closure.forget();
+    }
+
+    pub fn wire_closure_to_stop_button(&mut self, stop_closure: Closure<dyn FnMut()>) {
+        self.stop_button
+            .add_event_listener_with_callback("click", stop_closure.as_ref().unchecked_ref())
+            .unwrap();
+
+        stop_closure.forget();
+    }
+
+    fn wire_close_button_to_application_closure(&mut self, close_token: CancellationToken) {
         let close_closure = Closure::wrap(Box::new(move || {
             web_sys::console::log_1(&"❌ Closing dashboard...".into());
 
-            // Trigger cancellation token (stops all tasks)
-            cancel_token.cancel();
+            close_token.cancel();
 
             // Close the window
             if let Some(window) = web_sys::window() {

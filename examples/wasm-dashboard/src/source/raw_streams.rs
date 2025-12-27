@@ -3,6 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use super::sensor::Sensor;
+use crate::config::DashboardConfig;
 use fluxion_core::CancellationToken;
 
 /// Container for the three raw sensors (Phase 1)
@@ -22,30 +23,29 @@ pub struct Sensors {
 
 impl Sensors {
     /// Creates three independent sensor streams with predefined ranges.
-    ///
-    /// All sensors operate at 1-5 Hz (200-1000ms intervals) with natural
-    /// timing variation.
+    /// Creates three independent sensor streams with configuration from file.
     ///
     /// # Arguments
     ///
+    /// * `config` - Dashboard configuration with sensor parameters
     /// * `cancel_token` - Cancellation token to stop all sensors
-    pub fn new(cancel_token: CancellationToken) -> Self {
+    pub fn new(config: DashboardConfig, cancel_token: CancellationToken) -> Self {
         Self {
-            // Sensor 1: Values 1-9, Frequency 1-5 Hz
-            sensor1: Sensor::new((200, 1000), (1, 9), cancel_token.clone()),
-            // Sensor 2: Values 10-90, Frequency 1-5 Hz
-            sensor2: Sensor::new((200, 1000), (10, 90), cancel_token.clone()),
-            // Sensor 3: Values 100-900, Frequency 1-5 Hz
-            sensor3: Sensor::new((200, 1000), (100, 900), cancel_token),
+            sensor1: Sensor::new(
+                (config.sensor1.delay_min_ms, config.sensor1.delay_max_ms),
+                (config.sensor1.value_min, config.sensor1.value_max),
+                cancel_token.clone(),
+            ),
+            sensor2: Sensor::new(
+                (config.sensor2.delay_min_ms, config.sensor2.delay_max_ms),
+                (config.sensor2.value_min, config.sensor2.value_max),
+                cancel_token.clone(),
+            ),
+            sensor3: Sensor::new(
+                (config.sensor3.delay_min_ms, config.sensor3.delay_max_ms),
+                (config.sensor3.value_min, config.sensor3.value_max),
+                cancel_token,
+            ),
         }
-    }
-
-    /// Manually cancel all sensor tasks.
-    ///
-    /// This will stop all sensors from generating new values.
-    pub fn cancel(&self) {
-        self.sensor1.cancel();
-        self.sensor2.cancel();
-        self.sensor3.cancel();
     }
 }

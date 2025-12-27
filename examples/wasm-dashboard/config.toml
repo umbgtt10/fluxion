@@ -1,0 +1,20 @@
+# Sensor configuration for WASM dashboard
+# Each sensor has a delay range (min_ms, max_ms) and value range (min_val, max_val)
+
+[sensor1]
+delay_min_ms = 500
+delay_max_ms = 1000
+value_min = 1
+value_max = 9
+
+[sensor2]
+delay_min_ms = 1000
+delay_max_ms = 2000
+value_min = 10
+value_max = 90
+
+[sensor3]
+delay_min_ms = 2000
+delay_max_ms = 4000
+value_min = 100
+value_max = 900

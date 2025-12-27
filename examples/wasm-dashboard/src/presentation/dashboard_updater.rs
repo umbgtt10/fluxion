@@ -26,7 +26,7 @@ pub struct DashboardUpdater {
     throttle_stream: WasmStream<u32>,
     timeout_stream: WasmStream<u32>,
     ui: Rc<RefCell<DashboardUI>>,
-    cancel_token: CancellationToken,
+    stop_token: CancellationToken,
     tasks: Vec<FluxionTask>,
 }
 
@@ -48,7 +48,7 @@ impl DashboardUpdater {
         throttle_stream: WasmStream<u32>,
         timeout_stream: WasmStream<u32>,
         ui: Rc<RefCell<DashboardUI>>,
-        cancel_token: CancellationToken,
+        stop_token: CancellationToken,
     ) -> Self {
         // Get independent subscriptions for each sensor stream and combined stream
         let streams = sensor_streams.subscribe();
@@ -63,7 +63,7 @@ impl DashboardUpdater {
             throttle_stream,
             timeout_stream,
             ui,
-            cancel_token,
+            stop_token,
             tasks: Vec::new(),
         }
     }
@@ -78,19 +78,19 @@ impl DashboardUpdater {
 
         // Wire sensor 1
         if let Some(stream) = streams.next() {
-            let task = Self::wire_sensor1(stream, self.ui.clone(), self.cancel_token.clone());
+            let task = Self::wire_sensor1(stream, self.ui.clone(), self.stop_token.clone());
             self.tasks.push(task);
         }
 
         // Wire sensor 2
         if let Some(stream) = streams.next() {
-            let task = Self::wire_sensor2(stream, self.ui.clone(), self.cancel_token.clone());
+            let task = Self::wire_sensor2(stream, self.ui.clone(), self.stop_token.clone());
             self.tasks.push(task);
         }
 
         // Wire sensor 3
         if let Some(stream) = streams.next() {
-            let task = Self::wire_sensor3(stream, self.ui.clone(), self.cancel_token.clone());
+            let task = Self::wire_sensor3(stream, self.ui.clone(), self.stop_token.clone());
             self.tasks.push(task);
         }
 
@@ -98,47 +98,39 @@ impl DashboardUpdater {
         let task = Self::wire_combined(
             self.combined_stream,
             self.ui.clone(),
-            self.cancel_token.clone(),
+            self.stop_token.clone(),
         );
         self.tasks.push(task);
 
         let task = Self::wire_debounce(
             self.debounce_stream,
             self.ui.clone(),
-            self.cancel_token.clone(),
+            self.stop_token.clone(),
         );
         self.tasks.push(task);
 
-        let task = Self::wire_delay(
-            self.delay_stream,
-            self.ui.clone(),
-            self.cancel_token.clone(),
-        );
+        let task = Self::wire_delay(self.delay_stream, self.ui.clone(), self.stop_token.clone());
         self.tasks.push(task);
 
-        let task = Self::wire_sample(
-            self.sample_stream,
-            self.ui.clone(),
-            self.cancel_token.clone(),
-        );
+        let task = Self::wire_sample(self.sample_stream, self.ui.clone(), self.stop_token.clone());
         self.tasks.push(task);
 
         let task = Self::wire_throttle(
             self.throttle_stream,
             self.ui.clone(),
-            self.cancel_token.clone(),
+            self.stop_token.clone(),
         );
         self.tasks.push(task);
 
         let task = Self::wire_timeout(
             self.timeout_stream,
             self.ui.clone(),
-            self.cancel_token.clone(),
+            self.stop_token.clone(),
         );
         self.tasks.push(task);
 
         // Block until cancellation token is triggered
-        self.cancel_token.cancelled().await;
+        self.stop_token.cancelled().await;
 
         web_sys::console::log_1(&"🛑 Dashboard shutting down...".into());
 
@@ -149,12 +141,12 @@ impl DashboardUpdater {
     fn wire_sensor1(
         stream: SharedBoxStream<SensorValue>,
         ui: Rc<RefCell<DashboardUI>>,
-        cancel_token: CancellationToken,
+        stop_token: CancellationToken,
     ) -> FluxionTask {
-        FluxionTask::spawn(move |_task_cancel| async move {
+        FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
-                    move |item, _token| {
+                    move |item, _| {
                         let ui = ui.clone();
                         async move {
                             match item {
@@ -171,7 +163,7 @@ impl DashboardUpdater {
                         }
                     },
                     |err| web_sys::console::error_1(&format!("Sensor 1 error: {:?}", err).into()),
-                    Some(cancel_token),
+                    Some(stop_token),
                 )
                 .await;
         })
@@ -180,12 +172,12 @@ impl DashboardUpdater {
     fn wire_sensor2(
         stream: SharedBoxStream<SensorValue>,
         ui: Rc<RefCell<DashboardUI>>,
-        cancel_token: CancellationToken,
+        stop_token: CancellationToken,
     ) -> FluxionTask {
-        FluxionTask::spawn(move |_task_cancel| async move {
+        FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
-                    move |item, _token| {
+                    move |item, _| {
                         let ui = ui.clone();
                         async move {
                             match item {
@@ -202,7 +194,7 @@ impl DashboardUpdater {
                         }
                     },
                     |err| web_sys::console::error_1(&format!("Sensor 2 error: {:?}", err).into()),
-                    Some(cancel_token),
+                    Some(stop_token),
                 )
                 .await;
         })
@@ -211,12 +203,12 @@ impl DashboardUpdater {
     fn wire_sensor3(
         stream: SharedBoxStream<SensorValue>,
         ui: Rc<RefCell<DashboardUI>>,
-        cancel_token: CancellationToken,
+        stop_token: CancellationToken,
     ) -> FluxionTask {
-        FluxionTask::spawn(move |_task_cancel| async move {
+        FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
-                    move |item, _token| {
+                    move |item, _| {
                         let ui = ui.clone();
                         async move {
                             match item {
@@ -233,7 +225,7 @@ impl DashboardUpdater {
                         }
                     },
                     |err| web_sys::console::error_1(&format!("Sensor 3 error: {:?}", err).into()),
-                    Some(cancel_token),
+                    Some(stop_token),
                 )
                 .await;
         })
@@ -242,12 +234,12 @@ impl DashboardUpdater {
     fn wire_combined(
         stream: SharedBoxStream<WasmTimestamped<u32>>,
         ui: Rc<RefCell<DashboardUI>>,
-        cancel_token: CancellationToken,
+        stop_token: CancellationToken,
     ) -> FluxionTask {
-        FluxionTask::spawn(move |_task_cancel| async move {
+        FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
-                    move |item, _token| {
+                    move |item, _| {
                         let ui = ui.clone();
                         async move {
                             match item {
@@ -268,7 +260,7 @@ impl DashboardUpdater {
                             &format!("Combined stream error: {:?}", err).into(),
                         )
                     },
-                    Some(cancel_token),
+                    Some(stop_token),
                 )
                 .await;
         })
@@ -277,12 +269,12 @@ impl DashboardUpdater {
     fn wire_debounce(
         stream: WasmStream<u32>,
         ui: Rc<RefCell<DashboardUI>>,
-        cancel_token: CancellationToken,
+        stop_token: CancellationToken,
     ) -> FluxionTask {
-        FluxionTask::spawn(move |_task_cancel| async move {
+        FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
-                    move |item, _token| {
+                    move |item, _| {
                         let ui = ui.clone();
                         async move {
                             match item {
@@ -303,7 +295,7 @@ impl DashboardUpdater {
                             &format!("Debounce stream error: {:?}", err).into(),
                         )
                     },
-                    Some(cancel_token),
+                    Some(stop_token),
                 )
                 .await;
         })
@@ -312,12 +304,12 @@ impl DashboardUpdater {
     pub fn wire_delay(
         stream: WasmStream<u32>,
         ui: Rc<RefCell<DashboardUI>>,
-        cancel_token: CancellationToken,
+        stop_token: CancellationToken,
     ) -> FluxionTask {
-        FluxionTask::spawn(move |_task_cancel| async move {
+        FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
-                    move |item, _token| {
+                    move |item, _| {
                         let ui = ui.clone();
                         async move {
                             match item {
@@ -336,7 +328,7 @@ impl DashboardUpdater {
                     |err| {
                         web_sys::console::error_1(&format!("Delay stream error: {:?}", err).into())
                     },
-                    Some(cancel_token),
+                    Some(stop_token),
                 )
                 .await;
         })
@@ -345,12 +337,12 @@ impl DashboardUpdater {
     pub fn wire_sample(
         stream: WasmStream<u32>,
         ui: Rc<RefCell<DashboardUI>>,
-        cancel_token: CancellationToken,
+        stop_token: CancellationToken,
     ) -> FluxionTask {
-        FluxionTask::spawn(move |_task_cancel| async move {
+        FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
-                    move |item, _token| {
+                    move |item, _| {
                         let ui = ui.clone();
                         async move {
                             match item {
@@ -369,7 +361,7 @@ impl DashboardUpdater {
                     |err| {
                         web_sys::console::error_1(&format!("Sample stream error: {:?}", err).into())
                     },
-                    Some(cancel_token),
+                    Some(stop_token),
                 )
                 .await;
         })
@@ -378,12 +370,12 @@ impl DashboardUpdater {
     pub fn wire_throttle(
         stream: WasmStream<u32>,
         ui: Rc<RefCell<DashboardUI>>,
-        cancel_token: CancellationToken,
+        stop_token: CancellationToken,
     ) -> FluxionTask {
-        FluxionTask::spawn(move |_task_cancel| async move {
+        FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
-                    move |item, _token| {
+                    move |item, _| {
                         let ui = ui.clone();
                         async move {
                             match item {
@@ -404,7 +396,7 @@ impl DashboardUpdater {
                             &format!("Throttle stream error: {:?}", err).into(),
                         )
                     },
-                    Some(cancel_token),
+                    Some(stop_token),
                 )
                 .await;
         })
@@ -413,12 +405,12 @@ impl DashboardUpdater {
     pub fn wire_timeout(
         stream: WasmStream<u32>,
         ui: Rc<RefCell<DashboardUI>>,
-        cancel_token: CancellationToken,
+        stop_token: CancellationToken,
     ) -> FluxionTask {
-        FluxionTask::spawn(move |_task_cancel| async move {
+        FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
-                    move |item, _token| {
+                    move |item, _| {
                         let ui = ui.clone();
                         async move {
                             match item {
@@ -440,7 +432,7 @@ impl DashboardUpdater {
                             &format!("Timeout stream error: {:?}", err).into(),
                         )
                     },
-                    Some(cancel_token),
+                    Some(stop_token),
                 )
                 .await;
         })
