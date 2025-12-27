@@ -17,7 +17,7 @@ pub fn test_channel<T>() -> (
 }
 
 // Simple test data
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Person {
     pub name: String,
     pub age: u32,

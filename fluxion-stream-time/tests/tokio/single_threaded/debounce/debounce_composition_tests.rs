@@ -6,7 +6,6 @@ use fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::InstantTimestamped;
 use fluxion_stream_time::TokioTimer;
 use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
@@ -126,7 +125,47 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
 
     Ok(())
 }
+#[tokio::test]
+async fn test_debounce_before_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let timer = TokioTimer;
+    pause();
 
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+
+    // Chain debounce then map_ordered - debounce first, transform after
+    let mut processed =
+        stream
+            .debounce(Duration::from_millis(500))
+            .map_ordered(|item: TokioTimestamped<_>| {
+                // Transform Alice to Bob
+                let transformed = if item.value == person_alice() {
+                    person_bob()
+                } else {
+                    item.value.clone()
+                };
+                TokioTimestamped::new(transformed, item.timestamp)
+            });
+
+    // Act & Assert
+    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    assert_no_element_emitted(&mut processed, 0).await;
+
+    advance(Duration::from_millis(200)).await;
+    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    assert_no_element_emitted(&mut processed, 0).await;
+
+    advance(Duration::from_millis(300)).await;
+    assert_no_element_emitted(&mut processed, 0).await;
+
+    advance(Duration::from_millis(200)).await;
+    assert_eq!(
+        unwrap_stream(&mut processed, 100).await.unwrap().value,
+        person_charlie()
+    );
+
+    Ok(())
+}
 #[tokio::test]
 async fn test_debounce_then_delay() -> anyhow::Result<()> {
     // Arrange
@@ -206,7 +245,7 @@ async fn test_combine_latest_then_debounce() -> anyhow::Result<()> {
         .combine_latest(vec![stream2], |_| true)
         .map_ordered(|state| {
             let ts = state.timestamp();
-            InstantTimestamped::new(state, ts)
+            TokioTimestamped::new(state, ts)
         })
         .debounce(Duration::from_millis(500));
 

@@ -148,3 +148,42 @@ async fn test_timeout_chained_with_scan_ordered() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_timeout_before_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let timer = TokioTimer;
+    pause();
+
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let pipeline = stream
+        .timeout(Duration::from_millis(100))
+        .map_ordered(|item| TokioTimestamped::new(item.value, item.timestamp));
+    let (result_tx, mut result_rx) = unbounded();
+
+    spawn(async move {
+        let mut stream = pipeline;
+        while let Some(item) = stream.next().await {
+            if let StreamItem::Value(val) = item {
+                result_tx.unbounded_send(val.value).unwrap();
+            }
+        }
+    });
+
+    // Act & Assert
+    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    advance(Duration::from_millis(50)).await;
+    assert_eq!(
+        recv_timeout(&mut result_rx, 1000).await.unwrap(),
+        person_alice()
+    );
+
+    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    advance(Duration::from_millis(50)).await;
+    assert_eq!(
+        recv_timeout(&mut result_rx, 1000).await.unwrap(),
+        person_bob()
+    );
+
+    Ok(())
+}

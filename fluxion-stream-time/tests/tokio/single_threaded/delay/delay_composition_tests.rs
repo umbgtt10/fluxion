@@ -141,3 +141,37 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_delay_before_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let timer = TokioTimer;
+    pause();
+
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let mut processed =
+        stream
+            .delay(Duration::from_secs(1))
+            .map_ordered(|item: TokioTimestamped<_>| {
+                // Transform Alice to Bob
+                let transformed = if item.value == person_alice() {
+                    person_bob()
+                } else {
+                    item.value.clone()
+                };
+                TokioTimestamped::new(transformed, item.timestamp)
+            });
+
+    // Act & Assert
+    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    advance(Duration::from_millis(100)).await;
+    assert_no_element_emitted(&mut processed, 100).await;
+
+    advance(Duration::from_millis(900)).await;
+    assert_eq!(
+        unwrap_stream(&mut processed, 100).await.unwrap().value,
+        person_bob()
+    );
+
+    Ok(())
+}

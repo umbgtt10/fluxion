@@ -86,12 +86,12 @@ pub mod timer;
 
 pub mod prelude;
 
-pub use debounce::{DebounceExt, DebounceWithDefaultTimerExt};
-pub use delay::{DelayExt, DelayWithDefaultTimerExt};
+pub use debounce::DebounceExt;
+pub use delay::DelayExt;
 pub use instant_timestamped::InstantTimestamped;
-pub use sample::{SampleExt, SampleWithDefaultTimerExt};
-pub use throttle::{ThrottleExt, ThrottleWithDefaultTimerExt};
-pub use timeout::{TimeoutExt, TimeoutWithDefaultTimerExt};
+pub use sample::SampleExt;
+pub use throttle::ThrottleExt;
+pub use timeout::TimeoutExt;
 
 #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 pub use runtimes::TokioTimer;
