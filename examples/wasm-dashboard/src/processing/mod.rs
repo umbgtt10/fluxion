@@ -9,8 +9,12 @@
 
 mod combined_stream;
 mod dashboard_updater;
+mod processing_layer;
 mod result_streams;
+mod stream_provider;
 
 pub use combined_stream::CombinedStream;
 pub use dashboard_updater::DashboardUpdater;
+pub use processing_layer::ProcessingLayer;
 pub use result_streams::{ResultStreams, WasmStream};
+pub use stream_provider::StreamProvider;

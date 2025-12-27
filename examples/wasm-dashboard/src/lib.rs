@@ -6,9 +6,9 @@ mod gui;
 mod processing;
 mod source;
 
-use crate::source::Sensors;
+use crate::source::{Sensors, SourceLayer};
 use crate::{
-    processing::{CombinedStream, DashboardUpdater, ResultStreams},
+    processing::{DashboardUpdater, ProcessingLayer},
     source::SensorStreams,
 };
 use fluxion_core::CancellationToken;
@@ -80,22 +80,16 @@ async fn start(ui: Rc<RefCell<DashboardUI>>, stop_token: CancellationToken) {
 
     web_sys::console::log_1(&"✅ Started".into());
 
+    // Create source layer
     let sensors = Sensors::new(stop_token.clone());
-    let streams = SensorStreams::new(sensors);
-    let combined_stream = CombinedStream::new(&streams);
-    let result_streams = ResultStreams::new(&combined_stream);
+    let sensor_streams = SensorStreams::new(sensors);
+    let source_layer = SourceLayer::new(sensor_streams);
 
-    let updater = DashboardUpdater::new(
-        &streams,
-        &combined_stream,
-        result_streams.subscribe_debounce(),
-        result_streams.subscribe_delay(),
-        result_streams.subscribe_sample(),
-        result_streams.subscribe_throttle(),
-        result_streams.subscribe_timeout(),
-        ui_clone,
-        stop_token,
-    );
+    // Create processing layer
+    let processing_layer = ProcessingLayer::new(&source_layer);
+
+    // Create updater with both traits
+    let updater = DashboardUpdater::new(processing_layer, ui_clone, stop_token);
 
     web_sys::console::log_1(&"✅ Running".into());
 

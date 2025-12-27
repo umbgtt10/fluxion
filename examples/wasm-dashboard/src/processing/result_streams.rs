@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::CombinedStream;
+use crate::processing::CombinedStream;
 use fluxion_core::{StreamItem, Timestamped};
 use fluxion_stream_time::DebounceWithDefaultTimerExt;
 use fluxion_stream_time::DelayWithDefaultTimerExt;

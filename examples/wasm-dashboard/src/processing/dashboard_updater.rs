@@ -3,9 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::gui::DashboardSink;
-use crate::processing::WasmStream;
-use crate::source::{SensorStreams, SensorValue};
-use crate::CombinedStream;
+use crate::processing::{StreamProvider, WasmStream};
+use crate::source::SensorValue;
 use fluxion_core::{CancellationToken, FluxionTask, StreamItem};
 use fluxion_exec::SubscribeExt;
 use fluxion_stream::fluxion_shared::SharedBoxStream;
@@ -13,57 +12,35 @@ use fluxion_stream_time::WasmTimestamped;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// Manages stream subscriptions and wires them to UI updates
+/// Pure orchestrator - Wires streams to UI updates
 ///
-/// This is the core business logic that orchestrates stream processing
-/// and coordinates updates to the dashboard. It depends on the DashboardSink
-/// trait rather than concrete UI types, making it testable and flexible.
-pub struct DashboardUpdater<T: DashboardSink + 'static> {
-    streams: Vec<SharedBoxStream<SensorValue>>,
-    combined_stream: SharedBoxStream<WasmTimestamped<u32>>,
-    debounce_stream: WasmStream<u32>,
-    delay_stream: WasmStream<u32>,
-    sample_stream: WasmStream<u32>,
-    throttle_stream: WasmStream<u32>,
-    timeout_stream: WasmStream<u32>,
-    ui: Rc<RefCell<T>>,
+/// This component knows nothing about concrete implementations. It only
+/// knows how to:
+/// - Get streams from a StreamProvider
+/// - Update a DashboardSink
+/// - Spawn FluxionTasks to wire them together
+///
+/// Generic over both the stream source and the UI target, making it
+/// completely testable and reusable.
+pub struct DashboardUpdater<P: StreamProvider, S: DashboardSink + 'static> {
+    provider: P,
+    sink: Rc<RefCell<S>>,
     stop_token: CancellationToken,
     tasks: Vec<FluxionTask>,
 }
 
-impl<T: DashboardSink + 'static> DashboardUpdater<T> {
-    /// Creates a new updater (does not start tasks yet)
+impl<P: StreamProvider, S: DashboardSink + 'static> DashboardUpdater<P, S> {
+    /// Creates a new updater
     ///
     /// # Arguments
     ///
-    /// * `sensor_streams` - Shared sensor streams container
-    /// * `combined_stream` - Subscription to the combined/filtered stream
-    /// * `ui` - Shared dashboard UI instance implementing DashboardSink
-    /// * `cancel_token` - Token to stop all update tasks
-    pub fn new(
-        sensor_streams: &SensorStreams,
-        combined_stream: &CombinedStream,
-        debounce_stream: WasmStream<u32>,
-        delay_stream: WasmStream<u32>,
-        sample_stream: WasmStream<u32>,
-        throttle_stream: WasmStream<u32>,
-        timeout_stream: WasmStream<u32>,
-        ui: Rc<RefCell<T>>,
-        stop_token: CancellationToken,
-    ) -> Self {
-        // Get independent subscriptions for each sensor stream and combined stream
-        let streams = sensor_streams.subscribe();
-        let combined_stream = combined_stream.subscribe();
-
+    /// * `provider` - Stream provider implementing StreamProvider trait
+    /// * `sink` - UI sink implementing DashboardSink trait
+    /// * `stop_token` - Token to stop all update tasks
+    pub fn new(provider: P, sink: Rc<RefCell<S>>, stop_token: CancellationToken) -> Self {
         Self {
-            streams,
-            combined_stream,
-            debounce_stream,
-            delay_stream,
-            sample_stream,
-            throttle_stream,
-            timeout_stream,
-            ui,
+            provider,
+            sink,
             stop_token,
             tasks: Vec::new(),
         }
@@ -71,64 +48,56 @@ impl<T: DashboardSink + 'static> DashboardUpdater<T> {
 
     /// Runs the dashboard updater, spawning tasks and blocking until cancellation
     ///
-    /// This method spawns background tasks for each sensor stream and then
-    /// blocks waiting for the cancellation token to be triggered (e.g., by
-    /// the close button). When cancelled, it returns and all tasks are dropped.
+    /// This method gets streams from the provider, wires them to the sink,
+    /// and then blocks waiting for the cancellation token. When cancelled,
+    /// it returns and all tasks are dropped.
     pub async fn run(mut self) {
-        let mut streams = self.streams.into_iter();
-
-        // Wire sensor 1
-        if let Some(stream) = streams.next() {
-            let task = Self::wire_sensor1(stream, self.ui.clone(), self.stop_token.clone());
-            self.tasks.push(task);
-        }
-
-        // Wire sensor 2
-        if let Some(stream) = streams.next() {
-            let task = Self::wire_sensor2(stream, self.ui.clone(), self.stop_token.clone());
-            self.tasks.push(task);
-        }
-
-        // Wire sensor 3
-        if let Some(stream) = streams.next() {
-            let task = Self::wire_sensor3(stream, self.ui.clone(), self.stop_token.clone());
-            self.tasks.push(task);
-        }
-
-        // Wire combined stream
-        let task = Self::wire_combined(
-            self.combined_stream,
-            self.ui.clone(),
+        // Wire all 9 streams to their corresponding sink methods
+        self.tasks.push(Self::wire_sensor1(
+            self.provider.sensor1_stream(),
+            self.sink.clone(),
             self.stop_token.clone(),
-        );
-        self.tasks.push(task);
-
-        let task = Self::wire_debounce(
-            self.debounce_stream,
-            self.ui.clone(),
+        ));
+        self.tasks.push(Self::wire_sensor2(
+            self.provider.sensor2_stream(),
+            self.sink.clone(),
             self.stop_token.clone(),
-        );
-        self.tasks.push(task);
-
-        let task = Self::wire_delay(self.delay_stream, self.ui.clone(), self.stop_token.clone());
-        self.tasks.push(task);
-
-        let task = Self::wire_sample(self.sample_stream, self.ui.clone(), self.stop_token.clone());
-        self.tasks.push(task);
-
-        let task = Self::wire_throttle(
-            self.throttle_stream,
-            self.ui.clone(),
+        ));
+        self.tasks.push(Self::wire_sensor3(
+            self.provider.sensor3_stream(),
+            self.sink.clone(),
             self.stop_token.clone(),
-        );
-        self.tasks.push(task);
-
-        let task = Self::wire_timeout(
-            self.timeout_stream,
-            self.ui.clone(),
+        ));
+        self.tasks.push(Self::wire_combined(
+            self.provider.combined_stream(),
+            self.sink.clone(),
             self.stop_token.clone(),
-        );
-        self.tasks.push(task);
+        ));
+        self.tasks.push(Self::wire_debounce(
+            self.provider.debounce_stream(),
+            self.sink.clone(),
+            self.stop_token.clone(),
+        ));
+        self.tasks.push(Self::wire_delay(
+            self.provider.delay_stream(),
+            self.sink.clone(),
+            self.stop_token.clone(),
+        ));
+        self.tasks.push(Self::wire_sample(
+            self.provider.sample_stream(),
+            self.sink.clone(),
+            self.stop_token.clone(),
+        ));
+        self.tasks.push(Self::wire_throttle(
+            self.provider.throttle_stream(),
+            self.sink.clone(),
+            self.stop_token.clone(),
+        ));
+        self.tasks.push(Self::wire_timeout(
+            self.provider.timeout_stream(),
+            self.sink.clone(),
+            self.stop_token.clone(),
+        ));
 
         // Block until cancellation token is triggered
         self.stop_token.cancelled().await;
@@ -141,18 +110,18 @@ impl<T: DashboardSink + 'static> DashboardUpdater<T> {
 
     fn wire_sensor1(
         stream: SharedBoxStream<SensorValue>,
-        ui: Rc<RefCell<T>>,
+        sink: Rc<RefCell<S>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
                     move |item, _| {
-                        let ui = ui.clone();
+                        let sink = sink.clone();
                         async move {
                             match item {
                                 StreamItem::Value(sensor_value) => {
-                                    ui.borrow_mut().update_sensor1(sensor_value.value);
+                                    sink.borrow_mut().update_sensor1(sensor_value.value);
                                 }
                                 StreamItem::Error(e) => {
                                     web_sys::console::error_1(
@@ -172,18 +141,18 @@ impl<T: DashboardSink + 'static> DashboardUpdater<T> {
 
     fn wire_sensor2(
         stream: SharedBoxStream<SensorValue>,
-        ui: Rc<RefCell<T>>,
+        sink: Rc<RefCell<S>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
                     move |item, _| {
-                        let ui = ui.clone();
+                        let sink = sink.clone();
                         async move {
                             match item {
                                 StreamItem::Value(sensor_value) => {
-                                    ui.borrow_mut().update_sensor2(sensor_value.value);
+                                    sink.borrow_mut().update_sensor2(sensor_value.value);
                                 }
                                 StreamItem::Error(e) => {
                                     web_sys::console::error_1(
@@ -203,18 +172,18 @@ impl<T: DashboardSink + 'static> DashboardUpdater<T> {
 
     fn wire_sensor3(
         stream: SharedBoxStream<SensorValue>,
-        ui: Rc<RefCell<T>>,
+        sink: Rc<RefCell<S>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
                     move |item, _| {
-                        let ui = ui.clone();
+                        let sink = sink.clone();
                         async move {
                             match item {
                                 StreamItem::Value(sensor_value) => {
-                                    ui.borrow_mut().update_sensor3(sensor_value.value);
+                                    sink.borrow_mut().update_sensor3(sensor_value.value);
                                 }
                                 StreamItem::Error(e) => {
                                     web_sys::console::error_1(
@@ -234,18 +203,18 @@ impl<T: DashboardSink + 'static> DashboardUpdater<T> {
 
     fn wire_combined(
         stream: SharedBoxStream<WasmTimestamped<u32>>,
-        ui: Rc<RefCell<T>>,
+        sink: Rc<RefCell<S>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
                     move |item, _| {
-                        let ui = ui.clone();
+                        let sink = sink.clone();
                         async move {
                             match item {
                                 StreamItem::Value(sum) => {
-                                    ui.borrow_mut().update_combined(sum.value);
+                                    sink.borrow_mut().update_combined(sum.value);
                                 }
                                 StreamItem::Error(e) => {
                                     web_sys::console::error_1(
@@ -269,18 +238,18 @@ impl<T: DashboardSink + 'static> DashboardUpdater<T> {
 
     fn wire_debounce(
         stream: WasmStream<u32>,
-        ui: Rc<RefCell<T>>,
+        sink: Rc<RefCell<S>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
                     move |item, _| {
-                        let ui = ui.clone();
+                        let sink = sink.clone();
                         async move {
                             match item {
                                 StreamItem::Value(value) => {
-                                    ui.borrow_mut().update_debounce(value);
+                                    sink.borrow_mut().update_debounce(value);
                                 }
                                 StreamItem::Error(e) => {
                                     web_sys::console::error_1(
@@ -304,18 +273,18 @@ impl<T: DashboardSink + 'static> DashboardUpdater<T> {
 
     fn wire_delay(
         stream: WasmStream<u32>,
-        ui: Rc<RefCell<T>>,
+        sink: Rc<RefCell<S>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
                     move |item, _| {
-                        let ui = ui.clone();
+                        let sink = sink.clone();
                         async move {
                             match item {
                                 StreamItem::Value(value) => {
-                                    ui.borrow_mut().update_delay(value);
+                                    sink.borrow_mut().update_delay(value);
                                 }
                                 StreamItem::Error(e) => {
                                     web_sys::console::error_1(
@@ -337,18 +306,18 @@ impl<T: DashboardSink + 'static> DashboardUpdater<T> {
 
     fn wire_sample(
         stream: WasmStream<u32>,
-        ui: Rc<RefCell<T>>,
+        sink: Rc<RefCell<S>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
                     move |item, _| {
-                        let ui = ui.clone();
+                        let sink = sink.clone();
                         async move {
                             match item {
                                 StreamItem::Value(value) => {
-                                    ui.borrow_mut().update_sample(value);
+                                    sink.borrow_mut().update_sample(value);
                                 }
                                 StreamItem::Error(e) => {
                                     web_sys::console::error_1(
@@ -370,18 +339,18 @@ impl<T: DashboardSink + 'static> DashboardUpdater<T> {
 
     fn wire_throttle(
         stream: WasmStream<u32>,
-        ui: Rc<RefCell<T>>,
+        sink: Rc<RefCell<S>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
                     move |item, _| {
-                        let ui = ui.clone();
+                        let sink = sink.clone();
                         async move {
                             match item {
                                 StreamItem::Value(value) => {
-                                    ui.borrow_mut().update_throttle(value);
+                                    sink.borrow_mut().update_throttle(value);
                                 }
                                 StreamItem::Error(e) => {
                                     web_sys::console::error_1(
@@ -405,24 +374,24 @@ impl<T: DashboardSink + 'static> DashboardUpdater<T> {
 
     fn wire_timeout(
         stream: WasmStream<u32>,
-        ui: Rc<RefCell<T>>,
+        sink: Rc<RefCell<S>>,
         stop_token: CancellationToken,
     ) -> FluxionTask {
         FluxionTask::spawn(move |_| async move {
             let _ = stream
                 .subscribe(
                     move |item, _| {
-                        let ui = ui.clone();
+                        let sink = sink.clone();
                         async move {
                             match item {
                                 StreamItem::Value(value) => {
-                                    ui.borrow_mut().update_timeout(value);
+                                    sink.borrow_mut().update_timeout(value);
                                 }
                                 StreamItem::Error(e) => {
                                     web_sys::console::error_1(
                                         &format!("Timeout stream error: {:?}", e).into(),
                                     );
-                                    ui.borrow_mut().show_timeout_error(&format!("{:?}", e));
+                                    sink.borrow_mut().show_timeout_error(&format!("{:?}", e));
                                 }
                             }
                             Ok::<_, std::convert::Infallible>(())
