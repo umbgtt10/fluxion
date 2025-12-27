@@ -2,6 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+#[cfg(not(feature = "std"))]
+use alloc::boxed::Box;
+
 use crate::timer::Timer;
 use crate::InstantTimestamped;
 use core::future::Future;
@@ -66,27 +69,28 @@ where
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>>;
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send + Sync>>;
 }
 
 impl<S, T, TM> DelayExt<T, TM> for S
 where
-    T: Send,
-    TM: Timer,
-    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
+    T: Send + Sync + 'static,
+    TM: Timer + 'static,
+    TM::Sleep: Send + Sync,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send + Sync + 'static,
 {
     fn delay_with_timer(
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> {
-        DelayStream {
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send + Sync>> {
+        Box::pin(DelayStream {
             stream: self,
             duration,
             timer,
             in_flight: FuturesOrdered::new(),
             upstream_done: false,
-        }
+        })
     }
 }
 
@@ -194,7 +198,10 @@ where
     ///
     /// This convenience method is available when exactly one runtime feature is enabled.
     /// It automatically uses the correct timer without requiring an explicit timer parameter.
-    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>>;
+    fn delay(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>>;
 
     /// The timestamped type for this runtime.
     type Timestamped;
@@ -203,26 +210,36 @@ where
 #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 impl<S, T> DelayWithDefaultTimerExt<T> for S
 where
-    S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>>,
-    T: Send,
+    S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>> + Send + Sync + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = crate::TokioTimestamped<T>;
 
-    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DelayExt::delay_with_timer(self, duration, crate::TokioTimer)
+    fn delay(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(DelayExt::delay_with_timer(
+            self,
+            duration,
+            crate::TokioTimer,
+        ))
     }
 }
 
 #[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
 impl<S, T> DelayWithDefaultTimerExt<T> for S
 where
-    S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>>,
-    T: Send,
+    S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>> + Send + Sync + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = crate::SmolTimestamped<T>;
 
-    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DelayExt::delay_with_timer(self, duration, crate::SmolTimer)
+    fn delay(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(DelayExt::delay_with_timer(self, duration, crate::SmolTimer))
     }
 }
 
@@ -230,18 +247,25 @@ where
 impl<S, T> DelayWithDefaultTimerExt<T> for S
 where
     S: Stream<
-        Item = StreamItem<InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>>,
-    >,
-    T: Send,
+            Item = StreamItem<
+                InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>,
+            >,
+        > + Send
+        + Sync
+        + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>;
 
-    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DelayExt::delay_with_timer(
+    fn delay(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(DelayExt::delay_with_timer(
             self,
             duration,
             crate::runtimes::wasm_implementation::WasmTimer::new(),
-        )
+        ))
     }
 }
 
@@ -252,13 +276,23 @@ where
 ))]
 impl<S, T> DelayWithDefaultTimerExt<T> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>>,
-    T: Send,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>>
+        + Send
+        + Sync
+        + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = InstantTimestamped<T, crate::runtimes::AsyncStdTimer>;
 
-    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DelayExt::delay_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
+    fn delay(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(DelayExt::delay_with_timer(
+            self,
+            duration,
+            crate::runtimes::AsyncStdTimer,
+        ))
     }
 }
 
@@ -270,12 +304,22 @@ where
 ))]
 impl<S, T> DelayWithDefaultTimerExt<T> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>>,
-    T: Send,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>>
+        + Send
+        + Sync
+        + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>;
 
-    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DelayExt::delay_with_timer(self, duration, crate::runtimes::EmbassyTimerImpl)
+    fn delay(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(DelayExt::delay_with_timer(
+            self,
+            duration,
+            crate::runtimes::EmbassyTimerImpl,
+        ))
     }
 }

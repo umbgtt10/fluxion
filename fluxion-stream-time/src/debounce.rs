@@ -81,20 +81,21 @@ where
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>>;
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send + Sync>>;
 }
 
 impl<S, T, TM> DebounceExt<T, TM> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
-    T: Send,
-    TM: Timer,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send + Sync + 'static,
+    T: Send + Sync + 'static,
+    TM: Timer + 'static,
+    TM::Sleep: Send + Sync,
 {
     fn debounce_with_timer(
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> {
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send + Sync>> {
         Box::pin(DebounceStream {
             stream: self,
             duration,
@@ -236,7 +237,10 @@ where
     /// # #[cfg(not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))))]
     /// # fn main() {}
     /// ```
-    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>>;
+    fn debounce(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>>;
 
     /// The timestamped type for this runtime.
     type Timestamped;
@@ -245,26 +249,40 @@ where
 #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 impl<S, T> DebounceWithDefaultTimerExt<T> for S
 where
-    S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>>,
-    T: Send,
+    S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>> + Send + Sync + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = crate::TokioTimestamped<T>;
 
-    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DebounceExt::debounce_with_timer(self, duration, crate::TokioTimer)
+    fn debounce(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(DebounceExt::debounce_with_timer(
+            self,
+            duration,
+            crate::TokioTimer,
+        ))
     }
 }
 
 #[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
 impl<S, T> DebounceWithDefaultTimerExt<T> for S
 where
-    S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>>,
-    T: Send,
+    S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>> + Send + Sync + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = crate::SmolTimestamped<T>;
 
-    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DebounceExt::debounce_with_timer(self, duration, crate::SmolTimer)
+    fn debounce(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(DebounceExt::debounce_with_timer(
+            self,
+            duration,
+            crate::SmolTimer,
+        ))
     }
 }
 
@@ -272,18 +290,25 @@ where
 impl<S, T> DebounceWithDefaultTimerExt<T> for S
 where
     S: Stream<
-        Item = StreamItem<InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>>,
-    >,
-    T: Send,
+            Item = StreamItem<
+                InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>,
+            >,
+        > + Send
+        + Sync
+        + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>;
 
-    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DebounceExt::debounce_with_timer(
+    fn debounce(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(DebounceExt::debounce_with_timer(
             self,
             duration,
             crate::runtimes::wasm_implementation::WasmTimer::new(),
-        )
+        ))
     }
 }
 
@@ -295,13 +320,23 @@ where
 ))]
 impl<S, T> DebounceWithDefaultTimerExt<T> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>>,
-    T: Send,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>>
+        + Send
+        + Sync
+        + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = InstantTimestamped<T, crate::runtimes::AsyncStdTimer>;
 
-    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DebounceExt::debounce_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
+    fn debounce(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(DebounceExt::debounce_with_timer(
+            self,
+            duration,
+            crate::runtimes::AsyncStdTimer,
+        ))
     }
 }
 
@@ -313,12 +348,22 @@ where
 ))]
 impl<S, T> DebounceWithDefaultTimerExt<T> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>>,
-    T: Send,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>>
+        + Send
+        + Sync
+        + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>;
 
-    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DebounceExt::debounce_with_timer(self, duration, crate::runtimes::EmbassyTimerImpl)
+    fn debounce(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(DebounceExt::debounce_with_timer(
+            self,
+            duration,
+            crate::runtimes::EmbassyTimerImpl,
+        ))
     }
 }

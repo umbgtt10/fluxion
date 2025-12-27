@@ -649,7 +649,7 @@ New projects should use tokio or smol runtimes instead.
 - [ ] Consolidate unwrap_stream and unwrap_value in the test utils
 
 **Example Applications:**
-- [ ] Create WASM example application demonstrating browser usage with time-based operators
+- ✅ Create WASM example application demonstrating browser usage with time-based operators
 - [ ] Create simple no_std-compatible embedded example (Embassy runtime)
 
 **Documentation:**
@@ -657,7 +657,7 @@ New projects should use tokio or smol runtimes instead.
 - [ ] Future roadmap update based on 0.6.x achievements
 
 **Quality Gates:**
-- [ ] WASM example compiles and runs in browser
+- ✅ WASM example compiles and runs in browser
 - [ ] Embedded example compiles for ARM Cortex-M targets
 - [ ] Code coverage ≥88%
 - [ ] Zero unstable tests
@@ -690,7 +690,7 @@ New projects should use tokio or smol runtimes instead.
 - [ ] Final operator API review (no breaking changes after this)
 
 **Workspace Architecture:**
-- [x] Phase 0: Examples as independent workspaces (completed Dec 26, 2025)
+- ✅ Phase 0: Examples as independent workspaces (completed Dec 26, 2025)
 - [ ] Evaluate Phase 0 results after 2-4 weeks of usage
 - [ ] Implement Phases 1-5 of workspace restructuring if needed:
   - [ ] Phase 1: Extract shared implementations (fluxion-runtime, fluxion-exec-core, fluxion-time-core)
@@ -722,6 +722,67 @@ New projects should use tokio or smol runtimes instead.
 
 **Key Achievement:**
 **1.0.0-Ready** - Codebase polished to production quality. API stable. Performance validated. Documentation complete. Ready for semantic versioning commitment.
+
+## 🚀 Version 0.9.0 - Complete Embassy Integration (The Killer Feature)
+
+**Status:** Planned
+
+**Goal:** Enable all 27 operators on Embassy - from servers to microcontrollers
+
+### Essential Features
+
+**TaskSpawner Abstraction:**
+- [ ] Define `TaskSpawner` trait (mirrors `Timer` trait pattern)
+- [ ] Implement `GlobalTaskSpawner` for Tokio/smol/async-std/WASM
+- [ ] Implement `EmbassyTaskSpawner` with spawner injection
+- [ ] Refactor `subscribe_latest` to use TaskSpawner
+- [ ] Refactor `partition` to use TaskSpawner
+
+**Convenience APIs:**
+- [ ] `SubscribeLatestWithDefaultSpawnerExt` (like time operators)
+- [ ] `subscribe_latest()` - no spawner param (Tokio/smol/async-std/WASM)
+- [ ] `subscribe_latest_with_embassy()` - spawner injection for Embassy
+- [ ] Same pattern for partition operator
+
+**Testing & Validation:**
+- [ ] Embassy tests for subscribe_latest with real spawner
+- [ ] Embassy tests for partition with real spawner
+- [ ] All 27 operators verified on all 5 runtimes
+- [ ] Performance validation (no overhead vs current implementations)
+
+### Documentation
+- [ ] TaskSpawner abstraction guide (mirrors Timer documentation)
+- [ ] Embassy spawner injection examples
+- [ ] Updated operator compatibility matrix (27/27 everywhere!)
+- [ ] Migration guide for new APIs
+
+### Quality Gates
+- [ ] All 27 operators work on Embassy
+- [ ] Zero performance penalty
+- [ ] Zero breaking changes (only additions)
+- [ ] CI green for all 5 runtimes
+- [ ] Code coverage maintained
+- [ ] Zero clippy warnings
+
+### The Competitive Advantage
+
+**Fluxion becomes the ONLY reactive streams library that offers:**
+- ✅ All 27 operators across ALL runtimes
+- ✅ Tokio, smol, async-std, WASM, **and Embassy**
+- ✅ Same API from servers to microcontrollers
+- ✅ Zero performance penalty (full concurrency everywhere)
+- ✅ Single implementation per operator
+
+**Market Position:**
+- RxRust: ❌ Locked into Tokio, ❌ No embedded support
+- Other reactive libs: ❌ std-only, ❌ No embedded story
+- Embassy ecosystem: ❌ No full-featured reactive streams library
+
+**Tagline:**
+*"The only reactive streams library that works everywhere - from servers to browsers to microcontrollers."*
+
+**Key Achievement:**
+**Industry First** - Complete reactive streams with all 27 operators on embedded systems. No trade-offs, no performance penalties, no competing solution. This is what sets Fluxion apart.
 
 ## 🚀 Version 1.0.0 - Production Ready
 

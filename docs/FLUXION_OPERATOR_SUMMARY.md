@@ -4,7 +4,18 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 
 **Note:** For time-based operators (`delay`, `debounce`, `throttle`, `sample`, `timeout`), see the **[fluxion-stream-time](../fluxion-stream-time/README.md)** crate documentation.
 
-**Runtime Support:** Time-based operators work with Tokio (default), smol, WASM, Embassy (embedded/no_std), and async-std (deprecated) via the `Timer` trait abstraction. See the fluxion-stream-time documentation for runtime-specific setup details.
+## Runtime Support Matrix
+
+**All 27 operators work on:**
+- ✅ **Tokio** (default) - All operators
+- ✅ **smol** - All operators
+- ✅ **WASM** (browser) - All operators
+- ✅ **async-std** (deprecated) - All operators
+- ⚡ **Embassy** (embedded/no_std) - 25/27 operators (subscribe_latest and partition coming in v0.9.0)
+
+**Time-based operators** use the `Timer` trait abstraction for cross-runtime compatibility. All 5 time operators (debounce, throttle, delay, sample, timeout) work on all runtimes including Embassy.
+
+**Task spawning operators** (subscribe_latest, partition) currently require std runtimes. **Version 0.9.0** will introduce `TaskSpawner` abstraction enabling these operators on Embassy, making Fluxion the **only reactive streams library supporting all operators from servers to microcontrollers**.
 
 ## Quick Reference Table
 
@@ -864,6 +875,10 @@ stream
 #### `partition`
 **Split a stream into two based on a predicate**
 
+**Runtime Compatibility:**
+- ✅ Tokio, smol, async-std, WASM
+- ⏳ Embassy - Coming in v0.9.0 (requires TaskSpawner abstraction)
+
 **Signature:**
 ```rust
 fn partition<F>(self, predicate: F) -> (PartitionedStream<T>, PartitionedStream<T>)
@@ -1056,6 +1071,10 @@ stream.subscribe(
 
 #### `subscribe_latest`
 **Latest-value processing with automatic cancellation**
+
+**Runtime Compatibility:**
+- ✅ Tokio, smol, async-std, WASM
+- ⏳ Embassy - Coming in v0.9.0 (requires TaskSpawner abstraction)
 
 ```rust
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;

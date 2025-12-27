@@ -71,19 +71,21 @@ where
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>>;
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send + Sync>>;
 }
 
 impl<S, T, TM> TimeoutExt<T, TM> for S
 where
-    TM: Timer,
-    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
+    T: Send + Sync + 'static,
+    TM: Timer + 'static,
+    TM::Sleep: Send + Sync,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send + Sync + 'static,
 {
     fn timeout_with_timer(
         self,
         duration: Duration,
         timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> {
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send + Sync>> {
         Box::pin(TimeoutStream {
             stream: self,
             duration,
@@ -168,7 +170,10 @@ pub trait TimeoutWithDefaultTimerExt<T>: Sized {
     ///
     /// This convenience method is available when exactly one runtime feature is enabled.
     /// It automatically uses the correct timer without requiring an explicit timer parameter.
-    fn timeout(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>>;
+    fn timeout(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>>;
 
     /// The timestamped type for this runtime.
     type Timestamped;
@@ -177,24 +182,40 @@ pub trait TimeoutWithDefaultTimerExt<T>: Sized {
 #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 impl<S, T> TimeoutWithDefaultTimerExt<T> for S
 where
-    S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>>,
+    S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>> + Send + Sync + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = crate::TokioTimestamped<T>;
 
-    fn timeout(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        TimeoutExt::timeout_with_timer(self, duration, crate::TokioTimer)
+    fn timeout(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(TimeoutExt::timeout_with_timer(
+            self,
+            duration,
+            crate::TokioTimer,
+        ))
     }
 }
 
 #[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
 impl<S, T> TimeoutWithDefaultTimerExt<T> for S
 where
-    S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>>,
+    S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>> + Send + Sync + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = crate::SmolTimestamped<T>;
 
-    fn timeout(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        TimeoutExt::timeout_with_timer(self, duration, crate::SmolTimer)
+    fn timeout(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(TimeoutExt::timeout_with_timer(
+            self,
+            duration,
+            crate::SmolTimer,
+        ))
     }
 }
 
@@ -202,17 +223,25 @@ where
 impl<S, T> TimeoutWithDefaultTimerExt<T> for S
 where
     S: Stream<
-        Item = StreamItem<InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>>,
-    >,
+            Item = StreamItem<
+                InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>,
+            >,
+        > + Send
+        + Sync
+        + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>;
 
-    fn timeout(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        TimeoutExt::timeout_with_timer(
+    fn timeout(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(TimeoutExt::timeout_with_timer(
             self,
             duration,
             crate::runtimes::wasm_implementation::WasmTimer::new(),
-        )
+        ))
     }
 }
 
@@ -223,12 +252,23 @@ where
 ))]
 impl<S, T> TimeoutWithDefaultTimerExt<T> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>>,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>>
+        + Send
+        + Sync
+        + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = InstantTimestamped<T, crate::runtimes::AsyncStdTimer>;
 
-    fn timeout(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        TimeoutExt::timeout_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
+    fn timeout(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(TimeoutExt::timeout_with_timer(
+            self,
+            duration,
+            crate::runtimes::AsyncStdTimer,
+        ))
     }
 }
 
@@ -240,11 +280,22 @@ where
 ))]
 impl<S, T> TimeoutWithDefaultTimerExt<T> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>>,
+    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>>
+        + Send
+        + Sync
+        + 'static,
+    T: Send + Sync + 'static,
 {
     type Timestamped = InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>;
 
-    fn timeout(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        TimeoutExt::timeout_with_timer(self, duration, crate::runtimes::EmbassyTimerImpl)
+    fn timeout(
+        self,
+        duration: Duration,
+    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
+        Box::pin(TimeoutExt::timeout_with_timer(
+            self,
+            duration,
+            crate::runtimes::EmbassyTimerImpl,
+        ))
     }
 }
