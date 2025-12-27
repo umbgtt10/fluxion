@@ -1,252 +1,317 @@
-# Fluxion WASM Dashboard Example
+# Fluxion WASM Dashboard
 
-A WebAssembly-based real-time streaming dashboard demonstrating Fluxion's reactive stream operators in the browser.
+A live WebAssembly dashboard demonstrating Fluxion's reactive stream operators with real-time sensor data visualization.
 
-## Overview
-
-This example showcases:
-- Real-time sensor data generation and visualization
-- Stream combination with `combine_latest`
-- Time-based operators (throttle, debounce, delay, sample, timeout)
-- Canvas-based chart rendering
-- WASM integration with web APIs
-
-## Running the Application
+## Quick Start
 
 ### Prerequisites
 
-- Rust (stable)
-- wasm-pack: `cargo install wasm-pack`
-- Node.js (for http-server)
+Ensure you have the following tools installed:
+- **Rust** (stable toolchain)
+- **wasm-pack**: `cargo install wasm-pack`
+- **Node.js** and **npm** (for the development server)
 
-### Build and Run
+### Running the Dashboard
 
-1. **Build the WASM module:**
-   ```bash
-   cd examples/wasm-dashboard
-   wasm-pack build --target web --out-dir www/pkg
-   ```
+From the project root, run:
 
-2. **Start the development server:**
-   ```bash
-   cd www
-   npx http-server -p 8080 -c-1
-   ```
-
-3. **Open in browser:**
-   ```
-   http://127.0.0.1:8080/
-   ```
-
-## ⚠️ Current Architecture Issues
-
-### Known Issues Requiring Refactoring
-
-#### 1. **Sensor Data Timestamping**
-**Problem:** Sensor data is manually timestamped with `InstantTimestamped::new()`.
-
-**Current (Wrong):**
-```rust
-let timestamped = InstantTimestamped::new(sensor_value, timer.now());
-tx.unbounded_send(timestamped)
+```powershell
+.\scripts\run-dashboard.ps1
 ```
 
-**Should Be:**
-```rust
-tx.unbounded_send(sensor_value);
-// Let Fluxion's timestamping operators handle it automatically
+This script will:
+1. Build the WASM module
+2. Start the development server
+3. Open the dashboard in your default browser at `http://localhost:8080`
+
+## Concept
+
+This example demonstrates **reactive stream processing** in a browser environment:
+
+- **Three simulated sensors** emit values at different frequencies (500-4000ms intervals)
+- Each value flows through a **processing pipeline** with multiple operators
+- **Real-time visualization** shows the effect of each transformation
+- The UI updates reactively as new values arrive
+
+The dashboard serves as both a **working application** and an **educational tool** for understanding how reactive operators transform data streams over time.
+
+## Technologies Used
+
+- **Fluxion** - Reactive stream processing library with composable operators
+- **WebAssembly (WASM)** - Rust code compiled to run in the browser
+- **web-sys** - Rust bindings for Web APIs (DOM manipulation)
+- **gloo-timers** - WASM-compatible async timer implementation
+- **wasm-bindgen** - Interoperability layer between Rust and JavaScript
+
+## Architecture
+
+The application follows a **four-layer architecture** with clear separation of concerns:
+
+```
+┌─────────────────────────────────────────┐
+│          UI Layer (Web)                 │
+│     DashboardUI (DashboardSink)         │
+└─────────────────────────────────────────┘
+                  ▲
+                  │ trait boundary
+                  │
+┌─────────────────────────────────────────┐
+│      Orchestration Layer                │
+│  DashboardOrchestrator<P, S>            │
+│    (Generic over StreamProvider         │
+│         & DashboardSink)                │
+└─────────────────────────────────────────┘
+                  ▲
+                  │ trait boundary
+                  │
+┌─────────────────────────────────────────┐
+│       Processing Layer                  │
+│   ProcessingLayer (StreamProvider)      │
+│  • CombinedStream                       │
+│  • ResultStreams                        │
+└─────────────────────────────────────────┘
+                  ▲
+                  │
+┌─────────────────────────────────────────┐
+│         Source Layer                    │
+│  • Sensors (raw data generation)        │
+│  • SensorStreams (timestamping)         │
+│  • SourceLayer (encapsulation)          │
+└─────────────────────────────────────────┘
 ```
 
-#### 2. **Stream Creation Pattern**
-**Problem:** Using `rx.map(StreamItem::Value)` to manually wrap values.
+### Layer Responsibilities
 
-**Current (Wrong):**
+**Source Layer** ([`src/source/`](src/source/))
+- Generates raw sensor data at configurable intervals
+- Adds timestamps to values using `WasmTimer`
+- Provides shareable streams via `FluxionShared`
+
+**Processing Layer** ([`src/processing/`](src/processing/))
+- **CombinedStream**: Merges sensors with `combine_latest`, filters, and maps
+- **ResultStreams**: Applies time-based operators (debounce, delay, sample, throttle, timeout)
+- Implements the `StreamProvider` trait to expose 9 output streams
+
+**Orchestration Layer** ([`src/processing/dashboard_orchestrator.rs`](src/processing/dashboard_orchestrator.rs))
+- **Pure orchestrator** - knows nothing about concrete implementations
+- Generic over `StreamProvider` (stream source) and `DashboardSink` (UI target)
+- Wires each stream to its corresponding UI update method
+- Manages task lifecycle and cancellation
+
+**UI Layer** ([`src/gui/`](src/gui/))
+- Web-based interface with 9 display windows
+- Implements the `DashboardSink` trait with 10 update methods
+- Uses `web-sys` for DOM manipulation
+- Handles button events (start/stop/close)
+
+### Design Principles
+
+**Dependency Inversion**
+- The orchestrator depends on abstractions (`StreamProvider`, `DashboardSink`), not concrete types
+- Makes the system testable with mock implementations
+
+**Separation of Concerns**
+- Each layer has a single, well-defined responsibility
+- Business logic isolated from UI code
+- Stream creation separated from stream consumption
+
+**Trait Boundaries**
+- Layers communicate through trait interfaces
+- Enables independent evolution of implementations
+- Supports multiple UI backends (web, terminal, etc.)
+
+## Fluxion Operators in Action
+
+This dashboard demonstrates 8 reactive stream operators. Each operator's behavior is **visible in real-time** through dedicated display windows.
+
+### Stream Combination
+
+#### `combine_latest`
+**Purpose:** Merges multiple streams, emitting whenever any source produces a value.
+
+**Implementation:** [`src/processing/combined_stream.rs:35-44`](src/processing/combined_stream.rs#L35-L44)
+
 ```rust
-let stream1 = rx1.map(StreamItem::Value);
-let stream2 = rx2.map(StreamItem::Value);
-let stream3 = rx3.map(StreamItem::Value);
+sensors
+    .sensor1()
+    .subscribe()
+    .unwrap()
+    .combine_latest(
+        vec![
+            sensors.sensor2().subscribe().unwrap(),
+            sensors.sensor3().subscribe().unwrap(),
+        ],
+        |state| {
+            let sum: u32 = state.values().iter().map(|v| v.value).sum();
+            sum % 3 == 0  // Filter predicate
+        },
+    )
 ```
 
-**Should Be:**
+**Why:** Combines three independent sensor streams into a single stream containing the latest value from each sensor. This enables downstream operators to work with aggregated data.
+
+**Output:** Combined state with latest values from all three sensors, emitted whenever any sensor produces a value.
+
+---
+
+### Filtering & Transformation
+
+#### `filter` (via `combine_latest` predicate)
+**Purpose:** Allows only values that satisfy a predicate to pass through.
+
+**Implementation:** [`src/processing/combined_stream.rs:44-47`](src/processing/combined_stream.rs#L44-L47)
+
 ```rust
-use fluxion_stream::prelude::*;
-let stream1 = rx1.into_fluxion_stream();
-let stream2 = rx2.into_fluxion_stream();
-let stream3 = rx3.into_fluxion_stream();
+|state| {
+    let sum: u32 = state.values().iter().map(|v| v.value).sum();
+    sum % 3 == 0  // Only sums divisible by 3
+}
 ```
 
-#### 3. **Side Effects in Stream Pipeline**
-**Problem:** Chart updates are performed inside `.map()` closures - side effects in the wrong place.
+**Why:** Demonstrates conditional stream processing built into `combine_latest`. Only sums divisible by 3 proceed to the dashboard.
 
-**Current (Wrong):**
+---
+
+#### `map_ordered`
+**Purpose:** Transforms each value using a function while preserving order.
+
+**Implementation:** [`src/processing/combined_stream.rs:49-52`](src/processing/combined_stream.rs#L49-L52)
+
 ```rust
-let stream1 = rx1.map(move |timestamped| {
-    chart1.add_point(timestamped.value.value);  // ❌ Side effect!
-    let _ = chart1.render();                    // ❌ Side effect!
-    StreamItem::Value(timestamped)
-});
+.map_ordered(|state| {
+    let sum: u32 = state.values().iter().map(|v| v.value).sum();
+    WasmTimestamped::with_timestamp(sum, state.timestamp())
+})
 ```
 
-**Should Be:**
-```rust
-// Option 1: Use .inspect() for side effects
-let stream1 = rx1
-    .into_fluxion_stream()
-    .inspect(|item| {
-        if let StreamItem::Value(v) = item {
-            chart1.add_point(v.value);
-            let _ = chart1.render();
-        }
-    });
+**Why:** Reduces the three-sensor state to a single timestamped sum value for simpler downstream processing.
 
-// Option 2: Fork the stream and consume separately
+---
+
+### Time-Based Operators
+
+All time operators are applied to the combined stream in [`src/processing/result_streams.rs`](src/processing/result_streams.rs).
+
+#### `debounce` (700ms)
+**Purpose:** Emits a value only after the stream has been idle for the specified duration.
+
+**Implementation:** [`src/processing/result_streams.rs:42-51`](src/processing/result_streams.rs#L42-L51)
+
+```rust
+self.combined_stream
+    .subscribe()
+    .debounce(Duration::from_millis(700))
 ```
 
-#### 4. **Sensor Frequencies Too High**
-**Problem:** Sensors run at 100Hz, 50Hz, 25Hz - too fast to appreciate visualization.
+**Why:** Useful for handling "bursty" data. Only processes values after activity settles. Common in search-as-you-type scenarios.
 
-**Current (Wrong):**
+**Behavior:** If values arrive continuously, debounce waits for a 700ms quiet period before emitting the last value.
+
+---
+
+#### `delay` (1000ms)
+**Purpose:** Time-shifts all values by a fixed duration.
+
+**Implementation:** [`src/processing/result_streams.rs:54-63`](src/processing/result_streams.rs#L54-L63)
+
 ```rust
-generate_sensor_stream(1, 100.0, tx1, running_clone.clone());  // 100Hz - too fast!
-generate_sensor_stream(2, 50.0, tx2, running_clone.clone());   // 50Hz
-generate_sensor_stream(3, 25.0, tx3, running_clone.clone());   // 25Hz
+self.combined_stream
+    .subscribe()
+    .delay(Duration::from_millis(1000))
 ```
 
-**Should Be:**
+**Why:** Demonstrates temporal shifting of entire streams. Useful for synchronization or controlled processing delays.
+
+**Behavior:** Every value is delayed by exactly 1 second before appearing in the delayed window.
+
+---
+
+#### `sample` (1000ms)
+**Purpose:** Periodically emits the most recent value at fixed intervals.
+
+**Implementation:** [`src/processing/result_streams.rs:66-75`](src/processing/result_streams.rs#L66-L75)
+
 ```rust
-generate_sensor_stream(1, 2.0, tx1, running_clone.clone());   // 2Hz (500ms) - visible
-generate_sensor_stream(2, 1.0, tx2, running_clone.clone());   // 1Hz (1s)
-generate_sensor_stream(3, 0.5, tx3, running_clone.clone());   // 0.5Hz (2s)
+self.combined_stream
+    .subscribe()
+    .sample(Duration::from_millis(1000))
 ```
 
-#### 5. **Individual Sensor Charts Not Updating**
-**Problem:** Only the combined output chart is updated. Individual sensor windows remain empty.
+**Why:** Reduces data rate while maintaining current state. Ideal for periodic polling or reducing UI update frequency.
 
-**Root Cause:** Chart updates mixed into stream transformation logic instead of proper visualization pipeline.
+**Behavior:** Every 1 second, emits whatever the latest combined value is, regardless of how many values arrived in that interval.
 
-**Solution:** 
-- Use `.inspect()` before combining to update individual charts
-- Fork streams to separate visualization paths
-- Or use broadcast channels to fan-out data
+---
 
-#### 6. **Limited Time Operator Usage**
-**Problem:** Only `throttle` is currently implemented. The dashboard should showcase ALL time operators.
+#### `throttle` (800ms)
+**Purpose:** Enforces a maximum emission rate by dropping values that arrive too quickly.
 
-**Missing Operators:**
-- **debounce**: Wait for quiet period before emitting
-- **delay**: Add fixed delay to stream
-- **sample**: Sample at fixed intervals  
-- **timeout**: Error if no value within duration
+**Implementation:** [`src/processing/result_streams.rs:78-87`](src/processing/result_streams.rs#L78-L87)
 
-**Should Have:**
 ```rust
-let processed = combined_stream
-    .debounce(Duration::from_millis(300))     // Wait for quiet
-    .throttle(Duration::from_millis(100))     // Rate limit
-    .delay(Duration::from_millis(500))        // Add latency
-    .sample(Duration::from_millis(1000))      // Regular sampling
-    .timeout(Duration::from_secs(5));         // Detect stalls
+self.combined_stream
+    .subscribe()
+    .throttle(Duration::from_millis(800))
 ```
 
-#### 7. **WasmTimer Not Exported**
-**Problem:** `WasmTimer` is not publicly exported from `fluxion-stream-time` crate.
+**Why:** Rate limiting for downstream consumers. Prevents overwhelming slow processors or APIs with requests.
 
-**Current Failure:**
+**Behavior:** After emitting a value, ignores all subsequent values for 800ms. First value after the window reopens is emitted immediately.
+
+---
+
+#### `timeout` (2000ms)
+**Purpose:** Emits an error if no value arrives within the specified duration.
+
+**Implementation:** [`src/processing/result_streams.rs:90-99`](src/processing/result_streams.rs#L90-L99)
+
 ```rust
-use fluxion_stream_time::runtimes::wasm_implementation::WasmTimer;
-// ❌ Error: "could not find `wasm_implementation` in `runtimes`"
+self.combined_stream
+    .subscribe()
+    .timeout(Duration::from_millis(2000))
 ```
 
-**Required Library Fix:**
-```rust
-// In fluxion-stream-time/src/lib.rs
-#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
-pub use runtimes::wasm_impl::wasm_implementation::WasmTimer;
+**Why:** Detects stream stalls or network failures. Essential for building robust systems that handle missing data.
 
-// Or provide a type alias:
-#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
-pub type WasmTimer = runtimes::wasm_impl::wasm_implementation::WasmTimer;
-```
+**Behavior:** If more than 2 seconds pass without an emission, the stream produces an error. The error window displays "TIMEOUT!" in red.
 
-## Recommended Refactoring Roadmap
-
-### Phase 1: Core Architecture (High Priority)
-1. Export `WasmTimer` publicly from library
-2. Replace manual `InstantTimestamped` wrapping with automatic timestamping
-3. Use `.into_fluxion_stream()` instead of `.map(StreamItem::Value)`
-4. Remove side effects from stream transformations
-
-### Phase 2: Visualization Pipeline
-1. Move chart updates out of `.map()` closures
-2. Use `.inspect()` or dedicated visualization consumers
-3. Implement proper stream forking for individual sensor charts
-4. Update all three sensor windows independently
-
-### Phase 3: Operator Showcase  
-1. Reduce sensor frequencies to 2Hz, 1Hz, 0.5Hz
-2. Add UI controls for debounce, delay, sample, timeout
-3. Wire up all time operators in pipeline
-4. Add visual feedback showing each operator's effect
-
-### Phase 4: Polish
-1. Add per-operator metrics (events in/out, latency)
-2. Improve error handling and user feedback
-3. Optimize canvas rendering with `requestAnimationFrame`
-4. Add export/logging functionality
+---
 
 ## Project Structure
 
 ```
 wasm-dashboard/
 ├── src/
-│   ├── lib.rs              # WASM entry point
-│   ├── app_streaming.rs    # Main dashboard logic (needs refactoring)
-│   ├── stream_data.rs      # Sensor generation (needs refactoring)
-│   ├── chart.rs            # Canvas rendering
-│   ├── ui.rs               # UI components
-│   └── sensors.rs          # Sensor simulator
+│   ├── lib.rs                    # WASM entry point
+│   ├── source/                   # Source Layer
+│   │   ├── sensor.rs             # Raw sensor generation
+│   │   ├── sensor_streams.rs     # Timestamped shared streams
+│   │   ├── source_layer.rs       # Layer encapsulation
+│   │   └── ...
+│   ├── processing/               # Processing Layer
+│   │   ├── combined_stream.rs    # Stream combination
+│   │   ├── result_streams.rs     # Time operators
+│   │   ├── processing_layer.rs   # StreamProvider impl
+│   │   ├── stream_provider.rs    # Trait definition
+│   │   └── dashboard_orchestrator.rs  # Orchestration
+│   └── gui/                      # UI Layer
+│       ├── dashboard_ui.rs       # Web UI implementation
+│       └── dashboard_sink.rs     # Trait definition
 ├── www/
-│   ├── index.html          # Dashboard UI
-│   ├── styles.css          # Styling
-│   ├── bootstrap.js        # WASM loader
-│   └── pkg/                # Generated WASM (build output)
-├── Cargo.toml
-└── README.md               # This file
+│   ├── styles.css                # Dashboard styling
+│   └── pkg/                      # Generated WASM (gitignored)
+├── index.html                    # HTML structure
+├── scripts/
+│   └── run-dashboard.ps1         # Build & serve automation
+└── Cargo.toml
 ```
 
-## Dependencies
+## Learning Resources
 
-- **fluxion-core**: Core streaming primitives (`StreamItem`, etc.)
-- **fluxion-stream**: Operators (`combine_latest`, `filter_map`, etc.)
-- **fluxion-stream-time**: Time operators (`throttle`, `debounce`, etc.)
-- **wasm-bindgen**: Rust ↔ JavaScript interop
-- **web-sys**: Web API bindings (DOM, Canvas, etc.)
-- **gloo-timers**: WASM-compatible async timers
-- **futures**: Async primitives and utilities
+- **Fluxion Documentation:** [Main README](../../README.md)
+- **Operator Details:** See inline documentation in [`src/processing/`](src/processing/)
+- **Architecture Pattern:** This example demonstrates the Dependency Inversion Principle and trait-based design
 
-## Browser Compatibility
+---
 
-Requires WebAssembly support:
-- ✅ Chrome/Edge 57+
-- ✅ Firefox 52+
-- ✅ Safari 11+
-
-## Performance Considerations
-
-- Current: 175 events/second (100Hz + 50Hz + 25Hz)
-- Throttled to: ~10 UI updates/second
-- Canvas rendering is synchronous and may block
-- Consider `requestAnimationFrame` for smoother updates
-
-## Contributing
-
-When improving this example:
-1. Follow the refactoring roadmap above
-2. Fix architectural issues before adding features
-3. Test in multiple browsers
-4. Ensure all time operators are properly demonstrated
-5. Document WASM-specific considerations
-
-## License
-
-Apache-2.0
+**Built with Fluxion** - A composable reactive streams library for Rust
