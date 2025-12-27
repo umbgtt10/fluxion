@@ -15,7 +15,7 @@ use js_sys::Math;
 /// the provided cancellation token is triggered.
 pub struct Sensor {
     receiver: async_channel::Receiver<u32>,
-    task: FluxionTask,
+    _task: FluxionTask,
 }
 
 impl Sensor {
@@ -68,15 +68,10 @@ impl Sensor {
             }
         });
 
-        Self { receiver, task }
-    }
-
-    /// Manually cancel the sensor task.
-    ///
-    /// This will stop the sensor from generating new values.
-    /// The task will stop at its next cancellation checkpoint.
-    pub fn cancel(&self) {
-        self.task.cancel();
+        Self {
+            receiver,
+            _task: task,
+        }
     }
 
     /// Returns a cloneable receiver for this sensor's data.

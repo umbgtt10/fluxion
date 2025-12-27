@@ -4,8 +4,7 @@
 
 use super::raw_streams::Sensors;
 use super::sensor_value::SensorValue;
-use fluxion_stream::fluxion_shared::SharedBoxStream;
-use fluxion_stream::{IntoFluxionStream, ShareExt};
+use fluxion_stream::{FluxionShared, IntoFluxionStream, ShareExt};
 use fluxion_stream_time::runtimes::wasm_implementation::WasmTimer;
 use fluxion_stream_time::timer::Timer;
 
@@ -15,9 +14,9 @@ use fluxion_stream_time::timer::Timer;
 /// and applies share() for multiple subscriptions.
 pub struct SensorStreams {
     _sensors: Sensors, // Keep sensors alive (tasks run in background)
-    sensor1: fluxion_stream::FluxionShared<SensorValue>,
-    sensor2: fluxion_stream::FluxionShared<SensorValue>,
-    sensor3: fluxion_stream::FluxionShared<SensorValue>,
+    sensor1: FluxionShared<SensorValue>,
+    sensor2: FluxionShared<SensorValue>,
+    sensor3: FluxionShared<SensorValue>,
 }
 
 impl SensorStreams {
@@ -78,34 +77,18 @@ impl SensorStreams {
         }
     }
 
-    /// Returns cloned streams for subscription
-    ///
-    /// Each call creates independent subscriptions to the shared streams.
-    /// Use this to subscribe multiple consumers (e.g., GUI + combine_latest).
-    ///
-    /// # Returns
-    ///
-    /// Vector of three streams in order: [sensor1, sensor2, sensor3]
-    pub fn subscribe(&self) -> Vec<SharedBoxStream<SensorValue>> {
-        vec![
-            self.sensor1.subscribe().unwrap(),
-            self.sensor2.subscribe().unwrap(),
-            self.sensor3.subscribe().unwrap(),
-        ]
-    }
-
     /// Returns a reference to sensor1 shared stream
-    pub fn sensor1(&self) -> &fluxion_stream::FluxionShared<SensorValue> {
+    pub fn sensor1(&self) -> &FluxionShared<SensorValue> {
         &self.sensor1
     }
 
     /// Returns a reference to sensor2 shared stream
-    pub fn sensor2(&self) -> &fluxion_stream::FluxionShared<SensorValue> {
+    pub fn sensor2(&self) -> &FluxionShared<SensorValue> {
         &self.sensor2
     }
 
     /// Returns a reference to sensor3 shared stream
-    pub fn sensor3(&self) -> &fluxion_stream::FluxionShared<SensorValue> {
+    pub fn sensor3(&self) -> &FluxionShared<SensorValue> {
         &self.sensor3
     }
 }

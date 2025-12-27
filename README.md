@@ -586,6 +586,24 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
 
 ### 💡 Complete Examples
 
+#### WASM Dashboard (Browser Visualization)
+
+The **[wasm-dashboard](examples/wasm-dashboard/)** example demonstrates reactive stream operators in a browser environment:
+
+- **Live visualization**: Real-time display of 9 streams (3 sensors + 1 combined + 5 time operators)
+- **Four-layer architecture**: Source → Processing → Orchestration → UI with trait boundaries
+- **Time-based operators**: Debounce, delay, sample, throttle, and timeout in action
+- **Pure orchestrator**: Generic `DashboardOrchestrator` depends only on abstractions
+- **WASM integration**: Rust streams compiled to WebAssembly with web-sys DOM manipulation
+
+**Why this example matters:**
+- Visual demonstration of operator behavior with real-time feedback
+- Shows dependency inversion and trait-based design patterns
+- Demonstrates WASM-compatible timer implementations
+- Serves as educational tool for understanding reactive stream transformations
+
+Run it with: `.\scripts\run-dashboard.ps1` (from `examples/wasm-dashboard/`)
+
 #### Stream Aggregation (Intrinsic Timestamps)
 
 The **[stream-aggregation](examples/stream-aggregation/)** example demonstrates production-ready patterns with intrinsic timestamps:

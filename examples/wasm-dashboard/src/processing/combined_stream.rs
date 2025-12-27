@@ -2,12 +2,11 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use super::sensor_streams::SensorStreams;
+use crate::source::SensorStreams;
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::fluxion_shared::SharedBoxStream;
-use fluxion_stream::{CombineLatestExt, MapOrderedExt, ShareExt};
+use fluxion_stream::{CombineLatestExt, FluxionShared, MapOrderedExt, ShareExt};
 use fluxion_stream_time::WasmTimestamped;
-use futures::StreamExt;
 
 /// Combined and filtered stream from all three sensors.
 ///
@@ -16,7 +15,7 @@ use futures::StreamExt;
 ///
 /// The shared output can be subscribed to multiple times (GUI + operators).
 pub struct CombinedStream {
-    combined: fluxion_stream::FluxionShared<WasmTimestamped<u32>>,
+    combined: FluxionShared<WasmTimestamped<u32>>,
 }
 
 impl CombinedStream {
@@ -46,7 +45,7 @@ impl CombinedStream {
                     // Only pass through even sums
                     let values = state.values();
                     let sum: u32 = values.iter().map(|v| v.value).sum();
-                    sum % 2 == 0
+                    sum % 3 == 0
                 },
             )
             .map_ordered(|state| {
@@ -62,12 +61,7 @@ impl CombinedStream {
     /// Returns a subscription to the combined stream.
     ///
     /// Multiple subscriptions can be created (for GUI and operators).
-    pub fn subscribe(&self) -> SharedBoxStream<u32> {
-        Box::pin(
-            self.combined
-                .subscribe()
-                .unwrap()
-                .map(|item| item.map(|timestamped| timestamped.into_inner())),
-        )
+    pub fn subscribe(&self) -> SharedBoxStream<WasmTimestamped<u32>> {
+        Box::pin(self.combined.subscribe().unwrap())
     }
 }

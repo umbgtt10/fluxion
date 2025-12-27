@@ -49,7 +49,8 @@ h1 {
     font-size: 2.5rem;
     margin-bottom: 0.5rem;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text; 
+    -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -219,6 +220,34 @@ h3 {
     border: 2px solid var(--combined-color);
 }
 
+/* Processed Grid - 5 columns in one row */
+.processed-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+}
+
+.processed-grid .window-card {
+    padding: 1rem;
+}
+
+.processed-grid h3 {
+    font-size: 1rem;
+}
+
+.processed-grid .window-desc {
+    font-size: 0.75rem;
+}
+
+.processed-grid .data-window {
+    min-height: 80px;
+    padding: 1rem;
+}
+
+.processed-grid .value {
+    font-size: 2rem;
+}
+
 /* Operators Grid */
 .operators-grid {
     display: grid;
@@ -254,6 +283,7 @@ footer a:hover {
     }
 
     .sensor-grid,
+    .processed-grid,
     .operators-grid {
         grid-template-columns: 1fr;
     }
@@ -264,6 +294,18 @@ footer a:hover {
 
     .value.combined {
         font-size: 3rem;
+    }
+}
+
+@media (max-width: 1400px) {
+    .processed-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 1000px) {
+    .processed-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 

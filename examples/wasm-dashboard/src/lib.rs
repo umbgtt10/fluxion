@@ -2,18 +2,21 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::CancellationToken;
-use wasm_bindgen::prelude::*;
-
 mod gui;
-mod presentation;
+mod processing;
 mod source;
 
+use crate::source::{Sensors, SourceLayer};
+use crate::{
+    processing::{DashboardOrchestrator, ProcessingLayer},
+    source::SensorStreams,
+};
+use fluxion_core::CancellationToken;
 use gui::DashboardUI;
-use presentation::DashboardUpdater;
-use source::Sensors;
-
-use crate::source::{CombinedStream, SensorStreams};
+use std::cell::RefCell;
+use std::rc::Rc;
+use wasm_bindgen::prelude::*;
+use web_sys::{console, window};
 
 /// Entry point called from JavaScript
 #[wasm_bindgen(start)]
@@ -22,7 +25,7 @@ pub fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
     // Log initialization
-    web_sys::console::log_1(&"🚀 Fluxion WASM Dashboard initializing...".into());
+    console::log_1(&"🚀 Fluxion WASM Dashboard initializing...".into());
 
     Ok(())
 }
@@ -30,44 +33,66 @@ pub fn main() -> Result<(), JsValue> {
 /// Initialize and start the dashboard
 #[wasm_bindgen]
 pub async fn start_dashboard() -> Result<(), JsValue> {
-    let window = web_sys::window().ok_or("No window")?;
+    let window = window().ok_or("No window")?;
     let document = window.document().ok_or("No document")?;
 
-    web_sys::console::log_1(&"✅ Starting....".into());
+    console::log_1(&"✅ Starting....".into());
 
-    // Create persistent cancellation token for close button
-    let close_cancel_token = CancellationToken::new();
+    let close_token = CancellationToken::new();
+    let ui = DashboardUI::new(&document, close_token.clone())?;
 
-    web_sys::console::log_1(&"✅ Starting....".into());
+    let stop_token = Rc::new(RefCell::new(Option::<CancellationToken>::None));
 
-    // Create GUI with 12 hooking points (9 windows + 3 buttons)
-    let ui = DashboardUI::new(&document, close_cancel_token.clone())?;
+    let ui_for_start = ui.clone();
+    let stop_token_for_stop = stop_token.clone();
+    ui.borrow_mut()
+        .wire_closure_to_start_button(Closure::wrap(Box::new(move || {
+            let new_stop_token = CancellationToken::new();
+            *stop_token_for_stop.borrow_mut() = Some(new_stop_token.clone());
+            wasm_bindgen_futures::spawn_local(start(ui_for_start.clone(), new_stop_token.clone()));
+        })));
 
-    web_sys::console::log_1(
-        &"✅ Dashboard UI created with 12 hooking points (close button wired)".into(),
-    );
+    let ui_for_stop = ui.clone();
+    let stop_token_for_stop = stop_token.clone();
+    ui.borrow_mut()
+        .wire_closure_to_stop_button(Closure::wrap(Box::new(move || {
+            if let Some(token) = stop_token_for_stop.borrow().as_ref() {
+                token.cancel();
+                ui_for_stop.borrow_mut().enable_start();
+            }
+        })));
 
-    // Enable start button by default
-    ui.borrow_mut().enable_start();
+    console::log_1(&"✅ Dashboard UI created with 12 hooking points (close button wired)".into());
 
-    // Spawn dashboard as background task - move sensors/streams into closure to keep them alive
-    wasm_bindgen_futures::spawn_local(async move {
-        let sensors = Sensors::new(close_cancel_token.clone());
-        let streams = SensorStreams::new(sensors);
-        let combined_stream = CombinedStream::new(&streams);
-        let updater = DashboardUpdater::new(
-            &streams,
-            combined_stream.subscribe(),
-            ui.clone(),
-            close_cancel_token.clone(),
-        );
+    console::log_1(&"✅ Dashboard running".into());
 
-        updater.run().await;
+    close_token.cancelled().await;
 
-        web_sys::console::log_1(&"✅ Dashboard shutdown complete".into());
-    });
-
-    web_sys::console::log_1(&"✅ Dashboard running".into());
+    console::log_1(&"✅ Cancelled! No longer waiting for close cancellation".into());
 
     Ok(())
+}
+
+async fn start(ui: Rc<RefCell<DashboardUI>>, stop_token: CancellationToken) {
+    let ui_clone = ui.clone();
+    ui_clone.borrow_mut().enable_stop();
+
+    console::log_1(&"✅ Started".into());
+
+    // Create source layer
+    let sensors = Sensors::new(stop_token.clone());
+    let sensor_streams = SensorStreams::new(sensors);
+    let source_layer = SourceLayer::new(sensor_streams);
+
+    // Create processing layer
+    let processing_layer = ProcessingLayer::new(&source_layer);
+
+    // Create orchestrator with both traits
+    let orchestrator = DashboardOrchestrator::new(processing_layer, ui_clone, stop_token);
+
+    console::log_1(&"✅ Running".into());
+
+    orchestrator.run().await;
+
+    console::log_1(&"✅ Dashboard shutdown complete".into());
 }

@@ -8,13 +8,13 @@
 //! Three independent sensors generate random values at random frequencies
 //! (1-5 Hz) without timestamps.
 
-mod combined_stream;
 mod raw_streams;
 mod sensor;
 mod sensor_streams;
 mod sensor_value;
+mod source_layer;
 
-pub use combined_stream::CombinedStream;
 pub use raw_streams::Sensors;
 pub use sensor_streams::SensorStreams;
 pub use sensor_value::SensorValue;
+pub use source_layer::SourceLayer;
