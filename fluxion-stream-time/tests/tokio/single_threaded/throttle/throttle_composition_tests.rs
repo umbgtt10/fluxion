@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::StreamItem;
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
@@ -154,6 +155,51 @@ async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
     advance(Duration::from_millis(100)).await;
 
     tx.unbounded_send(TokioTimestamped::new(person_diane(), timer.now()))?;
+    assert_no_recv(&mut result_rx, 100).await;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_throttle_before_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let timer = TokioTimer;
+    pause();
+
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let throttled = stream
+        .throttle(Duration::from_millis(100))
+        .map_ordered(|x| {
+            let val = if let TestData::Person(p) = x.value {
+                TestData::Person(Person::new(p.name, p.age * 2))
+            } else {
+                x.value
+            };
+            TokioTimestamped::new(val, x.timestamp)
+        });
+
+    let (result_tx, mut result_rx) = unbounded();
+
+    spawn(async move {
+        let mut stream = throttled;
+        while let Some(item) = stream.next().await {
+            if let StreamItem::Value(val) = item {
+                let _ = result_tx.unbounded_send(val.value);
+            }
+        }
+    });
+
+    // Act & Assert
+    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    advance(Duration::from_millis(1)).await;
+    let received = recv_timeout(&mut result_rx, 100).await.unwrap();
+    assert_eq!(
+        received,
+        TestData::Person(Person::new(String::from("Alice"), 50))
+    );
+
+    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    advance(Duration::from_millis(1)).await;
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())

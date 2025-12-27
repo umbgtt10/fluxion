@@ -4,11 +4,11 @@
 
 use crate::processing::CombinedStream;
 use fluxion_core::{StreamItem, Timestamped};
-use fluxion_stream_time::DebounceWithDefaultTimerExt;
-use fluxion_stream_time::DelayWithDefaultTimerExt;
-use fluxion_stream_time::SampleWithDefaultTimerExt;
-use fluxion_stream_time::ThrottleWithDefaultTimerExt;
-use fluxion_stream_time::TimeoutWithDefaultTimerExt;
+use fluxion_stream_time::DebounceExt;
+use fluxion_stream_time::DelayExt;
+use fluxion_stream_time::SampleExt;
+use fluxion_stream_time::ThrottleExt;
+use fluxion_stream_time::TimeoutExt;
 use futures::stream::Stream;
 use futures::StreamExt;
 use std::pin::Pin;

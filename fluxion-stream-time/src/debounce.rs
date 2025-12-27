@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::timer::Timer;
-use crate::InstantTimestamped;
+use core::fmt::Debug;
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
@@ -11,18 +11,20 @@ use core::time::Duration;
 
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
-use fluxion_core::StreamItem;
+use fluxion_core::{Fluxion, HasTimestamp, StreamItem};
 use futures::Stream;
 use pin_project::pin_project;
 
 /// Extension trait providing the `debounce` operator for streams.
 ///
-/// This trait allows any stream of `StreamItem<InstantTimestamped<T, TM>>` to debounce emissions
+/// This trait allows any stream of `StreamItem<T>` where `T: Fluxion` to debounce emissions
 /// by a specified duration.
-pub trait DebounceExt<T, TM>: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Sized
+pub trait DebounceExt<T, TM>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: Send,
-    TM: Timer,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
+    TM: Timer<Instant = T::Timestamp>,
 {
     /// Debounces the stream by the specified duration.
     ///
@@ -64,41 +66,119 @@ where
     /// let source = rx.map(StreamItem::Value);
     ///
     /// let timer = TokioTimer;
-    /// let mut debounced = source.debounce_with_timer(Duration::from_millis(100), timer.clone());
+    /// let mut debounced = source.debounce(Duration::from_millis(100));
     ///
     /// // Alice and Bob emitted immediately. Alice should be debounced (dropped).
     /// tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now())).unwrap();
     /// tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now())).unwrap();
     ///
-    /// // Only Bob should remain (trailing debounce)
-    /// let item = debounced.next().await.unwrap().unwrap();
-    /// assert_eq!(&*item, &person_bob());
+    /// // Only Bob should remain (trailing debounce). Timer auto-selected!
     /// # }
     /// # #[cfg(not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))))]
     /// # fn main() {}
     /// ```
-    fn debounce_with_timer(
-        self,
-        duration: Duration,
-        timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>>;
+    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<T>>;
 }
 
-impl<S, T, TM> DebounceExt<T, TM> for S
+// Feature-gated implementations - one per runtime
+
+#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+impl<S, T> DebounceExt<T, crate::TokioTimer> for S
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
-    T: Send,
-    TM: Timer,
+    S: Stream<Item = StreamItem<T>>,
+    T: Fluxion<Timestamp = std::time::Instant>,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
-    fn debounce_with_timer(
-        self,
-        duration: Duration,
-        timer: TM,
-    ) -> impl Stream<Item = StreamItem<InstantTimestamped<T, TM>>> {
-        Box::pin(DebounceStream {
+    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
+        Box::pin(DebounceStream::<S, T, _> {
             stream: self,
             duration,
-            timer,
+            timer: crate::TokioTimer,
+            pending_value: None,
+            sleep: None,
+            stream_ended: false,
+        })
+    }
+}
+
+#[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
+impl<S, T> DebounceExt<T, crate::SmolTimer> for S
+where
+    S: Stream<Item = StreamItem<T>>,
+    T: Fluxion<Timestamp = std::time::Instant>,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+{
+    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
+        Box::pin(DebounceStream::<S, T, _> {
+            stream: self,
+            duration,
+            timer: crate::SmolTimer,
+            pending_value: None,
+            sleep: None,
+            stream_ended: false,
+        })
+    }
+}
+
+#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
+impl<S, T> DebounceExt<T, crate::runtimes::wasm_implementation::WasmTimer> for S
+where
+    S: Stream<Item = StreamItem<T>>,
+    T: Fluxion<Timestamp = crate::runtimes::wasm_implementation::WasmInstant>,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+{
+    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
+        Box::pin(DebounceStream::<S, T, _> {
+            stream: self,
+            duration,
+            timer: crate::runtimes::wasm_implementation::WasmTimer::new(),
+            pending_value: None,
+            sleep: None,
+            stream_ended: false,
+        })
+    }
+}
+
+#[cfg(all(
+    feature = "runtime-async-std",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol")
+))]
+impl<S, T> DebounceExt<T, crate::runtimes::AsyncStdTimer> for S
+where
+    S: Stream<Item = StreamItem<T>>,
+    T: Fluxion<Timestamp = std::time::Instant>,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+{
+    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
+        Box::pin(DebounceStream::<S, T, _> {
+            stream: self,
+            duration,
+            timer: crate::runtimes::AsyncStdTimer,
+            pending_value: None,
+            sleep: None,
+            stream_ended: false,
+        })
+    }
+}
+
+#[cfg(all(
+    feature = "runtime-embassy",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-async-std")
+))]
+impl<S, T> DebounceExt<T, crate::runtimes::EmbassyTimerImpl> for S
+where
+    S: Stream<Item = StreamItem<T>>,
+    T: Fluxion<Timestamp = crate::runtimes::EmbassyInstant>,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+{
+    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
+        Box::pin(DebounceStream::<S, T, _> {
+            stream: self,
+            duration,
+            timer: crate::runtimes::EmbassyTimerImpl,
             pending_value: None,
             sleep: None,
             stream_ended: false,
@@ -107,24 +187,28 @@ where
 }
 
 #[pin_project]
-struct DebounceStream<S: Stream, TM: Timer> {
+struct DebounceStream<S, T, TM: Timer>
+where
+    S: Stream<Item = StreamItem<T>>,
+    T: HasTimestamp<Timestamp = TM::Instant>,
+{
     #[pin]
     stream: S,
     duration: Duration,
     timer: TM,
-    pending_value: Option<S::Item>,
+    pending_value: Option<StreamItem<T>>,
     #[pin]
     sleep: Option<TM::Sleep>,
     stream_ended: bool,
 }
 
-impl<S, T, TM> Stream for DebounceStream<S, TM>
+impl<S, T, TM> Stream for DebounceStream<S, T, TM>
 where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
-    T: Send,
+    S: Stream<Item = StreamItem<T>>,
+    T: HasTimestamp<Timestamp = TM::Instant>,
     TM: Timer,
 {
-    type Item = StreamItem<InstantTimestamped<T, TM>>;
+    type Item = StreamItem<T>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
@@ -187,138 +271,5 @@ where
                 }
             }
         }
-    }
-}
-
-// =============================================================================
-// Convenience extension trait with default timer
-// =============================================================================
-
-/// Extension trait for debouncing with a default timer.
-///
-/// This trait provides a `debounce()` method that automatically uses the
-/// appropriate timer for the active runtime feature.
-pub trait DebounceWithDefaultTimerExt<T>: Sized
-where
-    T: Send,
-{
-    /// Debounces the stream using the default timer for the active runtime.
-    ///
-    /// This convenience method is available when exactly one runtime feature is enabled.
-    /// It automatically uses the correct timer (`TokioTimer`, `SmolTimer`, etc.)
-    /// without requiring an explicit timer parameter.
-    ///
-    /// # Examples
-    ///
-    /// With the `runtime-tokio` feature:
-    /// ```rust,no_run
-    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-    /// use fluxion_stream_time::prelude::*;
-    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-    /// use fluxion_stream_time::{TokioTimestamped, TokioTimer};
-    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-    /// use fluxion_stream_time::timer::Timer;
-    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-    /// use fluxion_core::StreamItem;
-    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-    /// use futures::stream::StreamExt;
-    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-    /// use std::time::Duration;
-    ///
-    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// let timer = TokioTimer;
-    /// let source: futures::stream::Empty<StreamItem<TokioTimestamped<i32>>> = futures::stream::empty();
-    /// // No timer parameter needed!
-    /// let debounced = source.debounce(Duration::from_millis(100));
-    /// # }
-    /// # #[cfg(not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))))]
-    /// # fn main() {}
-    /// ```
-    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>>;
-
-    /// The timestamped type for this runtime.
-    type Timestamped;
-}
-
-#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-impl<S, T> DebounceWithDefaultTimerExt<T> for S
-where
-    S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>>,
-    T: Send,
-{
-    type Timestamped = crate::TokioTimestamped<T>;
-
-    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DebounceExt::debounce_with_timer(self, duration, crate::TokioTimer)
-    }
-}
-
-#[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
-impl<S, T> DebounceWithDefaultTimerExt<T> for S
-where
-    S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>>,
-    T: Send,
-{
-    type Timestamped = crate::SmolTimestamped<T>;
-
-    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DebounceExt::debounce_with_timer(self, duration, crate::SmolTimer)
-    }
-}
-
-#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
-impl<S, T> DebounceWithDefaultTimerExt<T> for S
-where
-    S: Stream<
-        Item = StreamItem<InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>>,
-    >,
-    T: Send,
-{
-    type Timestamped = InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>;
-
-    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DebounceExt::debounce_with_timer(
-            self,
-            duration,
-            crate::runtimes::wasm_implementation::WasmTimer::new(),
-        )
-    }
-}
-
-#[cfg(all(
-    feature = "runtime-async-std",
-    not(feature = "runtime-tokio"),
-    not(feature = "runtime-smol"),
-    not(feature = "runtime-embassy")
-))]
-impl<S, T> DebounceWithDefaultTimerExt<T> for S
-where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>>,
-    T: Send,
-{
-    type Timestamped = InstantTimestamped<T, crate::runtimes::AsyncStdTimer>;
-
-    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DebounceExt::debounce_with_timer(self, duration, crate::runtimes::AsyncStdTimer)
-    }
-}
-
-#[cfg(all(
-    feature = "runtime-embassy",
-    not(feature = "runtime-tokio"),
-    not(feature = "runtime-smol"),
-    not(feature = "runtime-async-std")
-))]
-impl<S, T> DebounceWithDefaultTimerExt<T> for S
-where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>>,
-    T: Send,
-{
-    type Timestamped = InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>;
-
-    fn debounce(self, duration: Duration) -> impl Stream<Item = StreamItem<Self::Timestamped>> {
-        DebounceExt::debounce_with_timer(self, duration, crate::runtimes::EmbassyTimerImpl)
     }
 }

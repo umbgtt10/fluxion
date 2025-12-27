@@ -6,7 +6,6 @@ use fluxion_core::StreamItem;
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::InstantTimestamped;
 use fluxion_stream_time::TokioTimer;
 use fluxion_stream_time::TokioTimestamped;
 use fluxion_test_utils::{
@@ -73,7 +72,7 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
             let timestamp = wp.current.timestamp;
             let current_val = wp.current.value;
             let previous_val = wp.previous.map(|p| p.value);
-            InstantTimestamped::new(WithPrevious::new(previous_val, current_val), timestamp)
+            TokioTimestamped::new(WithPrevious::new(previous_val, current_val), timestamp)
         })
         .sample(Duration::from_millis(100));
 
@@ -151,6 +150,43 @@ async fn test_sample_chained_with_scan_ordered() -> anyhow::Result<()> {
     tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
     assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 90);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_sample_before_map_ordered() -> anyhow::Result<()> {
+    // Arrange
+    let timer = TokioTimer;
+    pause();
+
+    let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
+    let pipeline = stream
+        .sample(Duration::from_millis(100))
+        .map_ordered(|item| TokioTimestamped::new(item.value, item.timestamp));
+
+    let (result_tx, mut result_rx) = unbounded();
+
+    spawn(async move {
+        let mut stream = pipeline;
+        while let Some(item) = stream.next().await {
+            if let StreamItem::Value(val) = item {
+                let _ = result_tx.unbounded_send(val.value);
+            }
+        }
+    });
+
+    // Act
+    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    advance(Duration::from_millis(50)).await;
+
+    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    advance(Duration::from_millis(50)).await;
+
+    assert_eq!(
+        recv_timeout(&mut result_rx, 100).await.unwrap(),
+        person_bob()
+    );
 
     Ok(())
 }

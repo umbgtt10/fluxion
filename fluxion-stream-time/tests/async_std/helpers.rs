@@ -13,7 +13,7 @@ pub fn test_channel<T>() -> (mpsc::UnboundedSender<T>, impl Stream<Item = Stream
 }
 
 // Simple test data
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Person {
     pub name: String,
     pub age: u32,
