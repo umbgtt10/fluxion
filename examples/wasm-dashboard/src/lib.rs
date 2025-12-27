@@ -62,9 +62,7 @@ pub async fn start_dashboard() -> Result<(), JsValue> {
             }
         })));
 
-    console::log_1(
-        &"✅ Dashboard UI created with 12 hooking points (close button wired)".into(),
-    );
+    console::log_1(&"✅ Dashboard UI created with 12 hooking points (close button wired)".into());
 
     console::log_1(&"✅ Dashboard running".into());
 
