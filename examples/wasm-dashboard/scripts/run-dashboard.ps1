@@ -51,7 +51,8 @@ Write-Host "Building WASM dashboard with trunk..." -ForegroundColor Green
 Push-Location $DashboardDir
 try {
     # Build with trunk (index.html is in root)
-    $buildResult = & trunk build --release 2>&1
+    # Suppress error records from stderr while checking exit code
+    $buildResult = & { trunk build --release 2>&1 } -ErrorAction SilentlyContinue
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Trunk build failed!"
         Write-Host $buildResult

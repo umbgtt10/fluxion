@@ -31,7 +31,7 @@ pub async fn unwrap_stream<T>(
 }
 
 // Test data structures
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Person {
     pub name: String,
     pub age: u8,

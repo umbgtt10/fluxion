@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::timer::Timer;
-use crate::InstantTimestamped;
+use core::fmt::Debug;
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
@@ -11,18 +11,20 @@ use core::time::Duration;
 
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
-use fluxion_core::StreamItem;
+use fluxion_core::{Fluxion, HasTimestamp, StreamItem};
 use futures::Stream;
 use pin_project::pin_project;
 
 /// Extension trait providing the `throttle` operator for streams.
 ///
-/// This trait allows any stream of `StreamItem<InstantTimestamped<T>>` to throttle emissions
+/// This trait allows any stream of `StreamItem<T>` where `T: Fluxion` to throttle emissions
 /// by a specified duration.
-pub trait ThrottleExt<T, TM>: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Sized
+pub trait ThrottleExt<T, TM>: Stream<Item = StreamItem<T>> + Sized
 where
-    T: Send,
-    TM: Timer,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
+    TM: Timer<Instant = T::Timestamp>,
 {
     /// Throttles the stream by the specified duration.
     ///
@@ -49,7 +51,7 @@ where
     ///
     /// ```rust,no_run
     /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-    /// use fluxion_stream_time::{ThrottleExt, InstantTimestamped, TokioTimer};
+    /// use fluxion_stream_time::{ThrottleExt, TokioTimestamped, TokioTimer};
     /// use fluxion_stream_time::timer::Timer;
     /// use fluxion_core::StreamItem;
     /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
@@ -65,50 +67,128 @@ where
     /// let source = rx.map(StreamItem::Value);
     ///
     /// let timer = TokioTimer;
-    /// let mut throttled = source.throttle_with_timer(Duration::from_millis(100), timer.clone());
+    /// let mut throttled = source.throttle(Duration::from_millis(100));
     ///
     /// // Alice and Bob emitted immediately. Bob should be throttled (dropped).
-    /// tx.unbounded_send(InstantTimestamped::new(person_alice(), timer.now())).unwrap();
-    /// tx.unbounded_send(InstantTimestamped::new(person_bob(), timer.now())).unwrap();
+    /// tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now())).unwrap();
+    /// tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now())).unwrap();
     ///
-    /// // Only Alice should remain (leading throttle)
-    /// let item = throttled.next().await.unwrap().unwrap();
-    /// assert_eq!(&*item, &person_alice());
+    /// // Only Alice should remain. Timer auto-selected!
     /// # }
     /// # #[cfg(not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))))]
     /// # fn main() {}
     /// ```
-    fn throttle_with_timer(
-        self,
-        duration: Duration,
-        timer: TM,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send + Sync>>;
+    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<T>>;
 }
 
-impl<S, T, TM> ThrottleExt<T, TM> for S
+// Feature-gated implementations - one per runtime
+
+#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+impl<S, T> ThrottleExt<T, crate::TokioTimer> for S
 where
-    T: Send + 'static,
-    TM: Timer + 'static,
-    TM::Sleep: Send + Sync,
-    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send + Sync + 'static,
+    S: Stream<Item = StreamItem<T>> + Send,
+    T: Fluxion<Timestamp = std::time::Instant>,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
 {
-    fn throttle_with_timer(
-        self,
-        duration: Duration,
-        timer: TM,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<InstantTimestamped<T, TM>>> + Send + Sync>> {
-        Box::pin(ThrottleStream {
+    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
+        Box::pin(ThrottleStream::<S, T, _> {
             stream: self,
             duration,
-            timer: timer.clone(),
+            timer: crate::TokioTimer,
+            sleep: Some(crate::TokioTimer.sleep_future(duration)),
+            throttling: false,
+        })
+    }
+}
+
+#[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
+impl<S, T> ThrottleExt<T, crate::SmolTimer> for S
+where
+    S: Stream<Item = StreamItem<T>> + Send,
+    T: Fluxion<Timestamp = std::time::Instant>,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+{
+    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
+        Box::pin(ThrottleStream::<S, T, _> {
+            stream: self,
+            duration,
+            timer: crate::SmolTimer,
+            sleep: Some(crate::SmolTimer.sleep_future(duration)),
+            throttling: false,
+        })
+    }
+}
+
+#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
+impl<S, T> ThrottleExt<T, crate::runtimes::wasm_implementation::WasmTimer> for S
+where
+    S: Stream<Item = StreamItem<T>> + Send,
+    T: Fluxion<Timestamp = crate::runtimes::wasm_implementation::WasmInstant>,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+{
+    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
+        let timer = crate::runtimes::wasm_implementation::WasmTimer::new();
+        Box::pin(ThrottleStream::<S, T, _> {
+            stream: self,
+            duration,
             sleep: Some(timer.sleep_future(duration)),
+            timer,
+            throttling: false,
+        })
+    }
+}
+
+#[cfg(all(
+    feature = "runtime-async-std",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol")
+))]
+impl<S, T> ThrottleExt<T, crate::runtimes::AsyncStdTimer> for S
+where
+    S: Stream<Item = StreamItem<T>> + Send,
+    T: Fluxion<Timestamp = std::time::Instant>,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+{
+    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
+        Box::pin(ThrottleStream::<S, T, _> {
+            stream: self,
+            duration,
+            timer: crate::runtimes::AsyncStdTimer,
+            sleep: Some(crate::runtimes::AsyncStdTimer.sleep_future(duration)),
+            throttling: false,
+        })
+    }
+}
+
+#[cfg(all(
+    feature = "runtime-embassy",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-async-std")
+))]
+impl<S, T> ThrottleExt<T, crate::runtimes::EmbassyTimerImpl> for S
+where
+    S: Stream<Item = StreamItem<T>> + Send,
+    T: Fluxion<Timestamp = crate::runtimes::EmbassyInstant>,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+{
+    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
+        Box::pin(ThrottleStream::<S, T, _> {
+            stream: self,
+            duration,
+            timer: crate::runtimes::EmbassyTimerImpl,
+            sleep: Some(crate::runtimes::EmbassyTimerImpl.sleep_future(duration)),
             throttling: false,
         })
     }
 }
 
 #[pin_project]
-struct ThrottleStream<S: Stream, TM: Timer> {
+struct ThrottleStream<S, T, TM: Timer>
+where
+    S: Stream<Item = StreamItem<T>>,
+    T: HasTimestamp<Timestamp = TM::Instant>,
+{
     #[pin]
     stream: S,
     duration: Duration,
@@ -118,13 +198,13 @@ struct ThrottleStream<S: Stream, TM: Timer> {
     throttling: bool,
 }
 
-impl<S, T, TM> Stream for ThrottleStream<S, TM>
+impl<S, T, TM> Stream for ThrottleStream<S, T, TM>
 where
-    T: Send,
+    S: Stream<Item = StreamItem<T>>,
+    T: HasTimestamp<Timestamp = TM::Instant>,
     TM: Timer,
-    S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>,
 {
-    type Item = StreamItem<InstantTimestamped<T, TM>>;
+    type Item = StreamItem<T>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
@@ -174,151 +254,5 @@ where
                 }
             }
         }
-    }
-}
-
-// =============================================================================
-// Convenience extension trait with default timer
-// =============================================================================
-
-/// Extension trait for throttling with a default timer.
-///
-/// This trait provides a `throttle()` method that automatically uses the
-/// appropriate timer for the active runtime feature.
-pub trait ThrottleWithDefaultTimerExt<T>: Sized
-where
-    T: Send,
-{
-    /// Throttles the stream using the default timer for the active runtime.
-    ///
-    /// This convenience method is available when exactly one runtime feature is enabled.
-    /// It automatically uses the correct timer without requiring an explicit timer parameter.
-    fn throttle(
-        self,
-        duration: Duration,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>>;
-
-    /// The timestamped type for this runtime.
-    type Timestamped;
-}
-
-#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-impl<S, T> ThrottleWithDefaultTimerExt<T> for S
-where
-    S: Stream<Item = StreamItem<crate::TokioTimestamped<T>>> + Send + Sync + 'static,
-    T: Send + Sync + 'static,
-{
-    type Timestamped = crate::TokioTimestamped<T>;
-
-    fn throttle(
-        self,
-        duration: Duration,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
-        Box::pin(ThrottleExt::throttle_with_timer(
-            self,
-            duration,
-            crate::TokioTimer,
-        ))
-    }
-}
-
-#[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
-impl<S, T> ThrottleWithDefaultTimerExt<T> for S
-where
-    S: Stream<Item = StreamItem<crate::SmolTimestamped<T>>> + Send + Sync + 'static,
-    T: Send + Sync + 'static,
-{
-    type Timestamped = crate::SmolTimestamped<T>;
-
-    fn throttle(
-        self,
-        duration: Duration,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
-        Box::pin(ThrottleExt::throttle_with_timer(
-            self,
-            duration,
-            crate::SmolTimer,
-        ))
-    }
-}
-
-#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
-impl<S, T> ThrottleWithDefaultTimerExt<T> for S
-where
-    S: Stream<
-            Item = StreamItem<
-                InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>,
-            >,
-        > + Send
-        + Sync
-        + 'static,
-    T: Send + Sync + 'static,
-{
-    type Timestamped = InstantTimestamped<T, crate::runtimes::wasm_implementation::WasmTimer>;
-
-    fn throttle(
-        self,
-        duration: Duration,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
-        Box::pin(ThrottleExt::throttle_with_timer(
-            self,
-            duration,
-            crate::runtimes::wasm_implementation::WasmTimer::new(),
-        ))
-    }
-}
-
-#[cfg(all(
-    feature = "runtime-async-std",
-    not(feature = "runtime-tokio"),
-    not(feature = "runtime-smol")
-))]
-impl<S, T> ThrottleWithDefaultTimerExt<T> for S
-where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::AsyncStdTimer>>>
-        + Send
-        + Sync
-        + 'static,
-    T: Send + Sync + 'static,
-{
-    type Timestamped = InstantTimestamped<T, crate::runtimes::AsyncStdTimer>;
-
-    fn throttle(
-        self,
-        duration: Duration,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
-        Box::pin(ThrottleExt::throttle_with_timer(
-            self,
-            duration,
-            crate::runtimes::AsyncStdTimer,
-        ))
-    }
-}
-
-#[cfg(all(
-    feature = "runtime-embassy",
-    not(feature = "runtime-tokio"),
-    not(feature = "runtime-smol"),
-    not(feature = "runtime-async-std")
-))]
-impl<S, T> ThrottleWithDefaultTimerExt<T> for S
-where
-    S: Stream<Item = StreamItem<InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>>>
-        + Send
-        + Sync
-        + 'static,
-    T: Send + Sync + 'static,
-{
-    type Timestamped = InstantTimestamped<T, crate::runtimes::EmbassyTimerImpl>;
-
-    fn throttle(
-        self,
-        duration: Duration,
-    ) -> Pin<Box<dyn Stream<Item = StreamItem<Self::Timestamped>> + Send + Sync>> {
-        Box::pin(ThrottleExt::throttle_with_timer(
-            self,
-            duration,
-            crate::runtimes::EmbassyTimerImpl,
-        ))
     }
 }

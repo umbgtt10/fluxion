@@ -5,6 +5,43 @@ All notable changes to the Fluxion project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.14] - 2025-12-27
+
+### Changed
+- **Time Operator Interface Unification ✅ COMPLETE** (`fluxion-stream-time`)
+  - Unified time-bound operators with non-time-bound operators using `T: Fluxion` trait bounds
+  - Changed from `S: Stream<Item = StreamItem<InstantTimestamped<T, TM>>>` to `S: Stream<Item = StreamItem<T>>, T: Fluxion`
+  - Timer now a generic parameter on traits (`OperatorExt<T, TM>`) with runtime-specific implementations
+  - Feature-gated implementations auto-select correct timer based on `T::Timestamp` type
+  - All 5 operators migrated: `delay`, `debounce`, `throttle`, `timeout`, `sample`
+  - Each operator has 5 feature-gated implementations (tokio, smol, async-std, wasm, embassy)
+
+### Removed
+- **Code Cleanup** (`fluxion-stream-time`)
+  - Removed ~500+ lines of `WithDefaultTimerExt` convenience trait boilerplate
+  - Removed redundant trait bounds from time operator implementations
+  - Simplified operator composition patterns
+
+### Fixed
+- **Runtime Type References** (`fluxion-stream-time`)
+  - Fixed tokio/smol/async-std implementations to use `std::time::Instant` (standard library)
+  - Fixed WASM implementation to use `crate::runtimes::wasm_implementation::WasmInstant` wrapper
+  - Fixed Embassy implementation to use `crate::runtimes::embassy_implementation::EmbassyInstant` wrapper
+  - Fixed WASM test helper `Person` struct to derive `Eq + PartialOrd + Ord` for `Fluxion` trait bounds
+  - Fixed PowerShell script error handling in `run-dashboard.ps1` for trunk stderr output
+
+### Added
+- **Test Coverage** (`fluxion-stream-time`)
+  - Added 5 new composition tests: time-bound operators chained **before** non-time-bound operators
+  - Tests verify bidirectional composition: `delay→map`, `debounce→map`, `throttle→map`, `timeout→map`, `sample→map`
+
+### Quality
+- ✅ All 91 tokio tests + 7 doctests passing
+- ✅ All 5 WASM tests + 7 doctests passing
+- ✅ All runtimes compile successfully (tokio, smol, async-std, wasm, embassy)
+- ✅ Code reduction: ~500+ lines removed with no functionality loss
+- ✅ Interface consistency: time and non-time operators now use identical patterns
+
 ## [0.6.13] - 2025-12-22
 
 ### Added
