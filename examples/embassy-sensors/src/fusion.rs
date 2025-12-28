@@ -87,7 +87,7 @@ pub async fn fusion_task(
                     let prev = &humidity_window[0];
                     let curr = &humidity_window[1];
                     state.humidity_delta = curr.value_percent as i32 - prev.value_percent as i32;
-                    state.latest_humidity = Some(curr);
+                    state.latest_humidity = Some(*curr);
                 }
                 state.update_count += 1;
                 state.clone()
