@@ -700,6 +700,46 @@ New projects should use tokio or smol runtimes instead.
 **Key Achievement:**
 **Production-Ready Examples** - Real-world examples demonstrate WASM and embedded capabilities. Timer abstraction (0.6.2-0.6.13) already provides deterministic time control across all 5 runtimes.
 
+---
+
+## 🚀 Version 0.7.1 - Embassy QEMU Validation
+
+**Status:** Planned
+
+**Goal:** Validate Embassy runtime with real ARM target in QEMU emulator
+
+### Essential Features
+
+**Embassy Example Migration:**
+- [ ] Migrate embassy-sensors from std to true embedded target (e.g., `thumbv7em-none-eabihf`)
+- [ ] Configure for QEMU emulation (STM32 or nRF52 compatible)
+- [ ] Simulated sensors using Embassy timers (no hardware dependencies)
+- [ ] Demonstrate all working operators in no_std + alloc environment
+- [ ] QEMU launch scripts for easy validation
+
+**Testing & Validation:**
+- [ ] Example compiles for ARM target
+- [ ] Example runs in QEMU successfully
+- [ ] All operator patterns demonstrated
+- [ ] Memory usage profiling (embedded constraints)
+
+### Documentation
+- [ ] QEMU setup guide (installation, target selection)
+- [ ] Embassy best practices for reactive streams
+- [ ] Performance characteristics in no_std environment
+- [ ] Migration guide: std → no_std for other users
+
+### Quality Gates
+- [ ] ARM target builds without errors
+- [ ] QEMU execution successful
+- [ ] All demonstrated operators work
+- [ ] Documentation complete
+- [ ] Example serves as reference for embedded users
+
+**Key Achievement:**
+**True Embedded Validation** - Embassy example runs on real ARM target in QEMU. Proves Fluxion works on actual embedded hardware, not just simulated environments. Serves as production-ready template for microcontroller applications.
+
+---
 
 ## 🚀 Version 0.8.0 - Runtime Isolation Foundation
 

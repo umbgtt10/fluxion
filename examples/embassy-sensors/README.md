@@ -31,23 +31,30 @@ futures = { features = ["alloc"] }              # ✅ no_std
 - ❌ Not compiled for ARM Cortex-M microcontrollers
 - ❌ Can't be flashed to physical hardware
 
-### 🚀 Future Example: `embassy-embedded` (v0.8.0)
+### 🚀 Future Example Migration (v0.7.1)
 
-**Bridge to true embedded: Just 2 lines!**
+**Moving to true embedded with QEMU:**
 
-A future true embedded example will only need to change:
+Version 0.7.1 will migrate this example to a real ARM target running in QEMU emulator:
+- Real embedded build for ARM Cortex-M (e.g., `thumbv7em-none-eabihf`)
+- QEMU emulation (STM32 or nRF52 compatible target)
+- `#![no_std]` + `alloc` only - no standard library
+- Easy validation without physical hardware
+
+**Changes needed (v0.7.1):**
 ```toml
-# Current (host-based) → Future (embedded)
-embassy-executor = { features = ["arch-cortex-m"] }  # Was: arch-std
-embassy-time = { features = ["generic-queue"] }      # Was: std
+# Current (host-based) → Future (QEMU embedded)
+embassy-executor = { features = ["arch-cortex-m", "executor-thread"] }  # Was: arch-std
+embassy-time = { features = ["generic-queue"] }                         # Was: std
+# Plus: target config, memory layout, panic handler
 ```
-
-Plus: `#![no_std]` in main.rs, panic handler, linker scripts, QEMU setup.
 
 **All application code (sensors, fusion, operators) works unchanged!**
 
-This demonstrates:
-- ✅ Real `no_std` firmware for ARM Cortex-M4F (`thumbv7em-none-eabihf`)
+This will demonstrate:
+- ✅ Real `no_std` firmware for ARM Cortex-M
+- ✅ QEMU validation (no physical hardware needed)
+- ✅ Production-ready embedded template
 - ✅ QEMU-compatible (runs in emulator without physical hardware)
 - ✅ Production-realistic: linker scripts, panic handlers, memory allocators
 - ✅ Same binary you'd flash to STM32F4, nRF52, etc.
