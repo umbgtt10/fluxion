@@ -10,15 +10,15 @@
 |--------|---------|--------|-------------------|
 | **Test-to-Code Ratio** | **7.6:1** | Unknown | 1:1 |
 | **Total Tests** | **990+** (100% pass) | Unknown | Varies |
-| **Code Coverage** | **87%** (improving) | Unknown | 70-80% |
-| **Operators** | 29 (core complete) | ~50+ | N/A |
+| **Code Coverage** | **95%**  | Unknown | 70-80% |
+| **Operators** | 27 (core complete) | ~50+ | N/A |
 | **`unsafe` Blocks** | **0** | Present | Some acceptable |
 | **`unwrap()`/`expect()`** | **0** (production) | Present | Common |
 | **Compiler Warnings** | **0** | Unknown | Some acceptable |
 | **Clippy Warnings** | **0** | Unknown | Some acceptable |
 | **API Documentation** | 100% + examples | Good | Partial |
 | **Doc Tests** | 106 (all passing) | Unknown | Few |
-| **Runtime Support** | 5 (Tokio/smol/async-std/WASM/Embassy) | 1 (locked-in) | 1 |
+| **Runtime Support** | 5 (out-of-the-box) | tokio (custom code needed for other runtimes) | 1 |
 | **Temporal Ordering** | First-class with guarantees | Basic | None |
 | **Async/Await** | Native Rust async | Scheduler-based | Varies |
 | **Backpressure** | Native pull-based | Manual | Varies |

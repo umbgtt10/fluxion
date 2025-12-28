@@ -814,7 +814,7 @@ New projects should use tokio or smol runtimes instead.
 - ✅ Single implementation per operator
 
 **Market Position:**
-- RxRust: ❌ Locked into Tokio, ❌ No embedded support
+- RxRust: ❌ Requires custom code for non-Tokio runtimes, ❌ No embedded support
 - Other reactive libs: ❌ std-only, ❌ No embedded story
 - Embassy ecosystem: ❌ No full-featured reactive streams library
 

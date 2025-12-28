@@ -244,16 +244,7 @@ jobs:
         run: cargo install cargo-llvm-cov
 
       - name: Run coverage
-        run: |
-          cargo llvm-cov --workspace \
-            --exclude fluxion-test-utils \
-            --exclude wasm-dashboard \
-            --exclude stream-aggregation \
-            --exclude legacy-integration \
-            --exclude embassy-sensors \
-            --features "runtime-tokio" \
-            --ignore-filename-regex "fluxion-test-utils" \
-            --lcov --output-path lcov.info
+        run: cargo llvm-cov --workspace --exclude fluxion-test-utils --exclude wasm-dashboard --exclude stream-aggregation --exclude legacy-integration --exclude embassy-sensors --features "runtime-tokio" --ignore-filename-regex "fluxion-test-utils" --lcov --output-path lcov.info
 
       - name: Run doc tests for coverage
         run: |

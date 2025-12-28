@@ -22,7 +22,7 @@ Mirrors the proven `Timer` trait pattern for task spawning across all runtimes.
 - ✅ All 27 operators work everywhere (servers to microcontrollers)
 
 **Competitive Advantage:**
-- RxRust: ❌ Locked into Tokio, no embedded support
+- RxRust: ❌ Requires custom code for non-Tokio runtimes, no embedded support
 - Other reactive libs: ❌ std-only
 - Embassy ecosystem: ❌ No full-featured reactive streams
 - **Fluxion v0.9.0**: ✅ Industry first - complete reactive streams on embedded systems
