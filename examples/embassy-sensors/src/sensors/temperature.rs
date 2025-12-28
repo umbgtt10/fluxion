@@ -9,7 +9,8 @@ use embassy_time::{Duration, Timer};
 use fluxion_core::CancellationToken;
 use fluxion_stream_time::timer::Timer as TimerTrait;
 use fluxion_stream_time::EmbassyTimerImpl;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
+use rand_chacha::ChaCha8Rng;
 
 /// Temperature sensor task with debounce → map → filter pipeline
 #[embassy_executor::task]
@@ -17,7 +18,7 @@ pub async fn temperature_sensor(tx: async_channel::Sender<Temperature>, cancel: 
     println!("🌡️  Temperature sensor task started");
 
     let timer = EmbassyTimerImpl;
-    let mut rng = rand::rng();
+    let mut rng = ChaCha8Rng::seed_from_u64(12345);
 
     // Simulate sensor readings every 50ms
     loop {

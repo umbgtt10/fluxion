@@ -1,6 +1,60 @@
 # Embassy Sensor Fusion Example
 
-This example demonstrates **Fluxion reactive streams on embedded systems** using the Embassy async runtime.
+This example demonstrates **Fluxion reactive streams with Embassy runtime** on your PC.
+
+## What This Example Achieves vs. Future Plans
+
+### ✅ This Example (Host-Based, v0.6.13)
+
+**What it IS:**
+- Proves Fluxion operators work with Embassy async runtime
+- Easy to run: `cargo run` (no special setup required)
+- Uses `arch-std` feature: runs on your PC with standard library
+- Same APIs that work on real embedded hardware
+- **Minimal std dependencies**: Only Embassy runtime uses `std` - all application code and Fluxion operators are `no_std` compatible
+
+**std dependency footprint:**
+```toml
+# Only these 2 dependencies require std:
+embassy-executor = { features = ["arch-std"] }  # ← Host runtime
+embassy-time = { features = ["std"] }           # ← Host time
+
+# Everything else is no_std compatible:
+fluxion-* = { features = ["alloc"] }            # ✅ no_std
+async-channel = { default-features = false }    # ✅ no_std
+rand + rand_chacha = { default-features = false } # ✅ no_std
+futures = { features = ["alloc"] }              # ✅ no_std
+```
+
+**What it is NOT:**
+- ❌ Not a true embedded build (Embassy uses `arch-std`)
+- ❌ Not compiled for ARM Cortex-M microcontrollers
+- ❌ Can't be flashed to physical hardware
+
+### 🚀 Future Example: `embassy-embedded` (v0.8.0)
+
+**Bridge to true embedded: Just 2 lines!**
+
+A future true embedded example will only need to change:
+```toml
+# Current (host-based) → Future (embedded)
+embassy-executor = { features = ["arch-cortex-m"] }  # Was: arch-std
+embassy-time = { features = ["generic-queue"] }      # Was: std
+```
+
+Plus: `#![no_std]` in main.rs, panic handler, linker scripts, QEMU setup.
+
+**All application code (sensors, fusion, operators) works unchanged!**
+
+This demonstrates:
+- ✅ Real `no_std` firmware for ARM Cortex-M4F (`thumbv7em-none-eabihf`)
+- ✅ QEMU-compatible (runs in emulator without physical hardware)
+- ✅ Production-realistic: linker scripts, panic handlers, memory allocators
+- ✅ Same binary you'd flash to STM32F4, nRF52, etc.
+
+**Why two examples?**
+- **This one**: Simple demonstration (`cargo run`), minimal std footprint, accessible to everyone
+- **Future one**: Production realism, true embedded toolchain, QEMU emulation
 
 ## Overview
 
@@ -153,20 +207,23 @@ And implement real sensor drivers:
 
 ### The Competitive Advantage
 
-Fluxion is **the only reactive streams library** that offers:
+Fluxion is **the only reactive streams library** with **built-in multi-runtime support**:
 
-- ✅ All operators across all runtimes (servers, browsers, microcontrollers)
+- ✅ All operators across all 5 runtimes (servers, browsers, microcontrollers)
+- ✅ Zero custom implementation required - just feature flags
 - ✅ Zero performance penalty (full concurrency)
-- ✅ Single implementation per operator
+- ✅ Single operator implementation adapts to all runtimes
 - ✅ No runtime lock-in
 
 **Comparison:**
 
-| Library | Tokio | smol | WASM | Embassy |
-|---------|-------|------|------|---------|
-| **RxRust** | ✅ (locked) | ❌ | ❌ | ❌ |
-| **Fluxion v0.6.13** | ✅ | ✅ | ✅ | ✅ (25/27) |
-| **Fluxion v0.9.0** | ✅ | ✅ | ✅ | ✅ (27/27) |
+| Library | Tokio | smol | WASM | Embassy | Custom Implementation Required |
+|---------|-------|------|------|---------|-------------------------------|
+| **RxRust** | ✅ | ⚠️ Custom scheduler | ✅ | ⚠️ Custom scheduler | Yes - for non-Tokio runtimes |
+| **Fluxion v0.6.13** | ✅ | ✅ | ✅ | ✅ (25/27) | No - built-in Timer trait |
+| **Fluxion v0.9.0** | ✅ | ✅ | ✅ | ✅ (27/27) | No - built-in Timer + TaskSpawner |
+
+**Key Advantage:** Fluxion provides runtime implementations out-of-the-box. No custom scheduler code needed.
 
 ### Real-World Use Cases
 

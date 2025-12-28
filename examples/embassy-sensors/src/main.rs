@@ -83,6 +83,9 @@ async fn main(spawner: Spawner) {
     // Wait for graceful shutdown
     Timer::after(Duration::from_millis(500)).await;
     println!("✅ System shutdown complete");
+
+    // Exit the process (Embassy executor doesn't stop automatically)
+    std::process::exit(0);
 }
 
 // Note: For actual embedded hardware, you would need:

@@ -9,7 +9,8 @@ use embassy_time::{Duration, Timer};
 use fluxion_core::CancellationToken;
 use fluxion_stream_time::timer::Timer as TimerTrait;
 use fluxion_stream_time::EmbassyTimerImpl;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
+use rand_chacha::ChaCha8Rng;
 
 /// Pressure sensor task with throttle → scan → distinct_until_changed pipeline
 #[embassy_executor::task]
@@ -17,7 +18,7 @@ pub async fn pressure_sensor(tx: async_channel::Sender<Pressure>, cancel: Cancel
     println!("📊 Pressure sensor task started");
 
     let timer = EmbassyTimerImpl;
-    let mut rng = rand::rng();
+    let mut rng = ChaCha8Rng::seed_from_u64(67890);
 
     // Simulate sensor readings every 30ms (faster than temperature)
     loop {

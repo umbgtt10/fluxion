@@ -223,4 +223,10 @@ Invoke-StepAction "Run legacy-integration example" {
   Pop-Location
 }
 
+Invoke-StepAction "Run embassy-sensors example" {
+  Push-Location examples\embassy-sensors
+  cargo run --release
+  Pop-Location
+}
+
 Write-Color "Upgrade + build + test sequence completed successfully." Green

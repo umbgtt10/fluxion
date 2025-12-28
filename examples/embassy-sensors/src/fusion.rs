@@ -19,7 +19,6 @@ use futures::StreamExt;
 extern crate alloc;
 use alloc::vec::Vec;
 
-/// Sensor fusion task - combines all three streams with reactive pipelines
 #[embassy_executor::task]
 pub async fn fusion_task(
     temp_rx: async_channel::Receiver<Temperature>,
