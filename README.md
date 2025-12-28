@@ -13,7 +13,7 @@
 [![WASM](https://img.shields.io/badge/runtime-wasm-purple.svg)](https://webassembly.org/)
 [![Embassy](https://img.shields.io/badge/runtime-embassy-red.svg)](https://embassy.dev/)
 
-Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal ordering guarantees and a fluent, ergonomic API. It emphasizes correctness and reliability, backed by 900+ comprehensive tests, a 7.6:1 test-to-code ratio, zero warnings, zero unwraps, and no unsafe code. The library includes comprehensive performance benchmarks, is published on crates.io, and demonstrates production-quality Rust engineering.
+Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal ordering guarantees, supporting **5 async runtimes** (Tokio, smol, async-std, WASM, Embassy) through a unified API. It emphasizes correctness and reliability, backed by 900+ comprehensive tests, a 10.8:1 test-to-code ratio, zero warnings, zero unwraps, and no unsafe code. The library includes comprehensive performance benchmarks, is published on crates.io, and demonstrates production-quality Rust engineering.
 
 **📊 [See why Fluxion sets new standards for quality →](PITCH.md)**
 
