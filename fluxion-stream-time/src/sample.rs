@@ -9,6 +9,7 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::time::Duration;
 
+#[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 use fluxion_core::{Fluxion, HasTimestamp, StreamItem};
 use futures::Stream;
