@@ -10,7 +10,7 @@ use fluxion_stream_time::runtimes::EmbassyInstant;
 /// Temperature reading in degrees Celsius
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Temperature {
-    pub value: i32, // Temperature * 100
+    pub value_kelvin: u32,
     pub timestamp: EmbassyInstant,
 }
 
@@ -34,10 +34,16 @@ impl Timestamped for Temperature {
     }
 }
 
+impl core::fmt::Display for Temperature {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{} K", self.value_kelvin)
+    }
+}
+
 /// Pressure reading in hectopascals (hPa)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Pressure {
-    pub value: i32, // Pressure * 100
+    pub value_hpa: u32,
     pub timestamp: EmbassyInstant,
 }
 
@@ -61,10 +67,16 @@ impl Timestamped for Pressure {
     }
 }
 
+impl core::fmt::Display for Pressure {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{} hPa", self.value_hpa)
+    }
+}
+
 /// Humidity reading as percentage (0-100%)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Humidity {
-    pub value: i32, // Humidity * 100
+    pub value_percent: u32,
     pub timestamp: EmbassyInstant,
 }
 
@@ -88,44 +100,8 @@ impl Timestamped for Humidity {
     }
 }
 
-/// Unified sensor reading enum for combining different sensor types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum SensorReading {
-    Temperature(Temperature),
-    Pressure(Pressure),
-    Humidity(Humidity),
-}
-
-impl HasTimestamp for SensorReading {
-    type Timestamp = EmbassyInstant;
-
-    fn timestamp(&self) -> Self::Timestamp {
-        match self {
-            SensorReading::Temperature(t) => t.timestamp(),
-            SensorReading::Pressure(p) => p.timestamp(),
-            SensorReading::Humidity(h) => h.timestamp(),
-        }
-    }
-}
-
-impl Timestamped for SensorReading {
-    type Inner = Self;
-
-    fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self {
-        match value {
-            SensorReading::Temperature(t) => {
-                SensorReading::Temperature(Timestamped::with_timestamp(t, timestamp))
-            }
-            SensorReading::Pressure(p) => {
-                SensorReading::Pressure(Timestamped::with_timestamp(p, timestamp))
-            }
-            SensorReading::Humidity(h) => {
-                SensorReading::Humidity(Timestamped::with_timestamp(h, timestamp))
-            }
-        }
-    }
-
-    fn into_inner(self) -> Self::Inner {
-        self
+impl core::fmt::Display for Humidity {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{} %", self.value_percent)
     }
 }

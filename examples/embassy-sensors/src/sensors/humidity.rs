@@ -27,17 +27,19 @@ pub async fn humidity_sensor(tx: async_channel::Sender<Humidity>, cancel: Cancel
         }
 
         let humidity = Humidity {
-            value: (40.0 + rng.random::<f32>() * 40.0 * 100.0) as i32,
+            value_percent: rng.random_range(20..=80),
             timestamp: timer.now(),
         };
 
-        println!("💧 Sensor: {}%", humidity.value);
+        println!("💧 Sensor: {}%", humidity.value_percent);
         if tx.send(humidity).await.is_err() {
             println!("💧 Channel closed, stopping sensor");
             break;
         }
 
-        Timer::after(Duration::from_millis(20)).await;
+        let timeout = rng.random_range(100..=1000);
+        println!("🌡️  timeout: {} ms", timeout);
+        Timer::after(Duration::from_millis(timeout)).await;
     }
 
     println!("💧 Humidity sensor task stopped");

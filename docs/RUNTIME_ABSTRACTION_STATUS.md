@@ -316,6 +316,136 @@ fluxion-core = { workspace = true, features = ["std"] }
 
 ---
 
+## � Known Limitations: Send + Sync Bounds Issue
+
+### Problem Discovery (December 27, 2025)
+
+**Issue:** All operators using the unified `T: Fluxion` pattern require `Send + Sync` bounds:
+
+```rust
+pub trait DebounceExt<T, TM>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,  // ← Problem
+    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,        // ← Problem
+    TM: Timer<Instant = T::Timestamp>,
+```
+
+**Impact:**
+- **Affects ALL operators** (time-based: 5, non-time: ~22, total: ~27)
+- **Blocks `combine_latest` with different operators** on single-threaded runtimes (Embassy, WASM)
+- **Root cause:** `impl Trait` return types create distinct opaque types that can't be combined in arrays
+
+**Specific Failure Case:**
+```rust
+// Embassy example - DOES NOT COMPILE
+let temp = stream.debounce(...);     // Type: Debounce<...>
+let pressure = stream.throttle(...); // Type: Throttle<...> (different!)
+let humidity = stream.sample(...);   // Type: Sample<...> (different!)
+
+// Can't put different types in array, even with .boxed_local()
+let combined = temp.combine_latest([pressure, humidity]); // ❌ Type mismatch
+```
+
+**Why Boxing Doesn't Work:**
+- `combine_latest` requires `Send + Sync` for thread safety
+- Embassy/WASM are single-threaded (no `Send + Sync`)
+- Boxing to `Pin<Box<dyn Stream>>` loses `Sized` requirement
+- Arrays need `Sized` types
+
+### Solution Options
+
+#### Option 1: Dual Trait APIs (Recommended for v0.9.0)
+Create `_local` variants without `Send + Sync` bounds for single-threaded runtimes:
+
+```rust
+// Multi-threaded (existing)
+pub trait DebounceExt<T, TM>: Stream<Item = StreamItem<T>> + Sized
+where
+    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T::Timestamp: Clone + Debug + Ord + Send + Sync,
+{ ... }
+
+// Single-threaded (new)
+pub trait DebounceLocalExt<T, TM>: Stream<Item = StreamItem<T>> + Sized
+where
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,  // No Send + Sync
+    T::Timestamp: Clone + Debug + Ord,                // No Send + Sync
+{ ... }
+```
+
+**Benefits:**
+- ✅ Consistent with futures ecosystem (`boxed()` vs `boxed_local()`)
+- ✅ Enables different operators before `combine_latest`
+- ✅ Compile-time thread safety for multi-threaded runtimes
+- ✅ No performance penalty
+
+**Drawbacks:**
+- ❌ ~50+ trait definitions (~27 operators × 2 variants)
+- ❌ ~50+ implementations (or macro-generated)
+- ❌ 2x API surface area
+- ❌ Documentation burden
+
+#### Option 2: Conditional Bounds (Complex)
+Use feature flags to switch bounds:
+
+```rust
+#[cfg(not(feature = "single-threaded"))]
+where T::Inner: Send + Sync + ...
+
+#[cfg(feature = "single-threaded")]
+where T::Inner: ...  // No Send + Sync
+```
+
+**Benefits:**
+- ✅ Single API surface
+- ✅ Compile-time selection
+
+**Drawbacks:**
+- ❌ Complex feature flag management
+- ❌ Can't support both in same binary
+- ❌ Confusing error messages
+
+#### Option 3: Relax Globally (Simplest but Risky)
+Remove `Send + Sync` from ALL operators:
+
+**Benefits:**
+- ✅ Works everywhere
+- ✅ No API duplication
+- ✅ Simple
+
+**Drawbacks:**
+- ❌ Loses compile-time thread-safety checks
+- ❌ Potential runtime issues in multi-threaded code
+- ❌ Against Rust safety principles
+
+### Decision Timeline
+
+**Status:** Deferred to v0.9.0
+
+**Rationale:**
+1. **Not blocking** - Embassy/WASM examples can work with same-operator patterns
+2. **Major architectural decision** - Affects entire library design philosophy
+3. **Need user feedback** - Real-world Embassy/WASM usage will inform priority
+4. **Proven workarounds exist:**
+   - Use same operators before `combine_latest` (works today)
+   - Combine first, then apply different operators (works today)
+   - Process streams separately with `select!` (works today)
+
+**Next Steps (v0.9.0):**
+1. Gather user feedback on Embassy/WASM usage patterns
+2. Evaluate if dual APIs justify 2x maintenance burden
+3. Prototype `_local` variant of one operator to validate approach
+4. Make architectural decision with community input
+5. If approved, implement dual APIs for all ~27 operators
+
+**Affected Versions:**
+- v0.6.13: Issue discovered during Embassy example merge
+- v0.7.0-0.8.0: Workarounds documented, decision deferred
+- v0.9.0: Architectural decision + implementation (if approved)
+
+---
+
 ## 📝 Next Steps
 
 ### Immediate (Ready to Start)
@@ -324,6 +454,7 @@ fluxion-core = { workspace = true, features = ["std"] }
    - Document current operator availability matrix
    - Add Embassy time operator examples
    - Clarify "no_std without runtime" is not recommended
+   - Document combine_latest workarounds for Embassy/WASM
 
 ### High Priority (Wait for User Demand)
 
@@ -332,6 +463,12 @@ fluxion-core = { workspace = true, features = ["std"] }
    - Current 25/27 operators cover most use cases
    - Can be added without breaking changes
    - Follows proven Timer trait pattern
+
+3. **Send + Sync Bounds Resolution** [10-15 days] **→ DEFERRED TO v0.9.0**
+   - Implement `_local` variants for all ~27 operators
+   - Enable `combine_latest` with different operators on Embassy/WASM
+   - See "Known Limitations: Send + Sync Bounds Issue" section above
+   - Requires architectural decision and community input
 
 ### Low Priority (Wait for User Feedback)
 

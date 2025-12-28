@@ -26,17 +26,19 @@ pub async fn temperature_sensor(tx: async_channel::Sender<Temperature>, cancel: 
         }
 
         let temperature = Temperature {
-            value: (20.0 + rng.random::<f32>() * 15.0 * 100.0) as i32,
+            value_kelvin: rng.random_range(263..=313),
             timestamp: timer.now(),
         };
 
-        println!("🌡️  Sensor: {}°C", temperature.value);
+        println!("🌡️  Sensor: {}°C", temperature.value_kelvin);
         if tx.send(temperature).await.is_err() {
             println!("🌡️  Channel closed, stopping sensor");
             break;
         }
 
-        Timer::after(Duration::from_millis(50)).await;
+        let timeout = rng.random_range(100..=1000);
+        println!("🌡️  timeout: {} ms", timeout);
+        Timer::after(Duration::from_millis(timeout)).await;
     }
 
     println!("🌡️  Temperature sensor task stopped");

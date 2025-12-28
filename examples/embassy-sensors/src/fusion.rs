@@ -4,12 +4,20 @@
 
 //! Sensor fusion task - combines all three sensor streams.
 
-use crate::types::{Humidity, Pressure, SensorReading, Temperature};
+use crate::aggregate::SensorAggregate;
+use crate::types::{Humidity, Pressure, Temperature};
 use core::time::Duration;
 use fluxion_core::{CancellationToken, StreamItem};
-use fluxion_stream::IntoFluxionStream;
+use fluxion_stream::{
+    DistinctUntilChangedByExt, DistinctUntilChangedExt, FilterOrderedExt, IntoFluxionStream,
+    MergedStream, SkipItemsExt, TapExt, WindowByCountExt,
+};
 use fluxion_stream_time::prelude::*;
+use fluxion_stream_time::EmbassyTimestamped;
 use futures::StreamExt;
+
+extern crate alloc;
+use alloc::vec::Vec;
 
 /// Sensor fusion task - combines all three streams with reactive pipelines
 #[embassy_executor::task]
@@ -19,62 +27,95 @@ pub async fn fusion_task(
     humidity_rx: async_channel::Receiver<Humidity>,
     _cancel: CancellationToken,
 ) {
-    println!("🔄 Fusion task started - demonstrating time operators");
-    println!("Building reactive pipeline with combine_latest...\n");
+    println!("🔄 Fusion task started - demonstrating operators and merge_with");
+    println!("Building reactive pipeline with multiple operators...\n");
 
-    // Use into_fluxion_stream_map to transform AND timestamp in one step
+    // Temperature stream: tap -> distinct_until_changed -> debounce
     let temp_stream = temp_rx
-        .into_fluxion_stream_map(|t| SensorReading::Temperature(t.clone()))
-        .debounce(Duration::from_millis(100));
-    println!("✓ Temperature: mapped -> debounce(100ms)");
+        .into_fluxion_stream()
+        .tap(|t| println!("🔍 Raw temperature: {:}°C", t.value_kelvin))
+        .distinct_until_changed()
+        .debounce(Duration::from_millis(500));
+    println!("✓ Temperature: tap -> distinct_until_changed -> debounce(500ms)");
 
+    // Pressure stream: distinct_until_changed_by -> filter_ordered -> throttle
     let pressure_stream = pressure_rx
-        .into_fluxion_stream_map(|p| SensorReading::Pressure(p.clone()))
-        .throttle(Duration::from_millis(200));
-    println!("✓ Pressure: mapped -> throttle(200ms)");
+        .into_fluxion_stream()
+        .distinct_until_changed_by(|p1, p2| {
+            let difference = p1.value_hpa as i32 - p2.value_hpa as i32;
+            println!(
+                "🔍 Pressure change: {} hPa (from {} to {})",
+                difference, p2.value_hpa, p1.value_hpa
+            );
+            difference.abs() < 10
+        })
+        .filter_ordered(|p: &Pressure| p.value_hpa > 1000) // Filter by pressure value
+        .throttle(Duration::from_millis(750));
+    println!(
+        "✓ Pressure: distinct_until_changed_by -> filter_ordered(>1000hPa) -> throttle(750ms)"
+    );
 
+    // Humidity stream: window_by_count -> skip_items -> sample
     let humidity_stream = humidity_rx
-        .into_fluxion_stream_map(|h| SensorReading::Humidity(h.clone()))
-        .sample(Duration::from_millis(150));
-    println!("✓ Humidity: mapped -> sample(150ms)");
+        .into_fluxion_stream()
+        .window_by_count::<EmbassyTimestamped<Vec<Humidity>>>(2) // Batch into pairs
+        .skip_items(1) // Skip first window (only 1 item)
+        .sample(Duration::from_millis(100));
+    println!("✓ Humidity: window_by_count(2) -> skip_items(1) -> sample(100ms)");
 
-    let mut combined = temp_stream.combine_latest([pressure_stream, humidity_stream]);
-    println!("✓ Combined all streams with combine_latest");
-    println!("\n📡 Waiting for sensor readings...\n");
+    println!("\n📡 Merging streams with stateful aggregation...\n");
 
-    // Process combined stream
-    let mut count = 0;
+    // Merge streams with shared state accumulation
+    let merged = MergedStream::seed::<EmbassyTimestamped<SensorAggregate>>(SensorAggregate::new())
+        .merge_with(temp_stream, |temp: Temperature, state| {
+            state.latest_temp = Some(temp);
+            state.update_count += 1;
+            state.clone()
+        })
+        .merge_with(
+            pressure_stream,
+            |pressure: Pressure, state: &mut SensorAggregate| {
+                state.latest_pressure = Some(pressure);
+                state.update_count += 1;
+                state.clone()
+            },
+        )
+        .merge_with(
+            humidity_stream,
+            |humidity_window: Vec<Humidity>, state: &mut SensorAggregate| {
+                if humidity_window.len() == 2 {
+                    let prev = &humidity_window[0];
+                    let curr = &humidity_window[1];
+                    state.humidity_delta = curr.value_percent as i32 - prev.value_percent as i32;
+                    state.latest_humidity = Some(curr);
+                }
+                state.update_count += 1;
+                state.clone()
+            },
+        );
+
+    // Process merged stream with manual loop
+    let mut merged = merged;
     loop {
         // Check cancellation
         if _cancel.is_cancelled() {
-            println!("\n🔄 Fusion task cancelled after {} readings", count);
+            println!("\n🔄 Fusion task cancelled");
             break;
         }
 
         // Poll with timeout for cancellation responsiveness
-        match embassy_time::with_timeout(embassy_time::Duration::from_millis(500), combined.next())
+        match embassy_time::with_timeout(embassy_time::Duration::from_millis(500), merged.next())
             .await
         {
-            Ok(Some(items)) => {
-                count += 1;
-                println!("📦 Combined reading #{}:", count);
-
-                for item in items {
-                    if let StreamItem::Value(val) = item {
-                        match val {
-                            SensorReading::Temperature(t) => {
-                                println!("   └─ 🌡️  Temperature: {:.2}°C", t.value as f32 / 100.0)
-                            }
-                            SensorReading::Pressure(p) => {
-                                println!("   └─ 📊 Pressure: {:.2} hPa", p.value as f32 / 100.0)
-                            }
-                            SensorReading::Humidity(h) => {
-                                println!("   └─ 💧 Humidity: {:.2}%", h.value as f32 / 100.0)
-                            }
-                        }
-                    }
+            Ok(Some(StreamItem::Value(aggregate))) => {
+                if aggregate.value.is_complete() {
+                    println!("✅ Complete sensor aggregate received {}", aggregate.value);
                 }
+
                 println!();
+            }
+            Ok(Some(StreamItem::Error(e))) => {
+                println!("Error: {}", e);
             }
             Ok(None) => {
                 println!("\n🔄 Stream ended");

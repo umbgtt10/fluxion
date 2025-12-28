@@ -30,15 +30,14 @@
 //! Uses Embassy executor with arch-std for demonstration. In production,
 //! replace with embassy-executor hardware-specific features (e.g., embassy-stm32).
 
+mod aggregate;
 mod fusion;
 mod sensors;
 mod types;
 
-// Using println! for logging
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use fluxion_core::CancellationToken;
-
 use fusion::fusion_task;
 use sensors::{humidity_sensor, pressure_sensor, temperature_sensor};
 

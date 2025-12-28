@@ -1,0 +1,9 @@
+[build]
+target = "x86_64-pc-windows-msvc"  # Windows host target
+
+[target.x86_64-pc-windows-msvc]
+rustflags = []
+
+# Optional: Default features for rust-analyzer
+[env]
+CARGO_TARGET_DIR = { value = "target", relative = true }

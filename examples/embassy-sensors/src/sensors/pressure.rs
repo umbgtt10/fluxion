@@ -26,17 +26,19 @@ pub async fn pressure_sensor(tx: async_channel::Sender<Pressure>, cancel: Cancel
         }
 
         let pressure = Pressure {
-            value: (1000.0 + rng.random::<f32>() * 20.0) as i32,
+            value_hpa: rng.random_range(950..=1050),
             timestamp: timer.now(),
         };
 
-        println!("📊 Sensor: {} hPa", pressure.value);
+        println!("📊 Sensor: {} hPa", pressure.value_hpa);
         if tx.send(pressure).await.is_err() {
             println!("📊 Channel closed, stopping sensor");
             break;
         }
 
-        Timer::after(Duration::from_millis(30)).await;
+        let timeout = rng.random_range(100..=1000);
+        println!("📊  timeout: {} ms", timeout);
+        Timer::after(Duration::from_millis(timeout)).await;
     }
 
     println!("📊 Pressure sensor task stopped");
