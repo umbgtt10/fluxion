@@ -27,7 +27,7 @@ Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal order
 
 ## Features
 
-- 🔄 **Rx-Style Operators**: 29 implemented operators (42 total planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, `share`, `partition`, `tap`, etc.)
+- 🔄 **Rx-Style Operators**: 27 implemented operators (42 total planned) - Familiar reactive programming patterns (`combine_latest`, `with_latest_from`, `ordered_merge`, `share`, `partition`, `tap`, etc.)
 - ⏱️ **Temporal Ordering**: Guaranteed ordering semantics via `Timestamped` trait
 - ⚡ **Async Execution**: Efficient async processing with `subscribe` and `subscribe_latest`
 - 🌐 **Multi-Runtime Support**: Works with Tokio (default), smol, WebAssembly (WASM), Embassy (embedded), and async-std (deprecated) via Timer trait abstraction
@@ -56,8 +56,8 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.6.13"
-fluxion-test-utils = "0.6.13"
+fluxion-rx = "0.6.14"
+fluxion-test-utils = "0.6.14"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -68,13 +68,13 @@ Fluxion defaults to **Tokio** with zero configuration. To use alternative runtim
 
 ```toml
 # Use smol instead of tokio
-fluxion-rx = { version = "0.6.13", default-features = false, features = ["runtime-smol"] }
+fluxion-rx = { version = "0.6.14", default-features = false, features = ["runtime-smol"] }
 
 # Use async-std (deprecated but supported)
-fluxion-rx = { version = "0.6.13", default-features = false, features = ["runtime-async-std"] }
+fluxion-rx = { version = "0.6.14", default-features = false, features = ["runtime-async-std"] }
 
 # Use Embassy for embedded/no_std + alloc (requires manual timer trait implementation)
-fluxion-rx = { version = "0.6.13", default-features = false, features = ["runtime-embassy"] }
+fluxion-rx = { version = "0.6.14", default-features = false, features = ["runtime-embassy"] }
 
 # WASM support is automatic when compiling for wasm32 target
 # cargo build --target wasm32-unknown-unknown
@@ -154,8 +154,8 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.6.13"
-fluxion-test-utils = "0.6.13"
+fluxion-rx = "0.6.14"
+fluxion-test-utils = "0.6.14"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -228,8 +228,8 @@ The `merge_with` operator enables elegant stateful stream processing by merging 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.6.13"
-fluxion-test-utils = "0.6.13"
+fluxion-rx = "0.6.14"
+fluxion-test-utils = "0.6.14"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -389,7 +389,7 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.6.13"
+fluxion-exec = "0.6.14"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 ```
@@ -491,7 +491,7 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.6.13"
+fluxion-exec = "0.6.14"
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-stream = "0.1.17"
 ```
@@ -545,9 +545,7 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
     };
 
     spawn(async move {
-        rx.subscribe_latest(process, None::<fn(Err)>, None)
-            .await
-            .unwrap();
+        rx.subscribe_latest(process, |_| {}, None).await.unwrap();
     });
 
     tx.unbounded_send(1)?;
@@ -691,7 +689,7 @@ See individual crate READMEs for detailed documentation.
 
 ## Project Status
 
-**Current Version:** 0.6.13
+**Current Version:** 0.6.14
 
 - ✅ Published to crates.io
 - ✅ Core functionality complete

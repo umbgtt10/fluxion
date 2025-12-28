@@ -2,7 +2,7 @@
 
 This document tracks future operator additions and runtime capability enhancements.
 
-## Current Status (v0.6.13)
+## Current Status (v0.6.14)
 
 **Implemented:** 27 operators across 5 runtimes
 - ✅ All 27 operators on std runtimes (Tokio, smol, async-std, WASM)
