@@ -11,13 +11,17 @@
 		},
 		{
 			"path": "examples/legacy-integration"
+		},
+		{
+			"path": "examples/embassy-sensors"
 		}
 	],
 	"settings": {
 		"rust-analyzer.check.extraArgs": [
 			"--exclude=wasm-dashboard",
 			"--exclude=stream-aggregation",
-			"--exclude=legacy-integration"
+			"--exclude=legacy-integration",
+			"--exclude=embassy-sensors"
 		]
 	}
 }
