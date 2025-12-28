@@ -5,6 +5,55 @@ All notable changes to the Fluxion project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-12-28
+
+### Fixed
+- **CI Infrastructure** (`.github/workflows/ci.yml`)
+  - Fixed PowerShell line continuation issue in Windows CI (removed backslash line breaks)
+  - Changed cargo-llvm-cov command to single-line format for cross-platform compatibility
+  - CI now runs successfully on Windows, Linux, and macOS
+
+### Added
+- **Documentation** (`docs/`)
+  - Added `KNOWN_LIMITATIONS.md` - Comprehensive guide to current limitations with practical workarounds
+    - Documents 2 operators requiring alternatives in Embassy/WASM (`combine_latest`, `with_latest_from`)
+    - Provides MergedStream pattern as production-ready workaround
+    - Type inference guidance for operator chains
+    - Compatibility matrix showing 25/27 operators work everywhere
+  - Added `FUTURE_ARCHITECTURE.md` - Technical architecture plan for v0.9.0 runtime isolation
+    - Documents Runtime trait pattern with associated types (Mutex, Timer, Spawner, Instant)
+    - Shows how runtime-specific crates solve all three current limitations
+    - Explains phased implementation (0.8.0 foundation, 0.9.0 completion)
+    - Includes migration guide and code examples
+  - Both documents linked from README.md Features section for transparency
+
+### Changed
+- **Roadmap Updates** (`ROADMAP.md`)
+  - Restructured v0.8.0 as "Runtime Isolation Foundation"
+    - Phase 1: Core layer separation (fluxion-core, fluxion-runtime)
+    - Phase 2: Runtime abstraction layer (Runtime trait + implementations)
+    - Phase 3: Shared core implementations (generic over R: Runtime)
+  - Restructured v0.9.0 as "Runtime Isolation Complete"
+    - Phase 4: Runtime-specific crates (fluxion-tokio, fluxion-embassy, etc.)
+    - Phase 5: Migration and validation
+  - Updated with architectural details from FUTURE_ARCHITECTURE.md
+
+- **Test Coverage** (Internal metrics)
+  - Achieved 95.26% code coverage with cargo-llvm-cov (1934/2031 lines)
+  - 1,041 tests passing (990+ production tests + 106 doc tests + 36 benchmarks)
+  - 7.6:1 test-to-code ratio maintained
+
+### Removed
+- **Documentation Cleanup** (`docs/`)
+  - Removed intermediate analysis documents (API_SURFACE_COMPATIBILITY_ANALYSIS.md, CHAINING_TIME_NONTIME_OPERATORS_ANALYSIS.md, INITIATIVE_INTEGRATION_STRATEGY.md)
+  - Content consolidated into KNOWN_LIMITATIONS.md and FUTURE_ARCHITECTURE.md
+
+### Migration Notes
+- No breaking changes - this is a documentation and CI-only release
+- All operator APIs remain unchanged
+- Existing code continues to work without modifications
+- See KNOWN_LIMITATIONS.md if using Embassy/WASM for guidance on affected operators
+
 ## [0.6.14] - 2025-12-27
 
 ### Changed

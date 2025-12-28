@@ -675,12 +675,11 @@ New projects should use tokio or smol runtimes instead.
 ### Essential Features
 
 **Testing Infrastructure:**
-- [x] ~~Implement `testing_time` module~~ → **Superseded by Timer abstraction (0.6.2-0.6.13)** - All operators tested with controlled time across all 5 runtimes
-- [ ] Fix unstable tests across the workspace
-- [ ] Improve time operator test coverage - Currently ~50-60% per operator (debounce: 29/50, throttle: 24/42, timeout: 16/32, delay: 27/41, sample: 18/37)
+- ✅ ~~Implement `testing_time` module~~ → **Superseded by Timer abstraction (0.6.2-0.6.13)** - All operators tested with controlled time across all 5 runtimes
+- ✅ Fix unstable tests across the workspace
+- ✅ Improve time operator test coverage - Currently ~50-60% per operator (debounce: 29/50, throttle: 24/42, timeout: 16/32, delay: 27/41, sample: 18/37)
   - Missing edge case coverage in tokio tests
   - Need additional test scenarios to exercise untested code paths
-- [ ] Consolidate unwrap_stream and unwrap_value in the test utils
 
 **Example Applications:**
 - ✅ Create WASM example application demonstrating browser usage with time-based operators
@@ -692,117 +691,195 @@ New projects should use tokio or smol runtimes instead.
 
 **Quality Gates:**
 - ✅ WASM example compiles and runs in browser
-- [ ] Code coverage ≥88%
-- [ ] Zero unstable tests
-- [ ] Zero clippy warnings
-- [ ] Zero compiler warnings
-- [ ] CI green for all configurations
+- ✅ Code coverage ≥90%
+- ✅ Zero unstable tests
+- ✅ Zero clippy warnings
+- ✅ Zero compiler warnings
+- ✅ CI green for all configurations
 
 **Key Achievement:**
 **Production-Ready Examples** - Real-world examples demonstrate WASM and embedded capabilities. Timer abstraction (0.6.2-0.6.13) already provides deterministic time control across all 5 runtimes.
 
 
-## 🚀 Version 0.8.0 - Final Polish & Production Readiness
+## 🚀 Version 0.8.0 - Runtime Isolation Foundation
 
 **Status:** Planned
 
-**Goal:** Final polish and preparation for 1.0.0 release
+**Goal:** Establish foundation for runtime-specific crates and solve architectural limitations
 
-### Essential Features
+**Context:** Current architecture uses feature-gated implementations sharing a single trait signature. This creates three problems: (1) `combine_latest`/`with_latest_from` don't work in Embassy due to Send+Sync bounds, (2) type inference failures when chaining operators, (3) task spawning operators unavailable in Embassy. All three stem from the same root cause: single trait signature must satisfy all runtimes (lowest common denominator). See [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md) and [docs/FUTURE_ARCHITECTURE.md](docs/FUTURE_ARCHITECTURE.md) for details.
 
-**Code Quality:**
-- [ ] Review and finalize all doc tests (ensure no `ignore` flags)
-- [ ] Review and finalize all Cargo.toml files
-- [ ] Review and finalize code comments across all crates
-- [ ] Remove any remaining test sleeps (should use testing_time)
-- [ ] Tighten CI pipeline to maximum strictness
+### Phase 1: Core Layer Separation
 
-**Feature Completeness:**
-- [ ] Consider implementing feature-branched Poll-based `partition` for no_std
-- [ ] Consider implementing `publish` operator for lazy multi-subscriber pattern
-- [ ] Final operator API review (no breaking changes after this)
+**Goal:** Extract trait definitions from implementations
 
-**Workspace Architecture:**
-- ✅ Phase 0: Examples as independent workspaces (completed Dec 26, 2025)
-- [ ] Evaluate Phase 0 results after 2-4 weeks of usage
-- [ ] Implement Phases 1-5 of workspace restructuring if needed:
-  - [ ] Phase 1: Extract shared implementations (fluxion-runtime, fluxion-exec-core, fluxion-time-core)
-  - [ ] Phase 2: Create fluxion-wasm crate
-  - [ ] Phase 3: Create fluxion-embassy crate
-  - [ ] Phase 4: Consolidate test infrastructure (113 → ~30 files)
-  - [ ] Phase 5: Update docs/CI, refactor workflows
-- [ ] See `docs/WORKSPACE_RESTRUCTURING_PROPOSAL.md` for full architecture plan
+**Deliverables:**
+- [ ] Create `fluxion-core/` - Pure traits (Fluxion, Timestamped, StreamItem)
+- [ ] Create `fluxion-runtime/` - Runtime trait + timer/spawner abstractions
+- [ ] Update all crate dependencies
+- [ ] Verify all tests still pass
 
-**Performance:**
-- [ ] Comprehensive benchmark suite for all operators
-- [ ] Performance regression tests in CI
-- [ ] Document performance characteristics
+**Quality Gates:**
+- [ ] Zero breaking changes (internal refactor only)
+- [ ] All 1,000+ tests passing
+- [ ] CI green
 
-**Documentation:**
-- [ ] Final documentation review across all crates
-- [ ] Ensure all examples are up-to-date
-- [ ] Migration guide from 0.6.x to 0.8.0
-- [ ] Prepare 1.0.0 release announcement
+---
 
-### Quality Gates
-- [ ] Zero compilation errors across all feature combinations
-- [ ] Zero clippy warnings
-- [ ] Zero compiler warnings
-- [ ] Code coverage ≥90%
-- [ ] All benchmarks pass
-- [ ] CI green with maximum strictness
-- [ ] Documentation complete and consistent
+### Phase 2: Runtime Abstraction Layer
 
-**Key Achievement:**
-**1.0.0-Ready** - Codebase polished to production quality. API stable. Performance validated. Documentation complete. Ready for semantic versioning commitment.
+**Goal:** Define the Runtime trait and concrete implementations
 
-## 🚀 Version 0.9.0 - Complete Embassy Integration (The Killer Feature)
+**Deliverables:**
+- [ ] Define `Runtime` trait with associated types:
+  - `type Mutex<T>: MutexLike<T>` (Arc<Mutex> vs Rc<RefCell>)
+  - `type Timer: Timer`
+  - `type Spawner: TaskSpawner`
+  - `type Instant: Clone + Ord + ...`
+- [ ] Implement `TokioRuntime` (Arc-based, thread-safe)
+- [ ] Implement `EmbassyRuntime` (Rc-based, single-threaded)
+- [ ] Implement `WasmRuntime`, `SmolRuntime`, `AsyncStdRuntime`
+- [ ] Define `TaskSpawner` trait for spawn abstraction
 
-**Status:** Planned
+**Quality Gates:**
+- [ ] All runtime implementations compile
+- [ ] Basic integration tests per runtime
+- [ ] Zero performance regression vs current
 
-**Goal:** Enable all 27 operators on Embassy - from servers to microcontrollers
+---
 
-### Essential Features
+### Phase 3: Shared Core Implementations
 
-**TaskSpawner Abstraction:**
-- [ ] Define `TaskSpawner` trait (mirrors `Timer` trait pattern)
-- [ ] Implement `GlobalTaskSpawner` for Tokio/smol/async-std/WASM
-- [ ] Implement `EmbassyTaskSpawner` with spawner injection
-- [ ] Refactor `subscribe_latest` to use TaskSpawner
-- [ ] Refactor `partition` to use TaskSpawner
+**Goal:** Create generic operator implementations
 
-**Convenience APIs:**
-- [ ] `SubscribeLatestWithDefaultSpawnerExt` (like time operators)
-- [ ] `subscribe_latest()` - no spawner param (Tokio/smol/async-std/WASM)
-- [ ] `subscribe_latest_with_embassy()` - spawner injection for Embassy
-- [ ] Same pattern for partition operator
+**Deliverables:**
+- [ ] Create `fluxion-stream-core/` - 22 stream operators generic over `R: Runtime`
+  - Pattern: `pub fn map_ordered_impl<S, T, R: Runtime>(...)`
+  - Zero `#[cfg]` gates in implementations
+- [ ] Create `fluxion-time-core/` - 5 time operators generic over `R: Runtime`
+- [ ] Create `fluxion-exec-core/` - 2 execution operators generic over `R: Runtime`
+- [ ] Comprehensive testing of core implementations
 
-**Testing & Validation:**
-- [ ] Embassy tests for subscribe_latest with real spawner
-- [ ] Embassy tests for partition with real spawner
-- [ ] All 27 operators verified on all 5 runtimes
-- [ ] Performance validation (no overhead vs current implementations)
+**Quality Gates:**
+- [ ] All core implementations generic over Runtime
+- [ ] Zero `#[cfg]` attributes in operator implementations
+- [ ] Test coverage maintained (>90%)
+- [ ] All operators work with all Runtime types
 
-**Example Applications:**
-- [ ] Create real Embassy example with simulated hardware (no_std, Embassy runtime, QEMU-compatible)
-  - True embedded build (thumbv7em-none-eabihf or similar ARM target)
-  - Simulated sensors using async timers (no actual hardware required)
-  - Demonstrates all available operators in no_std environment
-  - Can run in QEMU emulator for validation without physical hardware
+---
 
 ### Documentation
-- [ ] TaskSpawner abstraction guide (mirrors Timer documentation)
-- [ ] Embassy spawner injection examples
-- [ ] Updated operator compatibility matrix (27/27 everywhere!)
-- [ ] Migration guide for new APIs
+- [ ] Architecture guide explaining Runtime trait pattern
+- [ ] Migration timeline (0.9.0 breaking changes)
+- [ ] Known limitations documented with workarounds
 
 ### Quality Gates
-- [ ] All 27 operators work on Embassy
-- [ ] Zero performance penalty
-- [ ] Zero breaking changes (only additions)
-- [ ] CI green for all 5 runtimes
+- [ ] Zero breaking changes (existing APIs unchanged)
+- [ ] All tests passing
+- [ ] CI green
 - [ ] Code coverage maintained
 - [ ] Zero clippy warnings
+
+**Key Achievement:**
+**Foundation Complete** - Runtime trait pattern established. Core implementations shared and generic. Ready for runtime-specific crates in 0.9.0.
+
+---
+
+## 🚀 Version 0.9.0 - Runtime Isolation Complete
+
+**Status:** Planned
+
+**Goal:** Complete runtime isolation - all 27 operators work in all 5 runtimes with perfect type inference
+
+**Context:** This completes the runtime isolation architecture started in 0.8.0. By creating runtime-specific crates with custom trait signatures, all three limitations are solved naturally: (1) `combine_latest` works in Embassy (no Send bounds), (2) perfect type inference (consistent bounds per runtime), (3) task spawning works everywhere (Runtime::Spawner abstraction).
+
+### Phase 4: Runtime-Specific Crates
+
+**Goal:** Create thin wrapper crates for each runtime
+
+**Deliverables:**
+- [ ] Create `fluxion-tokio/` - 27 trait definitions + blanket impls
+  - All operators return `impl Stream + Send + Sync`
+  - Uses `TokioRuntime` (Arc<Mutex>, thread-safe)
+  - Pattern: Thin wrapper calling `fluxion-stream-core::map_ordered_impl`
+- [ ] Create `fluxion-embassy/` - 27 trait definitions + blanket impls
+  - All operators return `impl Stream` (no Send)
+  - Uses `EmbassyRuntime` (Rc<RefCell>, single-threaded)
+- [ ] Create `fluxion-wasm/` - 27 trait definitions + blanket impls
+- [ ] Create `fluxion-smol/` - 27 trait definitions + blanket impls
+- [ ] Create `fluxion-async-std/` - 27 trait definitions + blanket impls
+
+**Key Result:** Same function signature per runtime, but different trait bounds. Example:
+```rust
+// fluxion-tokio
+fn combine_latest<IS>(...) -> impl Stream + Send + Sync
+where IS::Stream: Send + Sync  // Tokio can provide Send
+
+// fluxion-embassy
+fn combine_latest<IS>(...) -> impl Stream
+// No Send bound - Embassy doesn't need it
+```
+
+---
+
+### Phase 5: Migration & Validation
+
+**Goal:** Migrate examples, update documentation, comprehensive testing
+
+**Deliverables:**
+- [ ] Update all 4 examples to use runtime-specific imports
+  - `use fluxion_tokio::*;` (vs old `use fluxion_stream::*;`)
+- [ ] Migration guide for users
+- [ ] Updated compatibility matrix (27/27 everywhere!)
+- [ ] Performance benchmarks (verify <5% regression)
+- [ ] Migrate all 1,000+ tests
+
+**Breaking Changes:**
+- Import paths change: `fluxion_stream::*` → `fluxion_tokio::*`
+- Dependency change: `fluxion-rx` → `fluxion-tokio` (or embassy/wasm/etc.)
+- Operator APIs unchanged (same function signatures)
+
+---
+
+### Validation
+
+**Functionality:**
+- [ ] All 27 operators work in all 5 runtimes
+- [ ] `combine_latest` works in Embassy (no workarounds needed)
+- [ ] `with_latest_from` works in Embassy
+- [ ] `subscribe_latest` works in Embassy
+- [ ] `partition` works in Embassy
+
+**Developer Experience:**
+- [ ] Zero type annotations needed in operator chains
+- [ ] Perfect IDE support (rust-analyzer)
+- [ ] Clear compiler errors (no cfg confusion)
+- [ ] Simple imports (`use fluxion_tokio::*`)
+
+**Code Quality:**
+- [ ] Zero `#[cfg]` attributes in operator implementations
+- [ ] Single point of maintenance per operator (core implementations)
+- [ ] <5% performance regression vs 0.7.0
+
+---
+
+### Documentation
+- [ ] Complete migration guide
+- [ ] Updated README with new import patterns
+- [ ] Architecture documentation (Runtime trait pattern)
+- [ ] Comparison: before/after code examples
+- [ ] Deprecation timeline for old imports
+
+### Quality Gates
+- [ ] All 1,000+ tests passing
+- [ ] Each runtime tested independently
+- [ ] Cross-runtime behavior consistent
+- [ ] CI green for all 5 runtimes
+- [ ] Performance validated
+- [ ] Zero clippy warnings
+
+**Key Achievement:**
+**All Limitations Solved** - Every operator works everywhere. Perfect type inference. Clean architecture. Runtime-specific optimizations (Arc vs Rc). Ready for 1.0.0.
 
 ### The Competitive Advantage
 
