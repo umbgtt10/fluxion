@@ -240,11 +240,20 @@ jobs:
       - name: Run cargo audit
         run: cargo audit
 
-      - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov
 
       - name: Run coverage
-        run: cargo tarpaulin --workspace --exclude wasm-dashboard
+        run: |
+          cargo llvm-cov --workspace \
+            --exclude fluxion-test-utils \
+            --exclude wasm-dashboard \
+            --exclude stream-aggregation \
+            --exclude legacy-integration \
+            --exclude embassy-sensors \
+            --features "runtime-tokio" \
+            --ignore-filename-regex "fluxion-test-utils" \
+            --lcov --output-path lcov.info
 
       - name: Run doc tests for coverage
         run: |
