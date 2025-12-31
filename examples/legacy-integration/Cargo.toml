@@ -1,6 +1,6 @@
 [package]
 name = "legacy-integration"
-version = "0.6.13"
+version = "0.7.0"
 edition = "2021"
 authors = ["umberto.gotti@umbertogotti.dev"]
 license = "Apache-2.0"
@@ -18,8 +18,8 @@ fluxion-exec = { path = "../../fluxion-exec" }
 tokio = { version = "1.48", features = ["full"] }
 serde = { version = "1.0.217", features = ["derive"] }
 futures = { version = "0.3.31", default-features = false, features = ["alloc"] }
-serde_json = { version = "1.0.135" }
-quick-xml = { version = "0.38.4", features = ["serialize"] }
+serde_json = { version = "1.0.148" }
+quick-xml = { version = "0.37.3", features = ["serialize"] }
 anyhow = { version = "1.0.99" }
 thiserror = { version = "2.0.9" }
 fastrand = { version = "2.3.0", features = ["std"] }
