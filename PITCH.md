@@ -50,6 +50,7 @@
 - **[wasm-dashboard](examples/wasm-dashboard)** - Live browser visualization with 9 windows showing operators in real-time ([README](examples/wasm-dashboard/README.md))
 - **[stream-aggregation](examples/stream-aggregation)** - Production-ready multi-stream aggregation with intrinsic timestamps ([README](examples/stream-aggregation/README.md))
 - **[legacy-integration](examples/legacy-integration)** - Wrapper pattern for integrating systems without intrinsic ordering ([README](examples/legacy-integration/README.md))
+- **[embassy-sensors](examples/embassy-sensors)** - Embedded systems sensor fusion on simulated ARM Cortex-M with no_std support ([README](examples/embassy-sensors/README.md))
 
 ---
 
