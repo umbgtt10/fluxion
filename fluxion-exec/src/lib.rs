@@ -1,6 +1,5 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
-// Licensed under the Apache License, Version 2.0
-// http://www.apache.org/licenses/LICENSE-2.0
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #![cfg_attr(
     not(any(
@@ -249,7 +248,7 @@
 //!
 //! # Anti-Patterns
 //!
-//! ## ❌ Don't: Use `subscribe_latest` for Critical Work
+//! ## ? Don't: Use `subscribe_latest` for Critical Work
 //!
 //! ```text
 //! // BAD: Payment processing might be skipped!
@@ -267,7 +266,7 @@
 //! }).await;
 //! ```
 //!
-//! ## ❌ Don't: Block in Handlers
+//! ## ? Don't: Block in Handlers
 //!
 //! ```text
 //! // BAD: Blocking operations stall the executor
@@ -287,7 +286,7 @@
 //! }).await;
 //! ```
 //!
-//! ## ❌ Don't: Use for CPU-Intensive Work
+//! ## ? Don't: Use for CPU-Intensive Work
 //!
 //! ```text
 //! // BAD: CPU-intensive work on async runtime

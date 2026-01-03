@@ -2,7 +2,7 @@
 name = "wasm-dashboard"
 version = "0.7.0"
 edition = "2021"
-license = "Apache-2.0"
+license = "MIT OR Apache-2.0"
 
 # Independent workspace for target-specific rust-analyzer support
 [workspace]

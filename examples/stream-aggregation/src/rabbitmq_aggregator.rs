@@ -1,6 +1,5 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
-// Licensed under the Apache License, Version 2.0
-// http://www.apache.org/licenses/LICENSE-2.0
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! RabbitMQ Event Aggregator - Real-time multi-source event processing
 //!
@@ -14,14 +13,14 @@
 //! Architecture:
 //! ```text
 //! Producer Tasks (3)        Aggregator Task           Consumer Task
-//! ┌─────────────┐          ┌──────────────┐          ┌──────────┐
-//! │  Queue 1    │────────▶ │              │          │          │
-//! │ (sensors)   │          │ FluxionStream│────────▶ │  Queue 4 │
-//! │  Queue 2    │────────▶ │  combine &   │          │ (output) │
-//! │ (metrics)   │          │  transform   │          │          │
-//! │  Queue 3    │────────▶ │              │          │          │
-//! │ (events)    │          └──────────────┘          └──────────┘
-//! └─────────────┘
+//! +-------------+          +--------------+          +----------+
+//! �  Queue 1    �--------? �              �          �          �
+//! � (sensors)   �          � FluxionStream�--------? �  Queue 4 �
+//! �  Queue 2    �--------? �  combine &   �          � (output) �
+//! � (metrics)   �          �  transform   �          �          �
+//! �  Queue 3    �--------? �              �          �          �
+//! � (events)    �          +--------------+          +----------+
+//! +-------------+
 //! ```
 //!
 //! Run with: `cargo run --example rabbitmq_aggregator`
@@ -44,7 +43,7 @@ use tokio::signal;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    println!("\n🚀 RabbitMQ Event Aggregator Example");
+    println!("\n?? RabbitMQ Event Aggregator Example");
     println!("=====================================\n");
     println!("Press Ctrl+C to stop\n");
 
@@ -58,14 +57,14 @@ async fn main() {
     // Wait for Ctrl+C or 5 seconds timeout
     select! {
         _ = signal::ctrl_c() => {
-            println!("\n\n🛑 Shutting down gracefully...\n");
+            println!("\n\n?? Shutting down gracefully...\n");
             aggregator.stop().await;
-            println!("✅ All tasks stopped\n");
+            println!("? All tasks stopped\n");
         }
         _ = tokio::time::sleep(tokio::time::Duration::from_secs(5)) => {
-            println!("\n\n⏱️  5 seconds elapsed, shutting down...\n");
+            println!("\n\n??  5 seconds elapsed, shutting down...\n");
             aggregator.stop().await;
-            println!("✅ All tasks stopped\n");
+            println!("? All tasks stopped\n");
         }
     }
 }

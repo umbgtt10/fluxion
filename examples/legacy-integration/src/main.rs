@@ -1,6 +1,5 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
-// Licensed under the Apache License, Version 2.0
-// http://www.apache.org/licenses/LICENSE-2.0
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Legacy System Integration Demo
 //!
@@ -29,13 +28,13 @@ use tokio::{select, signal};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("🚀 Legacy Integration Demo Starting...\n");
+    println!("?? Legacy Integration Demo Starting...\n");
 
     // Cancellation token for graceful shutdown
     let cancel_token = CancellationToken::new();
 
     // Create and start adapters, getting streams directly
-    println!("📊 Starting legacy data source adapters...");
+    println!("?? Starting legacy data source adapters...");
 
     let mut user_adapter = UserAdapter::new();
     let mut order_adapter = OrderAdapter::new();
@@ -55,40 +54,40 @@ async fn main() -> Result<()> {
 
     select! {
         _ = signal::ctrl_c() => {
-            println!("\n\n🛑 Ctrl+C received, shutting down gracefully...");
+            println!("\n\n?? Ctrl+C received, shutting down gracefully...");
             cancel_token.cancel();
             // Wait for processor to finish
             match event_processor.task_handle.await {
                 Ok(Ok(())) => {
                     println!("\n{}", "=".repeat(80));
-                    println!("✅ Demo completed successfully!");
+                    println!("? Demo completed successfully!");
                 }
                 Ok(Err(e)) => {
                     println!("\n{}", "=".repeat(80));
-                    println!("❌ Business logic error: {}", e);
+                    println!("? Business logic error: {}", e);
                 }
                 Err(e) => {
                     println!("\n{}", "=".repeat(80));
-                    println!("❌ Task join error: {}", e);
+                    println!("? Task join error: {}", e);
                 }
             }
         }
         _ = sleep(Duration::from_secs(20)) => {
-            println!("\n\n⏱️  20 seconds elapsed, shutting down gracefully...");
+            println!("\n\n??  20 seconds elapsed, shutting down gracefully...");
             cancel_token.cancel();
             // Wait for processor to finish
             match event_processor.task_handle.await {
                 Ok(Ok(())) => {
                     println!("\n{}", "=".repeat(80));
-                    println!("✅ Demo completed successfully!");
+                    println!("? Demo completed successfully!");
                 }
                 Ok(Err(e)) => {
                     println!("\n{}", "=".repeat(80));
-                    println!("❌ Business logic error: {}", e);
+                    println!("? Business logic error: {}", e);
                 }
                 Err(e) => {
                     println!("\n{}", "=".repeat(80));
-                    println!("❌ Task join error: {}", e);
+                    println!("? Task join error: {}", e);
                 }
             }
         }
@@ -97,27 +96,27 @@ async fn main() -> Result<()> {
             match result {
                 Ok(Ok(())) => {
                     println!("\n{}", "=".repeat(80));
-                    println!("✅ Demo completed successfully!");
+                    println!("? Demo completed successfully!");
                 }
                 Ok(Err(e)) => {
                     println!("\n{}", "=".repeat(80));
-                    println!("❌ Business logic error: {}", e);
+                    println!("? Business logic error: {}", e);
                 }
                 Err(e) => {
                     println!("\n{}", "=".repeat(80));
-                    println!("❌ Task join error: {}", e);
+                    println!("? Task join error: {}", e);
                 }
             }
         }
     }
 
     // Shutdown adapters
-    println!("🧹 Shutting down adapters...");
+    println!("?? Shutting down adapters...");
     user_adapter.shutdown().await;
     order_adapter.shutdown().await;
     inventory_adapter.shutdown().await;
 
-    println!("✅ All tasks completed, exiting.");
+    println!("? All tasks completed, exiting.");
 
     Ok(())
 }

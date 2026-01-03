@@ -940,6 +940,11 @@ See the [full API documentation](https://docs.rs/fluxion-exec) for detailed type
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](../LICENSE) for details.
+Licensed under either of:
+
+ * Apache License, Version 2.0 ([LICENSE-APACHE](../LICENSE-APACHE.md) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](../LICENSE-MIT.md) or http://opensource.org/licenses/MIT)
+
+at your option.
 
 Copyright 2025 Umberto Gotti

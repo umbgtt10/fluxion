@@ -1,6 +1,5 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
-// Licensed under the Apache License, Version 2.0
-// http://www.apache.org/licenses/LICENSE-2.0
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! System events producer - simulates Queue 3
 
@@ -43,7 +42,7 @@ impl EventsProducer {
         let mut ticker = interval(Duration::from_millis(500));
         let mut timestamp = 200u64;
 
-        println!("⚡ Events producer started");
+        println!("? Events producer started");
 
         loop {
             select! {
@@ -71,6 +70,6 @@ impl EventsProducer {
             }
         }
 
-        println!("⚡ Events producer stopped");
+        println!("? Events producer stopped");
     }
 }

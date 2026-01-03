@@ -70,4 +70,4 @@ See [ROADMAP.md](ROADMAP.md) for operator expansion (buffer, window variants, ad
 
 ---
 
-**Built with 700+ disciplined commits.** Licensed under Apache 2.0.
+**Built with 700+ disciplined commits.** Licensed under MIT OR Apache-2.0.

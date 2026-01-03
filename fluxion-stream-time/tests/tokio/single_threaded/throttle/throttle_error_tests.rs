@@ -1,6 +1,5 @@
 // Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
-// Licensed under the Apache License, Version 2.0
-// http://www.apache.org/licenses/LICENSE-2.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream_time::prelude::*;

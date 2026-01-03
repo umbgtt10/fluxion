@@ -5,7 +5,19 @@ All notable changes to the Fluxion project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.0] - 2025-12-28
+## [Unreleased]
+
+### Changed
+- **Licensing** - Migrated from Apache-2.0 only to dual licensing (MIT OR Apache-2.0)
+  - Updated all 420 Rust source files with SPDX license identifier: `SPDX-License-Identifier: MIT OR Apache-2.0`
+  - Updated workspace and all example Cargo.toml files to specify `license = "MIT OR Apache-2.0"`
+  - Added LICENSE-MIT.md alongside existing LICENSE-APACHE.md
+  - Updated all README files (main + 10 crate READMEs) to reference dual licensing
+  - Updated NOTICE.md, PITCH.md, and README badge to reflect dual licensing
+  - Updated package.json for wasm-dashboard example
+  - Provides users with choice between MIT and Apache-2.0 licenses
+
+## [0.7.0] - 2025-12-31
 
 ### Fixed
 - **CI Infrastructure** (`.github/workflows/ci.yml`)

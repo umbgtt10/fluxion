@@ -1,6 +1,5 @@
 // Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
-// Licensed under the Apache License, Version 2.0
-// http://www.apache.org/licenses/LICENSE-2.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::embassy::helpers::{person_alice, test_channel, Person};
 use embassy_time::Timer;

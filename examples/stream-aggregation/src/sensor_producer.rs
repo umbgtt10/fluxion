@@ -1,6 +1,5 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
-// Licensed under the Apache License, Version 2.0
-// http://www.apache.org/licenses/LICENSE-2.0
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Sensor reading producer - simulates Queue 1
 
@@ -43,7 +42,7 @@ impl SensorProducer {
         let mut ticker = interval(Duration::from_millis(300));
         let mut timestamp = 0u64;
 
-        println!("🌡️  Sensor producer started");
+        println!("???  Sensor producer started");
 
         loop {
             select! {
@@ -60,7 +59,7 @@ impl SensorProducer {
                     if tx.try_send(reading).is_err() {
                         break;
                     }
-                    println!("  [Producer<Sensor>] {:.1}°C @ ts {}", temp_float, timestamp);
+                    println!("  [Producer<Sensor>] {:.1}�C @ ts {}", temp_float, timestamp);
                 }
                 _ = cancel_token.cancelled() => {
                     break;
@@ -68,6 +67,6 @@ impl SensorProducer {
             }
         }
 
-        println!("🌡️  Sensor producer stopped");
+        println!("???  Sensor producer stopped");
     }
 }

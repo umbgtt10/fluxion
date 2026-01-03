@@ -618,4 +618,9 @@ WASM support is **fully implemented** via `WasmTimer` using `gloo-timers` and `j
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+Licensed under either of:
+
+ * Apache License, Version 2.0 ([LICENSE-APACHE](../LICENSE-APACHE.md) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](../LICENSE-MIT.md) or http://opensource.org/licenses/MIT)
+
+at your option.

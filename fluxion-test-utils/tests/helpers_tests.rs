@@ -1,3 +1,6 @@
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_test_utils::{
     assert_no_element_emitted, assert_stream_ended, test_channel, test_channel_with_errors,

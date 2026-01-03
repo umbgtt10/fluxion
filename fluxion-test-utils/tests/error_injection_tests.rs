@@ -1,3 +1,6 @@
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_test_utils::{ErrorInjectingStream, Sequenced};
 use futures::{stream, StreamExt};

@@ -1,6 +1,5 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
-// Licensed under the Apache License, Version 2.0
-// http://www.apache.org/licenses/LICENSE-2.0
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Metrics data producer - simulates Queue 2
 
@@ -43,7 +42,7 @@ impl MetricsProducer {
         let mut ticker = interval(Duration::from_millis(400));
         let mut timestamp = 100u64;
 
-        println!("📊 Metrics producer started");
+        println!("?? Metrics producer started");
 
         loop {
             select! {
@@ -68,6 +67,6 @@ impl MetricsProducer {
             }
         }
 
-        println!("📊 Metrics producer stopped");
+        println!("?? Metrics producer stopped");
     }
 }

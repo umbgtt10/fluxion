@@ -1,6 +1,5 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
-// Licensed under the Apache License, Version 2.0
-// http://www.apache.org/licenses/LICENSE-2.0
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Final consumer - consumes aggregated events from Queue 4
 
@@ -42,7 +41,7 @@ impl FinalConsumer {
     }
 
     async fn run(rx: Receiver<AggregatedEvent>, cancel_token: CancellationToken) {
-        println!("📥 Final consumer started\n");
+        println!("?? Final consumer started\n");
 
         loop {
             select! {
@@ -50,7 +49,7 @@ impl FinalConsumer {
                     let temp_display = event.temperature.map(|t| t as f64 / 10.0).unwrap_or(0.0);
 
                     println!(
-                        "  [Consumer] seq {} - Temp: {:.1}°C, Alert: {}",
+                        "  [Consumer] seq {} - Temp: {:.1}�C, Alert: {}",
                         event.timestamp, temp_display, event.has_alert
                     );
                 }
@@ -60,6 +59,6 @@ impl FinalConsumer {
             }
         }
 
-        println!("\n📥 Final consumer stopped");
+        println!("\n?? Final consumer stopped");
     }
 }

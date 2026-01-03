@@ -1,6 +1,5 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
-// Licensed under the Apache License, Version 2.0
-// http://www.apache.org/licenses/LICENSE-2.0
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Simulates a legacy file watcher producing CSV inventory updates
 //! In production, this would watch a directory for new CSV files
@@ -20,7 +19,7 @@ impl LegacyFileWatcher {
     /// Simulates watching a directory for new CSV inventory files
     /// In production: notify::Watcher on /var/legacy/inventory/*.csv
     pub async fn watch_inventory(self, tx: UnboundedSender<Inventory>, cancel: CancellationToken) {
-        println!("  📁 Legacy File Watcher: Watching for CSV inventory files (every 4s)");
+        println!("  ?? Legacy File Watcher: Watching for CSV inventory files (every 4s)");
 
         let products = [
             (100, "Widget A"),
@@ -39,7 +38,7 @@ impl LegacyFileWatcher {
         loop {
             futures::select! {
                 _ = cancel.cancelled().fuse() => {
-                    println!("  📁 Legacy File Watcher: Shutting down");
+                    println!("  ?? Legacy File Watcher: Shutting down");
                     break;
                 }
                 _ = sleep(Duration::from_secs(4)).fuse() => {

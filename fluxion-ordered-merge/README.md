@@ -67,4 +67,9 @@ This ensures temporal ordering even when upstream streams emit at different rate
 
 ## License
 
-Apache-2.0
+Licensed under either of:
+
+ * Apache License, Version 2.0 ([LICENSE-APACHE](../LICENSE-APACHE.md) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](../LICENSE-MIT.md) or http://opensource.org/licenses/MIT)
+
+at your option.
