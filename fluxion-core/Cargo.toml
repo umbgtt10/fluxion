@@ -64,3 +64,4 @@ wasm-bindgen-test = { workspace = true }
 [[bench]]
 name = "benchmarks"
 harness = false
+required-features = ["alloc"]

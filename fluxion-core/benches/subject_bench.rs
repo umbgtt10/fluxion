@@ -59,27 +59,27 @@ pub fn bench_subject(c: &mut Criterion) {
         group.throughput(Throughput::Elements(subs as u64));
         let id = BenchmarkId::from_parameter(format!("simple_subs_{subs}"));
         group.bench_with_input(id, &subs, |bencher, &subs| {
-            // Setup: create subject and spawn subscribers (not timed)
+            // Setup: create subject (not timed)
             let setup = || {
                 let rt = Runtime::new().unwrap();
                 let subj: Arc<FluxionSubject<BenchValue<u64>>> = Arc::new(FluxionSubject::new());
-
-                // Spawn subscriber tasks that await a single item
-                let mut handles = Vec::with_capacity(subs);
-                for _ in 0..subs {
-                    let s = subj.subscribe();
-                    handles.push(tokio::spawn(async move {
-                        let mut s = s.unwrap();
-                        let item = s.next().await;
-                        black_box(item);
-                    }));
-                }
-                (rt, subj, handles)
+                (rt, subj)
             };
 
-            bencher.iter_with_setup(setup, |(rt, subj, handles)| {
+            bencher.iter_with_setup(setup, |(rt, subj)| {
                 // Only measure send/wait time
                 rt.block_on(async {
+                    // Spawn subscriber tasks that await a single item
+                    let mut handles = Vec::with_capacity(subs);
+                    for _ in 0..subs {
+                        let s = subj.subscribe();
+                        handles.push(tokio::spawn(async move {
+                            let mut s = s.unwrap();
+                            let item = s.next().await;
+                            black_box(item);
+                        }));
+                    }
+
                     // Send a small numeric value (no test fixtures used)
                     subj.send(StreamItem::Value(BenchValue::new(42u64)))
                         .unwrap();
@@ -100,27 +100,27 @@ pub fn bench_subject(c: &mut Criterion) {
             group.throughput(Throughput::Bytes((size * subs) as u64));
             let id = BenchmarkId::from_parameter(format!("large_p{}_subs_{}", size, subs));
             group.bench_with_input(id, &(size, subs), |bencher, &(size, subs)| {
-                // Setup: create subject and spawn subscribers (not timed)
+                // Setup: create subject (not timed)
                 let setup = || {
                     let rt = Runtime::new().unwrap();
                     let subj: Arc<FluxionSubject<BenchValue<Vec<u8>>>> =
                         Arc::new(FluxionSubject::new());
-
-                    let mut handles = Vec::with_capacity(subs);
-                    for _ in 0..subs {
-                        let s = subj.subscribe();
-                        handles.push(tokio::spawn(async move {
-                            let mut s = s.unwrap();
-                            let item = s.next().await;
-                            black_box(item);
-                        }));
-                    }
-                    (rt, subj, handles)
+                    (rt, subj)
                 };
 
-                bencher.iter_with_setup(setup, |(rt, subj, handles)| {
+                bencher.iter_with_setup(setup, |(rt, subj)| {
                     // Only measure send/wait time
                     rt.block_on(async {
+                        let mut handles = Vec::with_capacity(subs);
+                        for _ in 0..subs {
+                            let s = subj.subscribe();
+                            handles.push(tokio::spawn(async move {
+                                let mut s = s.unwrap();
+                                let item = s.next().await;
+                                black_box(item);
+                            }));
+                        }
+
                         let payload = vec![0u8; size];
                         subj.send(StreamItem::Value(BenchValue::new(payload)))
                             .unwrap();
