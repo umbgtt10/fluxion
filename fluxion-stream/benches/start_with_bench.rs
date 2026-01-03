@@ -41,7 +41,7 @@ pub fn bench_start_with(c: &mut Criterion) {
                     id,
                     &(size, payload_size, initial_count),
                     |bencher, &(size, payload_size, initial_count)| {
-                        bencher.iter(|| {
+                        let setup = || {
                             let stream = make_stream(size, payload_size);
 
                             // Create initial values
@@ -51,8 +51,10 @@ pub fn bench_start_with(c: &mut Criterion) {
                                 })
                                 .collect();
 
-                            let with_initial = stream.start_with(initial);
+                            stream.start_with(initial)
+                        };
 
+                        bencher.iter_with_setup(setup, |with_initial| {
                             let rt = Runtime::new().unwrap();
                             rt.block_on(async move {
                                 let mut s = Box::pin(with_initial);

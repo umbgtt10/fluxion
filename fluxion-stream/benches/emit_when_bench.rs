@@ -33,12 +33,12 @@ pub fn bench_emit_when(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    let setup = || {
                         let source_stream = make_stream(size, payload_size);
                         let filter_stream = make_stream(size, payload_size);
 
                         // Complex predicate: emit when source first byte > filter first byte
-                        let output = source_stream.emit_when(filter_stream, |state| {
+                        source_stream.emit_when(filter_stream, |state| {
                             let values = state.values();
                             let source_val = if values[0].is_empty() {
                                 0
@@ -51,8 +51,10 @@ pub fn bench_emit_when(c: &mut Criterion) {
                                 values[1][0]
                             };
                             source_val > filter_val
-                        });
+                        })
+                    };
 
+                    bencher.iter_with_setup(setup, |output| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(output);

@@ -36,12 +36,14 @@ pub fn bench_with_latest_from(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    let setup = || {
                         let primary = make_stream(size, payload_size);
                         let secondary = make_stream(size, payload_size);
 
-                        let combined = primary.with_latest_from(secondary, |state| state.clone());
+                        primary.with_latest_from(secondary, |state| state.clone())
+                    };
 
+                    bencher.iter_with_setup(setup, |combined| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(combined);

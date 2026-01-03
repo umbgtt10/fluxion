@@ -36,12 +36,14 @@ pub fn bench_take_latest_when(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    let setup = || {
                         let source = make_stream(size, payload_size);
                         let filter = make_stream(size, payload_size);
 
-                        let taken = source.take_latest_when(filter, |_state| true);
+                        source.take_latest_when(filter, |_state| true)
+                    };
 
+                    bencher.iter_with_setup(setup, |taken| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(taken);

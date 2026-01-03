@@ -34,14 +34,16 @@ pub fn bench_tap(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    let setup = || {
                         let stream = make_stream(size, payload_size);
 
                         // Tap with minimal side effect - just observe values
-                        let tapped = stream.tap(|data: &Vec<u8>| {
+                        stream.tap(|data: &Vec<u8>| {
                             black_box(data.len());
-                        });
+                        })
+                    };
 
+                    bencher.iter_with_setup(setup, |tapped| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(tapped);
@@ -72,7 +74,7 @@ pub fn bench_tap_chained(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    let setup = || {
                         let stream = make_stream(size, payload_size);
 
                         // Multiple taps in sequence (common for debugging pipelines)
@@ -86,7 +88,10 @@ pub fn bench_tap_chained(c: &mut Criterion) {
                             .tap(|data: &Vec<u8>| {
                                 black_box(data.first());
                             });
+                        tapped
+                    };
 
+                    bencher.iter_with_setup(setup, |tapped| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(tapped);

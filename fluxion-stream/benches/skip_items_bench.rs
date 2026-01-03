@@ -42,10 +42,12 @@ pub fn bench_skip_items(c: &mut Criterion) {
                     id,
                     &(size, payload_size, skip_count),
                     |bencher, &(size, payload_size, skip_count)| {
-                        bencher.iter(|| {
+                        let setup = || {
                             let stream = make_stream(size, payload_size);
-                            let skipped = stream.skip_items(skip_count);
+                            stream.skip_items(skip_count)
+                        };
 
+                        bencher.iter_with_setup(setup, |skipped| {
                             let rt = Runtime::new().unwrap();
                             rt.block_on(async move {
                                 let mut s = Box::pin(skipped);

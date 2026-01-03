@@ -710,6 +710,15 @@ New projects should use tokio or smol runtimes instead.
 
 ### Essential Features
 
+**no_std Optimization:**
+- [ ] Replace `spin::Mutex` with `critical-section::Mutex` for embedded targets
+  - More efficient (disables interrupts vs busy-waiting)
+  - Lower power consumption (critical for battery-powered devices)
+  - Standard embedded Rust approach (used by Embassy, embedded-hal, RTIC)
+  - Bounded execution time (no unbounded spinning)
+- [ ] Update `fluxion-core/Cargo.toml` dependencies
+- [ ] Update `fluxion-core/src/fluxion_mutex.rs` for no_std path
+
 **Embassy Example Migration:**
 - [ ] Migrate embassy-sensors from std to true embedded target (e.g., `thumbv7em-none-eabihf`)
 - [ ] Configure for QEMU emulation (STM32 or nRF52 compatible)

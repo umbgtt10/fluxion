@@ -9,12 +9,12 @@ use core::cmp::Ordering;
 ///
 /// This enum allows operators to naturally propagate errors through the stream
 /// while processing values, following Rx-style error semantics where errors
-/// terminate the sequence.
+/// are propagated and do NOT terminate the stream
 #[derive(Debug, Clone)]
 pub enum StreamItem<T> {
     /// A successful value
     Value(T),
-    /// An error that terminates the stream
+    /// An error that does not terminate the stream (it only gets propagated)
     Error(FluxionError),
 }
 

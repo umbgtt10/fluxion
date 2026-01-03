@@ -34,18 +34,20 @@ pub fn bench_filter_ordered(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    let setup = || {
                         let stream = make_stream(size, payload_size);
 
                         // Filter to keep only even-indexed items (roughly 50% pass through)
-                        let filtered = stream.filter_ordered(|data: &Vec<u8>| {
+                        stream.filter_ordered(|data: &Vec<u8>| {
                             if data.is_empty() {
                                 true
                             } else {
                                 data[0].is_multiple_of(2)
                             }
-                        });
+                        })
+                    };
 
+                    bencher.iter_with_setup(setup, |filtered| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(filtered);

@@ -29,18 +29,22 @@ pub fn bench_combine_latest(c: &mut Criterion) {
         for &payload_size in &payload_sizes {
             let id = BenchmarkId::from_parameter(format!("m{size}_p{payload_size}"));
             group.throughput(Throughput::Elements(size as u64));
+
             group.bench_with_input(
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    // Setup: create streams (not timed)
+                    let setup = || {
                         let stream1 = make_stream(size, payload_size);
                         let stream2 = make_stream(size, payload_size);
                         let stream3 = make_stream(size, payload_size);
 
-                        let combined =
-                            stream1.combine_latest(vec![stream2, stream3], |_state| true);
+                        stream1.combine_latest(vec![stream2, stream3], |_state| true)
+                    };
 
+                    bencher.iter_with_setup(setup, |combined| {
+                        // Only measure execution time
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(combined);

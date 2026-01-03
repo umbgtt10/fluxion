@@ -33,10 +33,14 @@ pub fn bench_combine_with_previous(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    // Setup: create stream (not timed)
+                    let setup = || {
                         let stream = make_stream(size, payload_size);
-                        let combined = stream.combine_with_previous();
+                        stream.combine_with_previous()
+                    };
 
+                    bencher.iter_with_setup(setup, |combined| {
+                        // Only measure execution time
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(combined);

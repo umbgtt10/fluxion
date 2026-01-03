@@ -39,14 +39,16 @@ pub fn bench_ordered_merge(c: &mut Criterion) {
                     id,
                     &(size, payload_size, num_streams),
                     |bencher, &(size, payload_size, num_streams)| {
-                        bencher.iter(|| {
+                        let setup = || {
                             let first_stream = make_stream(size, payload_size);
                             let other_streams: Vec<_> = (1..num_streams)
                                 .map(|_| make_stream(size, payload_size))
                                 .collect();
 
-                            let merged = first_stream.ordered_merge(other_streams);
+                            first_stream.ordered_merge(other_streams)
+                        };
 
+                        bencher.iter_with_setup(setup, |merged| {
                             let rt = Runtime::new().unwrap();
                             rt.block_on(async move {
                                 let mut s = Box::pin(merged);

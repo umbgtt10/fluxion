@@ -34,12 +34,14 @@ pub fn bench_sample_ratio_half(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    let setup = || {
                         let stream = make_stream(size, payload_size);
 
                         // Sample 50% of items with fixed seed for reproducibility
-                        let sampled = stream.sample_ratio(0.5, 42);
+                        stream.sample_ratio(0.5, 42)
+                    };
 
+                    bencher.iter_with_setup(setup, |sampled| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(sampled);
@@ -70,12 +72,14 @@ pub fn bench_sample_ratio_full(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    let setup = || {
                         let stream = make_stream(size, payload_size);
 
                         // Sample 100% - all items pass through
-                        let sampled = stream.sample_ratio(1.0, 42);
+                        stream.sample_ratio(1.0, 42)
+                    };
 
+                    bencher.iter_with_setup(setup, |sampled| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(sampled);
@@ -106,12 +110,14 @@ pub fn bench_sample_ratio_sparse(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    let setup = || {
                         let stream = make_stream(size, payload_size);
 
                         // Sample 10% - aggressive downsampling
-                        let sampled = stream.sample_ratio(0.1, 42);
+                        stream.sample_ratio(0.1, 42)
+                    };
 
+                    bencher.iter_with_setup(setup, |sampled| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let mut s = Box::pin(sampled);

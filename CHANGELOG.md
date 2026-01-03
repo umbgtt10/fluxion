@@ -5,7 +5,17 @@ All notable changes to the Fluxion project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.0] - 2025-12-28
+## [0.7.1] - Unreleased
+
+### Performance
+- **Benchmark Validation** (`fluxion-ordered-merge`)
+  - Validated `ordered_merge` vs `select_all` performance across various configurations
+  - `ordered_merge` shows 10-50% better throughput, with advantages growing with item count, payload size, and stream count
+  - For large loads (m=10000, s=5), `ordered_merge` achieves up to 8.3 Melem/s vs 5.2 Melem/s for `select_all`
+  - Confirms ordered merging is more efficient for sorted stream scenarios
+  - All benches refactored so as to factor out setup time from measurement time
+
+## [0.7.0] - 2025-12-31
 
 ### Fixed
 - **CI Infrastructure** (`.github/workflows/ci.yml`)

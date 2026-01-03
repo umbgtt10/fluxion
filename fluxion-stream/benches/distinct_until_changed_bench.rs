@@ -44,10 +44,14 @@ pub fn bench_distinct_until_changed(c: &mut Criterion) {
             let id = BenchmarkId::from_parameter(format!("m{size}_dup{dup_factor}"));
             group.throughput(Throughput::Elements(size as u64));
             group.bench_with_input(id, &(size, dup_factor), |bencher, &(size, dup_factor)| {
-                bencher.iter(|| {
+                // Setup: create stream (not timed)
+                let setup = || {
                     let stream = make_stream_with_duplicates(size, dup_factor);
-                    let distinct = stream.distinct_until_changed();
+                    stream.distinct_until_changed()
+                };
 
+                bencher.iter_with_setup(setup, |distinct| {
+                    // Only measure execution time
                     let rt = Runtime::new().unwrap();
                     rt.block_on(async move {
                         let mut s = Box::pin(distinct);
@@ -70,10 +74,14 @@ pub fn bench_distinct_until_changed(c: &mut Criterion) {
         let id = BenchmarkId::from_parameter(format!("m{size}_alternating"));
         group.throughput(Throughput::Elements(size as u64));
         group.bench_with_input(id, &size, |bencher, &size| {
-            bencher.iter(|| {
+            // Setup: create stream (not timed)
+            let setup = || {
                 let stream = make_stream_alternating(size);
-                let distinct = stream.distinct_until_changed();
+                stream.distinct_until_changed()
+            };
 
+            bencher.iter_with_setup(setup, |distinct| {
+                // Only measure execution time
                 let rt = Runtime::new().unwrap();
                 rt.block_on(async move {
                     let mut s = Box::pin(distinct);

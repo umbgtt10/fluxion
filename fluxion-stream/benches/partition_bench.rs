@@ -24,27 +24,30 @@ pub fn bench_partition_balanced(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    let setup = || {
+                        let (tx, rx) = unbounded::<Sequenced<Vec<u8>>>();
+
+                        // Partition by even/odd index (50/50 split)
+                        let (true_stream, false_stream) =
+                            rx.into_fluxion_stream().partition(|data: &Vec<u8>| {
+                                if data.is_empty() {
+                                    true
+                                } else {
+                                    data[0].is_multiple_of(2)
+                                }
+                            });
+                        (tx, true_stream, false_stream)
+                    };
+
+                    bencher.iter_with_setup(setup, |(tx, true_stream, false_stream)| {
+                        // Send data
+                        for i in 0..size {
+                            let _ = tx.try_send(Sequenced::new(vec![i as u8; payload_size]));
+                        }
+                        drop(tx);
+
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            let (tx, rx) = unbounded::<Sequenced<Vec<u8>>>();
-
-                            // Partition by even/odd index (50/50 split)
-                            let (true_stream, false_stream) =
-                                rx.into_fluxion_stream().partition(|data: &Vec<u8>| {
-                                    if data.is_empty() {
-                                        true
-                                    } else {
-                                        data[0].is_multiple_of(2)
-                                    }
-                                });
-
-                            // Send data
-                            for i in 0..size {
-                                let _ = tx.try_send(Sequenced::new(vec![i as u8; payload_size]));
-                            }
-                            drop(tx);
-
                             // Consume both streams concurrently
                             let consume_true = async {
                                 let mut s = Box::pin(true_stream);
@@ -84,28 +87,31 @@ pub fn bench_partition_imbalanced(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    let setup = || {
+                        let (tx, rx) = unbounded::<Sequenced<Vec<u8>>>();
+
+                        // Partition with 90% going to true stream (index < 90% of size)
+                        let threshold = (size * 9 / 10) as u8;
+                        let (true_stream, false_stream) =
+                            rx.into_fluxion_stream().partition(move |data: &Vec<u8>| {
+                                if data.is_empty() {
+                                    true
+                                } else {
+                                    data[0] < threshold
+                                }
+                            });
+                        (tx, true_stream, false_stream)
+                    };
+
+                    bencher.iter_with_setup(setup, |(tx, true_stream, false_stream)| {
+                        // Send data
+                        for i in 0..size {
+                            let _ = tx.try_send(Sequenced::new(vec![i as u8; payload_size]));
+                        }
+                        drop(tx);
+
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            let (tx, rx) = unbounded::<Sequenced<Vec<u8>>>();
-
-                            // Partition with 90% going to true stream (index < 90% of size)
-                            let threshold = (size * 9 / 10) as u8;
-                            let (true_stream, false_stream) =
-                                rx.into_fluxion_stream().partition(move |data: &Vec<u8>| {
-                                    if data.is_empty() {
-                                        true
-                                    } else {
-                                        data[0] < threshold
-                                    }
-                                });
-
-                            // Send data
-                            for i in 0..size {
-                                let _ = tx.try_send(Sequenced::new(vec![i as u8; payload_size]));
-                            }
-                            drop(tx);
-
                             // Consume both partitions
                             let consume_true = async {
                                 let mut s = Box::pin(true_stream);
@@ -145,27 +151,30 @@ pub fn bench_partition_single_consumer(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    bencher.iter(|| {
+                    let setup = || {
+                        let (tx, rx) = unbounded::<Sequenced<Vec<u8>>>();
+
+                        // Partition by even/odd (50/50 split)
+                        let (true_stream, _false_stream) =
+                            rx.into_fluxion_stream().partition(|data: &Vec<u8>| {
+                                if data.is_empty() {
+                                    true
+                                } else {
+                                    data[0].is_multiple_of(2)
+                                }
+                            });
+                        (tx, true_stream)
+                    };
+
+                    bencher.iter_with_setup(setup, |(tx, true_stream)| {
+                        // Send data
+                        for i in 0..size {
+                            let _ = tx.try_send(Sequenced::new(vec![i as u8; payload_size]));
+                        }
+                        drop(tx);
+
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            let (tx, rx) = unbounded::<Sequenced<Vec<u8>>>();
-
-                            // Partition by even/odd (50/50 split)
-                            let (true_stream, _false_stream) =
-                                rx.into_fluxion_stream().partition(|data: &Vec<u8>| {
-                                    if data.is_empty() {
-                                        true
-                                    } else {
-                                        data[0].is_multiple_of(2)
-                                    }
-                                });
-
-                            // Send data
-                            for i in 0..size {
-                                let _ = tx.try_send(Sequenced::new(vec![i as u8; payload_size]));
-                            }
-                            drop(tx);
-
                             // Only consume the true stream, drop the false stream
                             let mut s = Box::pin(true_stream);
                             while let Some(v) = s.next().await {

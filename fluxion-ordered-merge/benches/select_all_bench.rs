@@ -37,13 +37,16 @@ pub fn bench_select_all(c: &mut Criterion) {
                     id,
                     &(size, payload_size, num_streams),
                     |bencher, &(size, payload_size, num_streams)| {
-                        bencher.iter(|| {
+                        // Setup: create streams (not timed)
+                        let setup = || {
                             let streams: Vec<_> = (0..num_streams)
                                 .map(|_| make_stream(size, payload_size))
                                 .collect();
+                            select_all(streams)
+                        };
 
-                            let merged = select_all(streams);
-
+                        bencher.iter_with_setup(setup, |merged| {
+                            // Only measure execution time
                             let rt = Runtime::new().unwrap();
                             rt.block_on(async move {
                                 let mut s = Box::pin(merged);
