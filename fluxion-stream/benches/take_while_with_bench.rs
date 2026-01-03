@@ -39,13 +39,13 @@ pub fn bench_take_while_with(c: &mut Criterion) {
                     let setup = || {
                         let source = make_stream(size, payload_size);
                         let filter = make_stream(size, payload_size);
-
-                        source.take_while_with(filter, |_v| true)
+                        (source, filter)
                     };
 
-                    bencher.iter_with_setup(setup, |taken| {
+                    bencher.iter_with_setup(setup, |(source, filter)| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
+                            let taken = source.take_while_with(filter, |_v| true);
                             let mut s = Box::pin(taken);
                             while let Some(v) = s.next().await {
                                 black_box(v);

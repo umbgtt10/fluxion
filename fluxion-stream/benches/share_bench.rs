@@ -28,15 +28,15 @@ pub fn bench_share(c: &mut Criterion) {
                     |bencher, &(size, payload_size, subscribers)| {
                         let setup = || {
                             let (tx, rx) = unbounded::<Sequenced<Vec<u8>>>();
-
-                            let stream = rx.into_fluxion_stream();
-                            let shared = stream.share();
-                            (tx, shared)
+                            (tx, rx)
                         };
 
-                        bencher.iter_with_setup(setup, |(tx, shared)| {
+                        bencher.iter_with_setup(setup, |(tx, rx)| {
                             let rt = Runtime::new().unwrap();
                             rt.block_on(async move {
+                                let stream = rx.into_fluxion_stream();
+                                let shared = stream.share();
+
                                 // Create subscriber futures BEFORE sending data
                                 let futures: Vec<_> = (0..subscribers)
                                     .map(|_| {

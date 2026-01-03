@@ -45,15 +45,13 @@ pub fn bench_distinct_until_changed(c: &mut Criterion) {
             group.throughput(Throughput::Elements(size as u64));
             group.bench_with_input(id, &(size, dup_factor), |bencher, &(size, dup_factor)| {
                 // Setup: create stream (not timed)
-                let setup = || {
-                    let stream = make_stream_with_duplicates(size, dup_factor);
-                    stream.distinct_until_changed()
-                };
+                let setup = || make_stream_with_duplicates(size, dup_factor);
 
-                bencher.iter_with_setup(setup, |distinct| {
+                bencher.iter_with_setup(setup, |stream| {
                     // Only measure execution time
                     let rt = Runtime::new().unwrap();
                     rt.block_on(async move {
+                        let distinct = stream.distinct_until_changed();
                         let mut s = Box::pin(distinct);
                         while let Some(v) = s.next().await {
                             black_box(v);

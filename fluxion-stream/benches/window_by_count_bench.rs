@@ -39,15 +39,12 @@ pub fn bench_window_by_count(c: &mut Criterion) {
             let id = BenchmarkId::from_parameter(format!("n{size}_w{window_size}"));
             group.throughput(Throughput::Elements(size as u64));
             group.bench_with_input(id, &(size, window_size), |bencher, &(size, window_size)| {
-                let setup = || {
-                    let stream = make_stream(size);
+                let setup = || make_stream(size);
 
-                    stream.window_by_count::<Sequenced<Vec<i32>>>(window_size)
-                };
-
-                bencher.iter_with_setup(setup, |windowed| {
+                bencher.iter_with_setup(setup, |stream| {
                     let rt = Runtime::new().unwrap();
                     rt.block_on(async move {
+                        let windowed = stream.window_by_count::<Sequenced<Vec<i32>>>(window_size);
                         let mut s = Box::pin(windowed);
                         while let Some(v) = s.next().await {
                             black_box(v);
@@ -76,15 +73,13 @@ pub fn bench_window_by_count_payload(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    let setup = || {
-                        let stream = make_stream_with_payload(size, payload_size);
+                    let setup = || make_stream_with_payload(size, payload_size);
 
-                        stream.window_by_count::<Sequenced<Vec<Vec<u8>>>>(window_size)
-                    };
-
-                    bencher.iter_with_setup(setup, |windowed| {
+                    bencher.iter_with_setup(setup, |stream| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
+                            let windowed =
+                                stream.window_by_count::<Sequenced<Vec<Vec<u8>>>>(window_size);
                             let mut s = Box::pin(windowed);
                             while let Some(v) = s.next().await {
                                 black_box(v);
@@ -108,16 +103,13 @@ pub fn bench_window_by_count_single(c: &mut Criterion) {
         let id = BenchmarkId::from_parameter(format!("n{size}"));
         group.throughput(Throughput::Elements(size as u64));
         group.bench_with_input(id, &size, |bencher, &size| {
-            let setup = || {
-                let stream = make_stream(size);
+            let setup = || make_stream(size);
 
-                // Window size 1 = maximum number of windows
-                stream.window_by_count::<Sequenced<Vec<i32>>>(1)
-            };
-
-            bencher.iter_with_setup(setup, |windowed| {
+            bencher.iter_with_setup(setup, |stream| {
                 let rt = Runtime::new().unwrap();
                 rt.block_on(async move {
+                    // Window size 1 = maximum number of windows
+                    let windowed = stream.window_by_count::<Sequenced<Vec<i32>>>(1);
                     let mut s = Box::pin(windowed);
                     while let Some(v) = s.next().await {
                         black_box(v);

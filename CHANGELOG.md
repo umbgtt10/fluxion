@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.1] - Unreleased
 
+### Fixed
+- **Benchmark Infrastructure** (`fluxion-stream`, `fluxion-stream-time`, `fluxion-core`)
+  - Fixed "no reactor running" errors in benchmarks that create operators spawning background tasks
+  - Operators like `share`, `partition`, `combine_latest`, `with_latest_from`, `merge_with`, `emit_when`, `take_latest_when`, `window_by_count`, `combine_with_previous`, `start_with`, `tap`, `take_items`, `skip_items`, `take_while_with`, `distinct_until_changed`, `distinct_until_changed_by`, `scan_ordered`, `sample_ratio`, `map_ordered`, `filter_ordered`, and `ordered_merge` now created inside Tokio runtime context
+  - All benchmarks now execute successfully on CI build servers without runtime panics
+  - Setup time properly excluded from performance measurements across all benchmarks
+
 ### Performance
 - **Benchmark Validation** (`fluxion-ordered-merge`)
   - Validated `ordered_merge` vs `select_all` performance across various configurations
   - `ordered_merge` shows 10-50% better throughput, with advantages growing with item count, payload size, and stream count
   - For large loads (m=10000, s=5), `ordered_merge` achieves up to 8.3 Melem/s vs 5.2 Melem/s for `select_all`
   - Confirms ordered merging is more efficient for sorted stream scenarios
-  - All benches refactored so as to factor out setup time from measurement time
 
 ## [0.7.0] - 2025-12-31
 

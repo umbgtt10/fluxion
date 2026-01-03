@@ -34,15 +34,13 @@ pub fn bench_combine_with_previous(c: &mut Criterion) {
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
                     // Setup: create stream (not timed)
-                    let setup = || {
-                        let stream = make_stream(size, payload_size);
-                        stream.combine_with_previous()
-                    };
+                    let setup = || make_stream(size, payload_size);
 
-                    bencher.iter_with_setup(setup, |combined| {
+                    bencher.iter_with_setup(setup, |stream| {
                         // Only measure execution time
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
+                            let combined = stream.combine_with_previous();
                             let mut s = Box::pin(combined);
                             while let Some(v) = s.next().await {
                                 black_box(v);

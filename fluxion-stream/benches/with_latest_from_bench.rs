@@ -39,13 +39,14 @@ pub fn bench_with_latest_from(c: &mut Criterion) {
                     let setup = || {
                         let primary = make_stream(size, payload_size);
                         let secondary = make_stream(size, payload_size);
-
-                        primary.with_latest_from(secondary, |state| state.clone())
+                        (primary, secondary)
                     };
 
-                    bencher.iter_with_setup(setup, |combined| {
+                    bencher.iter_with_setup(setup, |(primary, secondary)| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
+                            let combined =
+                                primary.with_latest_from(secondary, |state| state.clone());
                             let mut s = Box::pin(combined);
                             while let Some(v) = s.next().await {
                                 black_box(v);

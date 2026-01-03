@@ -36,19 +36,19 @@ pub fn bench_scan_ordered_sum(c: &mut Criterion) {
         let id = BenchmarkId::from_parameter(format!("n{size}"));
         group.throughput(Throughput::Elements(size as u64));
         group.bench_with_input(id, &size, |bencher, &size| {
-            let setup = || {
-                let stream = make_stream(size);
+            let setup = || make_stream(size);
 
-                // Running sum accumulator
-                stream.scan_ordered::<Sequenced<i32>, _, _>(0, |sum: &mut i32, value: &i32| {
-                    *sum += value;
-                    *sum
-                })
-            };
-
-            bencher.iter_with_setup(setup, |scanned| {
+            bencher.iter_with_setup(setup, |stream| {
                 let rt = Runtime::new().unwrap();
                 rt.block_on(async move {
+                    // Running sum accumulator
+                    let scanned = stream.scan_ordered::<Sequenced<i32>, _, _>(
+                        0,
+                        |sum: &mut i32, value: &i32| {
+                            *sum += value;
+                            *sum
+                        },
+                    );
                     let mut s = Box::pin(scanned);
                     while let Some(v) = s.next().await {
                         black_box(v);

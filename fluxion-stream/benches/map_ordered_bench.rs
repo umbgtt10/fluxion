@@ -33,18 +33,15 @@ pub fn bench_map_ordered(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    let setup = || {
-                        let stream = make_stream(size, payload_size);
+                    let setup = || make_stream(size, payload_size);
 
-                        // Simple transformation: compute length of payload
-                        stream.map_ordered(|sequenced: Sequenced<Vec<u8>>| {
-                            Sequenced::new(sequenced.value.len())
-                        })
-                    };
-
-                    bencher.iter_with_setup(setup, |mapped| {
+                    bencher.iter_with_setup(setup, |stream| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
+                            // Simple transformation: compute length of payload
+                            let mapped = stream.map_ordered(|sequenced: Sequenced<Vec<u8>>| {
+                                Sequenced::new(sequenced.value.len())
+                            });
                             let mut s = Box::pin(mapped);
                             while let Some(v) = s.next().await {
                                 black_box(v);

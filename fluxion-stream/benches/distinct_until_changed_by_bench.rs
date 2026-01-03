@@ -121,14 +121,13 @@ pub fn bench_distinct_until_changed_by(c: &mut Criterion) {
         let id = BenchmarkId::from_parameter(format!("m{size}"));
         group.throughput(Throughput::Elements(size as u64));
         group.bench_with_input(id, &size, |bencher, &size| {
-            let setup = || {
-                let stream = make_stream_case_insensitive(size);
-                stream.distinct_until_changed_by(|a, b| a.to_lowercase() == b.to_lowercase())
-            };
+            let setup = || make_stream_case_insensitive(size);
 
-            bencher.iter_with_setup(setup, |distinct| {
+            bencher.iter_with_setup(setup, |stream| {
                 let rt = Runtime::new().unwrap();
                 rt.block_on(async move {
+                    let distinct = stream
+                        .distinct_until_changed_by(|a, b| a.to_lowercase() == b.to_lowercase());
                     let mut s = Box::pin(distinct);
                     while let Some(v) = s.next().await {
                         black_box(v);
@@ -150,14 +149,14 @@ pub fn bench_distinct_until_changed_by(c: &mut Criterion) {
             let id = BenchmarkId::from_parameter(format!("m{size}_t{}", threshold));
             group.throughput(Throughput::Elements(size as u64));
             group.bench_with_input(id, &(size, threshold), |bencher, &(size, threshold)| {
-                let setup = || {
-                    let stream = make_stream_threshold(size);
-                    stream.distinct_until_changed_by(move |a, b| (a.0 - b.0).abs() < threshold)
-                };
+                let setup = || make_stream_threshold(size);
 
-                bencher.iter_with_setup(setup, |distinct| {
+                bencher.iter_with_setup(setup, |stream| {
                     let rt = Runtime::new().unwrap();
                     rt.block_on(async move {
+                        let distinct = stream.distinct_until_changed_by(move |a, b| {
+                            (a.0 / threshold).floor() == (b.0 / threshold).floor()
+                        });
                         let mut s = Box::pin(distinct);
                         while let Some(v) = s.next().await {
                             black_box(v);

@@ -36,27 +36,27 @@ pub fn bench_emit_when(c: &mut Criterion) {
                     let setup = || {
                         let source_stream = make_stream(size, payload_size);
                         let filter_stream = make_stream(size, payload_size);
-
-                        // Complex predicate: emit when source first byte > filter first byte
-                        source_stream.emit_when(filter_stream, |state| {
-                            let values = state.values();
-                            let source_val = if values[0].is_empty() {
-                                0
-                            } else {
-                                values[0][0]
-                            };
-                            let filter_val = if values[1].is_empty() {
-                                0
-                            } else {
-                                values[1][0]
-                            };
-                            source_val > filter_val
-                        })
+                        (source_stream, filter_stream)
                     };
 
-                    bencher.iter_with_setup(setup, |output| {
+                    bencher.iter_with_setup(setup, |(source_stream, filter_stream)| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
+                            // Complex predicate: emit when source first byte > filter first byte
+                            let output = source_stream.emit_when(filter_stream, |state| {
+                                let values = state.values();
+                                let source_val = if values[0].is_empty() {
+                                    0
+                                } else {
+                                    values[0][0]
+                                };
+                                let filter_val = if values[1].is_empty() {
+                                    0
+                                } else {
+                                    values[1][0]
+                                };
+                                source_val > filter_val
+                            });
                             let mut s = Box::pin(output);
                             while let Some(v) = s.next().await {
                                 black_box(v);

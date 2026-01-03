@@ -39,14 +39,15 @@ pub fn bench_combine_latest(c: &mut Criterion) {
                         let stream1 = make_stream(size, payload_size);
                         let stream2 = make_stream(size, payload_size);
                         let stream3 = make_stream(size, payload_size);
-
-                        stream1.combine_latest(vec![stream2, stream3], |_state| true)
+                        (stream1, stream2, stream3)
                     };
 
-                    bencher.iter_with_setup(setup, |combined| {
+                    bencher.iter_with_setup(setup, |(stream1, stream2, stream3)| {
                         // Only measure execution time
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
+                            let combined =
+                                stream1.combine_latest(vec![stream2, stream3], |_state| true);
                             let mut s = Box::pin(combined);
                             while let Some(v) = s.next().await {
                                 black_box(v);

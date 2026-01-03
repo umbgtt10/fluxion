@@ -41,22 +41,23 @@ pub fn bench_start_with(c: &mut Criterion) {
                     id,
                     &(size, payload_size, initial_count),
                     |bencher, &(size, payload_size, initial_count)| {
-                        let setup = || {
-                            let stream = make_stream(size, payload_size);
+                        let setup = || make_stream(size, payload_size);
 
-                            // Create initial values
-                            let initial: Vec<StreamItem<Sequenced<Vec<u8>>>> = (0..initial_count)
-                                .map(|i| {
-                                    StreamItem::Value(Sequenced::new(vec![i as u8; payload_size]))
-                                })
-                                .collect();
-
-                            stream.start_with(initial)
-                        };
-
-                        bencher.iter_with_setup(setup, |with_initial| {
+                        bencher.iter_with_setup(setup, |stream| {
                             let rt = Runtime::new().unwrap();
                             rt.block_on(async move {
+                                // Create initial values
+                                let initial: Vec<StreamItem<Sequenced<Vec<u8>>>> = (0
+                                    ..initial_count)
+                                    .map(|i| {
+                                        StreamItem::Value(Sequenced::new(vec![
+                                            i as u8;
+                                            payload_size
+                                        ]))
+                                    })
+                                    .collect();
+
+                                let with_initial = stream.start_with(initial);
                                 let mut s = Box::pin(with_initial);
                                 while let Some(v) = s.next().await {
                                     black_box(v);

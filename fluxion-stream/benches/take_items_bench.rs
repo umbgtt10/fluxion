@@ -41,14 +41,12 @@ pub fn bench_take_items(c: &mut Criterion) {
                     id,
                     &(size, payload_size, take_count),
                     |bencher, &(size, payload_size, take_count)| {
-                        let setup = || {
-                            let stream = make_stream(size, payload_size);
-                            stream.take_items(take_count)
-                        };
+                        let setup = || make_stream(size, payload_size);
 
-                        bencher.iter_with_setup(setup, |limited| {
+                        bencher.iter_with_setup(setup, |stream| {
                             let rt = Runtime::new().unwrap();
                             rt.block_on(async move {
+                                let limited = stream.take_items(take_count);
                                 let mut s = Box::pin(limited);
                                 while let Some(v) = s.next().await {
                                     black_box(v);

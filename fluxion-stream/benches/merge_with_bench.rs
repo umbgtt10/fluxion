@@ -41,26 +41,26 @@ pub fn bench_merge_with(c: &mut Criterion) {
                         let stream1 = make_stream(size, payload_size);
                         let stream2 = make_stream(size, payload_size);
                         let stream3 = make_stream(size, payload_size);
-
-                        // Repository pattern: merge streams with state counter
-                        MergedStream::seed::<Sequenced<usize>>(0)
-                            .merge_with(stream1, |_item: Vec<u8>, state: &mut usize| {
-                                *state += 1;
-                                *state
-                            })
-                            .merge_with(stream2, |_item: Vec<u8>, state: &mut usize| {
-                                *state += 1;
-                                *state
-                            })
-                            .merge_with(stream3, |_item: Vec<u8>, state: &mut usize| {
-                                *state += 1;
-                                *state
-                            })
+                        (stream1, stream2, stream3)
                     };
 
-                    bencher.iter_with_setup(setup, |merged| {
+                    bencher.iter_with_setup(setup, |(stream1, stream2, stream3)| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
+                            // Repository pattern: merge streams with state counter
+                            let merged = MergedStream::seed::<Sequenced<usize>>(0)
+                                .merge_with(stream1, |_item: Vec<u8>, state: &mut usize| {
+                                    *state += 1;
+                                    *state
+                                })
+                                .merge_with(stream2, |_item: Vec<u8>, state: &mut usize| {
+                                    *state += 1;
+                                    *state
+                                })
+                                .merge_with(stream3, |_item: Vec<u8>, state: &mut usize| {
+                                    *state += 1;
+                                    *state
+                                });
                             let mut s = Box::pin(merged);
                             while let Some(v) = s.next().await {
                                 black_box(v);
