@@ -23,9 +23,9 @@ futures = { version = "0.3.31", default-features = false, features = ["alloc"] }
 futures-util = { version = "0.3.31", default-features = false, features = ["alloc"] }
 futures-channel = { version = "0.3.31", default-features = false, features = ["alloc"] }
 async-channel = { version = "2.5", default-features = false }
-tokio = { version = "1.48.0", default-features = false, features = ["macros", "time", "rt-multi-thread"] }
-tokio-stream = { version = "0.1.17", features = ["sync"] }
-tokio-util = "0.7.17"
+tokio = { version = "1.49.0", default-features = false, features = ["macros", "time", "rt-multi-thread"] }
+tokio-stream = { version = "0.1.18", features = ["sync"] }
+tokio-util = "0.7.18"
 pin-project = "1.1.10"
 async-trait = "0.1.89"
 async-stream = "0.3.6"

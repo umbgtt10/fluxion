@@ -223,9 +223,52 @@ Invoke-StepAction "Run legacy-integration example" {
   Pop-Location
 }
 
-Invoke-StepAction "Run embassy-sensors example" {
+Invoke-StepAction "Run embassy-sensors example (ARM Cortex-M4F in QEMU)" {
   Push-Location examples\embassy-sensors
-  cargo run --release
+
+  # Check if qemu-system-arm is available
+  $qemuCheck = Get-Command qemu-system-arm -ErrorAction SilentlyContinue
+  if (-not $qemuCheck) {
+    Write-Warning "qemu-system-arm not found. Skipping embassy-sensors example."
+    Write-Output "To run this example, install QEMU: scoop install qemu (Windows) or brew install qemu (macOS)"
+    Pop-Location
+    return
+  }
+
+  # Build for ARM Cortex-M4F target
+  Write-Output "Building for thumbv7em-none-eabihf target..."
+  cargo build --release --target thumbv7em-none-eabihf
+  if ($LASTEXITCODE -ne 0) {
+    Pop-Location
+    throw "embassy-sensors build failed"
+  }
+
+  # Run in QEMU (timeout after 35 seconds to allow 30s runtime + 5s overhead)
+  Write-Output "Running in QEMU emulator (30 second demo)..."
+  $qemuArgs = @(
+    '-cpu', 'cortex-m4',
+    '-machine', 'mps2-an386',
+    '-nographic',
+    '-semihosting-config', 'enable=on,target=native',
+    '-kernel', 'target\thumbv7em-none-eabihf\release\embassy-sensors'
+  )
+
+  $job = Start-Job -ScriptBlock {
+    param($QemuPath, $Args)
+    & $QemuPath @Args
+  } -ArgumentList 'qemu-system-arm', $qemuArgs
+
+  $completed = Wait-Job -Job $job -Timeout 35
+  if ($completed) {
+    $output = Receive-Job -Job $job
+    Write-Output $output
+    Remove-Job -Job $job
+  } else {
+    Write-Warning "QEMU execution timed out (expected for 30s demo)"
+    Stop-Job -Job $job
+    Remove-Job -Job $job
+  }
+
   Pop-Location
 }
 
