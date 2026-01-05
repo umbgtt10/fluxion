@@ -1,8 +1,8 @@
 [build]
-target = "x86_64-pc-windows-msvc"  # Windows host target
+target = "thumbv7em-none-eabihf"  # Cortex-M4F
 
-[target.x86_64-pc-windows-msvc]
-rustflags = []
+[target.thumbv7em-none-eabihf]
+runner = "qemu-system-arm -cpu cortex-m4 -machine mps2-an386 -nographic -semihosting-config enable=on,target=native -kernel"
 
 # Optional: Default features for rust-analyzer
 [env]

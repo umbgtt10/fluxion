@@ -1,0 +1,6 @@
+/* Memory layout for QEMU mps2-an386 (Cortex-M4) */
+MEMORY
+{
+  FLASH : ORIGIN = 0x00000000, LENGTH = 4096K
+  RAM   : ORIGIN = 0x20000000, LENGTH = 4096K
+}

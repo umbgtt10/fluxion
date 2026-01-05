@@ -4,8 +4,8 @@
 
 //! Humidity sensor task implementation.
 
+use crate::info;
 use crate::types::Humidity;
-// Using println! for logging
 use embassy_time::{Duration, Timer};
 use fluxion_core::CancellationToken;
 use fluxion_stream_time::timer::Timer as TimerTrait;
@@ -16,7 +16,7 @@ use rand_chacha::ChaCha8Rng;
 /// Humidity sensor task with sample → delay → take pipeline
 #[embassy_executor::task]
 pub async fn humidity_sensor(tx: async_channel::Sender<Humidity>, cancel: CancellationToken) {
-    println!("💧 Humidity sensor task started");
+    info!("Humidity sensor task started");
 
     let timer = EmbassyTimerImpl;
     let mut rng = ChaCha8Rng::seed_from_u64(11111);
@@ -32,16 +32,15 @@ pub async fn humidity_sensor(tx: async_channel::Sender<Humidity>, cancel: Cancel
             timestamp: timer.now(),
         };
 
-        println!("💧 Sensor: {}%", humidity.value_percent);
+        info!("Sensor: {}%", humidity.value_percent);
         if tx.send(humidity).await.is_err() {
-            println!("💧 Channel closed, stopping sensor");
+            info!("Channel closed, stopping sensor");
             break;
         }
 
         let timeout = rng.random_range(100..=1000);
-        println!("🌡️  timeout: {} ms", timeout);
         Timer::after(Duration::from_millis(timeout)).await;
     }
 
-    println!("💧 Humidity sensor task stopped");
+    info!("Humidity sensor task stopped");
 }

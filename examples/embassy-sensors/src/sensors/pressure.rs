@@ -4,6 +4,7 @@
 
 //! Pressure sensor task implementation.
 
+use crate::info;
 use crate::types::Pressure;
 use embassy_time::{Duration, Timer};
 use fluxion_core::CancellationToken;
@@ -15,7 +16,7 @@ use rand_chacha::ChaCha8Rng;
 /// Pressure sensor task with throttle → scan → distinct_until_changed pipeline
 #[embassy_executor::task]
 pub async fn pressure_sensor(tx: async_channel::Sender<Pressure>, cancel: CancellationToken) {
-    println!("📊 Pressure sensor task started");
+    info!("Pressure sensor task started");
 
     let timer = EmbassyTimerImpl;
     let mut rng = ChaCha8Rng::seed_from_u64(67890);
@@ -31,16 +32,15 @@ pub async fn pressure_sensor(tx: async_channel::Sender<Pressure>, cancel: Cancel
             timestamp: timer.now(),
         };
 
-        println!("📊 Sensor: {} hPa", pressure.value_hpa);
+        info!("Sensor: {} hPa", pressure.value_hpa);
         if tx.send(pressure).await.is_err() {
-            println!("📊 Channel closed, stopping sensor");
+            info!("Channel closed, stopping sensor");
             break;
         }
 
         let timeout = rng.random_range(100..=1000);
-        println!("📊  timeout: {} ms", timeout);
         Timer::after(Duration::from_millis(timeout)).await;
     }
 
-    println!("📊 Pressure sensor task stopped");
+    info!("Pressure sensor task stopped");
 }

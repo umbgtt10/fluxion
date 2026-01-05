@@ -3,7 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::types::{Humidity, Pressure, Temperature};
-use core::fmt::Display;
 
 /// Aggregated state of all sensor readings
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -33,24 +32,20 @@ impl SensorAggregate {
     }
 }
 
-impl Display for SensorAggregate {
+impl core::fmt::Display for SensorAggregate {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if self.is_complete() {
             write!(
                 f,
-                "SensorAggregate {{ temperature: {}, pressure: {}, humidity: {}, humidity_delta: {}, updates: {} }}",
-                self.latest_temp.unwrap(),
-                self.latest_pressure.unwrap(),
-                self.latest_humidity.unwrap(),
+                "Temp: {}K | Press: {}hPa | Hum: {}% | Delta: {} | Upd: {}",
+                self.latest_temp.unwrap().value_kelvin,
+                self.latest_pressure.unwrap().value_hpa,
+                self.latest_humidity.unwrap().value_percent,
                 self.humidity_delta,
-                self.update_count,
-            )
-        } else {
-            write!(
-                f,
-                "SensorAggregate {{ Incomplete: updates: {} }}",
                 self.update_count
             )
+        } else {
+            write!(f, "Incomplete (Updates: {})", self.update_count)
         }
     }
 }

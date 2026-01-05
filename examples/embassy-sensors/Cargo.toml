@@ -18,9 +18,16 @@ fluxion-core = { path = "../../fluxion-core", default-features = false, features
 fluxion-stream = { path = "../../fluxion-stream", default-features = false, features = ["alloc"] }
 fluxion-stream-time = { path = "../../fluxion-stream-time", default-features = false, features = ["alloc", "runtime-embassy"] }
 
-# Embassy runtime
-embassy-executor = { version = "0.9.1", features = ["arch-std", "executor-thread"] }
-embassy-time = { version = "0.5.0", features = ["std"] }
+# Embassy with proper Cortex-M configuration (all from git for compatibility)
+embassy-executor = { git = "https://github.com/embassy-rs/embassy", features = ["arch-cortex-m", "executor-thread"] }
+embassy-time = { git = "https://github.com/embassy-rs/embassy", features = ["generic-queue-8", "tick-hz-1_000"] }
+embassy-time-driver = { git = "https://github.com/embassy-rs/embassy" }
+
+# Use STM32 for time driver (works in QEMU)
+# embassy-stm32 = { git = "https://github.com/embassy-rs/embassy", features = [
+#     "stm32f429zi",
+#     "time-driver-any",
+# ] }
 
 # Async primitives
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
@@ -29,6 +36,22 @@ async-channel = { version = "2.3", default-features = false }
 # Random number generation for sensor simulation (no_std compatible)
 rand = { version = "0.9.2", default-features = false }
 rand_chacha = { version = "0.9.0", default-features = false }
+
+# Embedded essentials
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
+cortex-m-rt = "0.7"
+cortex-m-semihosting = "0.5"
+defmt = "0.3"
+panic-semihosting = "0.6"
+embedded-alloc = "0.6"
+
+# Patch to use git version of embassy-time for all dependencies
+[patch.crates-io]
+embassy-time = { git = "https://github.com/embassy-rs/embassy" }
+embassy-executor = { git = "https://github.com/embassy-rs/embassy" }
+
+[build-dependencies]
+# No build dependencies needed currently
 
 [profile.release]
 opt-level = "z"     # Optimize for size

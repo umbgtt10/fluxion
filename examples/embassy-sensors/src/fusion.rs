@@ -6,6 +6,7 @@
 
 use crate::aggregate::SensorAggregate;
 use crate::types::{Humidity, Pressure, Temperature};
+use crate::{info, warn};
 use core::time::Duration;
 use fluxion_core::{CancellationToken, StreamItem};
 use fluxion_stream::{
@@ -26,33 +27,31 @@ pub async fn fusion_task(
     humidity_rx: async_channel::Receiver<Humidity>,
     _cancel: CancellationToken,
 ) {
-    println!("🔄 Fusion task started - demonstrating operators and merge_with");
-    println!("Building reactive pipeline with multiple operators...\n");
+    info!("Fusion task started - demonstrating operators and merge_with");
+    info!("Building reactive pipeline with multiple operators...\n");
 
     // Temperature stream: tap -> distinct_until_changed -> debounce
     let temp_stream = temp_rx
         .into_fluxion_stream()
-        .tap(|t| println!("🔍 Raw temperature: {:}°C", t.value_kelvin))
+        .tap(|t| info!("Raw temperature: {:?} C", t.value_kelvin))
         .distinct_until_changed()
         .debounce(Duration::from_millis(500));
-    println!("✓ Temperature: tap -> distinct_until_changed -> debounce(500ms)");
+    info!("Temperature: tap -> distinct_until_changed -> debounce(500ms)");
 
     // Pressure stream: distinct_until_changed_by -> filter_ordered -> throttle
     let pressure_stream = pressure_rx
         .into_fluxion_stream()
         .distinct_until_changed_by(|p1, p2| {
             let difference = p1.value_hpa as i32 - p2.value_hpa as i32;
-            println!(
-                "🔍 Pressure change: {} hPa (from {} to {})",
+            info!(
+                "Pressure change: {} hPa (from {} to {})",
                 difference, p2.value_hpa, p1.value_hpa
             );
             difference.abs() < 10
         })
         .filter_ordered(|p: &Pressure| p.value_hpa > 1000) // Filter by pressure value
         .throttle(Duration::from_millis(750));
-    println!(
-        "✓ Pressure: distinct_until_changed_by -> filter_ordered(>1000hPa) -> throttle(750ms)"
-    );
+    info!("Pressure: distinct_until_changed_by -> filter_ordered(>1000hPa) -> throttle(750ms)");
 
     // Humidity stream: window_by_count -> skip_items -> sample
     let humidity_stream = humidity_rx
@@ -60,9 +59,9 @@ pub async fn fusion_task(
         .window_by_count::<EmbassyTimestamped<Vec<Humidity>>>(2) // Batch into pairs
         .skip_items(1) // Skip first window (only 1 item)
         .sample(Duration::from_millis(100));
-    println!("✓ Humidity: window_by_count(2) -> skip_items(1) -> sample(100ms)");
+    info!("Humidity: window_by_count(2) -> skip_items(1) -> sample(100ms)");
 
-    println!("\n📡 Merging streams with stateful aggregation...\n");
+    info!("\nMerging streams with stateful aggregation...\n");
 
     // Merge streams with shared state accumulation
     let merged = MergedStream::seed::<EmbassyTimestamped<SensorAggregate>>(SensorAggregate::new())
@@ -98,7 +97,7 @@ pub async fn fusion_task(
     loop {
         // Check cancellation
         if _cancel.is_cancelled() {
-            println!("\n🔄 Fusion task cancelled");
+            info!("\nFusion task cancelled");
             break;
         }
 
@@ -108,16 +107,14 @@ pub async fn fusion_task(
         {
             Ok(Some(StreamItem::Value(aggregate))) => {
                 if aggregate.value.is_complete() {
-                    println!("✅ Complete sensor aggregate received {}", aggregate.value);
+                    info!("Complete sensor aggregate received: {}", aggregate.value);
                 }
-
-                println!();
             }
             Ok(Some(StreamItem::Error(e))) => {
-                println!("Error: {}", e);
+                warn!("Error: {}", e);
             }
             Ok(None) => {
-                println!("\n🔄 Stream ended");
+                info!("\nStream ended");
                 break;
             }
             Err(_) => continue, // Timeout, check cancellation
