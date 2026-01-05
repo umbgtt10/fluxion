@@ -11,11 +11,11 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 - ✅ **smol** - All operators
 - ✅ **WASM** (browser) - All operators
 - ✅ **async-std** (deprecated) - All operators
-- ⚡ **Embassy** (embedded/no_std) - 25/27 operators (subscribe_latest and partition coming in v0.9.0)
+- ⚡ **Embassy** (embedded/no_std) - 24/27 operators (subscribe_latest, partition, and share coming in v0.9.0)
 
 **Time-based operators** use the `Timer` trait abstraction for cross-runtime compatibility. All 5 time operators (debounce, throttle, delay, sample, timeout) work on all runtimes including Embassy.
 
-**Task spawning operators** (subscribe_latest, partition) currently require std runtimes. **Version 0.9.0** will introduce `TaskSpawner` abstraction enabling these operators on Embassy, making Fluxion the **only reactive streams library supporting all operators from servers to microcontrollers**.
+**Task spawning operators** (subscribe_latest, partition, share) currently require std runtimes. **Version 0.9.0** will introduce `TaskSpawner` abstraction enabling these operators on Embassy, making Fluxion the **only reactive streams library supporting all operators from servers to microcontrollers**.
 
 ## Quick Reference Table
 

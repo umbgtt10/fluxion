@@ -35,7 +35,7 @@ Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal order
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
 - ✅ **Well Tested**: 990+ tests with comprehensive coverage (Tokio + WASM + Smol + async-std + Embassy)
-- ⚠️ **Known Limitations**: See [Known Limitations & Alternatives](docs/KNOWN_LIMITATIONS.md) - 25/27 operators work everywhere, with documented workarounds
+- ⚠️ **Known Limitations**: See [Known Limitations & Alternatives](docs/KNOWN_LIMITATIONS.md) - 24/27 operators work everywhere, with documented workarounds
 - 🚀 **Future Architecture**: See [Runtime Isolation Architecture](docs/FUTURE_ARCHITECTURE.md) - v0.9.0 will solve all limitations with runtime-specific crates
 
 ### 📋 Independent Code Reviews

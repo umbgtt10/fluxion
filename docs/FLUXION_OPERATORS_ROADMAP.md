@@ -6,8 +6,8 @@ This document tracks future operator additions and runtime capability enhancemen
 
 **Implemented:** 27 operators across 5 runtimes
 - ✅ All 27 operators on std runtimes (Tokio, smol, async-std, WASM)
-- ✅ 25/27 operators on Embassy (embedded/no_std)
-- ⏳ 2 operators pending TaskSpawner abstraction (subscribe_latest, partition)
+- ✅ 24/27 operators on Embassy (embedded/no_std)
+- ⏳ 3 operators pending TaskSpawner abstraction (subscribe_latest, partition, share)
 
 ## Version 0.9.0 - Complete Embassy Integration 🎯
 
@@ -19,6 +19,7 @@ Mirrors the proven `Timer` trait pattern for task spawning across all runtimes.
 **Enables:**
 - ✅ `subscribe_latest` on Embassy with spawner injection
 - ✅ `partition` on Embassy with spawner injection
+- ✅ `share` on Embassy with spawner injection
 - ✅ All 27 operators work everywhere (servers to microcontrollers)
 
 **Competitive Advantage:**

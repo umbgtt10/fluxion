@@ -14,10 +14,10 @@ The workspace restructuring introduces **runtime isolation** - separating implem
 3. ✅ `subscribe_latest`/`partition` work in Embassy
 
 **Key Insight:** The root cause of all limitations is **feature-gated implementations sharing a single trait signature**. Runtime-specific crates allow **different trait signatures per runtime**.
-
+**Note:** v0.7.1 successfully validated Embassy runtime on ARM Cortex-M4F in QEMU, demonstrating that current workarounds (MergedStream pattern) are production-ready. The v0.9.0 architecture will eliminate the need for workarounds entirely.
 ---
 
-## Current Architecture (v0.7.0)
+## Current Architecture (v0.7.1)
 
 ```
 fluxion-stream-time/
@@ -116,6 +116,95 @@ impl Runtime for EmbassyRuntime {
 
 ---
 
+## Embassy Spawner Strategy
+
+### The Challenge
+
+Embassy is unique among supported runtimes: the spawner comes from the executor (provided to `main()`) rather than being globally available. This requires a special initialization pattern.
+
+### The Solution: Feature-Gated Initialization
+
+```rust
+// fluxion-embassy/src/runtime.rs
+#[cfg(feature = "runtime-embassy")]
+thread_local! {
+    static SPAWNER: RefCell<Option<Spawner>> = RefCell::new(None);
+}
+
+#[cfg(feature = "runtime-embassy")]
+impl EmbassyRuntime {
+    /// Initialize Embassy runtime with spawner from main
+    ///
+    /// Must be called once before using operators that spawn tasks
+    /// (partition, subscribe_latest)
+    pub fn init(spawner: Spawner) {
+        SPAWNER.with(|s| {
+            if s.borrow().is_some() {
+                panic!("EmbassyRuntime::init() called twice!");
+            }
+            *s.borrow_mut() = Some(spawner);
+        });
+    }
+
+    pub(crate) fn spawner() -> Spawner {
+        SPAWNER.with(|s| {
+            s.borrow()
+                .clone()
+                .expect("EmbassyRuntime::init() must be called in main()")
+        })
+    }
+}
+
+pub struct EmbassyTaskSpawner;
+
+impl TaskSpawner for EmbassyTaskSpawner {
+    fn spawn<F: Future<Output = ()> + 'static>(future: F) {
+        let spawner = EmbassyRuntime::spawner();
+        spawner.spawn(future).ok();
+    }
+}
+```
+
+### User Experience
+
+```rust
+// Embassy: One-time initialization (feature-gated)
+#[embassy_executor::main]
+async fn main(spawner: Spawner) {
+    EmbassyRuntime::init(spawner);  // ← Single line of setup
+
+    // Now all operators work identically to other runtimes
+    stream
+        .partition(|x| *x > 10)
+        .subscribe_latest(handler)
+}
+
+// Tokio/smol/async-std: No initialization needed
+#[tokio::main]
+async fn main() {
+    // Just works - global spawner
+    stream
+        .partition(|x| *x > 10)
+        .subscribe_latest(handler)
+}
+```
+
+### Design Rationale
+
+**Why This Trade-Off is Optimal:**
+
+| Aspect | Impact |
+|--------|--------|
+| **Embassy users** | 1 line in `main()` - negligible cost |
+| **Other runtime users** | Zero awareness (feature-gated) |
+| **API uniformity** | After `init()`, identical operator APIs |
+| **Embassy philosophy** | Explicit initialization (idiomatic) |
+| **Future-proof** | Can deprecate if Embassy adds global spawning |
+
+**Key Insight:** The complexity is perfectly isolated behind the `#[cfg(feature = "runtime-embassy")]` gate. Non-Embassy users never see `init()` - it doesn't exist in their compilation.
+
+---
+
 ## Shared Implementation Pattern
 
 ### Generic Core (No cfg gates!)
@@ -202,7 +291,7 @@ where
 
 ### Problem 1: combine_latest in Embassy
 
-**Before (v0.7.0):**
+**Before (v0.7.1):**
 ```rust
 // ❌ Single trait, must work for both
 fn combine_latest<IS>(...)
@@ -226,7 +315,7 @@ fn combine_latest<IS>(...)  // No Send bound - Embassy doesn't need it
 
 ### Problem 2: Type Inference in Chains
 
-**Before (v0.7.0):**
+**Before (v0.7.1):**
 ```rust
 // Inconsistent return types
 fn throttle(...) -> impl Stream                // No Send
@@ -255,7 +344,7 @@ fn filter_ordered(...) -> impl Stream
 
 ### Problem 3: subscribe_latest in Embassy
 
-**Before (v0.7.0):**
+**Before (v0.7.1):**
 ```rust
 // Uses FluxionTask (global spawn) - doesn't work in Embassy
 fn subscribe_latest(self, handler: F) {
@@ -294,7 +383,7 @@ fn subscribe_latest(self, handler: F) {
 
 ## User Experience
 
-### Current (v0.7.0)
+### Current (v0.7.1)
 
 ```rust
 // User must pick runtime via feature flag
@@ -378,7 +467,7 @@ stream.combine_latest(...)  // ✅ Works everywhere
 
 ## Code Organization Comparison
 
-### Current (v0.7.0)
+### Current (v0.7.1)
 
 ```
 Per operator (e.g., throttle):
@@ -520,7 +609,7 @@ After completion, verify:
 **Import paths change:**
 
 ```rust
-// Before (v0.7.0)
+// Before (v0.7.1)
 use fluxion_stream::*;
 use fluxion_stream_time::*;
 
@@ -531,7 +620,7 @@ use fluxion_tokio::*;  // Or fluxion_embassy, fluxion_wasm, etc.
 **Dependency changes:**
 
 ```toml
-# Before (v0.7.0)
+# Before (v0.7.1)
 [dependencies]
 fluxion-rx = { version = "0.7", features = ["runtime-tokio"] }
 
@@ -588,6 +677,106 @@ Users can migrate at their own pace over 1-2 release cycles.
 **Innovation:** Same trait name (`ThrottleExt`) in different crates = different types.
 
 **Benefit:** Clean imports, no naming conflicts, natural Rust idioms.
+
+### 4. Generic Test Core Pattern
+
+**Problem:** v0.7.1 has ~8,000 lines of duplicated test code across 4 runtimes.
+
+**Solution:** Follow the same pattern as operators - generic test implementations with runtime-specific wrappers.
+
+#### Current Test Duplication (v0.7.1)
+
+```
+fluxion-stream-time/tests/
+├── tokio/
+│   ├── debounce_test.rs      (110 lines)
+│   ├── throttle_test.rs      (105 lines)
+│   └── ... (5 operators)
+├── smol/
+│   └── ... (IDENTICAL logic, different attributes)
+├── async_std/
+│   └── ... (IDENTICAL logic, different attributes)
+└── embassy/
+    └── ... (IDENTICAL logic, different attributes)
+
+Total: ~2,000 lines × 4 runtimes = 8,000 lines
+```
+
+**Only differences:** Test attributes and timer instantiation.
+
+#### Future Test Architecture (v0.9.0)
+
+```
+fluxion-test-core/          ← NEW: Shared test implementations
+  ├── time_tests.rs         ← Generic test functions
+  ├── stream_tests.rs
+  └── lib.rs
+
+fluxion-tokio/tests/
+  └── time_operators.rs     ← Thin wrapper (10 lines per test)
+
+fluxion-embassy/tests/
+  └── time_operators.rs     ← Thin wrapper (12 lines per test)
+```
+
+#### Generic Test Implementation
+
+```rust
+// fluxion-test-core/src/time_tests.rs
+use fluxion_runtime::Runtime;
+
+/// Generic debounce test - works for ANY runtime
+pub async fn test_debounce_basic<R>()
+where
+    R: Runtime,
+    R::Timer: Default,
+{
+    let (tx, rx) = async_channel::unbounded();
+    let stream = rx.into_fluxion_stream::<R>();
+
+    let timer = R::Timer::default();
+    let debounced = stream.debounce_with_timer(Duration::from_millis(100), timer);
+
+    tx.send(StreamItem::Value(Sequenced::new(1))).await.unwrap();
+    tx.send(StreamItem::Value(Sequenced::new(2))).await.unwrap();
+
+    let results = unwrap_stream(debounced).await;
+    assert_eq!(results, vec![2]);
+}
+
+// Write once, test everywhere!
+```
+
+#### Runtime-Specific Wrapper
+
+```rust
+// fluxion-tokio/tests/time_operators.rs
+use fluxion_test_core::time_tests;
+use fluxion_tokio::TokioRuntime;
+
+#[tokio::test]
+async fn test_debounce_basic() {
+    time_tests::test_debounce_basic::<TokioRuntime>().await;
+}
+
+// fluxion-embassy/tests/time_operators.rs
+#[embassy_executor::test]
+async fn test_debounce_basic() {
+    EmbassyRuntime::init(spawner);  // Embassy-specific setup
+    time_tests::test_debounce_basic::<EmbassyRuntime>().await;
+}
+```
+
+#### Benefits
+
+| Metric | v0.7.1 | v0.9.0 | Improvement |
+|--------|--------|--------|-------------|
+| **Total test code** | 8,000 lines | 750 lines | **90% reduction** |
+| **Maintenance burden** | Update 4 copies | Update once | **4x easier** |
+| **Consistency guarantee** | Manual | Automatic | **Zero drift risk** |
+| **New runtime cost** | 2,000 lines | 50 lines | **97.5% less** |
+
+**Result:** Same benefits as operator implementations - write once, guarantee consistency, easy to extend.
 
 ---
 

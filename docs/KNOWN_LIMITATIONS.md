@@ -10,10 +10,10 @@
 Fluxion currently has three known limitations affecting specific runtimes (Embassy/WASM). All limitations have documented workarounds and will be resolved in the planned workspace restructuring (v0.9.0).
 
 **Summary:**
-- ✅ **25/27 operators** work in all 5 runtimes
+- ✅ **24/27 operators** work in all 5 runtimes
 - ⚠️ **2 operators** (combine_latest, with_latest_from) require workarounds in Embassy/WASM
 - ⚠️ **Type inference** occasionally requires explicit annotations when chaining
-- ⚠️ **Task spawning operators** (subscribe_latest, partition) unavailable in Embassy
+- ⚠️ **Task spawning operators** (subscribe_latest, partition, share) unavailable in Embassy
 
 ---
 
@@ -166,7 +166,7 @@ let processed = Box::pin(stream.debounce(Duration::from_millis(500)))
 
 ### Problem
 
-`subscribe_latest` and `partition` are unavailable in Embassy because they require task spawning.
+`subscribe_latest`, `partition`, and `share` are unavailable in Embassy because they require task spawning.
 
 ```rust
 // ❌ Not available in Embassy
@@ -252,6 +252,7 @@ spawner.spawn(async move {
 | `subscribe` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `subscribe_latest` | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `partition` | ✅ | ✅ | ✅ | ⚠️ | ❌ |
+| `share` | ✅ | ✅ | ✅ | ✅ | ❌ |
 
 **Legend:**
 - ✅ Works without workarounds
@@ -268,7 +269,7 @@ spawner.spawn(async move {
 
 **WASM users:** 2 operators need alternatives (combine_latest, with_latest_from).
 
-**Embassy users:** 4 operators need alternatives (combine_latest, with_latest_from, subscribe_latest, partition).
+**Embassy users:** 5 operators need alternatives (combine_latest, with_latest_from, subscribe_latest, partition, share).
 
 ### Workaround Quality
 

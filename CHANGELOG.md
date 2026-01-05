@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Documents 2 operators requiring alternatives in Embassy/WASM (`combine_latest`, `with_latest_from`)
     - Provides MergedStream pattern as production-ready workaround
     - Type inference guidance for operator chains
-    - Compatibility matrix showing 25/27 operators work everywhere
+    - Compatibility matrix showing 24/27 operators work everywhere
   - Added `FUTURE_ARCHITECTURE.md` - Technical architecture plan for v0.9.0 runtime isolation
     - Documents Runtime trait pattern with associated types (Mutex, Timer, Spawner, Instant)
     - Shows how runtime-specific crates solve all three current limitations
@@ -355,7 +355,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `alloc` feature enables heap allocation without full standard library
   - `futures::channel::mpsc` works in no_std with alloc feature
   - spawn-based operators require runtime support (tokio/smol/async-std)
-  - 25/27 operators fully functional on embedded targets with heap
+  - 24/27 operators fully functional on embedded targets with heap
 
 - **Operator Availability Matrix:**
   - **no_std + alloc (24):** All operators except `share()`, `partition()` and `subscribe_latest()`
