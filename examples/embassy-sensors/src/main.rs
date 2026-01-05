@@ -37,11 +37,13 @@ extern crate alloc;
 
 mod aggregate;
 mod fusion;
+mod heap;
 mod logging;
 mod sensors;
 mod time_driver;
 mod types;
 
+use crate::heap::init_heap;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use fluxion_core::CancellationToken;
@@ -51,23 +53,11 @@ use sensors::{humidity_sensor, pressure_sensor, temperature_sensor};
 // Required for panic handling
 use panic_semihosting as _;
 
-// Global allocator for heap allocations (64KB heap)
-use embedded_alloc::LlffHeap as Heap;
-
-#[global_allocator]
-static HEAP: Heap = Heap::empty();
-
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    // Initialize heap (64KB)
-    {
-        use core::mem::MaybeUninit;
-        const HEAP_SIZE: usize = 64 * 1024;
-        static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
-        unsafe { HEAP.init(core::ptr::addr_of_mut!(HEAP_MEM) as usize, HEAP_SIZE) }
-    }
+    init_heap();
 
-    info!("🚀 Embassy Sensor Fusion System Starting");
+    info!("Embassy Sensor Fusion System Starting");
     info!("Runtime: 30 seconds");
 
     // Initialize Time Driver (SysTick) for QEMU
