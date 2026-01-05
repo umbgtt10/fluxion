@@ -201,7 +201,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-core = "0.6.0"
+fluxion-core = "0.7.0"
 ```
 
 ## License

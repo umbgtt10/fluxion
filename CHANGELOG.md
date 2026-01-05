@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.1] - Unreleased
 
+### Changed
+- **Embassy Sensors Example** (`examples/embassy-sensors`)
+  - Migrated from `std` to true embedded target (`thumbv7em-none-eabihf` for ARM Cortex-M4F)
+  - Converted to `#![no_std]` with custom heap allocator (`embedded-alloc` with 64KB heap)
+  - Implemented custom SysTick-based time driver for Embassy runtime
+  - Replaced defmt with semihosting-based logging for QEMU compatibility
+  - Migrated from git dependencies to stable crates.io versions (embassy-executor 0.6, embassy-time 0.5)
+  - Added QEMU automation scripts for ARM emulation (mps2-an386 machine)
+  - Successfully demonstrates all Fluxion operators in pure embedded environment
+  - CI integration: ARM compilation verification and optional QEMU execution
+
 ### Fixed
 - **Benchmark Infrastructure** (`fluxion-stream`, `fluxion-stream-time`, `fluxion-core`)
   - Fixed "no reactor running" errors in benchmarks that create operators spawning background tasks

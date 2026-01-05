@@ -273,7 +273,7 @@ spawner.spawn(async move {
 ### Workaround Quality
 
 All workarounds provide equivalent functionality:
-- ✅ `MergedStream` is production-ready (used in embassy-sensors example, validated in QEMU in v0.7.1)
+- ✅ `MergedStream` is production-ready (used in embassy-sensors example, validated in QEMU on ARM Cortex-M4F in v0.7.1)
 - ✅ Manual polling patterns are standard Embassy practice
 - ✅ No functionality is truly missing, just requires more code
 
@@ -324,7 +324,7 @@ loop {
 ## Documentation References
 
 - **MergedStream API:** See [fluxion-stream README](../fluxion-stream/README.md#mergedstream)
-- **Embassy Example:** See [embassy-sensors](../examples/embassy-sensors/) for production patterns (v0.7.1 will include QEMU validation)
+- **Embassy Example:** See [embassy-sensors](../examples/embassy-sensors/) - complete no_std implementation validated in QEMU (ARM Cortex-M4F) as of v0.7.1
 - **Type Annotations Guide:** See composition tests in `fluxion-stream-time/tests/` for examples
 
 ---

@@ -13,7 +13,7 @@
 [![WASM](https://img.shields.io/badge/runtime-wasm-purple.svg)](https://webassembly.org/)
 [![Embassy](https://img.shields.io/badge/runtime-embassy-red.svg)](https://embassy.dev/)
 
-Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal ordering guarantees, supporting **5 async runtimes** (Tokio, smol, async-std, WASM, Embassy) through a unified API. It emphasizes correctness and reliability, backed by 900+ comprehensive tests, a 10.8:1 test-to-code ratio, zero warnings, zero unwraps, and no unsafe code. The library includes comprehensive performance benchmarks, is published on crates.io, and demonstrates production-quality Rust engineering.
+Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal ordering guarantees, supporting **5 async runtimes** (Tokio, smol, async-std, WASM, Embassy) through a unified API. It emphasizes correctness and reliability, backed by 990+ comprehensive tests, a 10.8:1 test-to-code ratio, zero warnings, zero unwraps, and no unsafe code. The library includes comprehensive performance benchmarks, is published on crates.io, and demonstrates production-quality Rust engineering.
 
 **📊 [See why Fluxion sets new standards for quality →](PITCH.md)**
 
@@ -60,7 +60,7 @@ Add Fluxion to your `Cargo.toml`:
 [dependencies]
 fluxion-rx = "0.7.0"
 fluxion-test-utils = "0.7.0"
-tokio = { version = "1.48.0", features = ["full"] }
+tokio = { version = "1.49.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
 
@@ -92,7 +92,8 @@ fluxion-rx = { version = "0.7.0", default-features = false, features = ["runtime
 
 ### Basic Usage
 
-```rustuse async_channel::unbounded;
+```rust
+use async_channel::unbounded;
 use fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
@@ -157,13 +158,14 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 [dependencies]
 fluxion-rx = "0.7.0"
 fluxion-test-utils = "0.7.0"
-tokio = { version = "1.48.0", features = ["full"] }
+tokio = { version = "1.49.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
 
 **Example: `combine_latest -> filter_ordered` - Sampling on Trigger Events**
 
-```rustuse async_channel::unbounded;
+```rust
+use async_channel::unbounded;
 use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
@@ -230,13 +232,14 @@ The `merge_with` operator enables elegant stateful stream processing by merging 
 [dependencies]
 fluxion-rx = "0.7.0"
 fluxion-test-utils = "0.7.0"
-tokio = { version = "1.48.0", features = ["full"] }
+tokio = { version = "1.49.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
 
 **Example: Event Sourcing with Repository Pattern**
 
-```rustuse fluxion_stream::MergedStream;
+```rust
+use fluxion_stream::MergedStream;
 use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
 
 #[tokio::test]
@@ -386,14 +389,16 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Sequential Processing:**
 
 **Dependencies:**
-```toml[dependencies]
+```toml
+[dependencies]
 fluxion-exec = "0.7.0"
-tokio = { version = "1.48.0", features = ["full"] }
-tokio-stream = "0.1.17"
+tokio = { version = "1.49.0", features = ["full"] }
+tokio-stream = "0.1.18"
 ```
 
 **Example:**
-```rustuse fluxion_core::CancellationToken;
+```rust
+use fluxion_core::CancellationToken;
 use fluxion_exec::subscribe::SubscribeExt;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
@@ -486,14 +491,16 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 **Latest-Value Processing (with auto-cancellation):**
 
 **Dependencies:**
-```toml[dependencies]
+```toml
+[dependencies]
 fluxion-exec = "0.7.0"
-tokio = { version = "1.48.0", features = ["full"] }
-tokio-stream = "0.1.17"
+tokio = { version = "1.49.0", features = ["full"] }
+tokio-stream = "0.1.18"
 ```
 
 **Example:**
-```rustuse fluxion_core::CancellationToken;
+```rust
+use fluxion_core::CancellationToken;
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
