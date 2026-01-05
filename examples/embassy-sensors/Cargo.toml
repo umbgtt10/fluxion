@@ -19,9 +19,9 @@ fluxion-stream = { path = "../../fluxion-stream", default-features = false, feat
 fluxion-stream-time = { path = "../../fluxion-stream-time", default-features = false, features = ["alloc", "runtime-embassy"] }
 
 # Embassy with proper Cortex-M configuration
-embassy-executor = { version = "0.6", features = ["arch-cortex-m", "executor-thread"] }
+embassy-executor = { version = "0.9.1", features = ["arch-cortex-m", "executor-thread"] }
 embassy-time = { version = "0.5", features = ["generic-queue-8", "tick-hz-1_000"] }
-embassy-time-driver = { version = "0.2" }
+embassy-time-driver = { version = "0.2.1" }
 
 # Async primitives
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
