@@ -73,15 +73,25 @@ async fn main(spawner: Spawner) {
     let (humidity_tx, humidity_rx) = async_channel::unbounded();
 
     // Spawn sensor tasks
-    spawner.spawn(temperature_sensor(temp_tx, cancel.clone()).expect("Failed to spawn task"));
-    spawner.spawn(pressure_sensor(pressure_tx, cancel.clone()).expect("Failed to spawn task"));
-    spawner.spawn(humidity_sensor(humidity_tx, cancel.clone()).expect("Failed to spawn task"));
+    spawner
+        .spawn(temperature_sensor(temp_tx, cancel.clone()))
+        .ok();
+    spawner
+        .spawn(pressure_sensor(pressure_tx, cancel.clone()))
+        .ok();
+    spawner
+        .spawn(humidity_sensor(humidity_tx, cancel.clone()))
+        .ok();
 
     // Spawn fusion task
-    spawner.spawn(
-        fusion_task(temp_rx, pressure_rx, humidity_rx, cancel.clone())
-            .expect("Failed to spawn task"),
-    );
+    spawner
+        .spawn(fusion_task(
+            temp_rx,
+            pressure_rx,
+            humidity_rx,
+            cancel.clone(),
+        ))
+        .ok();
 
     // Run for 30 seconds
     Timer::after(Duration::from_secs(30)).await;

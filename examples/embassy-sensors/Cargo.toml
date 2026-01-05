@@ -18,10 +18,10 @@ fluxion-core = { path = "../../fluxion-core", default-features = false, features
 fluxion-stream = { path = "../../fluxion-stream", default-features = false, features = ["alloc"] }
 fluxion-stream-time = { path = "../../fluxion-stream-time", default-features = false, features = ["alloc", "runtime-embassy"] }
 
-# Embassy with proper Cortex-M configuration (all from git for compatibility)
-embassy-executor = { git = "https://github.com/embassy-rs/embassy", features = ["arch-cortex-m", "executor-thread"] }
-embassy-time = { git = "https://github.com/embassy-rs/embassy", features = ["generic-queue-8", "tick-hz-1_000"] }
-embassy-time-driver = { git = "https://github.com/embassy-rs/embassy" }
+# Embassy with proper Cortex-M configuration
+embassy-executor = { version = "0.6", features = ["arch-cortex-m", "executor-thread"] }
+embassy-time = { version = "0.5", features = ["generic-queue-8", "tick-hz-1_000"] }
+embassy-time-driver = { version = "0.2" }
 
 # Async primitives
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
@@ -38,11 +38,6 @@ cortex-m-semihosting = "0.5"
 defmt = "1.0.1"
 panic-semihosting = "0.6"
 embedded-alloc = "0.7.0"
-
-# Patch to use git version of embassy-time for all dependencies
-[patch.crates-io]
-embassy-time = { git = "https://github.com/embassy-rs/embassy" }
-embassy-executor = { git = "https://github.com/embassy-rs/embassy" }
 
 [build-dependencies]
 # No build dependencies needed currently
