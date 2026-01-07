@@ -641,6 +641,25 @@ The **[legacy-integration](examples/legacy-integration/)** example demonstrates 
 
 Run it with: `cargo run --bin legacy-integration`
 
+#### Embassy Sensors (Embedded no_std)
+
+The **[embassy-sensors](examples/embassy-sensors/)** example demonstrates Fluxion in a pure `no_std` embedded environment:
+
+- **Pure no_std**: Runs without standard library on ARM Cortex-M4F
+- **Embassy runtime**: Async embedded runtime with custom SysTick timer driver
+- **Sensor fusion**: Three concurrent sensor streams (temperature, pressure, humidity)
+- **Stateful aggregation**: Uses `merge_with` to combine sensor readings
+- **Time operators**: Debounce, throttle, sample, window_by_count all working
+- **QEMU emulation**: No physical hardware needed for testing
+
+**Why this example matters:**
+- Proves Fluxion works in resource-constrained embedded environments
+- Demonstrates custom timer trait implementation for new runtimes
+- Shows reactive stream processing patterns for IoT/embedded applications
+- Validates `no_std` + `alloc` compatibility with 64KB heap
+
+Run it with: `.\scripts\run_qemu.ps1` (from `examples/embassy-sensors/`)
+
 ### 🔧 API Documentation
 
 Generate and browse full API documentation:

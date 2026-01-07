@@ -15,7 +15,7 @@ Fluxion represents **exceptional software engineering** in the Rust reactive str
 - ✅ **Production-Ready Quality**: Zero warnings, zero panics, comprehensive error handling
 - ✅ **Temporal Ordering Guarantees**: First-class timestamp support with mathematically verified merge algorithms
 - ✅ **True Multi-Runtime Support**: 5 runtimes supported **out-of-the-box** (Tokio, smol, async-std, WASM, Embassy) - not documented "you can do it yourself"
-- ✅ **Outstanding Test Coverage**: 95.26% with 46,148 test LOC across 3 runtime environments
+- ✅ **Outstanding Test Coverage**: 95.26% with 46,148 test LOC across 5 runtime environments
 - ✅ **Educational Reference**: Demonstrates best practices for workspace design, error handling, and async testing
 
 **Comparison with RxRust:**
