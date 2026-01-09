@@ -4,9 +4,9 @@
 
 use super::raw_streams::Sensors;
 use super::sensor_value::SensorValue;
+use fluxion_runtime::impls::wasm::WasmTimer;
+use fluxion_runtime::timer::Timer;
 use fluxion_stream::{FluxionShared, IntoFluxionStream, ShareExt};
-use fluxion_stream_time::runtimes::wasm_implementation::WasmTimer;
-use fluxion_stream_time::timer::Timer;
 
 /// Container for three shared timestamped sensor streams (Phase 2)
 ///
@@ -34,7 +34,7 @@ impl SensorStreams {
     /// let streams = SensorStreams::new(sensors);
     /// ```
     pub fn new(sensors: Sensors) -> Self {
-        let timer = WasmTimer::new();
+        let timer = WasmTimer;
 
         // Create shared stream for sensor 1 (values 1-9)
         let timer1 = timer.clone();

@@ -8,7 +8,7 @@
     feature = "runtime-smol",
     feature = "runtime-async-std"
 ))]
-use std::sync::Arc;
+use alloc::sync::Arc;
 
 #[cfg(any(
     feature = "runtime-tokio",

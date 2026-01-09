@@ -3,7 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 #[cfg(feature = "runtime-wasm")]
-use std::{sync::Arc, time::Duration};
+use alloc::sync::Arc;
+
+#[cfg(feature = "runtime-wasm")]
+use core::{ops, time::Duration};
 
 #[cfg(feature = "runtime-wasm")]
 use crate::{runtime::Runtime, timer::Timer};
@@ -31,7 +34,7 @@ impl WasmInstant {
 }
 
 #[cfg(feature = "runtime-wasm")]
-impl std::ops::Sub for WasmInstant {
+impl ops::Sub for WasmInstant {
     type Output = Duration;
 
     fn sub(self, other: WasmInstant) -> Duration {
@@ -40,7 +43,7 @@ impl std::ops::Sub for WasmInstant {
 }
 
 #[cfg(feature = "runtime-wasm")]
-impl std::ops::Add<Duration> for WasmInstant {
+impl ops::Add<Duration> for WasmInstant {
     type Output = WasmInstant;
 
     fn add(self, duration: Duration) -> WasmInstant {
@@ -49,7 +52,7 @@ impl std::ops::Add<Duration> for WasmInstant {
 }
 
 #[cfg(feature = "runtime-wasm")]
-impl std::ops::Sub<Duration> for WasmInstant {
+impl ops::Sub<Duration> for WasmInstant {
     type Output = WasmInstant;
 
     fn sub(self, duration: Duration) -> WasmInstant {
@@ -58,14 +61,14 @@ impl std::ops::Sub<Duration> for WasmInstant {
 }
 
 #[cfg(feature = "runtime-wasm")]
-impl std::ops::AddAssign<Duration> for WasmInstant {
+impl ops::AddAssign<Duration> for WasmInstant {
     fn add_assign(&mut self, duration: Duration) {
         self.0 += duration.as_millis() as u64;
     }
 }
 
 #[cfg(feature = "runtime-wasm")]
-impl std::ops::SubAssign<Duration> for WasmInstant {
+impl ops::SubAssign<Duration> for WasmInstant {
     fn sub_assign(&mut self, duration: Duration) {
         self.0 = self.0.saturating_sub(duration.as_millis() as u64);
     }
