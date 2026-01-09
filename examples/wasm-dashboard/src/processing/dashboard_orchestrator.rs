@@ -6,7 +6,7 @@ use crate::gui::DashboardSink;
 use crate::processing::{StreamProvider, WasmStream};
 use crate::source::SensorValue;
 use fluxion_core::{CancellationToken, FluxionTask, StreamItem};
-use fluxion_exec::SubscribeExt;
+use fluxion_exec::{SubscribeExt, SubscribeLatestExt};
 use fluxion_stream::fluxion_shared::SharedBoxStream;
 use fluxion_stream_time::WasmTimestamped;
 use std::cell::RefCell;

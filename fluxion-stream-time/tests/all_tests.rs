@@ -3,7 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 // Embassy executor requires nightly for #[embassy_executor::task] macro
-// Only enable this feature when runtime-embassy is active AND we're allowing unstable features
 // CI should skip --all-features on stable, or explicitly exclude runtime-embassy
 #![cfg_attr(feature = "runtime-embassy", allow(internal_features))]
 #![cfg_attr(feature = "runtime-embassy", feature(impl_trait_in_assoc_type))]

@@ -22,6 +22,7 @@
 			"--exclude=stream-aggregation",
 			"--exclude=legacy-integration",
 			"--exclude=embassy-sensors"
-		]
+		],
+		"rust-analyzer.cargo.features": "all"
 	}
 }
