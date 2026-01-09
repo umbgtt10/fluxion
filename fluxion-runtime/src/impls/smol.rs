@@ -9,6 +9,7 @@ use std::sync::Arc;
 use crate::{runtime::Runtime, timer::Timer};
 
 #[cfg(feature = "runtime-smol")]
+#[derive(Debug)]
 pub struct SmolRuntime;
 
 #[cfg(feature = "runtime-smol")]
@@ -19,7 +20,7 @@ impl Runtime for SmolRuntime {
 }
 
 #[cfg(feature = "runtime-smol")]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct SmolTimer;
 
 #[cfg(feature = "runtime-smol")]

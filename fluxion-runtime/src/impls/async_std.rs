@@ -9,6 +9,7 @@ use std::sync::Arc;
 use crate::{runtime::Runtime, timer::Timer};
 
 #[cfg(feature = "runtime-async-std")]
+#[derive(Debug)]
 pub struct AsyncStdRuntime;
 
 #[cfg(feature = "runtime-async-std")]
@@ -19,7 +20,7 @@ impl Runtime for AsyncStdRuntime {
 }
 
 #[cfg(feature = "runtime-async-std")]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct AsyncStdTimer;
 
 #[cfg(feature = "runtime-async-std")]

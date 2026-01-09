@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use core::clone::Clone;
+use core::marker::Sized;
 use core::ops::{Deref, DerefMut};
 
 pub trait MutexLike<T: ?Sized>: Clone {

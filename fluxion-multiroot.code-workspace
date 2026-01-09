@@ -23,6 +23,7 @@
 			"--exclude=legacy-integration",
 			"--exclude=embassy-sensors"
 		],
-		"rust-analyzer.cargo.features": "all"
+		"rust-analyzer.cargo.features": "all",
+		"rust-analyzer.check.allTargets": true
 	}
 }

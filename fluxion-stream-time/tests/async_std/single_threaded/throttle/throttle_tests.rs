@@ -3,13 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::async_std::helpers::{person_alice, test_channel, unwrap_stream, Person};
-
-use fluxion_stream_time::runtimes::AsyncStdTimer;
-use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::{prelude::*, InstantTimestamped};
+use fluxion_runtime::impls::async_std::AsyncStdTimer;
+use fluxion_runtime::timer::Timer;
+use fluxion_stream_time::{AsyncStdTimestamped, ThrottleExt};
 use std::time::Duration;
-
-type AsyncStdTimestamped<T> = InstantTimestamped<T, AsyncStdTimer>;
 
 #[async_std::test]
 async fn test_throttle_basic() {

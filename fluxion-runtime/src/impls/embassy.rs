@@ -9,12 +9,33 @@ use crate::{runtime::Runtime, timer::Timer};
 extern crate alloc;
 
 #[cfg(feature = "runtime-embassy")]
+use core::prelude::rust_2024::derive;
+
+#[cfg(feature = "runtime-embassy")]
+use core::marker::{Copy, Sized};
+
+#[cfg(feature = "runtime-embassy")]
+use core::clone::Clone;
+
+#[cfg(feature = "runtime-embassy")]
+use core::fmt::Debug;
+
+#[cfg(feature = "runtime-embassy")]
+use core::default::Default;
+
+#[cfg(feature = "runtime-embassy")]
+use core::cmp::{Eq, Ord, PartialEq, PartialOrd};
+
+#[cfg(feature = "runtime-embassy")]
 use crate::mutex::MutexLike;
 
 #[cfg(feature = "runtime-embassy")]
-impl<T: ?Sized> MutexLike<T> for alloc::sync::Arc<spin::Mutex<T>> {
+use spin::{Mutex, MutexGuard};
+
+#[cfg(feature = "runtime-embassy")]
+impl<T: ?Sized> MutexLike<T> for alloc::sync::Arc<Mutex<T>> {
     type Guard<'a>
-        = spin::MutexGuard<'a, T>
+        = MutexGuard<'a, T>
     where
         Self: 'a,
         T: 'a;
@@ -23,20 +44,21 @@ impl<T: ?Sized> MutexLike<T> for alloc::sync::Arc<spin::Mutex<T>> {
     where
         T: Sized,
     {
-        alloc::sync::Arc::new(spin::Mutex::new(value))
+        alloc::sync::Arc::new(Mutex::new(value))
     }
 
     fn lock(&self) -> Self::Guard<'_> {
-        self.as_ref().lock()
+        (**self).lock()
     }
 }
 
 #[cfg(feature = "runtime-embassy")]
+#[derive(Debug)]
 pub struct EmbassyRuntime;
 
 #[cfg(feature = "runtime-embassy")]
 impl Runtime for EmbassyRuntime {
-    type Mutex<T: ?Sized> = alloc::sync::Arc<spin::Mutex<T>>;
+    type Mutex<T: ?Sized> = alloc::sync::Arc<Mutex<T>>;
     type Timer = EmbassyTimer;
     type Instant = EmbassyInstant;
 }
@@ -108,7 +130,7 @@ impl core::ops::SubAssign<core::time::Duration> for EmbassyInstant {
 }
 
 #[cfg(feature = "runtime-embassy")]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct EmbassyTimer;
 
 #[cfg(feature = "runtime-embassy")]

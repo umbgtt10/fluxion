@@ -2,8 +2,11 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use core::clone::Clone;
+use core::cmp::Ord;
 use core::fmt::Debug;
 use core::future::Future;
+use core::marker::{Copy, Send, Sync};
 use core::ops::{Add, Sub};
 use core::time::Duration;
 
@@ -19,10 +22,7 @@ pub trait Timer: Clone + Send + Sync + Debug + 'static {
         + Sub<Duration, Output = Self::Instant>
         + Sub<Self::Instant, Output = Duration>;
 
-    /// Creates a future that sleeps for the specified duration.
-    /// Use this in poll-based contexts where you need to store and poll the future.
     fn sleep_future(&self, duration: Duration) -> Self::Sleep;
 
-    /// Returns the current instant.
     fn now(&self) -> Self::Instant;
 }

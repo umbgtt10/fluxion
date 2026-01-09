@@ -3,10 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::embassy::helpers::{person_alice, test_channel, unwrap_stream, Person};
-use embassy_time::Timer;
-use fluxion_stream_time::runtimes::EmbassyTimerImpl;
-use fluxion_stream_time::timer::Timer as TimerTrait;
-use fluxion_stream_time::{prelude::*, EmbassyTimestamped};
+use fluxion_runtime::impls::embassy::EmbassyTimer;
+use fluxion_runtime::timer::Timer;
+use fluxion_stream_time::{DebounceExt, EmbassyTimestamped};
 use std::panic;
 use std::time::Duration;
 
@@ -34,7 +33,7 @@ fn test_debounce_basic() {
 #[embassy_executor::task]
 async fn run_test() {
     // Arrange
-    let timer = EmbassyTimerImpl;
+    let timer = EmbassyTimer;
     let (tx, stream) = test_channel::<EmbassyTimestamped<Person>>();
     let mut debounced = stream.debounce(Duration::from_millis(100));
 
@@ -42,7 +41,7 @@ async fn run_test() {
     tx.unbounded_send(EmbassyTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
-    Timer::after(embassy_time::Duration::from_millis(150)).await;
+    embassy_time::Timer::after(embassy_time::Duration::from_millis(150)).await;
 
     // Assert
     let result = unwrap_stream(&mut debounced, 200).await;

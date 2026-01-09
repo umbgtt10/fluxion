@@ -9,6 +9,7 @@ use std::{sync::Arc, time::Duration};
 use crate::{runtime::Runtime, timer::Timer};
 
 #[cfg(feature = "runtime-wasm")]
+#[derive(Debug)]
 pub struct WasmRuntime;
 
 #[cfg(feature = "runtime-wasm")]
@@ -71,7 +72,7 @@ impl std::ops::SubAssign<Duration> for WasmInstant {
 }
 
 #[cfg(feature = "runtime-wasm")]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct WasmTimer;
 
 #[cfg(feature = "runtime-wasm")]

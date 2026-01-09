@@ -31,7 +31,12 @@ pub mod async_std;
 ))]
 pub mod smol;
 
-#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
+#[cfg(all(
+    feature = "runtime-wasm",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-async-std"),
+    not(feature = "runtime-smol")
+))]
 pub mod wasm;
 
 #[cfg(all(

@@ -22,10 +22,13 @@ use event_listener::{Event, EventListener};
 ///
 /// # Example
 ///
-/// ```
+/// ```rust,no_run
+/// # #[cfg(not(target_arch = "wasm32"))]
 /// use fluxion_core::CancellationToken;
 ///
-/// # async fn example() {
+/// # #[cfg(not(target_arch = "wasm32"))]
+/// # #[tokio::main]
+/// # async fn main() {
 /// let token = CancellationToken::new();
 /// let token_clone = token.clone();
 ///
@@ -37,6 +40,8 @@ use event_listener::{Event, EventListener};
 /// // Cancel from another task
 /// token.cancel();
 /// # }
+/// # #[cfg(target_arch = "wasm32")]
+/// # fn main() {}
 /// ```
 #[derive(Clone, Debug)]
 pub struct CancellationToken {
@@ -99,10 +104,13 @@ impl CancellationToken {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```rust,no_run
+    /// # #[cfg(not(target_arch = "wasm32"))]
     /// use fluxion_core::CancellationToken;
     ///
-    /// # async fn example() {
+    /// # #[cfg(not(target_arch = "wasm32"))]
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// let token = CancellationToken::new();
     /// let token_clone = token.clone();
     ///
@@ -113,6 +121,8 @@ impl CancellationToken {
     ///
     /// token.cancel();
     /// # }
+    /// # #[cfg(target_arch = "wasm32")]
+    /// # fn main() {}
     /// ```
     pub fn cancelled(&self) -> Cancelled<'_> {
         Cancelled {

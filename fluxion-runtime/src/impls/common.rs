@@ -16,6 +16,14 @@ use std::sync::Arc;
     feature = "runtime-smol",
     feature = "runtime-async-std"
 ))]
+use parking_lot::{Mutex, MutexGuard};
+
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-wasm",
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 use crate::mutex::MutexLike;
 
 #[cfg(any(
@@ -24,9 +32,9 @@ use crate::mutex::MutexLike;
     feature = "runtime-smol",
     feature = "runtime-async-std"
 ))]
-impl<T: ?Sized> MutexLike<T> for Arc<parking_lot::Mutex<T>> {
+impl<T: ?Sized> MutexLike<T> for Arc<Mutex<T>> {
     type Guard<'a>
-        = parking_lot::MutexGuard<'a, T>
+        = MutexGuard<'a, T>
     where
         Self: 'a,
         T: 'a;
@@ -35,7 +43,7 @@ impl<T: ?Sized> MutexLike<T> for Arc<parking_lot::Mutex<T>> {
     where
         T: Sized,
     {
-        Arc::new(parking_lot::Mutex::new(value))
+        Arc::new(Mutex::new(value))
     }
 
     fn lock(&self) -> Self::Guard<'_> {

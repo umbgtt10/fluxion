@@ -259,13 +259,27 @@ Invoke-StepAction "Run embassy-sensors example (ARM Cortex-M4F in QEMU)" {
     & $QemuPath @QemuArgs 2>&1
   } -ArgumentList $qemuCheck.Path, (,$qemuArgs)
 
-  $completed = Wait-Job -Job $job -Timeout 35
+  # Poll for output in real-time
+  $timeout = 35
+  $elapsed = 0
+  $pollInterval = 0.1
 
-  # Always retrieve output, whether completed or timed out
+  while ($elapsed -lt $timeout -and $job.State -eq 'Running') {
+    $output = Receive-Job -Job $job
+    if ($output) {
+      Write-Output $output
+    }
+    Start-Sleep -Milliseconds ($pollInterval * 1000)
+    $elapsed += $pollInterval
+  }
+
+  # Get any remaining output
   $output = Receive-Job -Job $job
   if ($output) {
     Write-Output $output
   }
+
+  $completed = ($job.State -eq 'Completed')
 
   if ($completed) {
     Write-Output "QEMU execution completed."

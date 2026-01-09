@@ -33,11 +33,11 @@
 //!
 //! ```rust,no_run
 //! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-//! use fluxion_stream_time::prelude::*;
+//! use fluxion_stream_time::{DebounceExt, DelayExt, TokioTimestamped};
 //! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-//! use fluxion_stream_time::{TokioTimestamped, TokioTimer};
+//! use fluxion_runtime::impls::tokio::TokioTimer;
 //! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-//! use fluxion_stream_time::timer::Timer;
+//! use fluxion_runtime::timer::Timer;
 //! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 //! use fluxion_core::StreamItem;
 //! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
@@ -78,14 +78,10 @@ extern crate alloc;
 mod debounce;
 mod delay;
 mod instant_timestamped;
-pub mod runtimes;
 
 mod sample;
 mod throttle;
 mod timeout;
-pub mod timer;
-
-pub mod prelude;
 
 pub use debounce::DebounceExt;
 pub use delay::DelayExt;
@@ -95,31 +91,76 @@ pub use throttle::ThrottleExt;
 pub use timeout::TimeoutExt;
 
 #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-pub use runtimes::TokioTimer;
+pub use fluxion_runtime::impls::tokio::TokioRuntime;
 
 #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-pub type TokioTimestamped<T> = InstantTimestamped<T, TokioTimer>;
+pub type TokioTimestamped<T> = InstantTimestamped<T, TokioRuntime>;
 
 #[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
-pub use runtimes::AsyncStdTimer;
+pub use fluxion_runtime::impls::async_std::AsyncStdRuntime;
 
 #[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
-pub type AsyncStdTimestamped<T> = InstantTimestamped<T, AsyncStdTimer>;
+pub type AsyncStdTimestamped<T> = InstantTimestamped<T, AsyncStdRuntime>;
 
 #[cfg(all(feature = "runtime-smol", not(target_arch = "wasm32")))]
-pub use runtimes::SmolTimer;
+pub use fluxion_runtime::impls::smol::SmolRuntime;
 
 #[cfg(all(feature = "runtime-smol", not(target_arch = "wasm32")))]
-pub type SmolTimestamped<T> = InstantTimestamped<T, SmolTimer>;
+pub type SmolTimestamped<T> = InstantTimestamped<T, SmolRuntime>;
 
-#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
-pub use runtimes::wasm_implementation::WasmTimer;
+#[cfg(all(
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-async-std"),
+    not(feature = "runtime-embassy"),
+    feature = "runtime-wasm"
+))]
+pub use fluxion_runtime::impls::wasm::WasmRuntime;
 
-#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
-pub type WasmTimestamped<T> = InstantTimestamped<T, WasmTimer>;
+#[cfg(all(
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-async-std"),
+    not(feature = "runtime-embassy"),
+    feature = "runtime-wasm"
+))]
+pub type WasmTimestamped<T> = InstantTimestamped<T, WasmRuntime>;
 
 #[cfg(feature = "runtime-embassy")]
-pub use runtimes::EmbassyTimerImpl;
+pub use fluxion_runtime::impls::embassy::EmbassyRuntime;
 
 #[cfg(feature = "runtime-embassy")]
-pub type EmbassyTimestamped<T> = InstantTimestamped<T, EmbassyTimerImpl>;
+pub type EmbassyTimestamped<T> = InstantTimestamped<T, EmbassyRuntime>;
+
+#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+pub type DefaultRuntime = fluxion_runtime::impls::tokio::TokioRuntime;
+
+#[cfg(all(
+    not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))),
+    feature = "runtime-smol"
+))]
+pub type DefaultRuntime = fluxion_runtime::impls::smol::SmolRuntime;
+
+#[cfg(all(
+    not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))),
+    not(feature = "runtime-smol"),
+    feature = "runtime-async-std"
+))]
+pub type DefaultRuntime = fluxion_runtime::impls::async_std::AsyncStdRuntime;
+
+#[cfg(all(
+    not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))),
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-async-std"),
+    feature = "runtime-embassy"
+))]
+pub type DefaultRuntime = fluxion_runtime::impls::embassy::EmbassyRuntime;
+
+#[cfg(all(
+    not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))),
+    not(feature = "runtime-smol"),
+    not(feature = "runtime-async-std"),
+    not(feature = "runtime-embassy"),
+    feature = "runtime-wasm"
+))]
+pub type DefaultRuntime = fluxion_runtime::impls::wasm::WasmRuntime;

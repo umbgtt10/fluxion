@@ -2,7 +2,14 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::timer::Timer;
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    feature = "runtime-embassy",
+    feature = "runtime-wasm"
+))]
+use crate::DefaultRuntime;
 use core::fmt::Debug;
 use core::future::Future;
 use core::pin::Pin;
@@ -13,6 +20,8 @@ use core::time::Duration;
 #[allow(unused_imports)]
 use alloc::boxed::Box;
 use fluxion_core::{Fluxion, HasTimestamp, StreamItem};
+use fluxion_runtime::runtime::Runtime;
+use fluxion_runtime::timer::Timer;
 use futures::Stream;
 use pin_project::pin_project;
 
@@ -20,12 +29,12 @@ use pin_project::pin_project;
 ///
 /// This trait allows any stream of `StreamItem<T>` where `T: Fluxion` to sample emissions
 /// at periodic intervals.
-pub trait SampleExt<T, TM>: Stream<Item = StreamItem<T>> + Sized
+pub trait SampleExt<T, R>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
-    TM: Timer<Instant = T::Timestamp>,
+    T::Inner: Clone + Debug + Send + Sync + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+    R: Runtime,
 {
     /// Samples the stream at periodic intervals.
     ///
@@ -44,8 +53,11 @@ where
     ///
     /// ```rust,no_run
     /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-    /// use fluxion_stream_time::{SampleExt, TokioTimestamped, TokioTimer};
-    /// use fluxion_stream_time::timer::Timer;
+    /// use fluxion_stream_time::{SampleExt, TokioTimestamped};
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+    /// use fluxion_runtime::impls::tokio::TokioTimer;
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+    /// use fluxion_runtime::timer::Timer;
     /// use fluxion_core::StreamItem;
     /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use fluxion_stream::prelude::*;
@@ -74,105 +86,24 @@ where
     fn sample(self, duration: Duration) -> impl Stream<Item = StreamItem<T>>;
 }
 
-#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-impl<S, T> SampleExt<T, crate::TokioTimer> for S
-where
-    S: Stream<Item = StreamItem<T>>,
-    T: Fluxion<Timestamp = std::time::Instant> + Clone,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn sample(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        Box::pin(SampleStream {
-            stream: self,
-            duration,
-            timer: crate::TokioTimer,
-            sleep: Some(crate::TokioTimer.sleep_future(duration)),
-            pending_value: None,
-            is_done: false,
-        })
-    }
-}
-
-#[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
-impl<S, T> SampleExt<T, crate::SmolTimer> for S
-where
-    S: Stream<Item = StreamItem<T>>,
-    T: Fluxion<Timestamp = std::time::Instant> + Clone,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn sample(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        Box::pin(SampleStream {
-            stream: self,
-            duration,
-            timer: crate::SmolTimer,
-            sleep: Some(crate::SmolTimer.sleep_future(duration)),
-            pending_value: None,
-            is_done: false,
-        })
-    }
-}
-
-#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
-impl<S, T> SampleExt<T, crate::runtimes::wasm_implementation::WasmTimer> for S
-where
-    S: Stream<Item = StreamItem<T>>,
-    T: Fluxion<Timestamp = crate::runtimes::wasm_implementation::WasmInstant> + Clone,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn sample(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        let timer = crate::runtimes::wasm_implementation::WasmTimer::new();
-        Box::pin(SampleStream {
-            stream: self,
-            duration,
-            timer: timer.clone(),
-            sleep: Some(timer.sleep_future(duration)),
-            pending_value: None,
-            is_done: false,
-        })
-    }
-}
-
-#[cfg(all(
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
     feature = "runtime-async-std",
-    not(feature = "runtime-tokio"),
-    not(feature = "runtime-smol")
-))]
-impl<S, T> SampleExt<T, crate::runtimes::AsyncStdTimer> for S
-where
-    S: Stream<Item = StreamItem<T>>,
-    T: Fluxion<Timestamp = std::time::Instant> + Clone,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn sample(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        Box::pin(SampleStream {
-            stream: self,
-            duration,
-            timer: crate::runtimes::AsyncStdTimer,
-            sleep: Some(crate::runtimes::AsyncStdTimer.sleep_future(duration)),
-            pending_value: None,
-            is_done: false,
-        })
-    }
-}
-
-#[cfg(all(
     feature = "runtime-embassy",
-    not(feature = "runtime-tokio"),
-    not(feature = "runtime-smol"),
-    not(feature = "runtime-async-std")
+    feature = "runtime-wasm"
 ))]
-impl<S, T> SampleExt<T, crate::runtimes::EmbassyTimerImpl> for S
+impl<S, T> SampleExt<T, DefaultRuntime> for S
 where
     S: Stream<Item = StreamItem<T>>,
-    T: Fluxion<Timestamp = crate::runtimes::EmbassyInstant> + Clone,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T: Fluxion<Timestamp = <DefaultRuntime as Runtime>::Instant>,
+    T::Inner: Clone + Debug + Send + Sync + Ord + Unpin + 'static,
 {
     fn sample(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        Box::pin(SampleStream {
+        Box::pin(SampleStream::<S, T, DefaultRuntime> {
             stream: self,
             duration,
-            timer: crate::runtimes::EmbassyTimerImpl,
-            sleep: Some(crate::runtimes::EmbassyTimerImpl.sleep_future(duration)),
+            sleep: Some(<DefaultRuntime as Runtime>::Timer::default().sleep_future(duration)),
             pending_value: None,
             is_done: false,
         })
@@ -180,26 +111,26 @@ where
 }
 
 #[pin_project]
-struct SampleStream<S, T, TM: Timer>
+struct SampleStream<S, T, R>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: HasTimestamp<Timestamp = TM::Instant>,
+    T: HasTimestamp<Timestamp = R::Instant>,
+    R: Runtime,
 {
     #[pin]
     stream: S,
     duration: Duration,
-    timer: TM,
     #[pin]
-    sleep: Option<TM::Sleep>,
+    sleep: Option<<R::Timer as Timer>::Sleep>,
     pending_value: Option<StreamItem<T>>,
     is_done: bool,
 }
 
-impl<S, T, TM> Stream for SampleStream<S, T, TM>
+impl<S, T, R> Stream for SampleStream<S, T, R>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: HasTimestamp<Timestamp = TM::Instant> + Clone,
-    TM: Timer,
+    T: HasTimestamp<Timestamp = R::Instant> + Clone,
+    R: Runtime,
 {
     type Item = StreamItem<T>;
 
@@ -241,7 +172,7 @@ where
                 Poll::Ready(_) => {
                     // Timer fired.
                     this.sleep
-                        .set(Some(this.timer.sleep_future(*this.duration)));
+                        .set(Some(R::Timer::default().sleep_future(*this.duration)));
 
                     if let Some(value) = this.pending_value.take() {
                         Poll::Ready(Some(value))

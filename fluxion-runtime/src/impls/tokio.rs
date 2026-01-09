@@ -9,6 +9,7 @@ use std::{sync::Arc, time::Duration};
 use crate::{runtime::Runtime, timer::Timer};
 
 #[cfg(feature = "runtime-tokio")]
+#[derive(Debug)]
 pub struct TokioRuntime;
 
 #[cfg(feature = "runtime-tokio")]
@@ -19,7 +20,7 @@ impl Runtime for TokioRuntime {
 }
 
 #[cfg(feature = "runtime-tokio")]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct TokioTimer;
 
 #[cfg(feature = "runtime-tokio")]

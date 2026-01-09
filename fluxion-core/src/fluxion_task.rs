@@ -32,10 +32,13 @@ use core::future::Future;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```rust,no_run
+/// # #[cfg(not(target_arch = "wasm32"))]
 /// use fluxion_core::FluxionTask;
+/// # #[cfg(not(target_arch = "wasm32"))]
 /// use futures::FutureExt;
 ///
+/// # #[cfg(not(target_arch = "wasm32"))]
 /// # #[tokio::main]
 /// # async fn main() {
 /// let task = FluxionTask::spawn(|cancel| async move {
@@ -51,6 +54,8 @@ use core::future::Future;
 /// // Task automatically cancels on drop
 /// drop(task);
 /// # }
+/// # #[cfg(target_arch = "wasm32")]
+/// # fn main() {}
 /// ```
 #[derive(Debug)]
 pub struct FluxionTask {

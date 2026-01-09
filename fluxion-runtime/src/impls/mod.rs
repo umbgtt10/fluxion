@@ -6,5 +6,9 @@ pub mod async_std;
 mod common;
 pub mod embassy;
 pub mod smol;
+
+#[cfg(not(target_arch = "wasm32"))]
 pub mod tokio;
+
+#[cfg(target_arch = "wasm32")]
 pub mod wasm;

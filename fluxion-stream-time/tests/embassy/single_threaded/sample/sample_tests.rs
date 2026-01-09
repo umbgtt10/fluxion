@@ -3,10 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::embassy::helpers::{person_alice, person_bob, test_channel, unwrap_stream, Person};
-use embassy_time::Timer;
-use fluxion_stream_time::runtimes::EmbassyTimerImpl;
-use fluxion_stream_time::timer::Timer as TimerTrait;
-use fluxion_stream_time::{prelude::*, EmbassyTimestamped};
+use fluxion_runtime::impls::embassy::EmbassyTimer;
+use fluxion_runtime::timer::Timer;
+use fluxion_stream_time::{EmbassyTimestamped, SampleExt};
 use std::panic;
 use std::time::Duration;
 
@@ -43,7 +42,7 @@ fn test_sample_basic() {
 #[embassy_executor::task]
 async fn test_impl() {
     // Arrange
-    let timer = EmbassyTimerImpl;
+    let timer = EmbassyTimer;
     let (tx, stream) = test_channel::<EmbassyTimestamped<Person>>();
     let mut sampled = stream.sample(Duration::from_millis(100));
 
@@ -51,11 +50,11 @@ async fn test_impl() {
     tx.unbounded_send(EmbassyTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
-    Timer::after(embassy_time::Duration::from_millis(50)).await;
+    embassy_time::Timer::after(embassy_time::Duration::from_millis(50)).await;
     tx.unbounded_send(EmbassyTimestamped::new(person_bob(), timer.now()))
         .unwrap();
 
-    Timer::after(embassy_time::Duration::from_millis(100)).await;
+    embassy_time::Timer::after(embassy_time::Duration::from_millis(100)).await;
 
     // Assert
     let result = unwrap_stream(&mut sampled, 200).await;

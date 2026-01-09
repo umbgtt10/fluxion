@@ -2,7 +2,14 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::timer::Timer;
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    feature = "runtime-embassy",
+    feature = "runtime-wasm"
+))]
+use crate::DefaultRuntime;
 use core::fmt::Debug;
 use core::future::Future;
 use core::pin::Pin;
@@ -13,6 +20,8 @@ use core::time::Duration;
 #[allow(unused_imports)]
 use alloc::boxed::Box;
 use fluxion_core::{Fluxion, HasTimestamp, StreamItem};
+use fluxion_runtime::runtime::Runtime;
+use fluxion_runtime::timer::Timer;
 use futures::Stream;
 use pin_project::pin_project;
 
@@ -20,12 +29,12 @@ use pin_project::pin_project;
 ///
 /// This trait allows any stream of `StreamItem<T>` where `T: Fluxion` to throttle emissions
 /// by a specified duration.
-pub trait ThrottleExt<T, TM>: Stream<Item = StreamItem<T>> + Sized
+pub trait ThrottleExt<T, R>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
-    TM: Timer<Instant = T::Timestamp>,
+    T::Inner: Clone + Debug + Send + Sync + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+    R: Runtime,
 {
     /// Throttles the stream by the specified duration.
     ///
@@ -52,8 +61,11 @@ where
     ///
     /// ```rust,no_run
     /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-    /// use fluxion_stream_time::{ThrottleExt, TokioTimestamped, TokioTimer};
-    /// use fluxion_stream_time::timer::Timer;
+    /// use fluxion_stream_time::{ThrottleExt, TokioTimestamped};
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+    /// use fluxion_runtime::impls::tokio::TokioTimer;
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+    /// use fluxion_runtime::timer::Timer;
     /// use fluxion_core::StreamItem;
     /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use fluxion_test_utils::test_data::{person_alice, person_bob};
@@ -84,126 +96,49 @@ where
 
 // Feature-gated implementations - one per runtime
 
-#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-impl<S, T> ThrottleExt<T, crate::TokioTimer> for S
-where
-    S: Stream<Item = StreamItem<T>> + Send,
-    T: Fluxion<Timestamp = std::time::Instant>,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        Box::pin(ThrottleStream::<S, T, _> {
-            stream: self,
-            duration,
-            timer: crate::TokioTimer,
-            sleep: Some(crate::TokioTimer.sleep_future(duration)),
-            throttling: false,
-        })
-    }
-}
-
-#[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
-impl<S, T> ThrottleExt<T, crate::SmolTimer> for S
-where
-    S: Stream<Item = StreamItem<T>> + Send,
-    T: Fluxion<Timestamp = std::time::Instant>,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        Box::pin(ThrottleStream::<S, T, _> {
-            stream: self,
-            duration,
-            timer: crate::SmolTimer,
-            sleep: Some(crate::SmolTimer.sleep_future(duration)),
-            throttling: false,
-        })
-    }
-}
-
-#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
-impl<S, T> ThrottleExt<T, crate::runtimes::wasm_implementation::WasmTimer> for S
-where
-    S: Stream<Item = StreamItem<T>> + Send,
-    T: Fluxion<Timestamp = crate::runtimes::wasm_implementation::WasmInstant>,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        let timer = crate::runtimes::wasm_implementation::WasmTimer::new();
-        Box::pin(ThrottleStream::<S, T, _> {
-            stream: self,
-            duration,
-            sleep: Some(timer.sleep_future(duration)),
-            timer,
-            throttling: false,
-        })
-    }
-}
-
-#[cfg(all(
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
     feature = "runtime-async-std",
-    not(feature = "runtime-tokio"),
-    not(feature = "runtime-smol")
-))]
-impl<S, T> ThrottleExt<T, crate::runtimes::AsyncStdTimer> for S
-where
-    S: Stream<Item = StreamItem<T>> + Send,
-    T: Fluxion<Timestamp = std::time::Instant>,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        Box::pin(ThrottleStream::<S, T, _> {
-            stream: self,
-            duration,
-            timer: crate::runtimes::AsyncStdTimer,
-            sleep: Some(crate::runtimes::AsyncStdTimer.sleep_future(duration)),
-            throttling: false,
-        })
-    }
-}
-
-#[cfg(all(
     feature = "runtime-embassy",
-    not(feature = "runtime-tokio"),
-    not(feature = "runtime-smol"),
-    not(feature = "runtime-async-std")
+    feature = "runtime-wasm"
 ))]
-impl<S, T> ThrottleExt<T, crate::runtimes::EmbassyTimerImpl> for S
+impl<S, T> ThrottleExt<T, DefaultRuntime> for S
 where
-    S: Stream<Item = StreamItem<T>> + Send,
-    T: Fluxion<Timestamp = crate::runtimes::EmbassyInstant>,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    S: Stream<Item = StreamItem<T>>,
+    T: Fluxion<Timestamp = <DefaultRuntime as Runtime>::Instant>,
+    T::Inner: Clone + Debug + Send + Sync + Ord + Unpin + 'static,
 {
     fn throttle(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        Box::pin(ThrottleStream::<S, T, _> {
+        Box::pin(ThrottleStream::<S, T, DefaultRuntime> {
             stream: self,
             duration,
-            timer: crate::runtimes::EmbassyTimerImpl,
-            sleep: Some(crate::runtimes::EmbassyTimerImpl.sleep_future(duration)),
+            sleep: Some(<DefaultRuntime as Runtime>::Timer::default().sleep_future(duration)),
             throttling: false,
         })
     }
 }
 
 #[pin_project]
-struct ThrottleStream<S, T, TM: Timer>
+struct ThrottleStream<S, T, R>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: HasTimestamp<Timestamp = TM::Instant>,
+    T: HasTimestamp<Timestamp = R::Instant>,
+    R: Runtime,
 {
     #[pin]
     stream: S,
     duration: Duration,
-    timer: TM,
     #[pin]
-    sleep: Option<TM::Sleep>,
+    sleep: Option<<R::Timer as Timer>::Sleep>,
     throttling: bool,
 }
 
-impl<S, T, TM> Stream for ThrottleStream<S, T, TM>
+impl<S, T, R> Stream for ThrottleStream<S, T, R>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: HasTimestamp<Timestamp = TM::Instant>,
-    TM: Timer,
+    T: HasTimestamp<Timestamp = R::Instant>,
+    R: Runtime,
 {
     type Item = StreamItem<T>;
 
@@ -232,7 +167,7 @@ where
                     if !*this.throttling {
                         // Not throttling: Emit value, start timer
                         this.sleep
-                            .set(Some(this.timer.sleep_future(*this.duration)));
+                            .set(Some(R::Timer::default().sleep_future(*this.duration)));
                         *this.throttling = true;
                         return Poll::Ready(Some(StreamItem::Value(value)));
                     } else {

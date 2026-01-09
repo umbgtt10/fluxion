@@ -74,4 +74,4 @@ fluxion-stream = { version = "0.7.0", path = "fluxion-stream" }
 fluxion-exec = { version = "0.7.0", path = "fluxion-exec" }
 fluxion-test-utils = { version = "0.7.0", path = "fluxion-test-utils" }
 fluxion-stream-time = { version = "0.7.0", path = "fluxion-stream-time" }
-fluxion-runtime = { version = "0.7.0", path = "fluxion-runtime" }
+fluxion-runtime = { version = "0.7.0", path = "fluxion-runtime", default-features = false }
