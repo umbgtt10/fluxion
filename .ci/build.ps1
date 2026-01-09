@@ -245,26 +245,33 @@ Invoke-StepAction "Run embassy-sensors example (ARM Cortex-M4F in QEMU)" {
 
   # Run in QEMU (timeout after 35 seconds to allow 30s runtime + 5s overhead)
   Write-Output "Running in QEMU emulator (30 second demo)..."
+  $kernelPath = Join-Path (Get-Location) "target\thumbv7em-none-eabihf\release\embassy-sensors"
   $qemuArgs = @(
     '-cpu', 'cortex-m4',
     '-machine', 'mps2-an386',
     '-nographic',
     '-semihosting-config', 'enable=on,target=native',
-    '-kernel', 'target\thumbv7em-none-eabihf\release\embassy-sensors'
+    '-kernel', $kernelPath
   )
 
   $job = Start-Job -ScriptBlock {
-    param($QemuPath, $Args)
-    & $QemuPath @Args
-  } -ArgumentList 'qemu-system-arm', $qemuArgs
+    param($QemuPath, $QemuArgs)
+    & $QemuPath @QemuArgs 2>&1
+  } -ArgumentList $qemuCheck.Path, (,$qemuArgs)
 
   $completed = Wait-Job -Job $job -Timeout 35
-  if ($completed) {
-    $output = Receive-Job -Job $job
+
+  # Always retrieve output, whether completed or timed out
+  $output = Receive-Job -Job $job
+  if ($output) {
     Write-Output $output
+  }
+
+  if ($completed) {
+    Write-Output "QEMU execution completed."
     Remove-Job -Job $job
   } else {
-    Write-Warning "QEMU execution timed out (expected for 30s demo)"
+    Write-Warning "QEMU execution timed out after 35s (expected for 30s demo)"
     Stop-Job -Job $job
     Remove-Job -Job $job
   }
