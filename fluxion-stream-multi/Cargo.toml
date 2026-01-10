@@ -1,0 +1,36 @@
+[package]
+name = "fluxion-stream-multi"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Fluxion stream operators for multi-threaded runtimes (Tokio, smol, async-std)"
+
+[lib]
+doctest = false
+
+[features]
+default = ["runtime-tokio"]
+runtime-tokio = ["fluxion-runtime/runtime-tokio", "fluxion-core/runtime-tokio"]
+runtime-smol = ["fluxion-runtime/runtime-smol", "fluxion-core/runtime-smol"]
+runtime-async-std = ["fluxion-runtime/runtime-async-std", "fluxion-core/runtime-async-std"]
+
+[dependencies]
+fluxion-core = { path = "../fluxion-core", version = "0.7.0", default-features = false, features = ["alloc"] }
+fluxion-runtime = { path = "../fluxion-runtime", version = "0.7.0", default-features = false }
+fluxion-stream-core = { path = "../fluxion-stream-core", version = "0.7.0" }
+fluxion-ordered-merge = { path = "../fluxion-ordered-merge", version = "0.7.0" }
+futures = { workspace = true }
+pin-project = { workspace = true }
+async-channel = { workspace = true }
+
+[target.'cfg(not(target_os = "none"))'.dev-dependencies]
+tokio = { workspace = true }
+fluxion-test-utils = { workspace = true }
+criterion = { workspace = true }
+anyhow = { workspace = true }
+
+[[bench]]
+name = "benchmarks"
+harness = false

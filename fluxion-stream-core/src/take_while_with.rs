@@ -1,0 +1,207 @@
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Licensed under the Apache License, Version 2.0
+// http://www.apache.org/licenses/LICENSE-2.0
+
+//! Generic implementation of `take_while_with` operator.
+//!
+//! Conditionally emits elements from a source stream based on values from a
+//! separate filter stream. The stream terminates when the filter condition becomes false.
+
+use crate::ordered_merge::ordered_merge_with_index;
+use alloc::boxed::Box;
+use alloc::sync::Arc;
+use alloc::vec;
+use alloc::vec::Vec;
+use core::cmp::Ordering;
+use core::fmt::Debug;
+use core::pin::Pin;
+use fluxion_core::fluxion_mutex::Mutex;
+use fluxion_core::{Fluxion, HasTimestamp, StreamItem, Timestamped};
+use futures::stream::StreamExt;
+use futures::Stream;
+
+/// Generic implementation of take_while_with.
+///
+/// This operator merges the source stream with a filter stream in temporal order.
+/// It maintains the latest filter value and only emits source values when the
+/// filter predicate evaluates to `true`. Once the predicate returns `false`,
+/// the entire stream terminates.
+///
+/// # Behavior
+///
+/// - Source values are emitted only when latest filter passes the predicate
+/// - Filter stream updates change the gating condition
+/// - Stream terminates immediately when filter predicate returns `false`
+/// - Emitted values maintain their ordered wrapper
+///
+/// # Arguments
+///
+/// * `source_stream` - The primary stream providing values to emit
+/// * `filter_stream` - Stream providing filter values that control emission
+/// * `filter` - Predicate function applied to filter values. Returns `true` to continue.
+pub fn take_while_with_impl<TItem, TFilter, S1, S2, F>(
+    source_stream: S1,
+    filter_stream: S2,
+    filter: F,
+) -> impl Stream<Item = StreamItem<TItem>> + Send + Sync
+where
+    S1: Stream<Item = StreamItem<TItem>> + Send + Sync + 'static,
+    S2: Stream<Item = StreamItem<TFilter>> + Send + Sync + 'static,
+    TItem: Fluxion,
+    TItem::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    TItem::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
+    TFilter: Fluxion<Timestamp = TItem::Timestamp>,
+    TFilter::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    F: Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
+{
+    let filter = Arc::new(filter);
+
+    // Wrap each stream's values in Item enum, keeping StreamItem wrapper for immediate error emission
+    // This allows ordered_merge_with_index to emit errors immediately (Rx semantics)
+    let source_stream =
+        source_stream.map(|item| item.map(|value| Item::<TItem, TFilter>::Source(value)));
+
+    let filter_stream =
+        filter_stream.map(|item| item.map(|value| Item::<TItem, TFilter>::Filter(value)));
+
+    // Box the streams to make them the same type
+    type PinnedStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>;
+    let streams: Vec<PinnedStream<Item<TItem, TFilter>>> =
+        vec![Box::pin(source_stream), Box::pin(filter_stream)];
+
+    // State to track the latest filter value and termination
+    let state = Arc::new(Mutex::new((None::<TFilter::Inner>, false)));
+
+    // Use ordered_merge_with_index for temporal ordering with immediate error emission
+    let combined_stream = ordered_merge_with_index(streams).filter_map({
+        let state = Arc::clone(&state);
+        move |(stream_item, _index)| {
+            let state = Arc::clone(&state);
+            let filter = Arc::clone(&filter);
+
+            async move {
+                match stream_item {
+                    // Errors are emitted immediately by ordered_merge_with_index
+                    StreamItem::Error(e) => Some(StreamItem::Error(e)),
+                    StreamItem::Value(item) => {
+                        // Restrict the mutex guard's lifetime to the smallest possible scope
+                        let mut guard = state.lock();
+                        let (filter_state, terminated) = &mut *guard;
+
+                        if *terminated {
+                            return None;
+                        }
+
+                        match item {
+                            Item::Filter(filter_val) => {
+                                *filter_state = Some(filter_val.clone().into_inner());
+                                None
+                            }
+                            Item::Source(source_val) => filter_state.as_ref().map_or_else(
+                                || None,
+                                |fval| {
+                                    if filter(fval) {
+                                        Some(StreamItem::Value(source_val.clone()))
+                                    } else {
+                                        *terminated = true;
+                                        None
+                                    }
+                                },
+                            ),
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    Box::pin(combined_stream)
+}
+
+#[derive(Clone, Debug)]
+pub enum Item<TItem, TFilter>
+where
+    TItem: HasTimestamp,
+{
+    Source(TItem),
+    Filter(TFilter),
+}
+
+impl<TItem, TFilter> HasTimestamp for Item<TItem, TFilter>
+where
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
+{
+    type Timestamp = TItem::Timestamp;
+
+    fn timestamp(&self) -> Self::Timestamp {
+        match self {
+            Self::Source(s) => s.timestamp(),
+            Self::Filter(f) => f.timestamp(),
+        }
+    }
+}
+
+// Implement Timestamped for Item to work with ordered_merge_with_index
+impl<TItem, TFilter> Timestamped for Item<TItem, TFilter>
+where
+    TItem: HasTimestamp + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>
+        + Clone
+        + Debug
+        + Ord
+        + Send
+        + Sync
+        + Unpin
+        + 'static,
+{
+    type Inner = Self;
+
+    fn with_timestamp(value: Self::Inner, _timestamp: Self::Timestamp) -> Self {
+        // Items already have timestamps from their wrapped values, ignore the new timestamp
+        value
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self
+    }
+}
+
+impl<TItem, TFilter> Unpin for Item<TItem, TFilter> where TItem: HasTimestamp {}
+
+impl<TItem, TFilter> PartialEq for Item<TItem, TFilter>
+where
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.timestamp() == other.timestamp()
+    }
+}
+
+impl<TItem, TFilter> Eq for Item<TItem, TFilter>
+where
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
+{
+}
+
+impl<TItem, TFilter> PartialOrd for Item<TItem, TFilter>
+where
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<TItem, TFilter> Ord for Item<TItem, TFilter>
+where
+    TItem: HasTimestamp,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp>,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.timestamp().cmp(&other.timestamp())
+    }
+}
