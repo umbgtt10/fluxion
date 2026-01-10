@@ -7,6 +7,7 @@
 use alloc::boxed::Box;
 use core::pin::Pin;
 use fluxion_core::{FluxionSubject, FluxionTask, StreamItem, SubjectError};
+use futures::future::{select, Either};
 use futures::{Stream, StreamExt};
 
 pub type SharedBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
@@ -30,12 +31,10 @@ impl<T: Clone + Send + Sync + 'static> FluxionShared<T> {
 
         let task = FluxionTask::spawn(|cancel| async move {
             let mut stream = source;
-            loop {
-                if cancel.is_cancelled() {
-                    break;
-                }
-
-                match stream.next().await {
+            while let Either::Left((stream_item, _)) =
+                select(stream.next(), cancel.cancelled()).await
+            {
+                match stream_item {
                     Some(StreamItem::Value(v)) => {
                         if subject_clone.next(v).is_err() {
                             break;

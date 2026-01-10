@@ -11,6 +11,7 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 use fluxion_core::FluxionTask;
 use fluxion_core::{Fluxion, FluxionSubject, StreamItem};
+use futures::future::{select, Either};
 use futures::{Stream, StreamExt};
 
 /// Generic implementation of partition - works with any runtime that supports FluxionTask
@@ -38,12 +39,8 @@ where
 
     let task = FluxionTask::spawn(|cancel| async move {
         let mut stream = source;
-        loop {
-            if cancel.is_cancelled() {
-                break;
-            }
-
-            match stream.next().await {
+        while let Either::Left((stream_item, _)) = select(stream.next(), cancel.cancelled()).await {
+            match stream_item {
                 Some(StreamItem::Value(ref value)) => {
                     let inner = value.clone().into_inner();
                     if predicate(&inner) {
