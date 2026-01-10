@@ -6,6 +6,9 @@
 use std::sync::Arc;
 
 #[cfg(feature = "runtime-async-std")]
+use parking_lot::Mutex;
+
+#[cfg(feature = "runtime-async-std")]
 use crate::{runtime::Runtime, timer::Timer};
 
 #[cfg(feature = "runtime-async-std")]
@@ -14,7 +17,7 @@ pub struct AsyncStdRuntime;
 
 #[cfg(feature = "runtime-async-std")]
 impl Runtime for AsyncStdRuntime {
-    type Mutex<T: ?Sized> = Arc<parking_lot::Mutex<T>>;
+    type Mutex<T: ?Sized> = Arc<Mutex<T>>;
     type Timer = AsyncStdTimer;
     type Instant = std::time::Instant;
 }

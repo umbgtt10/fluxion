@@ -8,6 +8,14 @@
     feature = "runtime-smol",
     feature = "runtime-async-std"
 ))]
+extern crate alloc;
+
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-wasm",
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 use alloc::sync::Arc;
 
 #[cfg(any(

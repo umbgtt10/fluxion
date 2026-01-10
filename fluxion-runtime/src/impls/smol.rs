@@ -6,6 +6,9 @@
 use std::sync::Arc;
 
 #[cfg(feature = "runtime-smol")]
+use parking_lot::Mutex;
+
+#[cfg(feature = "runtime-smol")]
 use crate::{runtime::Runtime, timer::Timer};
 
 #[cfg(feature = "runtime-smol")]
@@ -14,7 +17,7 @@ pub struct SmolRuntime;
 
 #[cfg(feature = "runtime-smol")]
 impl Runtime for SmolRuntime {
-    type Mutex<T: ?Sized> = Arc<parking_lot::Mutex<T>>;
+    type Mutex<T: ?Sized> = Arc<Mutex<T>>;
     type Timer = SmolTimer;
     type Instant = std::time::Instant;
 }

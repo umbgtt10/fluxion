@@ -2,6 +2,14 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-wasm",
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
+extern crate alloc;
+
 #[cfg(feature = "runtime-wasm")]
 use alloc::sync::Arc;
 

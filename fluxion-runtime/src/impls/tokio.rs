@@ -6,6 +6,9 @@
 use std::{sync::Arc, time::Duration};
 
 #[cfg(feature = "runtime-tokio")]
+use parking_lot::Mutex;
+
+#[cfg(feature = "runtime-tokio")]
 use crate::{runtime::Runtime, timer::Timer};
 
 #[cfg(feature = "runtime-tokio")]
@@ -14,7 +17,7 @@ pub struct TokioRuntime;
 
 #[cfg(feature = "runtime-tokio")]
 impl Runtime for TokioRuntime {
-    type Mutex<T: ?Sized> = Arc<parking_lot::Mutex<T>>;
+    type Mutex<T: ?Sized> = Arc<Mutex<T>>;
     type Timer = TokioTimer;
     type Instant = std::time::Instant;
 }
