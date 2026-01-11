@@ -47,7 +47,19 @@ use async_channel::Sender;
 use core::pin::Pin;
 use futures::stream::Stream;
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 type SubjectBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+type SubjectBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + 'static>>;
 
 struct SubjectState<T> {
     closed: bool,
@@ -61,10 +73,20 @@ struct SubjectState<T> {
 /// the same items.
 ///
 /// See the [module documentation](self) for examples and more details.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub struct FluxionSubject<T: Clone + Send + Sync + 'static> {
     state: Arc<Mutex<SubjectState<T>>>,
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
     /// Creates a new unbounded subject with no subscribers.
     ///
@@ -167,13 +189,129 @@ impl<T: Clone + Send + Sync + 'static> FluxionSubject<T> {
     }
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T: Clone + Send + Sync + 'static> Default for FluxionSubject<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T: Clone + Send + Sync + 'static> Clone for FluxionSubject<T> {
+    fn clone(&self) -> Self {
+        Self {
+            state: self.state.clone(),
+        }
+    }
+}
+
+// Single-threaded version (WASM, Embassy) - no Send + Sync bounds
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub struct FluxionSubject<T: Clone + 'static> {
+    state: Arc<Mutex<SubjectState<T>>>,
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T: Clone + 'static> FluxionSubject<T> {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            state: Arc::new(Mutex::new(SubjectState {
+                closed: false,
+                senders: Vec::new(),
+            })),
+        }
+    }
+
+    pub fn subscribe(&self) -> Result<SubjectBoxStream<T>, SubjectError> {
+        let mut state = self.state.lock();
+        if state.closed {
+            return Err(SubjectError::Closed);
+        }
+
+        let (tx, rx) = async_channel::unbounded();
+        state.senders.push(tx);
+        Ok(Box::pin(rx))
+    }
+
+    pub fn send(&self, item: StreamItem<T>) -> Result<(), SubjectError> {
+        let mut state = self.state.lock();
+        if state.closed {
+            return Err(SubjectError::Closed);
+        }
+
+        let mut next_senders = Vec::with_capacity(state.senders.len());
+
+        for tx in state.senders.drain(..) {
+            if tx.try_send(item.clone()).is_ok() {
+                next_senders.push(tx);
+            }
+        }
+
+        state.senders = next_senders;
+        Ok(())
+    }
+
+    pub fn next(&self, value: T) -> Result<(), SubjectError> {
+        self.send(StreamItem::Value(value))
+    }
+
+    pub fn error(&self, err: FluxionError) -> Result<(), SubjectError> {
+        let result = self.send(StreamItem::Error(err));
+        self.close();
+        result
+    }
+
+    pub fn close(&self) {
+        let mut state = self.state.lock();
+        state.closed = true;
+        state.senders.clear();
+    }
+
+    #[must_use]
+    pub fn is_closed(&self) -> bool {
+        self.state.lock().closed
+    }
+
+    #[must_use]
+    pub fn subscriber_count(&self) -> usize {
+        self.state.lock().senders.len()
+    }
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T: Clone + 'static> Default for FluxionSubject<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T: Clone + 'static> Clone for FluxionSubject<T> {
     fn clone(&self) -> Self {
         Self {
             state: self.state.clone(),

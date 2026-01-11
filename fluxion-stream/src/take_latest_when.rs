@@ -14,10 +14,31 @@ use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{Stream, StreamExt};
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
+#[allow(dead_code)]
+type SharedOption<T> = Arc<Mutex<Option<T>>>;
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+#[allow(dead_code)]
+type SharedOption<T> = Arc<Mutex<Option<T>>>;
+
 /// Extension trait providing the `take_latest_when` operator for timestamped streams.
 ///
 /// This operator samples the latest value from a source stream whenever a filter
 /// stream emits a value that passes a predicate.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait TakeLatestWhenExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
@@ -115,12 +136,40 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
+    ) -> impl Stream<Item = StreamItem<T>>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
 }
 
+// Single-threaded runtime version (WASM/Embassy)
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait TakeLatestWhenExt<T>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn take_latest_when<IS>(
+        self,
+        filter_stream: IS,
+        filter: impl Fn(&T::Inner) -> bool + 'static,
+    ) -> impl Stream<Item = StreamItem<T>>
+    where
+        IS: IntoStream<Item = StreamItem<T>>,
+        IS::Stream: 'static;
+}
+
+// Multi-threaded implementation
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T, S> TakeLatestWhenExt<T> for S
 where
     S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
@@ -132,7 +181,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&T::Inner) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
+    ) -> impl Stream<Item = StreamItem<T>>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -184,6 +233,69 @@ where
                             }
                         }
                     }
+                    StreamItem::Error(e) => Some(StreamItem::Error(e)),
+                }
+            }
+        });
+
+        Box::pin(combined_stream)
+    }
+}
+
+// Single-threaded implementation
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T, S> TakeLatestWhenExt<T> for S
+where
+    S: Stream<Item = StreamItem<T>> + Unpin + 'static,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn take_latest_when<IS>(
+        self,
+        filter_stream: IS,
+        filter: impl Fn(&T::Inner) -> bool + 'static,
+    ) -> impl Stream<Item = StreamItem<T>>
+    where
+        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
+        IS::Stream: 'static,
+    {
+        let streams: Vec<Pin<Box<dyn Stream<Item = StreamItem<T>>>>> =
+            vec![Box::pin(self), Box::pin(filter_stream.into_stream())];
+
+        let source_value: SharedOption<T> = Arc::new(Mutex::new(None));
+        let filter = Arc::new(filter);
+
+        let combined_stream = ordered_merge_with_index(streams).filter_map(move |(item, index)| {
+            let source_value = Arc::clone(&source_value);
+            let filter = Arc::clone(&filter);
+            async move {
+                match item {
+                    StreamItem::Value(ordered_value) => match index {
+                        0 => {
+                            let mut source = source_value.lock();
+                            *source = Some(ordered_value);
+                            None
+                        }
+                        1 => {
+                            let inner = ordered_value.into_inner();
+                            if filter(&inner) {
+                                let source = source_value.lock();
+                                if let Some(ref cached_value) = *source {
+                                    Some(StreamItem::Value(cached_value.clone()))
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    },
                     StreamItem::Error(e) => Some(StreamItem::Error(e)),
                 }
             }

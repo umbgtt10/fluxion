@@ -20,6 +20,11 @@ use futures::{Stream, StreamExt};
 ///
 /// This operator gates a source stream based on conditions from a filter stream,
 /// emitting source values only when the combined state passes a predicate.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait EmitWhenExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
@@ -113,14 +118,42 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
+    ) -> impl Stream<Item = StreamItem<T>>
     where
         IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
 }
 
+// Single-threaded trait
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait EmitWhenExt<T>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn emit_when<IS>(
+        self,
+        filter_stream: IS,
+        filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + 'static,
+    ) -> impl Stream<Item = StreamItem<T>>
+    where
+        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
+        IS::Stream: 'static;
+}
+
 type SharedState<V, TS> = Arc<Mutex<Option<(V, TS)>>>;
 
+// Multi-threaded implementation
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T, S> EmitWhenExt<T> for S
 where
     S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
@@ -132,7 +165,7 @@ where
         self,
         filter_stream: IS,
         filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync
+    ) -> impl Stream<Item = StreamItem<T>>
     where
         IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -220,6 +253,112 @@ where
                             }
                         }
                     }
+                    StreamItem::Error(e) => Some(StreamItem::Error(e)),
+                }
+            }
+        });
+
+        Box::pin(combined_stream)
+    }
+}
+
+// Single-threaded implementation
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T, S> EmitWhenExt<T> for S
+where
+    S: Stream<Item = StreamItem<T>> + Unpin + 'static,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn emit_when<IS>(
+        self,
+        filter_stream: IS,
+        filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + 'static,
+    ) -> impl Stream<Item = StreamItem<T>>
+    where
+        IS: IntoStream<Item = fluxion_core::StreamItem<T>>,
+        IS::Stream: 'static,
+    {
+        let streams: Vec<Pin<Box<dyn Stream<Item = StreamItem<T>>>>> =
+            vec![Box::pin(self), Box::pin(filter_stream.into_stream())];
+
+        let source_value: SharedState<T::Inner, T::Timestamp> = Arc::new(Mutex::new(None));
+        let filter_value: SharedState<T::Inner, T::Timestamp> = Arc::new(Mutex::new(None));
+        let filter = Arc::new(filter);
+
+        let combined_stream = ordered_merge_with_index(streams).filter_map(move |(item, index)| {
+            let source_value = Arc::clone(&source_value);
+            let filter_value = Arc::clone(&filter_value);
+            let filter = Arc::clone(&filter);
+            async move {
+                match item {
+                    StreamItem::Value(ordered_value) => match index {
+                        0 => {
+                            let mut source = source_value.lock();
+                            let filter_val = filter_value.lock();
+
+                            let timestamp = ordered_value.timestamp();
+                            *source = Some((ordered_value.clone().into_inner(), timestamp));
+
+                            if let Some((src, src_ts)) = source.as_ref() {
+                                if let Some((filt, filt_ts)) = filter_val.as_ref() {
+                                    let combined_state = CombinedState::new(
+                                        vec![(src.clone(), *src_ts), (filt.clone(), *filt_ts)],
+                                        timestamp,
+                                    );
+                                    if filter(&combined_state) {
+                                        Some(StreamItem::Value(T::with_timestamp(
+                                            src.clone(),
+                                            *src_ts,
+                                        )))
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        }
+                        1 => {
+                            let mut filter_val = filter_value.lock();
+                            let source = source_value.lock();
+
+                            let timestamp = ordered_value.timestamp();
+                            *filter_val = Some((ordered_value.clone().into_inner(), timestamp));
+
+                            if let Some((src, src_ts)) = source.as_ref() {
+                                if let Some((filt, filt_ts)) = filter_val.as_ref() {
+                                    let combined_state = CombinedState::new(
+                                        vec![(src.clone(), *src_ts), (filt.clone(), *filt_ts)],
+                                        timestamp,
+                                    );
+                                    if filter(&combined_state) {
+                                        Some(StreamItem::Value(T::with_timestamp(
+                                            src.clone(),
+                                            *filt_ts,
+                                        )))
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        }
+                        _ => {
+                            warn!("emit_when: unexpected stream index {} � ignoring", index);
+                            None
+                        }
+                    },
                     StreamItem::Error(e) => Some(StreamItem::Error(e)),
                 }
             }

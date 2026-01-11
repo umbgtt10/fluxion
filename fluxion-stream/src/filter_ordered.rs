@@ -12,6 +12,11 @@ use futures::StreamExt;
 ///
 /// This trait allows any stream of `StreamItem<T>` to filter items while
 /// preserving temporal ordering semantics.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait FilterOrderedExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
@@ -86,6 +91,11 @@ where
         F: FnMut(&T::Inner) -> bool + Send + Sync + 'static;
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<S, T> FilterOrderedExt<T> for S
 where
     S: Stream<Item = StreamItem<T>>,
@@ -97,6 +107,53 @@ where
     where
         Self: Send + Sync + Unpin + 'static,
         F: FnMut(&T::Inner) -> bool + Send + Sync + 'static,
+    {
+        self.filter_map(move |item| {
+            ready(match item {
+                StreamItem::Value(value) if predicate(&value.clone().into_inner()) => {
+                    Some(StreamItem::Value(value))
+                }
+                StreamItem::Value(_) => None,
+                StreamItem::Error(e) => Some(StreamItem::Error(e)),
+            })
+        })
+    }
+}
+
+// Single-threaded version
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait FilterOrderedExt<T>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn filter_ordered<F>(self, predicate: F) -> impl Stream<Item = StreamItem<T>>
+    where
+        Self: Unpin + 'static,
+        F: FnMut(&T::Inner) -> bool + 'static;
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<S, T> FilterOrderedExt<T> for S
+where
+    S: Stream<Item = StreamItem<T>>,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn filter_ordered<F>(self, mut predicate: F) -> impl Stream<Item = StreamItem<T>>
+    where
+        Self: Unpin + 'static,
+        F: FnMut(&T::Inner) -> bool + 'static,
     {
         self.filter_map(move |item| {
             ready(match item {

@@ -76,7 +76,19 @@ use futures::{
     Stream, StreamExt,
 };
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub type SharedBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub type SharedBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + 'static>>;
 
 /// A shared stream that broadcasts items from a source to multiple subscribers.
 ///
@@ -88,11 +100,21 @@ pub type SharedBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + 
 /// streams that can be wrapped in `FluxionStream` for chaining operators.
 ///
 /// See the [module documentation](self) for examples and more details.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub struct FluxionShared<T: Clone + Send + Sync + 'static> {
     subject: FluxionSubject<T>,
     _task: FluxionTask,
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T: Clone + Send + Sync + 'static> FluxionShared<T> {
     /// Creates a new `FluxionShared` from a source stream.
     ///
@@ -183,6 +205,11 @@ impl<T: Clone + Send + Sync + 'static> FluxionShared<T> {
     }
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T: Clone + Send + Sync + 'static> Drop for FluxionShared<T> {
     fn drop(&mut self) {
         // Close the subject to signal any remaining subscribers
@@ -191,10 +218,27 @@ impl<T: Clone + Send + Sync + 'static> Drop for FluxionShared<T> {
     }
 }
 
+// Single-threaded Drop impl (WASM, Embassy, or no runtime)
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T: Clone + 'static> Drop for FluxionShared<T> {
+    fn drop(&mut self) {
+        self.subject.close();
+    }
+}
+
 /// Extension trait providing the `share` operator for streams.
 ///
 /// This trait allows any stream of `StreamItem<T>` to be converted into a
 /// [`FluxionShared`] subscription factory for multi-subscriber broadcasting.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait ShareExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Clone + Send + Sync + 'static,
@@ -253,9 +297,111 @@ where
     }
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<S, T> ShareExt<T> for S
 where
     S: Stream<Item = StreamItem<T>>,
     T: Clone + Send + Sync + 'static,
+{
+}
+
+// Single-threaded FluxionShared struct (WASM, Embassy, or no runtime)
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub struct FluxionShared<T: Clone + 'static> {
+    subject: FluxionSubject<T>,
+    _task: FluxionTask,
+}
+
+// Single-threaded FluxionShared impl (WASM, Embassy, or no runtime)
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T: Clone + 'static> FluxionShared<T> {
+    pub fn new<S>(source: S) -> Self
+    where
+        S: Stream<Item = StreamItem<T>> + Unpin + 'static,
+    {
+        let subject = FluxionSubject::new();
+        let subject_clone = subject.clone();
+
+        let task = FluxionTask::spawn(|cancel| async move {
+            let mut stream = source;
+            while let Either::Left((stream_item, _)) =
+                select(stream.next(), cancel.cancelled()).await
+            {
+                match stream_item {
+                    Some(StreamItem::Value(v)) => {
+                        let _ = subject_clone.next(v);
+                    }
+                    Some(StreamItem::Error(e)) => {
+                        let _ = subject_clone.error(e);
+                        break;
+                    }
+                    None => {
+                        break;
+                    }
+                }
+            }
+        });
+
+        Self {
+            subject,
+            _task: task,
+        }
+    }
+
+    pub fn subscribe(&self) -> Result<SharedBoxStream<T>, SubjectError> {
+        self.subject.subscribe()
+    }
+
+    #[must_use]
+    pub fn is_closed(&self) -> bool {
+        self.subject.is_closed()
+    }
+
+    #[must_use]
+    pub fn subscriber_count(&self) -> usize {
+        self.subject.subscriber_count()
+    }
+}
+
+// Single-threaded ShareExt trait (WASM, Embassy, or no runtime)
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait ShareExt<T>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Clone + 'static,
+{
+    fn share(self) -> FluxionShared<T>
+    where
+        Self: Unpin + 'static,
+    {
+        FluxionShared::new(self)
+    }
+}
+
+// Single-threaded ShareExt impl (WASM, Embassy, or no runtime)
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<S, T> ShareExt<T> for S
+where
+    S: Stream<Item = StreamItem<T>>,
+    T: Clone + 'static,
 {
 }

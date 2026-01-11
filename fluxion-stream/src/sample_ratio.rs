@@ -85,6 +85,11 @@ use futures::{Stream, StreamExt};
 /// Extension trait providing the [`sample_ratio`](Self::sample_ratio) operator.
 ///
 /// This trait is implemented for all streams of [`StreamItem<T>`] where `T` implements [`Fluxion`].
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait SampleRatioExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
@@ -143,6 +148,11 @@ where
         Self: Send + Sync + Unpin + 'static;
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<S, T> SampleRatioExt<T> for S
 where
     S: Stream<Item = StreamItem<T>>,
@@ -153,6 +163,62 @@ where
     fn sample_ratio(self, ratio: f64, seed: u64) -> impl Stream<Item = StreamItem<T>> + Send + Sync
     where
         Self: Send + Sync + Unpin + 'static,
+    {
+        assert!(
+            (0.0..=1.0).contains(&ratio),
+            "sample_ratio: ratio must be between 0.0 and 1.0, got {ratio}"
+        );
+
+        let mut rng = fastrand::Rng::with_seed(seed);
+
+        self.filter_map(move |item| {
+            futures::future::ready(match item {
+                StreamItem::Value(value) => {
+                    if rng.f64() < ratio {
+                        Some(StreamItem::Value(value))
+                    } else {
+                        None
+                    }
+                }
+                // Errors always pass through
+                StreamItem::Error(e) => Some(StreamItem::Error(e)),
+            })
+        })
+    }
+}
+
+// Single-threaded version
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait SampleRatioExt<T>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn sample_ratio(self, ratio: f64, seed: u64) -> impl Stream<Item = StreamItem<T>>
+    where
+        Self: Unpin + 'static;
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<S, T> SampleRatioExt<T> for S
+where
+    S: Stream<Item = StreamItem<T>>,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn sample_ratio(self, ratio: f64, seed: u64) -> impl Stream<Item = StreamItem<T>>
+    where
+        Self: Unpin + 'static,
     {
         assert!(
             (0.0..=1.0).contains(&ratio),

@@ -21,6 +21,11 @@ use futures::{Stream, StreamExt};
 /// This trait enables combining multiple streams where each emission waits for
 /// at least one value from all streams, then emits the combination of the latest
 /// values from each stream.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait CombineLatestExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
@@ -111,7 +116,7 @@ where
         self,
         others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Send + Unpin
+    ) -> impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Unpin
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -119,22 +124,64 @@ where
             Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>;
 }
 
+/// Extension trait providing the `combine_latest` operator for single-threaded runtimes.
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait CombineLatestExt<T>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Clone + Debug + Ord + Copy,
+{
+    fn combine_latest<IS>(
+        self,
+        others: Vec<IS>,
+        filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + 'static,
+    ) -> impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Unpin
+    where
+        IS: IntoStream<Item = StreamItem<T>>,
+        IS::Stream: 'static,
+        CombinedState<T::Inner, T::Timestamp>:
+            Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>;
+}
+
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>>;
 
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = StreamItem<T>>>>>;
+
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T, S> CombineLatestExt<T> for S
 where
     T: Fluxion,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Timestamp: Clone + Debug + Ord + Send + Sync,
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
-    CombinedState<T::Inner, T::Timestamp>:
-        Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>,
+    CombinedState<T::Inner, T::Timestamp>: Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>
+        + Send
+        + Sync,
 {
     fn combine_latest<IS>(
         self,
         others: Vec<IS>,
         filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Send + Unpin
+    ) -> impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Unpin
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -204,6 +251,93 @@ where
     }
 }
 
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T, S> CombineLatestExt<T> for S
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Clone + Debug + Ord + Copy,
+    S: Stream<Item = StreamItem<T>> + 'static,
+    CombinedState<T::Inner, T::Timestamp>:
+        Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>,
+{
+    fn combine_latest<IS>(
+        self,
+        others: Vec<IS>,
+        filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + 'static,
+    ) -> impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Unpin
+    where
+        IS: IntoStream<Item = StreamItem<T>>,
+        IS::Stream: 'static,
+        CombinedState<T::Inner, T::Timestamp>:
+            Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>,
+    {
+        use StreamItem;
+        let mut streams: PinnedStreams<T> = vec![];
+
+        streams.push(Box::pin(self));
+        for into_stream in others {
+            let stream = into_stream.into_stream();
+            streams.push(Box::pin(stream));
+        }
+
+        let num_streams = streams.len();
+        let state = Arc::new(Mutex::new(IntermediateState::new(num_streams)));
+
+        let combined_stream = ordered_merge_with_index(streams)
+            .filter_map({
+                let state = Arc::clone(&state);
+
+                move |(item, index)| {
+                    let state = Arc::clone(&state);
+                    async move {
+                        match item {
+                            StreamItem::Value(value) => {
+                                let mut guard = state.lock();
+                                guard.insert(index, value);
+
+                                if guard.is_complete() {
+                                    Some(StreamItem::Value(guard.clone()))
+                                } else {
+                                    None
+                                }
+                            }
+                            StreamItem::Error(e) => Some(StreamItem::Error(e)),
+                        }
+                    }
+                }
+            })
+            .map(|item| {
+                item.map(|state| {
+                    let value_timestamp_pairs: Vec<(T::Inner, T::Timestamp)> = state
+                        .get_ordered_values()
+                        .iter()
+                        .map(|ordered_val| {
+                            (ordered_val.clone().into_inner(), ordered_val.timestamp())
+                        })
+                        .collect();
+                    let timestamp = state.last_timestamp().expect("State must have timestamp");
+                    CombinedState::new(value_timestamp_pairs, timestamp)
+                })
+            })
+            .filter(move |item| match item {
+                StreamItem::Value(combined_state) => ready(filter(combined_state)),
+                StreamItem::Error(_) => ready(true),
+            });
+
+        Box::pin(combined_stream)
+    }
+}
+
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 #[derive(Clone, Debug)]
 struct IntermediateState<V>
 where
@@ -216,6 +350,28 @@ where
     last_timestamp: Option<V::Timestamp>,
 }
 
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+#[derive(Clone, Debug)]
+struct IntermediateState<V>
+where
+    V: Clone + Ord + Timestamped,
+{
+    state: Vec<Option<V>>,
+    ordered_values: Vec<V>,
+    stream_index_to_position: Vec<usize>,
+    is_initialized: bool,
+    last_timestamp: Option<V::Timestamp>,
+}
+
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<V> IntermediateState<V>
 where
     V: Clone + Send + Sync + Ord + Timestamped,
@@ -270,6 +426,67 @@ where
             self.is_initialized = true;
         } else if self.is_initialized {
             // After initialization: update the value at its established position
+            let position = self.stream_index_to_position[index];
+            if position < self.ordered_values.len() {
+                self.ordered_values[position] = value;
+            }
+        }
+    }
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<V> IntermediateState<V>
+where
+    V: Clone + Ord + Timestamped,
+{
+    pub fn new(num_streams: usize) -> Self {
+        Self {
+            state: vec![None; num_streams],
+            ordered_values: Vec::new(),
+            stream_index_to_position: vec![0; num_streams],
+            is_initialized: false,
+            last_timestamp: None,
+        }
+    }
+
+    pub const fn get_ordered_values(&self) -> &Vec<V> {
+        &self.ordered_values
+    }
+
+    pub fn last_timestamp(&self) -> Option<V::Timestamp> {
+        self.last_timestamp
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.state.iter().all(Option::is_some)
+    }
+
+    pub fn insert(&mut self, index: usize, value: V) {
+        self.last_timestamp = Some(value.timestamp());
+        self.state[index] = Some(value.clone());
+
+        if !self.is_initialized && self.is_complete() {
+            let mut indexed_values: Vec<(usize, V)> = self
+                .state
+                .iter()
+                .enumerate()
+                .filter_map(|(i, opt)| opt.as_ref().map(|v| (i, v.clone())))
+                .collect();
+
+            indexed_values.sort_by_key(|(stream_idx, _)| *stream_idx);
+
+            self.ordered_values = indexed_values.iter().map(|(_, v)| v.clone()).collect();
+
+            for (position, (stream_idx, _)) in indexed_values.iter().enumerate() {
+                self.stream_index_to_position[*stream_idx] = position;
+            }
+
+            self.is_initialized = true;
+        } else if self.is_initialized {
             let position = self.stream_index_to_position[index];
             if position < self.ordered_values.len() {
                 self.ordered_values[position] = value;

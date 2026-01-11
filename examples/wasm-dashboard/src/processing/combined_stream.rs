@@ -4,7 +4,7 @@
 
 use crate::source::SensorStreams;
 use fluxion_core::{HasTimestamp, Timestamped};
-use fluxion_stream::fluxion_shared::SharedBoxStream;
+use fluxion_stream::share::SharedBoxStream;
 use fluxion_stream::{CombineLatestExt, FluxionShared, MapOrderedExt, ShareExt};
 use fluxion_stream_time::WasmTimestamped;
 

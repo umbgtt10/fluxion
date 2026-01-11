@@ -27,6 +27,11 @@ pub struct MergedStream<S, State, Item> {
     _marker: PhantomData<Item>,
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<State> MergedStream<Empty<StreamItem<()>>, State, ()>
 where
     State: Send + 'static,
@@ -56,6 +61,35 @@ where
     }
 }
 
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<State> MergedStream<Empty<StreamItem<()>>, State, ()>
+where
+    State: 'static,
+{
+    pub fn seed<OutWrapper>(
+        initial_state: State,
+    ) -> MergedStream<Empty<StreamItem<OutWrapper>>, State, OutWrapper>
+    where
+        State: 'static,
+        OutWrapper: Unpin + 'static,
+    {
+        MergedStream {
+            inner: empty::<StreamItem<OutWrapper>>(),
+            state: Arc::new(Mutex::new(initial_state)),
+            _marker: PhantomData,
+        }
+    }
+}
+
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<S, State, Item> MergedStream<S, State, Item>
 where
     S: Stream<Item = StreamItem<Item>> + Send + Sync + 'static,
@@ -123,6 +157,70 @@ where
 
         // Use ordered_merge_with_index for immediate error emission (Rx semantics)
         // Discard the index since we don't need to track which stream emitted
+        let merged_stream = ordered_merge_with_index(streams).map(|(item, _index)| item);
+
+        MergedStream {
+            inner: merged_stream,
+            state: self.state,
+            _marker: PhantomData,
+        }
+    }
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<S, State, Item> MergedStream<S, State, Item>
+where
+    S: Stream<Item = StreamItem<Item>> + 'static,
+    State: 'static,
+    Item: Fluxion,
+    <Item as Timestamped>::Inner: Clone + Debug + Ord + Unpin + 'static,
+    <Item as HasTimestamp>::Timestamp: Debug + Ord + Copy + 'static,
+{
+    pub fn merge_with<NewStream, NewItem, F>(
+        self,
+        new_stream: NewStream,
+        process_fn: F,
+    ) -> MergedStream<impl Stream<Item = StreamItem<Item>>, State, Item>
+    where
+        NewStream: Stream<Item = StreamItem<NewItem>> + 'static,
+        NewItem: Fluxion,
+        <NewItem as Timestamped>::Inner: Clone + Debug + Ord + Unpin + 'static,
+        <NewItem as HasTimestamp>::Timestamp: Debug + Ord + Copy + 'static,
+        F: FnMut(<NewItem as Timestamped>::Inner, &mut State) -> <Item as Timestamped>::Inner
+            + Clone
+            + 'static,
+        Item: Fluxion,
+        <Item as Timestamped>::Inner: Clone + Debug + Ord + Unpin + 'static,
+        <Item as HasTimestamp>::Timestamp: Debug + Ord + Copy + 'static,
+        <NewItem as HasTimestamp>::Timestamp: Into<<Item as HasTimestamp>::Timestamp> + Copy,
+    {
+        let shared_state: Arc<Mutex<State>> = Arc::clone(&self.state);
+        let new_stream_mapped = new_stream.map(move |stream_item| {
+            let shared_state = Arc::clone(&shared_state);
+            let mut process_fn = process_fn.clone();
+            match stream_item {
+                StreamItem::Value(timestamped_item) => {
+                    let timestamp = timestamped_item.timestamp();
+                    let inner_value = timestamped_item.into_inner();
+                    let mut state = shared_state.lock();
+                    let result_value = process_fn(inner_value, &mut *state);
+                    StreamItem::Value(Item::with_timestamp(result_value, timestamp.into()))
+                }
+                StreamItem::Error(e) => StreamItem::Error(e),
+            }
+        });
+
+        let self_stream_mapped = self.inner;
+
+        let streams = vec![
+            Box::pin(self_stream_mapped) as Pin<Box<dyn Stream<Item = StreamItem<Item>>>>,
+            Box::pin(new_stream_mapped) as Pin<Box<dyn Stream<Item = StreamItem<Item>>>>,
+        ];
+
         let merged_stream = ordered_merge_with_index(streams).map(|(item, _index)| item);
 
         MergedStream {

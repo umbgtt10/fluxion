@@ -97,6 +97,11 @@ use futures::{Stream, StreamExt};
 ///
 /// This trait allows any stream of `StreamItem<T>` to be partitioned into two
 /// streams based on a predicate function.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait PartitionExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
@@ -201,6 +206,11 @@ where
 /// stream exists. When both streams are dropped, the task is aborted.
 ///
 /// Implements `Stream` by delegating to the inner stream.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub struct PartitionedStream<T: Fluxion>
 where
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
@@ -210,6 +220,11 @@ where
     _guard: Arc<TaskGuard>,
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T: Fluxion> Debug for PartitionedStream<T>
 where
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
@@ -222,6 +237,11 @@ where
     }
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T: Fluxion> Stream for PartitionedStream<T>
 where
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
@@ -234,6 +254,11 @@ where
     }
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<S, T> PartitionExt<T> for S
 where
     S: Stream<Item = StreamItem<T>>,
@@ -305,13 +330,195 @@ where
     }
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 type InnerStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 #[derive(Debug)]
 struct TaskGuard {
     task: FluxionTask,
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
+impl Drop for TaskGuard {
+    fn drop(&mut self) {
+        self.task.cancel();
+    }
+}
+
+// Single-threaded version (WASM, Embassy) - no Send + Sync bounds
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait PartitionExt<T>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn partition<F>(self, predicate: F) -> (PartitionedStream<T>, PartitionedStream<T>)
+    where
+        Self: Unpin + 'static,
+        F: Fn(&T::Inner) -> bool + 'static;
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub struct PartitionedStream<T: Fluxion>
+where
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    inner: InnerStream<T>,
+    _guard: Arc<TaskGuard>,
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T: Fluxion> Debug for PartitionedStream<T>
+where
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("PartitionedStream")
+            .field("inner", &"<stream>")
+            .finish()
+    }
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T> Stream for PartitionedStream<T>
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    type Item = StreamItem<T>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.inner.as_mut().poll_next(cx)
+    }
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<S, T> PartitionExt<T> for S
+where
+    S: Stream<Item = StreamItem<T>>,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn partition<F>(self, predicate: F) -> (PartitionedStream<T>, PartitionedStream<T>)
+    where
+        Self: Unpin + 'static,
+        F: Fn(&T::Inner) -> bool + 'static,
+    {
+        let true_subject = FluxionSubject::<T>::new();
+        let false_subject = FluxionSubject::<T>::new();
+
+        let true_stream = true_subject
+            .subscribe()
+            .unwrap_or_else(|_| unreachable!("fresh subject should allow subscription"));
+        let false_stream = false_subject
+            .subscribe()
+            .unwrap_or_else(|_| unreachable!("fresh subject should allow subscription"));
+
+        let task = FluxionTask::spawn(|cancel| async move {
+            let mut stream = self;
+            while let Either::Left((stream_item, _)) =
+                select(stream.next(), cancel.cancelled()).await
+            {
+                match stream_item {
+                    Some(StreamItem::Value(ref value)) => {
+                        let inner = value.clone().into_inner();
+                        if predicate(&inner) {
+                            if true_subject.next(value.clone()).is_err() {
+                                // True subscriber dropped, but continue for false subscriber
+                            }
+                        } else if false_subject.next(value.clone()).is_err() {
+                            // False subscriber dropped, but continue for true subscriber
+                        }
+                    }
+                    Some(StreamItem::Error(e)) => {
+                        let _ = true_subject.error(e.clone());
+                        let _ = false_subject.error(e);
+                        break;
+                    }
+                    None => {
+                        break;
+                    }
+                }
+            }
+            true_subject.close();
+            false_subject.close();
+        });
+
+        let guard = Arc::new(TaskGuard { task });
+
+        (
+            PartitionedStream {
+                inner: Box::pin(true_stream),
+                _guard: guard.clone(),
+            },
+            PartitionedStream {
+                inner: Box::pin(false_stream),
+                _guard: guard,
+            },
+        )
+    }
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+type InnerStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + 'static>>;
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+#[derive(Debug)]
+struct TaskGuard {
+    task: FluxionTask,
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
 impl Drop for TaskGuard {
     fn drop(&mut self) {
         self.task.cancel();

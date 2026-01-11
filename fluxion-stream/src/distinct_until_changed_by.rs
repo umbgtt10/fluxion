@@ -15,6 +15,11 @@ use futures::Stream;
 /// This operator filters out consecutive duplicate values using a custom comparison
 /// function, emitting only when the value changes from the previous emission according
 /// to the provided comparer.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait DistinctUntilChangedByExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
@@ -175,6 +180,11 @@ where
         F: Fn(&T::Inner, &T::Inner) -> bool + Send + Sync + 'static;
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T, S> DistinctUntilChangedByExt<T> for S
 where
     S: Stream<Item = StreamItem<T>> + Send + Sync + 'static,
@@ -207,6 +217,76 @@ where
                         let should_emit = match last.as_ref() {
                             None => true, // First value, always emit
                             Some(prev) => !compare(&current_inner, prev),
+                        };
+
+                        if should_emit {
+                            // Update last value
+                            *last = Some(current_inner);
+
+                            // Preserve original timestamp
+                            Some(StreamItem::Value(value))
+                        } else {
+                            None // Filter out duplicate
+                        }
+                    }
+                    StreamItem::Error(e) => Some(StreamItem::Error(e)), // Propagate errors
+                }
+            }
+        });
+
+        Box::pin(stream)
+    }
+}
+
+// Single-threaded version
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait DistinctUntilChangedByExt<T>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn distinct_until_changed_by<F>(self, compare: F) -> impl Stream<Item = StreamItem<T>>
+    where
+        F: Fn(&T::Inner, &T::Inner) -> bool + 'static;
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T, S> DistinctUntilChangedByExt<T> for S
+where
+    S: Stream<Item = StreamItem<T>> + 'static,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn distinct_until_changed_by<F>(self, compare: F) -> impl Stream<Item = StreamItem<T>>
+    where
+        F: Fn(&T::Inner, &T::Inner) -> bool + 'static,
+    {
+        let last_value: Arc<Mutex<Option<T::Inner>>> = Arc::new(Mutex::new(None));
+        let compare = Arc::new(compare);
+
+        let stream = self.filter_map(move |item| {
+            let last_value = Arc::clone(&last_value);
+            let compare = Arc::clone(&compare);
+
+            async move {
+                match item {
+                    StreamItem::Value(value) => {
+                        let current_inner = value.clone().into_inner();
+                        let mut last = last_value.lock();
+
+                        let should_emit = match last.as_ref() {
+                            None => true,                                 // First value always emits
+                            Some(prev) => !compare(prev, &current_inner), // Emit if different
                         };
 
                         if should_emit {

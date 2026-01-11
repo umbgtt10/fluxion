@@ -12,6 +12,11 @@ use futures::{future::ready, Stream, StreamExt};
 ///
 /// This operator pairs each stream element with its predecessor, enabling
 /// stateful processing and change detection.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait CombineWithPreviousExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
@@ -91,6 +96,11 @@ where
     fn combine_with_previous(self) -> impl Stream<Item = StreamItem<WithPrevious<T>>> + Send;
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T, S> CombineWithPreviousExt<T> for S
 where
     S: Stream<Item = StreamItem<T>> + Send + Sized + 'static,
@@ -99,6 +109,49 @@ where
     T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
 {
     fn combine_with_previous(self) -> impl Stream<Item = StreamItem<WithPrevious<T>>> + Send {
+        Box::pin(
+            self.scan(None, |state: &mut Option<T>, item: StreamItem<T>| {
+                ready(Some(match item {
+                    StreamItem::Value(current) => {
+                        let previous = state.take();
+                        *state = Some(current.clone());
+                        StreamItem::Value(WithPrevious::new(previous, current))
+                    }
+                    StreamItem::Error(e) => StreamItem::Error(e),
+                }))
+            }),
+        )
+    }
+}
+
+// Single-threaded version
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait CombineWithPreviousExt<T>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Fluxion,
+    T::Inner: Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn combine_with_previous(self) -> impl Stream<Item = StreamItem<WithPrevious<T>>>;
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T, S> CombineWithPreviousExt<T> for S
+where
+    S: Stream<Item = StreamItem<T>> + Sized + 'static,
+    T: Fluxion,
+    T::Inner: Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn combine_with_previous(self) -> impl Stream<Item = StreamItem<WithPrevious<T>>> {
         Box::pin(
             self.scan(None, |state: &mut Option<T>, item: StreamItem<T>| {
                 ready(Some(match item {

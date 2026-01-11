@@ -15,11 +15,30 @@ use fluxion_core::{Fluxion, HasTimestamp, StreamItem, Timestamped};
 use futures::stream::StreamExt;
 use futures::Stream;
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
+type PinnedStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>;
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+type PinnedStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>>>>;
+
 /// Extension trait providing the `take_while_with` operator for timestamped streams.
 ///
 /// This operator conditionally emits elements from a source stream based on values
 /// from a separate filter stream. The stream terminates when the filter condition
 /// becomes false.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait TakeWhileExt<TItem, TFilter, S>: Stream<Item = StreamItem<TItem>> + Sized
 where
     TItem: Fluxion,
@@ -110,11 +129,37 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<TItem>> + Send + Sync;
+    ) -> impl Stream<Item = StreamItem<TItem>>;
 }
 
-type PinnedStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>;
+// Single-threaded trait
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait TakeWhileExt<TItem, TFilter, S>: Stream<Item = StreamItem<TItem>> + Sized
+where
+    TItem: Fluxion,
+    TItem::Inner: Clone + Debug + Ord + Unpin + 'static,
+    TItem::Timestamp: Debug + Ord + Copy + 'static,
+    TFilter: Fluxion<Timestamp = TItem::Timestamp>,
+    TFilter::Inner: Clone + Debug + Ord + Unpin + 'static,
+    S: Stream<Item = StreamItem<TFilter>> + 'static,
+{
+    fn take_while_with(
+        self,
+        filter_stream: S,
+        filter: impl Fn(&TFilter::Inner) -> bool + 'static,
+    ) -> impl Stream<Item = StreamItem<TItem>>;
+}
 
+// Multi-threaded implementation
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
 where
     P: Stream<Item = StreamItem<TItem>> + Send + Sync + Unpin + 'static,
@@ -129,7 +174,7 @@ where
         self,
         filter_stream: S,
         filter: impl Fn(&TFilter::Inner) -> bool + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<TItem>> + Send + Sync {
+    ) -> impl Stream<Item = StreamItem<TItem>> {
         let filter = Arc::new(filter);
 
         // Wrap each stream's values in Item enum, keeping StreamItem wrapper for immediate error emission
@@ -194,6 +239,84 @@ where
     }
 }
 
+// Single-threaded implementation
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<TItem, TFilter, S, P> TakeWhileExt<TItem, TFilter, S> for P
+where
+    P: Stream<Item = StreamItem<TItem>> + Unpin + 'static,
+    TItem: Fluxion,
+    TItem::Inner: Clone + Debug + Ord + Unpin + 'static,
+    TItem::Timestamp: Debug + Ord + Copy + 'static,
+    TFilter: Fluxion<Timestamp = TItem::Timestamp>,
+    TFilter::Inner: Clone + Debug + Ord + Unpin + 'static,
+    S: Stream<Item = StreamItem<TFilter>> + 'static,
+{
+    fn take_while_with(
+        self,
+        filter_stream: S,
+        filter: impl Fn(&TFilter::Inner) -> bool + 'static,
+    ) -> impl Stream<Item = StreamItem<TItem>> {
+        let filter = Arc::new(filter);
+
+        let source_stream =
+            self.map(|item| item.map(|value| Item::<TItem, TFilter>::Source(value)));
+
+        let filter_stream =
+            filter_stream.map(|item| item.map(|value| Item::<TItem, TFilter>::Filter(value)));
+
+        let streams: Vec<PinnedStream<Item<TItem, TFilter>>> =
+            vec![Box::pin(source_stream), Box::pin(filter_stream)];
+
+        let state = Arc::new(Mutex::new((None::<TFilter::Inner>, false)));
+
+        let combined_stream = ordered_merge_with_index(streams).filter_map({
+            let state = Arc::clone(&state);
+            move |(stream_item, _index)| {
+                let state = Arc::clone(&state);
+                let filter = Arc::clone(&filter);
+
+                async move {
+                    match stream_item {
+                        StreamItem::Error(e) => Some(StreamItem::Error(e)),
+                        StreamItem::Value(item) => {
+                            let mut guard = state.lock();
+                            let (filter_state, terminated) = &mut *guard;
+
+                            if *terminated {
+                                return None;
+                            }
+
+                            match item {
+                                Item::Filter(filter_val) => {
+                                    *filter_state = Some(filter_val.clone().into_inner());
+                                    None
+                                }
+                                Item::Source(source_val) => filter_state.as_ref().map_or_else(
+                                    || None,
+                                    |fval| {
+                                        if filter(fval) {
+                                            Some(StreamItem::Value(source_val.clone()))
+                                        } else {
+                                            *terminated = true;
+                                            None
+                                        }
+                                    },
+                                ),
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        Box::pin(combined_stream)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Item<TItem, TFilter>
 where
@@ -218,7 +341,12 @@ where
     }
 }
 
-// Implement Timestamped for Item to work with ordered_merge_with_index
+// Implement Timestamped for Item to work with ordered_merge_with_index (multi-threaded)
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<TItem, TFilter> Timestamped for Item<TItem, TFilter>
 where
     TItem: HasTimestamp + Clone + Debug + Ord + Send + Sync + Unpin + 'static,
@@ -230,6 +358,29 @@ where
         + Sync
         + Unpin
         + 'static,
+{
+    type Inner = Self;
+
+    fn with_timestamp(value: Self::Inner, _timestamp: Self::Timestamp) -> Self {
+        // Items already have timestamps from their wrapped values, ignore the new timestamp
+        value
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self
+    }
+}
+
+// Implement Timestamped for Item to work with ordered_merge_with_index (single-threaded)
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<TItem, TFilter> Timestamped for Item<TItem, TFilter>
+where
+    TItem: HasTimestamp + Clone + Debug + Ord + Unpin + 'static,
+    TFilter: HasTimestamp<Timestamp = TItem::Timestamp> + Clone + Debug + Ord + Unpin + 'static,
 {
     type Inner = Self;
 

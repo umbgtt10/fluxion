@@ -41,6 +41,8 @@ tracing = ["dep:tracing"]
 runtime-tokio = ["std", "dep:tokio", "fluxion-core/runtime-tokio"]
 runtime-smol = ["std", "fluxion-core/runtime-smol"]
 runtime-async-std = ["std", "fluxion-core/runtime-async-std"]
+runtime-wasm = ["alloc", "fluxion-core/runtime-wasm"]  # WASM single-threaded runtime
+runtime-embassy = ["alloc", "fluxion-core/runtime-embassy"]  # Embassy embedded runtime
 
 [target.'cfg(not(target_os = "none"))'.dev-dependencies]
 tokio = { workspace = true }

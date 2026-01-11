@@ -19,15 +19,53 @@ use core::fmt::Debug;
 /// # Automatic Implementation
 ///
 /// This trait is automatically implemented for any type that satisfies the bounds.
+///
+/// For multi-threaded runtimes (tokio, smol, async-std), this requires `Send + Sync`.
+/// For single-threaded runtimes (wasm, embassy), these bounds are not required.
+// Multi-threaded runtimes (tokio/smol/async-std) - requires Send + Sync
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait Fluxion: Timestamped + Clone + Send + Sync + Unpin + 'static + Debug + Ord
 where
     Self::Inner: Clone + Send + Sync + Unpin + 'static + Debug + Ord,
 {
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T> Fluxion for T
 where
     T: Timestamped + Clone + Send + Sync + Unpin + 'static + Debug + Ord,
     T::Inner: Clone + Send + Sync + Unpin + 'static + Debug + Ord,
+{
+}
+
+// Single-threaded runtimes (wasm/embassy) - no Send + Sync required
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait Fluxion: Timestamped + Clone + Unpin + 'static + Debug + Ord
+where
+    Self::Inner: Clone + Unpin + 'static + Debug + Ord,
+{
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T> Fluxion for T
+where
+    T: Timestamped + Clone + Unpin + 'static + Debug + Ord,
+    T::Inner: Clone + Unpin + 'static + Debug + Ord,
 {
 }

@@ -10,6 +10,11 @@ use futures::{Stream, StreamExt};
 ///
 /// This trait allows any stream of `StreamItem<T>` to transform items while
 /// preserving temporal ordering semantics.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait MapOrderedExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
@@ -65,6 +70,11 @@ where
         F: FnMut(T) -> U + Send + Sync + 'static;
 }
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<S, T> MapOrderedExt<T> for S
 where
     S: Stream<Item = StreamItem<T>>,
@@ -79,6 +89,51 @@ where
         U::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
         U::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
         F: FnMut(T) -> U + Send + Sync + 'static,
+    {
+        self.map(move |item| item.map(&mut f))
+    }
+}
+
+// Single-threaded version (WASM, Embassy) - no Send + Sync bounds
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait MapOrderedExt<T>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn map_ordered<U, F>(self, f: F) -> impl Stream<Item = StreamItem<U>>
+    where
+        Self: Unpin + 'static,
+        U: Fluxion,
+        U::Inner: Clone + Debug + Ord + Unpin + 'static,
+        U::Timestamp: Debug + Ord + Copy + 'static,
+        F: FnMut(T) -> U + 'static;
+}
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<S, T> MapOrderedExt<T> for S
+where
+    S: Stream<Item = StreamItem<T>>,
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn map_ordered<U, F>(self, mut f: F) -> impl Stream<Item = StreamItem<U>>
+    where
+        Self: Unpin + 'static,
+        U: Fluxion,
+        U::Inner: Clone + Debug + Ord + Unpin + 'static,
+        U::Timestamp: Debug + Ord + Copy + 'static,
+        F: FnMut(T) -> U + 'static,
     {
         self.map(move |item| item.map(&mut f))
     }

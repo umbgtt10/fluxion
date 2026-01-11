@@ -4,7 +4,7 @@
 
 use super::{CombinedStream, ResultStreams, StreamProvider, WasmStream};
 use crate::source::{SensorValue, SourceLayer};
-use fluxion_stream::fluxion_shared::SharedBoxStream;
+use fluxion_stream::share::SharedBoxStream;
 use fluxion_stream_time::WasmTimestamped;
 
 /// Processing layer - Stream transformation and composition

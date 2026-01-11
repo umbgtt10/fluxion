@@ -15,10 +15,29 @@ use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{Fluxion, StreamItem};
 use futures::{Stream, StreamExt};
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
+type PinnedStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>;
+
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+type PinnedStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>>>>;
+
 /// Extension trait providing the `with_latest_from` operator for timestamped streams.
 ///
 /// This operator combines a primary stream with a secondary stream, emitting only
 /// when the primary stream emits, using the latest value from the secondary stream.
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 pub trait WithLatestFromExt<T>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
@@ -111,7 +130,7 @@ where
         self,
         other: IS,
         result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<R>> + Send + Sync
+    ) -> impl Stream<Item = StreamItem<R>>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -120,18 +139,49 @@ where
         R::Timestamp: From<T::Timestamp> + Debug + Ord + Send + Sync + Copy + 'static;
 }
 
+// Single-threaded trait (WASM/Embassy)
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+pub trait WithLatestFromExt<T>: Stream<Item = StreamItem<T>> + Sized
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+{
+    fn with_latest_from<IS, R>(
+        self,
+        other: IS,
+        result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + 'static,
+    ) -> impl Stream<Item = StreamItem<R>>
+    where
+        IS: IntoStream<Item = StreamItem<T>>,
+        IS::Stream: 'static,
+        R: Fluxion,
+        R::Inner: Clone + Debug + Ord + Unpin + 'static,
+        R::Timestamp: From<T::Timestamp> + Debug + Ord + Copy + 'static;
+}
+
+// Multi-threaded implementation
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
 impl<T, S> WithLatestFromExt<T> for S
 where
     T: Fluxion,
     T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
     T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
-    S: Stream<Item = StreamItem<T>> + Sized + Unpin + Send + Sync + 'static,
+    S: Stream<Item = StreamItem<T>> + Send + Sync + Sized + Unpin + 'static,
 {
     fn with_latest_from<IS, R>(
         self,
         other: IS,
         result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<R>> + Send + Sync
+    ) -> impl Stream<Item = StreamItem<R>>
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,
@@ -196,7 +246,78 @@ where
     }
 }
 
-type PinnedStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync>>;
+// Single-threaded implementation
+#[cfg(not(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+)))]
+impl<T, S> WithLatestFromExt<T> for S
+where
+    T: Fluxion,
+    T::Inner: Clone + Debug + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+    S: Stream<Item = StreamItem<T>> + Sized + Unpin + 'static,
+{
+    fn with_latest_from<IS, R>(
+        self,
+        other: IS,
+        result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + 'static,
+    ) -> impl Stream<Item = StreamItem<R>>
+    where
+        IS: IntoStream<Item = StreamItem<T>>,
+        IS::Stream: 'static,
+        R: Fluxion,
+        R::Inner: Clone + Debug + Ord + Unpin + 'static,
+        R::Timestamp: From<T::Timestamp> + Debug + Ord + Copy + 'static,
+    {
+        let streams: Vec<PinnedStream<T>> = vec![Box::pin(self), Box::pin(other.into_stream())];
+
+        let num_streams = streams.len();
+        let state = Arc::new(Mutex::new(IntermediateState::new(num_streams)));
+        let selector = Arc::new(result_selector);
+
+        let combined_stream = ordered_merge_with_index(streams).filter_map({
+            let state = Arc::clone(&state);
+            let selector = Arc::clone(&selector);
+
+            move |(item, stream_index)| {
+                let state = Arc::clone(&state);
+                let selector = Arc::clone(&selector);
+
+                async move {
+                    match item {
+                        StreamItem::Value(value) => {
+                            let timestamp = value.timestamp();
+                            let mut guard = state.lock();
+                            guard.insert(stream_index, value);
+
+                            if guard.is_complete() && stream_index == 0 {
+                                let values = guard.get_values();
+
+                                let combined_state = CombinedState::new(
+                                    vec![
+                                        (values[0].clone().into_inner(), values[0].timestamp()),
+                                        (values[1].clone().into_inner(), values[1].timestamp()),
+                                    ],
+                                    timestamp,
+                                );
+
+                                let result = selector(&combined_state);
+                                Some(StreamItem::Value(result))
+                            } else {
+                                None
+                            }
+                        }
+                        StreamItem::Error(e) => Some(StreamItem::Error(e)),
+                    }
+                }
+            }
+        });
+
+        Box::pin(combined_stream)
+    }
+}
 
 #[derive(Clone)]
 struct IntermediateState<T> {
