@@ -90,7 +90,8 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 use fluxion_core::FluxionTask;
 use fluxion_core::{Fluxion, FluxionSubject, StreamItem};
-use futures::{FutureExt, Stream, StreamExt};
+use futures::future::{select, Either};
+use futures::{Stream, StreamExt};
 
 /// Extension trait providing the `partition` operator for streams.
 ///
@@ -258,36 +259,29 @@ where
 
         let task = FluxionTask::spawn(|cancel| async move {
             let mut stream = self;
-            loop {
-                futures::select! {
-                    _ = cancel.cancelled().fuse() => {
-                        // Graceful shutdown requested
+            while let Either::Left((stream_item, _)) =
+                select(stream.next(), cancel.cancelled()).await
+            {
+                match stream_item {
+                    Some(StreamItem::Value(ref value)) => {
+                        let inner = value.clone().into_inner();
+                        if predicate(&inner) {
+                            if true_subject.next(value.clone()).is_err() {
+                                // True subscriber dropped, but continue for false subscriber
+                            }
+                        } else if false_subject.next(value.clone()).is_err() {
+                            // False subscriber dropped, but continue for true subscriber
+                        }
+                    }
+                    Some(StreamItem::Error(e)) => {
+                        // Propagate error to both streams
+                        let _ = true_subject.error(e.clone());
+                        let _ = false_subject.error(e);
                         break;
                     }
-
-                    item = stream.next().fuse() => {
-                        match item {
-                            Some(StreamItem::Value(ref value)) => {
-                                let inner = value.clone().into_inner();
-                                if predicate(&inner) {
-                                    if true_subject.next(value.clone()).is_err() {
-                                        // True subscriber dropped, but continue for false subscriber
-                                    }
-                                } else if false_subject.next(value.clone()).is_err() {
-                                    // False subscriber dropped, but continue for true subscriber
-                                }
-                            }
-                            Some(StreamItem::Error(e)) => {
-                                // Propagate error to both streams
-                                let _ = true_subject.error(e.clone());
-                                let _ = false_subject.error(e);
-                                break;
-                            }
-                            None => {
-                                // Source completed
-                                break;
-                            }
-                        }
+                    None => {
+                        // Source completed
+                        break;
                     }
                 }
             }

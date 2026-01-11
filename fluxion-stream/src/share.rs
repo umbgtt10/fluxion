@@ -71,7 +71,10 @@
 use alloc::boxed::Box;
 use core::pin::Pin;
 use fluxion_core::{FluxionSubject, FluxionTask, StreamItem, SubjectError};
-use futures::{Stream, StreamExt};
+use futures::{
+    future::{select, Either},
+    Stream, StreamExt,
+};
 
 pub type SharedBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + Send + Sync + 'static>>;
 
@@ -101,37 +104,31 @@ impl<T: Clone + Send + Sync + 'static> FluxionShared<T> {
     /// of calling this directly.
     pub fn new<S>(source: S) -> Self
     where
-        S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
+        S: Stream<Item = StreamItem<T>> + Send + Unpin + 'static,
     {
         let subject = FluxionSubject::new();
         let subject_clone = subject.clone();
 
         let task = FluxionTask::spawn(|cancel| async move {
             let mut stream = source;
-            loop {
-                if cancel.is_cancelled() {
-                    break;
-                }
-
-                match stream.next().await {
+            while let Either::Left((stream_item, _)) =
+                select(stream.next(), cancel.cancelled()).await
+            {
+                match stream_item {
                     Some(StreamItem::Value(v)) => {
                         if subject_clone.next(v).is_err() {
-                            // Subject closed (all subscribers dropped or explicit close)
                             break;
                         }
                     }
                     Some(StreamItem::Error(e)) => {
-                        // Propagate error to all subscribers and terminate
                         let _ = subject_clone.error(e);
                         break;
                     }
                     None => {
-                        // Source completed
                         break;
                     }
                 }
             }
-            // Source completed, close the subject
             subject_clone.close();
         });
 
