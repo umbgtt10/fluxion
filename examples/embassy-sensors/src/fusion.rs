@@ -13,8 +13,8 @@ use fluxion_stream::{
     DistinctUntilChangedByExt, DistinctUntilChangedExt, FilterOrderedExt, IntoFluxionStream,
     MergedStream, SkipItemsExt, TapExt, WindowByCountExt,
 };
-use fluxion_stream_time::prelude::*;
 use fluxion_stream_time::EmbassyTimestamped;
+use fluxion_stream_time::{DebounceExt, SampleExt, ThrottleExt};
 use futures::StreamExt;
 
 extern crate alloc;

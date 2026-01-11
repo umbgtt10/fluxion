@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{HasTimestamp, Timestamped};
-use fluxion_stream_time::runtimes::EmbassyInstant;
+use fluxion_runtime::impls::embassy::EmbassyInstant;
 
 /// Humidity reading as percentage (0-100%)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

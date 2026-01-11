@@ -14,6 +14,7 @@ crate-type = ["cdylib", "rlib"]
 fluxion-core = { path = "../../fluxion-core", default-features = false, features = ["alloc"] }
 fluxion-exec = { path = "../../fluxion-exec", default-features = false }
 fluxion-stream = { path = "../../fluxion-stream", default-features = false, features = ["alloc"] }
+fluxion-runtime = { path = "../../fluxion-runtime", default-features = false, features = ["alloc", "runtime-wasm"] }
 fluxion-stream-time = { path = "../../fluxion-stream-time", default-features = false, features = ["runtime-wasm"] }
 
 async-channel = { version = "2.5", default-features = false }
