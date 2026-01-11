@@ -16,6 +16,7 @@ development = ["async-std", "smol", "tokio-stream"]
 
 [dependencies]
 fluxion-core = { workspace = true, default-features = false, features = ["alloc"] }
+fluxion-runtime = { workspace = true, default-features = false }
 futures = { workspace = true, default-features = false, features = ["alloc"] }
 pin-project = { workspace = true }
 embassy-time = { workspace = true, optional = true }
@@ -34,11 +35,11 @@ std = ["fluxion-core/std", "futures/std"]
 alloc = ["fluxion-core/alloc"]
 
 # Runtime features
-runtime-tokio = ["std", "dep:tokio"]
-runtime-async-std = ["std", "dep:async-io"]
-runtime-smol = ["std", "dep:async-io"]
-runtime-wasm = ["std", "dep:gloo-timers", "dep:js-sys"]
-runtime-embassy = ["alloc", "dep:embassy-time"]
+runtime-tokio = ["std", "dep:tokio", "fluxion-runtime/runtime-tokio"]
+runtime-async-std = ["std", "dep:async-io", "fluxion-runtime/runtime-async-std"]
+runtime-smol = ["std", "dep:async-io", "fluxion-runtime/runtime-smol"]
+runtime-wasm = ["std", "dep:gloo-timers", "dep:js-sys", "fluxion-runtime/runtime-wasm"]
+runtime-embassy = ["alloc", "dep:embassy-time", "fluxion-runtime/runtime-embassy"]
 
 [dev-dependencies]
 anyhow = { workspace = true }
@@ -53,11 +54,11 @@ tokio = { workspace = true }
 tokio-stream = { workspace = true }  # Used in doc examples
 criterion = { workspace = true }
 async-channel = { workspace = true }
-# Embassy time with std driver and generic queue for no-hardware testing
 embassy-time = { workspace = true, features = ["std", "generic-queue-8"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = { workspace = true }
+gloo-timers = { workspace = true, features = ["futures"] }
 
 [[bench]]
 name = "benchmarks"

@@ -3,8 +3,8 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{HasTimestamp, Timestamped};
-use fluxion_stream_time::runtimes::TokioTimer;
-use fluxion_stream_time::timer::Timer;
+use fluxion_runtime::impls::tokio::{TokioRuntime, TokioTimer};
+use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::InstantTimestamped;
 use std::cmp::Ordering;
 use std::f64::consts::PI;
@@ -13,7 +13,7 @@ use std::f64::consts::PI;
 fn test_instant_timestamped_new() {
     let timer = TokioTimer;
     let instant = timer.now();
-    let item: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, instant);
+    let item: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(42, instant);
 
     assert_eq!(item.value, 42);
     assert_eq!(item.timestamp, instant);
@@ -23,7 +23,7 @@ fn test_instant_timestamped_new() {
 fn test_instant_timestamped_has_timestamp() {
     let timer = TokioTimer;
     let instant = timer.now();
-    let item: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, instant);
+    let item: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(42, instant);
 
     assert_eq!(item.timestamp(), instant);
 }
@@ -32,7 +32,7 @@ fn test_instant_timestamped_has_timestamp() {
 fn test_instant_timestamped_into_inner() {
     let timer = TokioTimer;
     let instant = timer.now();
-    let item: InstantTimestamped<String, TokioTimer> =
+    let item: InstantTimestamped<String, TokioRuntime> =
         InstantTimestamped::new("test".to_string(), instant);
 
     let inner = item.into_inner();
@@ -45,14 +45,14 @@ fn test_instant_timestamped_with_timestamp() {
     let instant1 = timer.now();
     let instant2 = timer.now();
 
-    let item: InstantTimestamped<i32, TokioTimer> =
+    let item: InstantTimestamped<i32, TokioRuntime> =
         InstantTimestamped::with_timestamp(42, instant1);
 
     assert_eq!(item.value, 42);
     assert_eq!(item.timestamp, instant1);
 
     // Test replacing timestamp
-    let item2: InstantTimestamped<i32, TokioTimer> =
+    let item2: InstantTimestamped<i32, TokioRuntime> =
         InstantTimestamped::with_timestamp(100, instant2);
     assert_eq!(item2.value, 100);
     assert_eq!(item2.timestamp, instant2);
@@ -62,7 +62,7 @@ fn test_instant_timestamped_with_timestamp() {
 fn test_instant_timestamped_clone() {
     let timer = TokioTimer;
     let instant = timer.now();
-    let item: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, instant);
+    let item: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(42, instant);
 
     let cloned = item.clone();
     assert_eq!(cloned.value, item.value);
@@ -73,7 +73,7 @@ fn test_instant_timestamped_clone() {
 fn test_instant_timestamped_debug() {
     let timer = TokioTimer;
     let instant = timer.now();
-    let item: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, instant);
+    let item: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(42, instant);
 
     let debug_str = format!("{:?}", item);
     assert!(debug_str.contains("InstantTimestamped"));
@@ -88,10 +88,10 @@ fn test_instant_timestamped_equality() {
     std::thread::sleep(std::time::Duration::from_millis(1));
     let instant2 = timer.now();
 
-    let item1: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, instant1);
-    let item2: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, instant1);
-    let item3: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, instant2);
-    let item4: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(100, instant1);
+    let item1: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(42, instant1);
+    let item2: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(42, instant1);
+    let item3: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(42, instant2);
+    let item4: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(100, instant1);
 
     // Same value and timestamp
     assert_eq!(item1, item2);
@@ -110,8 +110,8 @@ fn test_instant_timestamped_ordering() {
     std::thread::sleep(std::time::Duration::from_millis(1));
     let instant2 = timer.now();
 
-    let item1: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(100, instant1);
-    let item2: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, instant2);
+    let item1: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(100, instant1);
+    let item2: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(42, instant2);
 
     // Ordering based on timestamp, not value
     assert_eq!(item1.partial_cmp(&item2), Some(Ordering::Less));
@@ -128,8 +128,8 @@ fn test_instant_timestamped_ordering_same_timestamp() {
     let timer = TokioTimer;
     let instant = timer.now();
 
-    let item1: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, instant);
-    let item2: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(100, instant);
+    let item1: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(42, instant);
+    let item2: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(100, instant);
 
     // Same timestamp = equal ordering
     assert_eq!(item1.partial_cmp(&item2), Some(Ordering::Equal));
@@ -140,7 +140,7 @@ fn test_instant_timestamped_ordering_same_timestamp() {
 fn test_instant_timestamped_deref() {
     let timer = TokioTimer;
     let instant = timer.now();
-    let item: InstantTimestamped<String, TokioTimer> =
+    let item: InstantTimestamped<String, TokioRuntime> =
         InstantTimestamped::new("hello".to_string(), instant);
 
     // Test Deref - can call String methods directly
@@ -170,7 +170,7 @@ fn test_instant_timestamped_deref_with_complex_type() {
         age: 25,
     };
 
-    let item: InstantTimestamped<Person, TokioTimer> = InstantTimestamped::new(person, instant);
+    let item: InstantTimestamped<Person, TokioRuntime> = InstantTimestamped::new(person, instant);
 
     // Can call Person methods through Deref
     assert!(item.is_adult());
@@ -183,9 +183,10 @@ fn test_instant_timestamped_with_option() {
     let timer = TokioTimer;
     let instant = timer.now();
 
-    let item1: InstantTimestamped<Option<i32>, TokioTimer> =
+    let item1: InstantTimestamped<Option<i32>, TokioRuntime> =
         InstantTimestamped::new(Some(42), instant);
-    let item2: InstantTimestamped<Option<i32>, TokioTimer> = InstantTimestamped::new(None, instant);
+    let item2: InstantTimestamped<Option<i32>, TokioRuntime> =
+        InstantTimestamped::new(None, instant);
 
     assert_eq!(*item1, Some(42));
     assert_eq!(*item2, None);
@@ -201,7 +202,7 @@ fn test_instant_timestamped_trait_bounds() {
 
     let timer = TokioTimer;
     let instant = timer.now();
-    let item: InstantTimestamped<FullTraits, TokioTimer> =
+    let item: InstantTimestamped<FullTraits, TokioRuntime> =
         InstantTimestamped::new(FullTraits(42), instant);
 
     assert_eq!(item.0, 42);
@@ -210,7 +211,7 @@ fn test_instant_timestamped_trait_bounds() {
     #[derive(Debug, Clone, PartialEq)]
     struct PartialOnly(f64);
 
-    let item2: InstantTimestamped<PartialOnly, TokioTimer> =
+    let item2: InstantTimestamped<PartialOnly, TokioRuntime> =
         InstantTimestamped::new(PartialOnly(PI), instant);
 
     assert_eq!(item2.0, PI);
@@ -226,9 +227,9 @@ fn test_instant_timestamped_vector_sorting() {
     let instant3 = timer.now();
 
     let mut items = [
-        InstantTimestamped::<i32, TokioTimer>::new(3, instant3),
-        InstantTimestamped::<i32, TokioTimer>::new(1, instant1),
-        InstantTimestamped::<i32, TokioTimer>::new(2, instant2),
+        InstantTimestamped::<i32, TokioRuntime>::new(3, instant3),
+        InstantTimestamped::<i32, TokioRuntime>::new(1, instant1),
+        InstantTimestamped::<i32, TokioRuntime>::new(2, instant2),
     ];
 
     items.sort();

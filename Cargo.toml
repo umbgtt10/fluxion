@@ -3,11 +3,12 @@ resolver = "2"
 members = [
     "fluxion",
     "fluxion-core",
+    "fluxion-exec",
     "fluxion-ordered-merge",
     "fluxion-stream",
-    "fluxion-exec",
-    "fluxion-test-utils",
+    "fluxion-runtime",
     "fluxion-stream-time",
+    "fluxion-test-utils",
 ]
 
 [workspace.package]
@@ -40,7 +41,7 @@ quick-xml = { version = "0.38.4", features = ["serialize"] }
 csv = "1.4"
 rand = "0.9.2"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.148"
+serde_json = "1.0.149"
 fastrand = { version = "2.3.0", default-features = false }
 
 # Synchronization
@@ -59,6 +60,7 @@ anyhow = "1.0.100"
 criterion = { version = "0.7.0", features = ["async", "html_reports"] }
 
 # WASM support
+wasm-bindgen = "0.2"
 gloo-timers = "0.3"
 js-sys = "0.3"
 wasm-bindgen-test = "0.3"
@@ -67,8 +69,9 @@ wasm-bindgen-futures = "0.4"
 # Internal workspace dependencies
 fluxion-rx = { version = "0.7.0", path = "fluxion" }
 fluxion-core = { version = "0.7.0", path = "fluxion-core", default-features = false }
-fluxion-ordered-merge = { version = "0.7.0", path = "fluxion-ordered-merge" }
-fluxion-stream = { version = "0.7.0", path = "fluxion-stream" }
 fluxion-exec = { version = "0.7.0", path = "fluxion-exec" }
-fluxion-test-utils = { version = "0.7.0", path = "fluxion-test-utils" }
+fluxion-ordered-merge = { version = "0.7.0", path = "fluxion-ordered-merge" }
+fluxion-runtime = { version = "0.7.0", path = "fluxion-runtime", default-features = false }
+fluxion-stream = { version = "0.7.0", path = "fluxion-stream" }
 fluxion-stream-time = { version = "0.7.0", path = "fluxion-stream-time" }
+fluxion-test-utils = { version = "0.7.0", path = "fluxion-test-utils" }

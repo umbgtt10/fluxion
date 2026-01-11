@@ -2,13 +2,22 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::timer::Timer;
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    feature = "runtime-embassy",
+    feature = "runtime-wasm"
+))]
+use crate::DefaultRuntime;
 use core::fmt::Debug;
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::time::Duration;
 use fluxion_core::{Fluxion, HasTimestamp, StreamItem};
+use fluxion_runtime::runtime::Runtime;
+use fluxion_runtime::timer::Timer;
 use futures::stream::FuturesOrdered;
 use futures::{Stream, StreamExt};
 use pin_project::pin_project;
@@ -17,12 +26,12 @@ use pin_project::pin_project;
 ///
 /// This trait allows any stream of `StreamItem<T>` where `T: Fluxion` to delay emissions
 /// by a specified duration.
-pub trait DelayExt<T, TM>: Stream<Item = StreamItem<T>> + Sized
+pub trait DelayExt<T, R>: Stream<Item = StreamItem<T>> + Sized
 where
     T: Fluxion,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
-    TM: Timer<Instant = T::Timestamp>,
+    T::Inner: Clone + Debug + Send + Sync + Ord + Unpin + 'static,
+    T::Timestamp: Debug + Ord + Copy + 'static,
+    R: Runtime,
 {
     /// Delays each emission by the specified duration.
     ///
@@ -40,9 +49,11 @@ where
     ///
     /// ```rust,no_run
     /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-    /// use fluxion_stream_time::{DelayExt, TokioTimestamped, TokioTimer};
+    /// use fluxion_stream_time::{DelayExt, TokioTimestamped};
     /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-    /// use fluxion_stream_time::timer::Timer;
+    /// use fluxion_runtime::impls::tokio::TokioTimer;
+    /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+    /// use fluxion_runtime::timer::Timer;
     /// use fluxion_core::StreamItem;
     /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
     /// use fluxion_test_utils::test_data::person_alice;
@@ -70,99 +81,23 @@ where
 
 // Feature-gated implementations - one per runtime
 
-#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-impl<S, T> DelayExt<T, crate::TokioTimer> for S
-where
-    S: Stream<Item = StreamItem<T>>,
-    T: Fluxion<Timestamp = std::time::Instant>,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        DelayStream::<S, T, _> {
-            stream: self,
-            duration,
-            timer: crate::TokioTimer,
-            in_flight: FuturesOrdered::new(),
-            upstream_done: false,
-        }
-    }
-}
-
-#[cfg(all(feature = "runtime-smol", not(feature = "runtime-tokio")))]
-impl<S, T> DelayExt<T, crate::SmolTimer> for S
-where
-    S: Stream<Item = StreamItem<T>>,
-    T: Fluxion<Timestamp = std::time::Instant>,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        DelayStream::<S, T, _> {
-            stream: self,
-            duration,
-            timer: crate::SmolTimer,
-            in_flight: FuturesOrdered::new(),
-            upstream_done: false,
-        }
-    }
-}
-
-#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
-impl<S, T> DelayExt<T, crate::runtimes::wasm_implementation::WasmTimer> for S
-where
-    S: Stream<Item = StreamItem<T>>,
-    T: Fluxion<Timestamp = crate::runtimes::wasm_implementation::WasmInstant>,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        DelayStream::<S, T, _> {
-            stream: self,
-            duration,
-            timer: crate::runtimes::wasm_implementation::WasmTimer::new(),
-            in_flight: FuturesOrdered::new(),
-            upstream_done: false,
-        }
-    }
-}
-
-#[cfg(all(
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
     feature = "runtime-async-std",
-    not(feature = "runtime-tokio"),
-    not(feature = "runtime-smol")
-))]
-impl<S, T> DelayExt<T, crate::runtimes::AsyncStdTimer> for S
-where
-    S: Stream<Item = StreamItem<T>>,
-    T: Fluxion<Timestamp = std::time::Instant>,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-{
-    fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        DelayStream::<S, T, _> {
-            stream: self,
-            duration,
-            timer: crate::runtimes::AsyncStdTimer,
-            in_flight: FuturesOrdered::new(),
-            upstream_done: false,
-        }
-    }
-}
-
-#[cfg(all(
     feature = "runtime-embassy",
-    not(feature = "runtime-tokio"),
-    not(feature = "runtime-smol"),
-    not(feature = "runtime-async-std")
+    feature = "runtime-wasm"
 ))]
-impl<S, T> DelayExt<T, crate::runtimes::EmbassyTimerImpl> for S
+impl<S, T> DelayExt<T, DefaultRuntime> for S
 where
     S: Stream<Item = StreamItem<T>>,
-    T: Fluxion<Timestamp = crate::runtimes::EmbassyInstant>,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
+    T: Fluxion<Timestamp = <DefaultRuntime as Runtime>::Instant>,
+    T::Inner: Clone + Debug + Send + Sync + Ord + Unpin + 'static,
 {
     fn delay(self, duration: Duration) -> impl Stream<Item = StreamItem<T>> {
-        DelayStream::<S, T, _> {
+        DelayStream::<S, T, DefaultRuntime> {
             stream: self,
             duration,
-            timer: crate::runtimes::EmbassyTimerImpl,
             in_flight: FuturesOrdered::new(),
             upstream_done: false,
         }
@@ -170,18 +105,19 @@ where
 }
 
 #[pin_project]
-struct DelayFuture<T, TM: Timer>
+struct DelayFuture<T, R>
 where
-    T: HasTimestamp<Timestamp = TM::Instant>,
+    T: HasTimestamp<Timestamp = R::Instant>,
+    R: Runtime,
 {
     #[pin]
-    delay: TM::Sleep,
+    delay: <R::Timer as Timer>::Sleep,
     value: Option<T>,
 }
 
-impl<T, TM: Timer> Future for DelayFuture<T, TM>
+impl<T, R: Runtime> Future for DelayFuture<T, R>
 where
-    T: HasTimestamp<Timestamp = TM::Instant>,
+    T: HasTimestamp<Timestamp = R::Instant>,
 {
     type Output = StreamItem<T>;
 
@@ -202,24 +138,26 @@ where
 }
 
 #[pin_project]
-struct DelayStream<S, T, TM: Timer>
+struct DelayStream<S, T, R>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: HasTimestamp<Timestamp = TM::Instant>,
+    T: HasTimestamp<Timestamp = R::Instant>,
+    R: Runtime,
+    R::Timer: Timer,
 {
     #[pin]
     stream: S,
     duration: Duration,
-    timer: TM,
-    in_flight: FuturesOrdered<DelayFuture<T, TM>>,
+    in_flight: FuturesOrdered<DelayFuture<T, R>>,
     upstream_done: bool,
 }
 
-impl<S, T, TM> Stream for DelayStream<S, T, TM>
+impl<S, T, R> Stream for DelayStream<S, T, R>
 where
     S: Stream<Item = StreamItem<T>>,
-    T: HasTimestamp<Timestamp = TM::Instant>,
-    TM: Timer,
+    T: HasTimestamp<Timestamp = R::Instant>,
+    R: Runtime,
+    R::Timer: Timer,
 {
     type Item = StreamItem<T>;
 
@@ -232,7 +170,7 @@ where
                 match this.stream.as_mut().poll_next(cx) {
                     Poll::Ready(Some(StreamItem::Value(value))) => {
                         let future = DelayFuture {
-                            delay: this.timer.sleep_future(*this.duration),
+                            delay: R::Timer::default().sleep_future(*this.duration),
                             value: Some(value),
                         };
                         this.in_flight.push_back(future);

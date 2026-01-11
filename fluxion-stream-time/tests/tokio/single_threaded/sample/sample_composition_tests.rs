@@ -3,11 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::StreamItem;
+use fluxion_runtime::impls::tokio::TokioTimer;
+use fluxion_runtime::timer::Timer;
 use fluxion_stream::prelude::*;
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::TokioTimer;
-use fluxion_stream_time::TokioTimestamped;
+use fluxion_stream_time::{SampleExt, TokioTimestamped};
 use fluxion_test_utils::{
     helpers::recv_timeout,
     test_channel,
