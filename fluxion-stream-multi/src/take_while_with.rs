@@ -70,7 +70,7 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream_single::TakeWhileExt;
+    /// use fluxion_stream_multi::TakeWhileExt;
     /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
     ///

@@ -15,7 +15,7 @@ bench = false
 [dependencies]
 # Fluxion crates - no_std + Embassy
 fluxion-core = { path = "../../fluxion-core", default-features = false, features = ["alloc"] }
-fluxion-stream = { path = "../../fluxion-stream", default-features = false, features = ["alloc"] }
+fluxion-stream = { path = "../../fluxion-stream", default-features = false, features = ["embassy"] }
 fluxion-runtime = { path = "../../fluxion-runtime", default-features = false, features = ["alloc", "runtime-embassy"] }
 fluxion-stream-time = { path = "../../fluxion-stream-time", default-features = false, features = ["runtime-embassy"] }
 

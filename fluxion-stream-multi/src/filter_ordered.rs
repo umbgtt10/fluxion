@@ -39,7 +39,7 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream_single::{FilterOrderedExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{FilterOrderedExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///

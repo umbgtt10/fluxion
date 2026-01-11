@@ -33,7 +33,7 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream_single::{WindowByCountExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{WindowByCountExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///

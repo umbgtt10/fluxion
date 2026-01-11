@@ -39,7 +39,7 @@ where
     /// ## Basic Deduplication
     ///
     /// ```rust
-    /// use fluxion_stream_single::{DistinctUntilChangedExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{DistinctUntilChangedExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///
@@ -71,7 +71,7 @@ where
     /// Detect when a boolean state changes:
     ///
     /// ```rust
-    /// use fluxion_stream_single::{DistinctUntilChangedExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{DistinctUntilChangedExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///

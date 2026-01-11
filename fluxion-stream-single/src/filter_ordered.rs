@@ -74,7 +74,7 @@ where
     /// - [`TakeWhileExt::take_while_with`](crate::TakeWhileExt::take_while_with) - Filter until condition fails
     fn filter_ordered<F>(self, predicate: F) -> impl Stream<Item = StreamItem<T>>
     where
-        Self: Unpin + 'static,
+        Self: 'static,
         F: FnMut(&T::Inner) -> bool + 'static;
 }
 
@@ -87,7 +87,7 @@ where
 {
     fn filter_ordered<F>(self, predicate: F) -> impl Stream<Item = StreamItem<T>>
     where
-        Self: Unpin + 'static,
+        Self: 'static,
         F: FnMut(&T::Inner) -> bool + 'static,
     {
         filter_ordered_impl(self, predicate)

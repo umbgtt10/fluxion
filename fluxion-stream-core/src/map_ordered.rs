@@ -20,13 +20,14 @@ use futures::{Stream, StreamExt};
 /// use fluxion_stream_core::map_ordered::map_ordered_impl;
 /// use fluxion_core::StreamItem;
 /// use fluxion_test_utils::Sequenced;
-/// use futures::StreamExt;
+/// use futures::{StreamExt, pin_mut};
 ///
 /// # async fn example() {
 /// let (tx, rx) = async_channel::unbounded();
 /// let stream = rx.map(StreamItem::Value);
 ///
-/// let mut mapped = map_ordered_impl(stream, |x: Sequenced<i32>| Sequenced::new(x.into_inner() * 2));
+/// let mapped = map_ordered_impl(stream, |x: Sequenced<i32>| Sequenced::new(x.into_inner() * 2));
+/// pin_mut!(mapped);
 ///
 /// tx.try_send(Sequenced::new(5)).unwrap();
 /// assert_eq!(mapped.next().await.unwrap().unwrap().into_inner(), 10);

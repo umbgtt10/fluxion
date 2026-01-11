@@ -48,7 +48,7 @@ where
     /// ## Custom Equality by Field
     ///
     /// ```rust
-    /// use fluxion_stream_single::{DistinctUntilChangedByExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{DistinctUntilChangedByExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///
@@ -80,7 +80,7 @@ where
     /// ## Case-Insensitive String Comparison
     ///
     /// ```rust
-    /// use fluxion_stream_single::{DistinctUntilChangedByExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{DistinctUntilChangedByExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///

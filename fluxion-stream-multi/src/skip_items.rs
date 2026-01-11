@@ -37,7 +37,7 @@ pub trait SkipItemsExt<T>: Stream<Item = StreamItem<T>> + Sized {
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream_single::{SkipItemsExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{SkipItemsExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///

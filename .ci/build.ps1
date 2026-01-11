@@ -24,7 +24,9 @@ Warning:
 #>
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
+# Cargo writes build status to stderr which PowerShell treats as errors with Stop action
+# Use Continue to allow script to check $LASTEXITCODE properly
+$ErrorActionPreference = 'Continue'
 
 function Write-Color([string]$Text, [ConsoleColor]$Color) {
   Write-Output $Text
@@ -162,9 +164,12 @@ Invoke-WorkspaceUpgrade
 Invoke-StepAction "Refresh lockfile" { cargo update }
 
 Invoke-StepAction "Format check" { cargo fmt --all -- --check }
-# Note: Embassy tests excluded from --all-features build as they require --no-default-features
-Invoke-StepAction "Build (all targets & features)" { cargo build --all-features --verbose --lib --bins --examples --workspace }
-Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-features --lib --bins --examples --workspace -- -D warnings }
+
+# Note: fluxion-stream facade cannot use --all-features (mutual exclusion of multi/single)
+# Build with default features (multi), then test single separately
+Invoke-StepAction "Build (multi runtime)" { cargo build --verbose --lib --bins --examples --workspace }
+Invoke-StepAction "Build (single runtime)" { cargo build --package fluxion-stream --no-default-features --features single --verbose }
+Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --lib --bins --examples --workspace -- -D warnings }
 
 # Run Tokio tests
 Write-Color "=== Running Tokio tests ===" Cyan

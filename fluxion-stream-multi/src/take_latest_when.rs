@@ -53,7 +53,7 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream_single::TakeLatestWhenExt;
+    /// use fluxion_stream_multi::TakeLatestWhenExt;
     /// use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
     /// use fluxion_core::Timestamped as TimestampedTrait;
     ///

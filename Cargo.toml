@@ -74,6 +74,9 @@ fluxion-rx = { version = "0.7.0", path = "fluxion" }
 fluxion-core = { version = "0.7.0", path = "fluxion-core", default-features = false }
 fluxion-ordered-merge = { version = "0.7.0", path = "fluxion-ordered-merge" }
 fluxion-stream = { version = "0.7.0", path = "fluxion-stream" }
+fluxion-stream-core = { version = "0.7.0", path = "fluxion-stream-core", default-features = false }
+fluxion-stream-multi = { version = "0.7.0", path = "fluxion-stream-multi" }
+fluxion-stream-single = { version = "0.7.0", path = "fluxion-stream-single", default-features = false }
 fluxion-exec = { version = "0.7.0", path = "fluxion-exec" }
 fluxion-test-utils = { version = "0.7.0", path = "fluxion-test-utils" }
 fluxion-stream-time = { version = "0.7.0", path = "fluxion-stream-time" }

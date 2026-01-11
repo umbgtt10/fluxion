@@ -43,7 +43,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_single::{SampleRatioExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{SampleRatioExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///

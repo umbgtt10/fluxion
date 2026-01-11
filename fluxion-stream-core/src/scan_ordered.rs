@@ -23,17 +23,18 @@ use futures::{future::ready, Stream, StreamExt};
 /// use fluxion_stream_core::scan_ordered::scan_ordered_impl;
 /// use fluxion_core::StreamItem;
 /// use fluxion_test_utils::Sequenced;
-/// use futures::StreamExt;
+/// use futures::{StreamExt, pin_mut};
 ///
 /// # async fn example() {
 /// let (tx, rx) = async_channel::unbounded();
 /// let stream = rx.map(StreamItem::Value);
 ///
 /// // Running sum
-/// let mut sums = scan_ordered_impl(stream, 0, |acc: &mut i32, val: &i32| {
+/// let sums = scan_ordered_impl::<_, Sequenced<i32>, i32, Sequenced<i32>, i32, i32, _>(stream, 0, |acc: &mut i32, val: &i32| {
 ///     *acc += val;
 ///     *acc
 /// });
+/// pin_mut!(sums);
 ///
 /// tx.try_send(Sequenced::new(10)).unwrap();
 /// assert_eq!(sums.next().await.unwrap().unwrap().into_inner(), 10);

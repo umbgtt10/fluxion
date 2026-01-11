@@ -35,7 +35,7 @@ use futures::{stream::iter, Stream, StreamExt};
 /// use fluxion_stream_core::start_with::start_with_impl;
 /// use fluxion_core::StreamItem;
 /// use fluxion_test_utils::Sequenced;
-/// use futures::StreamExt;
+/// use futures::{StreamExt, pin_mut};
 ///
 /// # async fn example() {
 /// let (tx, rx) = async_channel::unbounded();
@@ -45,14 +45,15 @@ use futures::{stream::iter, Stream, StreamExt};
 ///     StreamItem::Value(Sequenced::new(2)),
 /// ];
 ///
-/// let mut stream_with_prefix = start_with_impl(rx, initial);
+/// let stream_with_prefix = start_with_impl(rx, initial);
+/// pin_mut!(stream_with_prefix);
 ///
 /// // Initial values come first
 /// assert_eq!(stream_with_prefix.next().await.unwrap().unwrap().into_inner(), 1);
 /// assert_eq!(stream_with_prefix.next().await.unwrap().unwrap().into_inner(), 2);
 ///
 /// // Then stream values
-/// tx.try_send(Sequenced::new(3)).unwrap();
+/// tx.try_send(StreamItem::Value(Sequenced::new(3))).unwrap();
 /// assert_eq!(stream_with_prefix.next().await.unwrap().unwrap().into_inner(), 3);
 /// # }
 /// ```

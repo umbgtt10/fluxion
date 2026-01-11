@@ -7,6 +7,9 @@ license.workspace = true
 repository.workspace = true
 description = "Fluxion stream operators for multi-threaded runtimes (Tokio, smol, async-std)"
 
+[package.metadata.cargo-udeps.ignore]
+normal = ["fluxion-ordered-merge", "fluxion-runtime"]
+
 [lib]
 doctest = false
 

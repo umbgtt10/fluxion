@@ -8,6 +8,7 @@
 //! **CRITICAL**: Relaxed input stream bounds (`IS::Stream: 'static` instead of `Send + Sync`)
 //! allow this to work in Embassy and WASM.
 
+use alloc::vec::Vec;
 use core::fmt::Debug;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{Fluxion, StreamItem, Timestamped};

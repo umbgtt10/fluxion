@@ -38,7 +38,7 @@ pub trait TakeItemsExt<T>: Stream<Item = StreamItem<T>> + Sized {
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream_single::{TakeItemsExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{TakeItemsExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///

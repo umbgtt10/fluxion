@@ -32,12 +32,13 @@ use futures::{Stream, StreamExt};
 /// use fluxion_stream_core::tap::tap_impl;
 /// use fluxion_core::StreamItem;
 /// use fluxion_test_utils::Sequenced;
-/// use futures::StreamExt;
+/// use futures::{StreamExt, pin_mut};
 ///
 /// # async fn example() {
 /// let (tx, rx) = async_channel::unbounded();
 ///
-/// let mut tapped = tap_impl(rx.map(StreamItem::Value), |x| println!("Value: {}", x));
+/// let tapped = tap_impl(rx.map(StreamItem::Value), |x| println!("Value: {}", x));
+/// pin_mut!(tapped);
 ///
 /// tx.try_send(Sequenced::new(42)).unwrap();
 /// let result = tapped.next().await.unwrap().unwrap();

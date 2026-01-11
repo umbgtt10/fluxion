@@ -25,9 +25,13 @@ pub mod map_ordered;
 pub mod merge_with;
 pub mod on_error;
 pub mod ordered_merge;
+// partition and share require FluxionTask (runtime support)
+#[cfg(any(feature = "runtime-embassy", feature = "runtime-wasm"))]
 pub mod partition;
+pub mod prelude;
 pub mod sample_ratio;
 pub mod scan_ordered;
+#[cfg(any(feature = "runtime-embassy", feature = "runtime-wasm"))]
 pub mod share;
 pub mod skip_items;
 pub mod start_with;
@@ -50,9 +54,12 @@ pub use map_ordered::MapOrderedExt;
 pub use merge_with::MergedStream;
 pub use on_error::OnErrorExt;
 pub use ordered_merge::OrderedStreamExt;
+// partition and share require FluxionTask (runtime support)
+#[cfg(any(feature = "runtime-embassy", feature = "runtime-wasm"))]
 pub use partition::{PartitionExt, PartitionedStream};
 pub use sample_ratio::SampleRatioExt;
 pub use scan_ordered::ScanOrderedExt;
+#[cfg(any(feature = "runtime-embassy", feature = "runtime-wasm"))]
 pub use share::{FluxionShared, ShareExt, SharedBoxStream};
 pub use skip_items::SkipItemsExt;
 pub use start_with::StartWithExt;

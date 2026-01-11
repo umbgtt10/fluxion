@@ -13,7 +13,7 @@ publish = false
 [dependencies]
 fluxion-rx = { path = "../../fluxion" }
 fluxion-core = { path = "../../fluxion-core", features = ["std"] }
-fluxion-stream = { path = "../../fluxion-stream" }
+fluxion-stream = { path = "../../fluxion-stream", features = ["tokio"] }
 fluxion-exec = { path = "../../fluxion-exec" }
 tokio = { version = "1.48", features = ["full"] }
 serde = { version = "1.0.217", features = ["derive"] }

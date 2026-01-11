@@ -47,7 +47,11 @@ where
     fn with_latest_from<IS, R>(
         self,
         other: IS,
-        result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + Send + Sync + Unpin + 'static,
+        result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R
+            + Send
+            + Sync
+            + Unpin
+            + 'static,
     ) -> impl Stream<Item = StreamItem<R>> + Send + Sync + Unpin
     where
         IS: IntoStream<Item = StreamItem<T>>,
@@ -67,7 +71,11 @@ where
     fn with_latest_from<IS, R>(
         self,
         other: IS,
-        result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + Send + Sync + Unpin + 'static,
+        result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R
+            + Send
+            + Sync
+            + Unpin
+            + 'static,
     ) -> impl Stream<Item = StreamItem<R>> + Send + Sync + Unpin
     where
         IS: IntoStream<Item = StreamItem<T>>,

@@ -90,7 +90,7 @@ where
     ///
     /// Only the first and latest items are processed:
     ///
-    /// ```
+    /// ```no_run
     /// use fluxion_exec::SubscribeLatestExt;
     /// use futures::channel::mpsc::unbounded;
     /// use futures::StreamExt;

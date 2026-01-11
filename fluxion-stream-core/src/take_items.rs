@@ -36,12 +36,13 @@ use futures::{Stream, StreamExt};
 /// use fluxion_stream_core::take_items::take_items_impl;
 /// use fluxion_core::StreamItem;
 /// use fluxion_test_utils::Sequenced;
-/// use futures::StreamExt;
+/// use futures::{StreamExt, pin_mut};
 ///
 /// # async fn example() {
 /// let (tx, rx) = async_channel::unbounded();
 ///
-/// let mut first_two = take_items_impl(rx, 2);
+/// let first_two = take_items_impl(rx, 2);
+/// pin_mut!(first_two);
 ///
 /// tx.try_send(StreamItem::Value(Sequenced::new(1))).unwrap();
 /// tx.try_send(StreamItem::Value(Sequenced::new(2))).unwrap();

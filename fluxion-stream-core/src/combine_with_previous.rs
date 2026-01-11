@@ -92,12 +92,13 @@ impl<T: Timestamped> Timestamped for WithPrevious<T> {
 /// use fluxion_stream_core::combine_with_previous::{combine_with_previous_impl, WithPrevious};
 /// use fluxion_core::StreamItem;
 /// use fluxion_test_utils::Sequenced;
-/// use futures::StreamExt;
+/// use futures::{StreamExt, pin_mut};
 ///
 /// # async fn example() {
 /// let (tx, rx) = async_channel::unbounded();
 ///
-/// let mut paired = combine_with_previous_impl(rx.map(StreamItem::Value));
+/// let paired = combine_with_previous_impl(rx.map(StreamItem::Value));
+/// pin_mut!(paired);
 ///
 /// tx.try_send(Sequenced::new(1)).unwrap();
 /// tx.try_send(Sequenced::new(2)).unwrap();
@@ -109,7 +110,7 @@ impl<T: Timestamped> Timestamped for WithPrevious<T> {
 ///
 /// // Second has previous
 /// let second = paired.next().await.unwrap().unwrap();
-/// assert_eq!(second.previous.as_ref().unwrap().into_inner(), 1);
+/// assert_eq!(second.previous.as_ref().unwrap().value, 1);
 /// assert_eq!(second.current.into_inner(), 2);
 /// # }
 /// ```

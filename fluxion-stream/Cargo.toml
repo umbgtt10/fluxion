@@ -6,45 +6,45 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
-description = "Stream combinators with ordering guarantees for async Rust"
+description = "Stream combinators with ordering guarantees for async Rust - facade crate"
 keywords = ["async", "stream", "reactive", "combinators", "futures"]
 categories = ["asynchronous", "concurrency"]
 readme = "README.md"
 
 [dependencies]
-fluxion-core = { workspace = true, default-features = false, features = ["alloc"] }
-fluxion-ordered-merge = { workspace = true }
-futures = { workspace = true, default-features = false, features = ["alloc", "async-await"] }
-futures-util = { workspace = true, default-features = false, features = ["alloc"] }
-tokio = { workspace = true, optional = true, features = ["rt", "sync", "macros"] }
-pin-project = { workspace = true }
-fastrand = { workspace = true, default-features = false }
-tracing = { workspace = true, optional = true }
-async-channel = { workspace = true, default-features = false, optional = true }
+fluxion-stream-multi = { workspace = true, optional = true }
+fluxion-stream-single = { workspace = true, optional = true }
 
 [features]
-default = ["std", "runtime-tokio"]
-std = [
-    "fluxion-core/std",
-    "fluxion-core/alloc",
-    "futures/std",
-    "futures-util/std",
-    "dep:async-channel",
-    "async-channel?/std",
-]
-alloc = ["fluxion-core/alloc", "dep:async-channel"]
+default = ["multi"]
 
-# Tracing support
-tracing = ["dep:tracing"]
+# Runtime selection - mutually exclusive
+multi = ["dep:fluxion-stream-multi"]
+single = ["dep:fluxion-stream-single"]
 
-# Runtime features (for spawn-based operators like subscribe_async)
-runtime-tokio = ["std", "dep:tokio", "fluxion-core/runtime-tokio"]
-runtime-smol = ["std", "fluxion-core/runtime-smol"]
-runtime-async-std = ["std", "fluxion-core/runtime-async-std"]
+# Convenience aliases
+embassy = ["single"]
+wasm = ["single"]
+tokio = ["multi"]
+smol = ["multi"]
+async-std = ["multi"]
+
+# Pass-through for compatibility (map to multi/single appropriately)
+std = ["multi"]
+alloc = []  # Both multi and single support alloc by default
+tracing = []  # Not used by facade
+
+# Pass-through features for multi
+runtime-tokio = ["multi", "fluxion-stream-multi?/runtime-tokio"]
+runtime-smol = ["multi", "fluxion-stream-multi?/runtime-smol"]
+runtime-async-std = ["multi", "fluxion-stream-multi?/runtime-async-std"]
 
 [target.'cfg(not(target_os = "none"))'.dev-dependencies]
 tokio = { workspace = true }
 fluxion-test-utils = { workspace = true }
+fluxion-core = { workspace = true }
+async-channel = { workspace = true }
+futures = { workspace = true }
 criterion = { workspace = true }
 anyhow = { workspace = true }
 

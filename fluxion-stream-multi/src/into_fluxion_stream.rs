@@ -23,7 +23,7 @@ pub trait IntoFluxionStream<T> {
     /// # Example
     ///
     /// ```rust
-    /// use fluxion_stream_single::IntoFluxionStream;
+    /// use fluxion_stream_multi::IntoFluxionStream;
     /// use async_channel::unbounded;
     ///
     /// let (tx, rx) = unbounded::<i32>();
@@ -47,7 +47,7 @@ pub trait IntoFluxionStream<T> {
     /// # Examples
     ///
     /// ```
-    /// use fluxion_stream_single::IntoFluxionStream;
+    /// use fluxion_stream_multi::IntoFluxionStream;
     /// use fluxion_core::{HasTimestamp, Timestamped};
     /// use async_channel::unbounded;
     ///

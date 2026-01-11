@@ -4,7 +4,9 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 
-use fluxion_stream_multi::{DistinctUntilChangedByExt, FilterOrderedExt, MapOrderedExt, ScanOrderedExt};
+use fluxion_stream_multi::{
+    DistinctUntilChangedByExt, FilterOrderedExt, MapOrderedExt, ScanOrderedExt,
+};
 use fluxion_test_utils::{
     assert_no_element_emitted, test_channel_with_errors, unwrap_stream, Sequenced,
 };

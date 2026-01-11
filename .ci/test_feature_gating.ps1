@@ -91,9 +91,22 @@ function Test-SymbolPresence {
 
     $allPassed = $true
 
-    # Check expected symbols exist (look for re-export declarations)
+    # Check expected symbols exist (look for trait/struct/type definitions or reexports)
     foreach ($symbol in $ExpectedSymbols) {
-        $found = Select-String -Path "target/doc/$docPackageName/*.html" -Pattern "id=.reexport\.$symbol" -Quiet 2>$null
+        # Look for: trait links, struct links, type links, or reexport declarations
+        $patterns = @(
+            "trait\.$symbol",
+            "struct\.$symbol",
+            "type\.$symbol",
+            "reexport\.$symbol"
+        )
+        $found = $false
+        foreach ($pattern in $patterns) {
+            if (Select-String -Path "target/doc/$docPackageName/*.html" -Pattern $pattern -Quiet 2>$null) {
+                $found = $true
+                break
+            }
+        }
         if ($found) {
             Write-Success "    Found expected: $symbol"
             $script:SuccessCount++
@@ -104,9 +117,22 @@ function Test-SymbolPresence {
         }
     }
 
-    # Check unexpected symbols don't exist (look for re-export declarations)
+    # Check unexpected symbols don't exist (look for trait/struct/type definitions or reexports)
     foreach ($symbol in $UnexpectedSymbols) {
-        $found = Select-String -Path "target/doc/$docPackageName/*.html" -Pattern "id=.reexport\.$symbol" -Quiet 2>$null
+        # Look for: trait links, struct links, type links, or reexport declarations
+        $patterns = @(
+            "trait\.$symbol",
+            "struct\.$symbol",
+            "type\.$symbol",
+            "reexport\.$symbol"
+        )
+        $found = $false
+        foreach ($pattern in $patterns) {
+            if (Select-String -Path "target/doc/$docPackageName/*.html" -Pattern $pattern -Quiet 2>$null) {
+                $found = $true
+                break
+            }
+        }
         if (-not $found) {
             Write-Success "    Correctly excluded: $symbol"
             $script:SuccessCount++
@@ -207,7 +233,7 @@ Record-Result $result
 # ============================================================================
 Write-TestHeader "Test 2: no_std + alloc (no runtime features)"
 
-$result = Test-Compilation -Package "fluxion-stream" -Features "alloc" -Description "no_std with alloc"
+$result = Test-Compilation -Package "fluxion-stream" -Features "single,alloc" -Description "no_std with alloc (single runtime)"
 Record-Result $result
 
 $result = Test-Compilation -Package "fluxion-exec" -Features "alloc" -Description "no_std exec with alloc"
@@ -218,13 +244,13 @@ Record-Result $result
 # ============================================================================
 Write-TestHeader "Test 3: Individual Runtime Features"
 
-$result = Test-Compilation -Package "fluxion-stream" -Features "runtime-tokio" -Description "runtime-tokio only"
+$result = Test-Compilation -Package "fluxion-stream" -Features "multi,runtime-tokio" -Description "runtime-tokio with multi"
 Record-Result $result
 
-$result = Test-Compilation -Package "fluxion-stream" -Features "runtime-smol" -Description "runtime-smol only"
+$result = Test-Compilation -Package "fluxion-stream" -Features "multi,runtime-smol" -Description "runtime-smol with multi"
 Record-Result $result
 
-$result = Test-Compilation -Package "fluxion-stream" -Features "runtime-async-std" -Description "runtime-async-std only"
+$result = Test-Compilation -Package "fluxion-stream" -Features "multi,runtime-async-std" -Description "runtime-async-std with multi"
 Record-Result $result
 
 # ============================================================================
@@ -236,7 +262,7 @@ Write-Host "  Checking symbol presence in documentation..."
 Write-Host "  Expected: $($AllNonGatedStreamOperators.Count) items present (20 operators + 3 types), $($RuntimeGatedStreamOperators.Count) items absent (2 operators + 2 types)"
 $result = Test-SymbolPresence `
     -Package "fluxion-stream" `
-    -Features "alloc" `
+    -Features "single,alloc" `
     -ExpectedSymbols $AllNonGatedStreamOperators `
     -UnexpectedSymbols $RuntimeGatedStreamOperators `
     -Description "no_std+alloc: All non-gated operators present, runtime-gated absent"
@@ -251,7 +277,7 @@ Write-Host "  Checking symbol presence in documentation..."
 Write-Host "  Expected: All $($AllStreamOperators.Count) items present (22 stream operators + 5 types)"
 $result = Test-SymbolPresence `
     -Package "fluxion-stream" `
-    -Features "runtime-tokio" `
+    -Features "multi,runtime-tokio" `
     -ExpectedSymbols $AllStreamOperators `
     -UnexpectedSymbols @() `
     -Description "runtime-tokio: All operators including gated ones present"

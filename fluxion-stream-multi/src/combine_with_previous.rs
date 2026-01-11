@@ -49,9 +49,9 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream_single::CombineWithPreviousExt;
+    /// use fluxion_stream_multi::CombineWithPreviousExt;
     /// use fluxion_test_utils::Sequenced;
-    /// use fluxion_stream_single::IntoFluxionStream;
+    /// use fluxion_stream_multi::IntoFluxionStream;
     /// use futures::StreamExt;
     ///
     /// # async fn example() {

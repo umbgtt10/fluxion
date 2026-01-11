@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use alloc::vec::Vec;
 use core::fmt::Debug;
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{Fluxion, StreamItem};
@@ -37,7 +38,10 @@ where
     /// # Arguments
     ///
     /// * `others` - Vector of additional streams to merge with this stream
-    fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = StreamItem<T>> + Send + Sync + Unpin
+    fn ordered_merge<IS>(
+        self,
+        others: Vec<IS>,
+    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync + Unpin
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static;
@@ -50,7 +54,10 @@ where
     T::Timestamp: Debug + Ord + Send + Sync + Unpin + Copy + 'static,
     S: Stream<Item = StreamItem<T>> + Send + Sync + Unpin + 'static,
 {
-    fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = StreamItem<T>> + Send + Sync + Unpin
+    fn ordered_merge<IS>(
+        self,
+        others: Vec<IS>,
+    ) -> impl Stream<Item = StreamItem<T>> + Send + Sync + Unpin
     where
         IS: IntoStream<Item = StreamItem<T>>,
         IS::Stream: Send + Sync + 'static,

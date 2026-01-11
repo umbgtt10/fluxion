@@ -17,17 +17,25 @@ Notes:
 #>
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
+# Cargo writes build status to stderr which PowerShell treats as errors with Stop action
+# Use Continue to allow script to check $LASTEXITCODE properly
+$ErrorActionPreference = 'Continue'
 
 Write-Output "=== no_std Compilation Check ==="
 Write-Output "Verifying no_std support with alloc feature..."
 
 # Test each library crate independently to catch always-on std dependencies
 $cratesWithAllocFeature = @(
-    "fluxion-core",
-    "fluxion-stream",
+    "fluxion-core"
     "fluxion-exec"
 )
+
+# fluxion-stream requires either 'multi' or 'single' to be specified
+# For no_std testing, we use 'single,alloc'
+$fluxionStreamCrate = @{
+    Name = "fluxion-stream"
+    Features = "single,alloc"
+}
 
 $cratesWithoutFeatures = @(
     "fluxion-ordered-merge"
@@ -41,7 +49,7 @@ foreach ($crate in $cratesWithAllocFeature) {
     Write-Output ""
     Write-Output "Testing: $crate"
     Write-Output "  Command: cargo check --no-default-features --features alloc -p $crate"
-    cargo check --no-default-features --features alloc -p $crate
+    $output = & cargo check --no-default-features --features alloc -p $crate 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Error "FAILED: no_std check failed for $crate with exit code $LASTEXITCODE"
         Write-Error "   This crate has always-on std dependencies!"
@@ -50,11 +58,23 @@ foreach ($crate in $cratesWithAllocFeature) {
     Write-Output "  OK: $crate no_std + alloc works"
 }
 
+# Test fluxion-stream with single,alloc
+Write-Output ""
+Write-Output "Testing: $($fluxionStreamCrate.Name)"
+Write-Output "  Command: cargo check --no-default-features --features $($fluxionStreamCrate.Features) -p $($fluxionStreamCrate.Name)"
+$output = & cargo check --no-default-features --features $fluxionStreamCrate.Features -p $fluxionStreamCrate.Name 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "FAILED: no_std check failed for $($fluxionStreamCrate.Name) with exit code $LASTEXITCODE"
+    Write-Error "   This crate has always-on std dependencies!"
+    exit $LASTEXITCODE
+}
+Write-Output "  OK: $($fluxionStreamCrate.Name) no_std + alloc works"
+
 foreach ($crate in $cratesWithoutFeatures) {
     Write-Output ""
     Write-Output "Testing: $crate (no features)"
     Write-Output "  Command: cargo check --no-default-features -p $crate"
-    cargo check --no-default-features -p $crate
+    $output = & cargo check --no-default-features -p $crate 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Error "FAILED: no_std check failed for $crate with exit code $LASTEXITCODE"
         Write-Error "   This crate has always-on std dependencies!"
@@ -64,16 +84,18 @@ foreach ($crate in $cratesWithoutFeatures) {
 }
 
 Write-Output ""
-Write-Output "Step 2: cargo check --no-default-features --features alloc (workspace)"
-cargo check --no-default-features --features alloc --verbose --lib --bins --workspace
+Write-Output "Step 2: cargo check --no-default-features --features alloc (workspace, excluding facade)"
+# Note: fluxion-stream is excluded because it requires either 'multi' or 'single' feature
+cargo check --no-default-features --features alloc --verbose --lib --bins --workspace --exclude fluxion-stream
 if ($LASTEXITCODE -ne 0) {
   Write-Error "no_std check failed with exit code $LASTEXITCODE"
   exit $LASTEXITCODE
 }
 
 Write-Output ""
-Write-Output "Step 3: cargo build --no-default-features --features alloc (workspace)"
-cargo build --no-default-features --features alloc --verbose --lib --bins --workspace
+Write-Output "Step 3: cargo build --no-default-features --features alloc (workspace, excluding facade)"
+# Note: fluxion-stream is excluded because it requires either 'multi' or 'single' feature
+cargo build --no-default-features --features alloc --verbose --lib --bins --workspace --exclude fluxion-stream
 if ($LASTEXITCODE -ne 0) {
   Write-Error "no_std build failed with exit code $LASTEXITCODE"
   exit $LASTEXITCODE
@@ -103,7 +125,7 @@ foreach ($crate in $cratesWithAllocFeature) {
     Write-Output ""
     Write-Output "Testing: $crate on embedded target"
     Write-Output "  Command: cargo check --target thumbv7em-none-eabihf --no-default-features --features alloc -p $crate --lib"
-    cargo check --target thumbv7em-none-eabihf --no-default-features --features alloc -p $crate --lib
+    $output = & cargo check --target thumbv7em-none-eabihf --no-default-features --features alloc -p $crate --lib 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Error "FAILED: Embedded target check failed for $crate"
         Write-Error "   This crate pulls in std dependencies!"
@@ -112,11 +134,24 @@ foreach ($crate in $cratesWithAllocFeature) {
     Write-Output "  OK: $crate works on embedded target"
 }
 
+# Test fluxion-stream with single,alloc on embedded target
+Write-Output ""
+Write-Output "Testing: $($fluxionStreamCrate.Name) on embedded target"
+Write-Output "  Command: cargo check --target thumbv7em-none-eabihf --no-default-features --features $($fluxionStreamCrate.Features) -p $($fluxionStreamCrate.Name) --lib"
+$output = & cargo check --target thumbv7em-none-eabihf --no-default-features --features $fluxionStreamCrate.Features -p $fluxionStreamCrate.Name --lib 2>&1
+Write-Output ($output | Out-String)
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "FAILED: Embedded target check failed for $($fluxionStreamCrate.Name)"
+    Write-Error "   This crate pulls in std dependencies!"
+    exit $LASTEXITCODE
+}
+Write-Output "  OK: $($fluxionStreamCrate.Name) works on embedded target"
+
 foreach ($crate in $cratesWithoutFeatures) {
     Write-Output ""
     Write-Output "Testing: $crate on embedded target (no features)"
     Write-Output "  Command: cargo check --target thumbv7em-none-eabihf --no-default-features -p $crate --lib"
-    cargo check --target thumbv7em-none-eabihf --no-default-features -p $crate --lib
+    $output = & cargo check --target thumbv7em-none-eabihf --no-default-features -p $crate --lib 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Error "FAILED: Embedded target check failed for $crate"
         Write-Error "   This crate pulls in std dependencies!"

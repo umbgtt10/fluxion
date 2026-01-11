@@ -27,7 +27,7 @@ pub trait OnErrorExt<T>: Stream<Item = StreamItem<T>> + Sized {
     /// ## Basic Error Consumption
     ///
     /// ```rust
-    /// use fluxion_stream_single::{OnErrorExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{OnErrorExt, IntoFluxionStream};
     /// use fluxion_core::{FluxionError, StreamItem};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
@@ -50,7 +50,7 @@ pub trait OnErrorExt<T>: Stream<Item = StreamItem<T>> + Sized {
     /// ## Chain of Responsibility
     ///
     /// ```rust
-    /// use fluxion_stream_single::{OnErrorExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{OnErrorExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///

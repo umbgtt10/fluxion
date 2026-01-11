@@ -21,13 +21,13 @@ tokio = { workspace = true }
 default = ["std", "runtime-tokio"]
 
 # Standard library support
-std = ["fluxion-core/std", "fluxion-stream/std", "fluxion-exec/std"]
+std = ["fluxion-core/std", "fluxion-exec/std"]
 
 # Base capability for no_std
-alloc = ["fluxion-core/alloc", "fluxion-stream/alloc", "fluxion-exec/alloc"]
+alloc = ["fluxion-core/alloc", "fluxion-exec/alloc"]
 
 # Tracing support
-tracing = ["fluxion-core/tracing", "fluxion-stream/tracing", "fluxion-exec/tracing"]
+tracing = ["fluxion-core/tracing", "fluxion-exec/tracing"]
 
 # Runtime features (each implies alloc)
 runtime-tokio = ["alloc", "fluxion-core/runtime-tokio", "fluxion-stream/runtime-tokio", "fluxion-exec/runtime-tokio"]

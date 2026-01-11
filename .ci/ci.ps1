@@ -24,7 +24,7 @@ This mirrors the GitHub Actions `ci.yml` steps:
 Notes:
   - This script runs on Windows PowerShell. On Unix/macOS use `.ci/run-ci.sh`.
   - Some commands (clippy with -D warnings) will fail the run if any warnings remain.
-  - Running with `--all-features` may take longer but reduces false-positives.
+  - fluxion-stream facade requires testing multi and single features separately (cannot use --all-features).
   - WASM tests require Node.js to be installed.
   - All test scripts (.ci\tokio_tests.ps1, .ci\wasm_tests.ps1, .ci\async_std_tests.ps1, .ci\smol_tests.ps1, .ci\embassy_tests.ps1) can be run standalone.
 #>
@@ -62,12 +62,15 @@ if ($rc -ne 0) {
   exit $rc
 }
 
-# Note: Embassy tests excluded from --all-features builds as they require --no-default-features
-Invoke-StepAction "Cargo check (all targets & features)" { cargo check --all-features --verbose --lib --bins --examples --workspace }
-Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --all-features --lib --bins --examples --workspace -- -D warnings }
-Invoke-StepAction "Release build" { cargo build --release --all-features --verbose --lib --bins --examples --workspace }
-Invoke-StepAction "Benchmark compilation" { cargo bench --no-run --all-features --verbose --workspace }
-Invoke-StepAction "Docs (deny doc warnings)" { cargo doc --no-deps --all-features --verbose --workspace }
+# Note: fluxion-stream facade cannot use --all-features (mutual exclusion of multi/single)
+# Check and build with default features (multi), then test single separately
+Invoke-StepAction "Cargo check (multi runtime)" { cargo check --verbose --lib --bins --examples --workspace }
+Invoke-StepAction "Cargo check (single runtime)" { cargo check --package fluxion-stream --no-default-features --features single --verbose }
+Invoke-StepAction "Clippy (deny warnings)" { cargo clippy --lib --bins --examples --workspace -- -D warnings }
+Invoke-StepAction "Release build (multi)" { cargo build --release --verbose --lib --bins --examples --workspace }
+Invoke-StepAction "Release build (single)" { cargo build --release --package fluxion-stream --no-default-features --features single --verbose }
+Invoke-StepAction "Benchmark compilation" { cargo bench --no-run --verbose --workspace }
+Invoke-StepAction "Docs (deny doc warnings)" { cargo doc --no-deps --verbose --workspace }
 
 Invoke-StepAction "Install nightly toolchain" { rustup toolchain install nightly }
 
@@ -84,8 +87,8 @@ if (-not (Get-Command cargo-udeps -ErrorAction SilentlyContinue)) {
 Write-Output "=== Run cargo +nightly udeps (check for unused deps) ==="
 $stdoutFile = [System.IO.Path]::GetTempFileName()
 $stderrFile = [System.IO.Path]::GetTempFileName()
-# Note: Exclude tests to avoid Embassy/Tokio feature conflicts
-$cargoArgs = @('+nightly','udeps','--all-features','--workspace','--lib','--bins','--examples')
+# Note: Exclude tests to avoid Embassy/Tokio feature conflicts. Skip --all-features due to facade.
+$cargoArgs = @('+nightly','udeps','--workspace','--lib','--bins','--examples')
 $proc = Start-Process -FilePath 'cargo' -ArgumentList $cargoArgs -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
 
 $stdOut = Get-Content -Raw -Path $stdoutFile -ErrorAction SilentlyContinue

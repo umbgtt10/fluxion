@@ -28,15 +28,16 @@ use futures::{Stream, StreamExt};
 /// use fluxion_stream_core::on_error::on_error_impl;
 /// use fluxion_core::{FluxionError, StreamItem};
 /// use fluxion_test_utils::Sequenced;
-/// use futures::StreamExt;
+/// use futures::{StreamExt, pin_mut};
 ///
 /// # async fn example() {
 /// let (tx, rx) = async_channel::unbounded();
 ///
-/// let mut stream = on_error_impl(rx.map(StreamItem::Value), |err| {
+/// let stream = on_error_impl(rx.map(StreamItem::Value), |err| {
 ///     eprintln!("Error: {}", err);
 ///     true // Consume all errors
 /// });
+/// pin_mut!(stream);
 ///
 /// tx.try_send(Sequenced::new(1)).unwrap();
 /// assert_eq!(stream.next().await.unwrap().unwrap().into_inner(), 1);

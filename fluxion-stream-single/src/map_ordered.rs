@@ -61,7 +61,7 @@ where
     /// [`StreamExt`]: futures::StreamExt
     fn map_ordered<U, F>(self, f: F) -> impl Stream<Item = StreamItem<U>>
     where
-        Self: Unpin + 'static,
+        Self: 'static,
         U: Fluxion,
         U::Inner: Clone + Debug + Ord + Send + Sync + Unpin + Unpin + 'static,
         U::Timestamp: Debug + Ord + Send + Sync + Unpin + Copy + 'static,
@@ -77,7 +77,7 @@ where
 {
     fn map_ordered<U, F>(self, f: F) -> impl Stream<Item = StreamItem<U>>
     where
-        Self: Unpin + 'static,
+        Self: 'static,
         U: Fluxion,
         U::Inner: Clone + Debug + Ord + Send + Sync + Unpin + Unpin + 'static,
         U::Timestamp: Debug + Ord + Send + Sync + Unpin + Copy + 'static,

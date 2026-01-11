@@ -65,7 +65,7 @@ where
     /// - [`FilterOrderedExt::filter_ordered`](crate::FilterOrderedExt::filter_ordered) - Deterministic filtering
     fn sample_ratio(self, ratio: f64, seed: u64) -> impl Stream<Item = StreamItem<T>>
     where
-        Self: Unpin + 'static;
+        Self: 'static;
 }
 
 impl<S, T> SampleRatioExt<T> for S
@@ -77,7 +77,7 @@ where
 {
     fn sample_ratio(self, ratio: f64, seed: u64) -> impl Stream<Item = StreamItem<T>>
     where
-        Self: Unpin + 'static,
+        Self: 'static,
     {
         sample_ratio_impl(self, ratio, seed)
     }

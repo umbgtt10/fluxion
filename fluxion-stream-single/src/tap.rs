@@ -84,7 +84,7 @@ where
     /// - [`FilterOrderedExt::filter_ordered`](crate::FilterOrderedExt::filter_ordered) - Filter values
     fn tap<F>(self, f: F) -> impl Stream<Item = StreamItem<T>>
     where
-        Self: Unpin + 'static,
+        Self: 'static,
         F: FnMut(&T::Inner) + 'static;
 }
 
@@ -97,7 +97,7 @@ where
 {
     fn tap<F>(self, f: F) -> impl Stream<Item = StreamItem<T>>
     where
-        Self: Unpin + 'static,
+        Self: 'static,
         F: FnMut(&T::Inner) + 'static,
     {
         tap_impl(self, f)

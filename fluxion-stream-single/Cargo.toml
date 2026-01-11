@@ -7,6 +7,9 @@ license.workspace = true
 repository.workspace = true
 description = "Fluxion stream operators for single-threaded runtimes (Embassy, WASM)"
 
+[package.metadata.cargo-udeps.ignore]
+normal = ["fluxion-ordered-merge", "fluxion-runtime"]
+
 [lib]
 doctest = false
 

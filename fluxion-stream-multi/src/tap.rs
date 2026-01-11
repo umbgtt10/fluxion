@@ -41,7 +41,7 @@ where
     /// ## Debugging with println
     ///
     /// ```rust
-    /// use fluxion_stream_single::{TapExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{TapExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///
@@ -60,9 +60,9 @@ where
     /// ## Collecting metrics
     ///
     /// ```rust
-    /// use fluxion_stream_single::{TapExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{TapExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
-    /// use alloc::sync::Arc;
+    /// use std::sync::Arc;
     /// use core::sync::atomic::{AtomicUsize, Ordering};
     ///
     /// # async fn example() {

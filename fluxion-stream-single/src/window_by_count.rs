@@ -4,6 +4,7 @@
 
 //! Window-by-count operator for single-threaded runtimes.
 
+use alloc::vec::Vec;
 use core::fmt::Debug;
 use fluxion_core::{Fluxion, StreamItem};
 use fluxion_stream_core::window_by_count::window_by_count_impl;
@@ -53,7 +54,7 @@ where
     /// ```
     fn window_by_count<Out>(self, n: usize) -> impl Stream<Item = StreamItem<Out>>
     where
-        Self: Unpin + 'static,
+        Self: 'static,
         Out: Fluxion<Inner = Vec<T::Inner>>,
         Out::Inner: Clone + Debug + Ord + Send + Sync + Unpin + Unpin + 'static,
         Out::Timestamp: From<T::Timestamp> + Debug + Ord + Send + Sync + Unpin + Copy + 'static;
@@ -68,7 +69,7 @@ where
 {
     fn window_by_count<Out>(self, n: usize) -> impl Stream<Item = StreamItem<Out>>
     where
-        Self: Unpin + 'static,
+        Self: 'static,
         Out: Fluxion<Inner = Vec<T::Inner>>,
         Out::Inner: Clone + Debug + Ord + Send + Sync + Unpin + Unpin + 'static,
         Out::Timestamp: From<T::Timestamp> + Debug + Ord + Send + Sync + Unpin + Copy + 'static,

@@ -50,7 +50,8 @@ Invoke-StepAction "Run nextest (Tokio runtime tests)" {
 }
 
 Invoke-StepAction "Run doc tests" {
-  cargo test --doc --verbose --workspace
+  # Exclude fluxion-stream-multi which has doctest = false in Cargo.toml
+  cargo test --doc --verbose --workspace --exclude fluxion-stream-multi --exclude fluxion-stream-single
 }
 
 Write-Output "Tokio tests completed successfully."

@@ -49,7 +49,7 @@ where
     /// ## Running Sum
     ///
     /// ```rust
-    /// use fluxion_stream_single::{ScanOrderedExt, IntoFluxionStream};
+    /// use fluxion_stream_multi::{ScanOrderedExt, IntoFluxionStream};
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;
     ///

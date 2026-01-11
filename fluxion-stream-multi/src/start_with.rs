@@ -37,8 +37,8 @@ pub trait StartWithExt<T>: Stream<Item = StreamItem<T>> + Sized {
     /// # Examples
     ///
     /// ```rust
-    /// use fluxion_stream_single::StartWithExt;
-    /// use fluxion_stream_single::IntoFluxionStream;
+    /// use fluxion_stream_multi::StartWithExt;
+    /// use fluxion_stream_multi::IntoFluxionStream;
     /// use fluxion_core::StreamItem;
     /// use fluxion_test_utils::Sequenced;
     /// use futures::StreamExt;

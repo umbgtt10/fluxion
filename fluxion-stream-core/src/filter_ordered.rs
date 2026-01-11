@@ -22,14 +22,15 @@ use futures::StreamExt;
 /// use fluxion_stream_core::filter_ordered::filter_ordered_impl;
 /// use fluxion_core::StreamItem;
 /// use fluxion_test_utils::Sequenced;
-/// use futures::StreamExt;
+/// use futures::{StreamExt, pin_mut};
 ///
 /// # async fn example() {
 /// let (tx, rx) = async_channel::unbounded();
 /// let stream = rx.map(StreamItem::Value);
 ///
 /// // Filter for even numbers
-/// let mut evens = filter_ordered_impl(stream, |&n| n % 2 == 0);
+/// let evens = filter_ordered_impl(stream, |&n| n % 2 == 0);
+/// pin_mut!(evens);
 ///
 /// tx.try_send(Sequenced::new(1)).unwrap();
 /// tx.try_send(Sequenced::new(2)).unwrap();
