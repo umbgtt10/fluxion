@@ -21,19 +21,7 @@ where
 {
     /// Maps each item to a new value while preserving temporal ordering.
     ///
-    /// This operator transforms each item in the stream using the provided function.
-    /// Unlike the standard `map` operator from [`StreamExt`], `map_ordered` is
-    /// designed for Fluxion streams and preserves the `StreamItem` wrapper semantics.
-    ///
-    /// # Arguments
-    ///
-    /// * `f` - A function that transforms each item of type `T` into type `U`
-    ///
-    /// # Behavior
-    ///
-    /// - Values are transformed using the provided function
-    /// - Errors are passed through unchanged
-    /// - Timestamps are preserved/transformed according to the output type
+    /// See the [module-level documentation](crate::map_ordered) for detailed examples and usage patterns.
     fn map_ordered<U, F>(self, f: F) -> impl Stream<Item = StreamItem<U>>
     where
         Self: Unpin + 'static,
