@@ -15,11 +15,7 @@
 /// - ShareExt trait with share() method
 /// - Blanket trait implementation
 macro_rules! define_share_impl {
-    (
-        stream_bounds: [$($stream_bounds:tt)*],
-        type_bounds: [$($type_bounds:tt)*],
-        share_bounds: [$($share_bounds:tt)*]
-    ) => {
+    ($($bounds:tt)*) => {
         use alloc::boxed::Box;
         use core::pin::Pin;
         use fluxion_core::{FluxionSubject, FluxionTask, StreamItem, SubjectError};
@@ -28,23 +24,23 @@ macro_rules! define_share_impl {
             Stream, StreamExt,
         };
 
-        pub type SharedBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> $($stream_bounds)* + 'static>>;
+        pub type SharedBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + $($bounds)* 'static>>;
 
         /// A shared stream that broadcasts items from a source to multiple subscribers.
         ///
         /// See the [module-level documentation](crate::share) for detailed examples and usage patterns.
-        pub struct FluxionShared<T: Clone $($type_bounds)* + 'static> {
+        pub struct FluxionShared<T: Clone + $($bounds)* 'static> {
             subject: FluxionSubject<T>,
             _task: FluxionTask,
         }
 
-        impl<T: Clone $($type_bounds)* + 'static> FluxionShared<T> {
+        impl<T: Clone + $($bounds)* 'static> FluxionShared<T> {
             /// Creates a new `FluxionShared` from a source stream.
             ///
             /// Prefer using [`ShareExt::share()`] instead of calling this directly.
             pub fn new<S>(source: S) -> Self
             where
-                S: Stream<Item = StreamItem<T>> $($stream_bounds)* + Unpin + 'static,
+                S: Stream<Item = StreamItem<T>> + Unpin + $($bounds)* 'static,
             {
                 let subject = FluxionSubject::new();
                 let subject_clone = subject.clone();
@@ -94,30 +90,30 @@ macro_rules! define_share_impl {
             }
         }
 
-        impl<T: Clone $($type_bounds)* + 'static> Drop for FluxionShared<T> {
+        impl<T: Clone + $($bounds)* 'static> Drop for FluxionShared<T> {
             fn drop(&mut self) {
                 self.subject.close();
             }
         }
 
         /// Extension trait for sharing a stream among multiple subscribers.
-        pub trait ShareExt<T: Clone $($type_bounds)* + 'static>: Stream<Item = StreamItem<T>> {
+        pub trait ShareExt<T: Clone + $($bounds)* 'static>: Stream<Item = StreamItem<T>> {
             /// Shares this stream among multiple subscribers.
             ///
             /// See the [module-level documentation](crate::share) for usage examples.
             fn share(self) -> FluxionShared<T>
             where
-                Self: $($share_bounds)* + 'static;
+                Self: Unpin + $($bounds)* 'static;
         }
 
         impl<S, T> ShareExt<T> for S
         where
             S: Stream<Item = StreamItem<T>>,
-            T: Clone $($type_bounds)* + 'static,
+            T: Clone + $($bounds)* 'static,
         {
             fn share(self) -> FluxionShared<T>
             where
-                Self: $($share_bounds)* + 'static,
+                Self: Unpin + $($bounds)* 'static,
             {
                 FluxionShared::new(self)
             }

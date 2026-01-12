@@ -2,8 +2,5 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-define_share_impl! {
-    stream_bounds: [+ Send + Sync],
-    type_bounds: [+ Send + Sync],
-    share_bounds: [Send + Sync + Unpin]
-}
+#[rustfmt::skip]
+define_share_impl!(Send + Sync + );

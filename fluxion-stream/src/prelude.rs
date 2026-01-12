@@ -55,7 +55,6 @@ pub use crate::distinct_until_changed::DistinctUntilChangedExt;
 pub use crate::distinct_until_changed_by::DistinctUntilChangedByExt;
 pub use crate::emit_when::EmitWhenExt;
 pub use crate::filter_ordered::FilterOrderedExt;
-#[cfg(feature = "std")]
 pub use crate::into_fluxion_stream::IntoFluxionStream;
 pub use crate::map_ordered::MapOrderedExt;
 pub use crate::merge_with::MergedStream;
