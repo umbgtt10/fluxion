@@ -12,7 +12,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 authors = ["umberto.gotti@umbertogotti.dev"]
 license = "Apache-2.0"
@@ -67,11 +67,11 @@ wasm-bindgen-test = "0.3"
 wasm-bindgen-futures = "0.4"
 
 # Internal workspace dependencies
-fluxion-rx = { version = "0.7.0", path = "fluxion" }
-fluxion-core = { version = "0.7.0", path = "fluxion-core", default-features = false }
-fluxion-exec = { version = "0.7.0", path = "fluxion-exec" }
-fluxion-ordered-merge = { version = "0.7.0", path = "fluxion-ordered-merge" }
-fluxion-runtime = { version = "0.7.0", path = "fluxion-runtime", default-features = false }
-fluxion-stream = { version = "0.7.0", path = "fluxion-stream" }
-fluxion-stream-time = { version = "0.7.0", path = "fluxion-stream-time" }
-fluxion-test-utils = { version = "0.7.0", path = "fluxion-test-utils" }
+fluxion-rx = { version = "0.8.0", path = "fluxion" }
+fluxion-core = { version = "0.8.0", path = "fluxion-core", default-features = false }
+fluxion-exec = { version = "0.8.0", path = "fluxion-exec" }
+fluxion-ordered-merge = { version = "0.8.0", path = "fluxion-ordered-merge" }
+fluxion-runtime = { version = "0.8.0", path = "fluxion-runtime", default-features = false }
+fluxion-stream = { version = "0.8.0", path = "fluxion-stream" }
+fluxion-stream-time = { version = "0.8.0", path = "fluxion-stream-time" }
+fluxion-test-utils = { version = "0.8.0", path = "fluxion-test-utils" }

@@ -35,8 +35,7 @@ Fluxion-rx is a 100% Rust-idiomatic reactive streams library with temporal order
 - 🛡️ **Type-Safe Error Handling**: Comprehensive error propagation with `StreamItem<T>` and composable `on_error` operator - see the [Error Handling Guide](docs/ERROR-HANDLING.md)
 - 📚 **Excellent Documentation**: Detailed guides, examples, and API docs
 - ✅ **Well Tested**: 990+ tests with comprehensive coverage (Tokio + WASM + Smol + async-std + Embassy)
-- ⚠️ **Known Limitations**: See [Known Limitations & Alternatives](docs/KNOWN_LIMITATIONS.md) - 24/27 operators work everywhere, with documented workarounds
-- 🚀 **Future Architecture**: See [Runtime Isolation Architecture](docs/FUTURE_ARCHITECTURE.md) - v0.9.0 will solve all limitations with runtime-specific crates
+- ⚡ **Embassy Support**: 24/27 operators work on embedded/no_std targets. 3 operators (subscribe_latest, partition, share) fundamentally incompatible due to static task allocation model. See [Operator Summary](docs/FLUXION_OPERATOR_SUMMARY.md#runtime-support-matrix) for details.
 
 ### 📋 Independent Code Reviews
 
@@ -58,8 +57,8 @@ Add Fluxion to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fluxion-rx = "0.7.0"
-fluxion-test-utils = "0.7.0"
+fluxion-rx = "0.8.0"
+fluxion-test-utils = "0.8.0"
 tokio = { version = "1.49.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -70,13 +69,13 @@ Fluxion defaults to **Tokio** with zero configuration. To use alternative runtim
 
 ```toml
 # Use smol instead of tokio
-fluxion-rx = { version = "0.7.0", default-features = false, features = ["runtime-smol"] }
+fluxion-rx = { version = "0.8.0", default-features = false, features = ["runtime-smol"] }
 
 # Use async-std (deprecated but supported)
-fluxion-rx = { version = "0.7.0", default-features = false, features = ["runtime-async-std"] }
+fluxion-rx = { version = "0.8.0", default-features = false, features = ["runtime-async-std"] }
 
 # Use Embassy for embedded/no_std + alloc (requires manual timer trait implementation)
-fluxion-rx = { version = "0.7.0", default-features = false, features = ["runtime-embassy"] }
+fluxion-rx = { version = "0.8.0", default-features = false, features = ["runtime-embassy"] }
 
 # WASM support is automatic when compiling for wasm32 target
 # cargo build --target wasm32-unknown-unknown
@@ -156,8 +155,8 @@ Fluxion operators can be chained to create complex processing pipelines. Here a 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.7.0"
-fluxion-test-utils = "0.7.0"
+fluxion-rx = "0.8.0"
+fluxion-test-utils = "0.8.0"
 tokio = { version = "1.49.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -230,8 +229,8 @@ The `merge_with` operator enables elegant stateful stream processing by merging 
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-rx = "0.7.0"
-fluxion-test-utils = "0.7.0"
+fluxion-rx = "0.8.0"
+fluxion-test-utils = "0.8.0"
 tokio = { version = "1.49.0", features = ["full"] }
 anyhow = "1.0.100"
 ```
@@ -391,7 +390,7 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.7.0"
+fluxion-exec = "0.8.0"
 tokio = { version = "1.49.0", features = ["full"] }
 tokio-stream = "0.1.18"
 ```
@@ -493,7 +492,7 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 **Dependencies:**
 ```toml
 [dependencies]
-fluxion-exec = "0.7.0"
+fluxion-exec = "0.8.0"
 tokio = { version = "1.49.0", features = ["full"] }
 tokio-stream = "0.1.18"
 ```
@@ -579,6 +578,7 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
 - **[fluxion-rx](fluxion/README.md)** - Main convenience crate (re-exports all operators)
 - **[fluxion-stream](fluxion-stream/README.md)** - Stream operators and composition patterns
 - **[fluxion-stream-time](fluxion-stream-time/README.md)** - Time-based operators (delay, debounce, throttle, sample, timeout)
+- **[fluxion-runtime](fluxion-runtime/README.md)** - Runtime abstraction for multi-platform support (Tokio, smol, WASM, Embassy)
 - **[fluxion-exec](fluxion-exec/README.md)** - Async execution and subscription utilities
 - **[fluxion-core](fluxion-core/README.md)** - Core traits, types, and utilities
 - **[fluxion-ordered-merge](fluxion-ordered-merge/README.md)** - Generic ordered merging
@@ -710,7 +710,7 @@ See individual crate READMEs for detailed documentation.
 
 ## Project Status
 
-**Current Version:** 0.7.0
+**Current Version:** 0.8.0
 
 - ✅ Published to crates.io
 - ✅ Core functionality complete

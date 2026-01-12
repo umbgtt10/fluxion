@@ -11,11 +11,11 @@ A comprehensive guide to all stream operators available in `fluxion-stream`.
 - ✅ **smol** - All operators
 - ✅ **WASM** (browser) - All operators
 - ✅ **async-std** (deprecated) - All operators
-- ⚡ **Embassy** (embedded/no_std) - 24/27 operators (subscribe_latest, partition, and share coming in v0.9.0)
+- ⚡ **Embassy** (embedded/no_std) - 24/27 operators
 
 **Time-based operators** use the `Timer` trait abstraction for cross-runtime compatibility. All 5 time operators (debounce, throttle, delay, sample, timeout) work on all runtimes including Embassy.
 
-**Task spawning operators** (subscribe_latest, partition, share) currently require std runtimes. **Version 0.9.0** will introduce `TaskSpawner` abstraction enabling these operators on Embassy, making Fluxion the **only reactive streams library supporting all operators from servers to microcontrollers**.
+**Task spawning operators** (subscribe_latest, partition, share) are fundamentally incompatible with Embassy's static task allocation model, which requires compile-time task registration and cannot spawn arbitrary futures with captured state at runtime.
 
 ## Quick Reference Table
 
@@ -877,7 +877,7 @@ stream
 
 **Runtime Compatibility:**
 - ✅ Tokio, smol, async-std, WASM
-- ⏳ Embassy - Coming in v0.9.0 (requires TaskSpawner abstraction)
+- ❌ Embassy - Fundamentally incompatible (static task allocation model)
 
 **Signature:**
 ```rust
@@ -971,6 +971,10 @@ The partition operator uses unbounded internal channels. If one partition stream
 
 #### `share`
 **Convert a cold stream into a hot, multi-subscriber broadcast source**
+
+**Runtime Compatibility:**
+- ✅ Tokio, smol, async-std, WASM
+- ❌ Embassy - Incompatible (requires dynamic task spawning with captured state)
 
 **Signature:**
 ```rust
@@ -1074,7 +1078,7 @@ stream.subscribe(
 
 **Runtime Compatibility:**
 - ✅ Tokio, smol, async-std, WASM
-- ⏳ Embassy - Coming in v0.9.0 (requires TaskSpawner abstraction)
+- ❌ Embassy - Incompatible (requires dynamic task spawning with captured state)
 
 ```rust
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;
