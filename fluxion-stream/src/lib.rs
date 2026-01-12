@@ -651,13 +651,6 @@ pub mod distinct_until_changed;
 pub mod distinct_until_changed_by;
 pub mod emit_when;
 pub mod filter_ordered;
-#[cfg(any(
-    feature = "runtime-tokio",
-    feature = "runtime-smol",
-    feature = "runtime-async-std",
-    target_arch = "wasm32"
-))]
-pub mod fluxion_shared;
 pub mod into_fluxion_stream;
 mod logging;
 pub mod map_ordered;
@@ -674,6 +667,13 @@ pub mod partition;
 pub mod prelude;
 pub mod sample_ratio;
 pub mod scan_ordered;
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
+pub mod share;
 pub mod skip_items;
 pub mod start_with;
 pub mod take_items;
@@ -691,13 +691,6 @@ pub use distinct_until_changed::DistinctUntilChangedExt;
 pub use distinct_until_changed_by::DistinctUntilChangedByExt;
 pub use emit_when::EmitWhenExt;
 pub use filter_ordered::FilterOrderedExt;
-#[cfg(any(
-    feature = "runtime-tokio",
-    feature = "runtime-smol",
-    feature = "runtime-async-std",
-    target_arch = "wasm32"
-))]
-pub use fluxion_shared::{FluxionShared, ShareExt};
 pub use into_fluxion_stream::IntoFluxionStream;
 pub use map_ordered::MapOrderedExt;
 pub use merge_with::MergedStream;
@@ -712,6 +705,13 @@ pub use ordered_merge::OrderedStreamExt;
 pub use partition::{PartitionExt, PartitionedStream};
 pub use sample_ratio::SampleRatioExt;
 pub use scan_ordered::ScanOrderedExt;
+#[cfg(any(
+    feature = "runtime-tokio",
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    target_arch = "wasm32"
+))]
+pub use share::{FluxionShared, ShareExt};
 pub use skip_items::SkipItemsExt;
 pub use start_with::StartWithExt;
 pub use take_items::TakeItemsExt;

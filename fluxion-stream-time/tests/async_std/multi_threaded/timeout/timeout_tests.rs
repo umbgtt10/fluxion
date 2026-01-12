@@ -3,13 +3,11 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::async_std::helpers::{person_alice, test_channel, Person};
-use fluxion_stream_time::runtimes::AsyncStdTimer;
-use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::{prelude::*, InstantTimestamped};
+use fluxion_runtime::impls::async_std::AsyncStdTimer;
+use fluxion_runtime::timer::Timer;
+use fluxion_stream_time::{AsyncStdTimestamped, TimeoutExt};
 use futures::StreamExt;
 use std::time::Duration;
-
-type AsyncStdTimestamped<T> = InstantTimestamped<T, AsyncStdTimer>;
 
 #[async_std::test]
 async fn test_timeout_across_threads() {
@@ -23,7 +21,7 @@ async fn test_timeout_across_threads() {
     });
 
     // Act
-    tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
+    tx.try_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
     drop(tx);
 

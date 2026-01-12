@@ -3,11 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::embassy::helpers::{person_alice, test_channel, Person};
-use embassy_time::Timer;
 use fluxion_core::StreamItem;
-use fluxion_stream_time::runtimes::EmbassyTimerImpl;
-use fluxion_stream_time::timer::Timer as TimerTrait;
-use fluxion_stream_time::{prelude::*, EmbassyTimestamped};
+use fluxion_runtime::impls::embassy::EmbassyTimer;
+use fluxion_runtime::timer::Timer;
+use fluxion_stream_time::{EmbassyTimestamped, TimeoutExt};
 use futures::StreamExt;
 use std::panic;
 use std::time::Duration;
@@ -35,22 +34,23 @@ fn test_timeout_basic() {
 #[embassy_executor::task]
 async fn test_impl() {
     // Arrange
-    let timer = EmbassyTimerImpl;
+    let timer = EmbassyTimer;
     let (tx, stream) = test_channel::<EmbassyTimestamped<Person>>();
     let mut timed = stream.timeout(Duration::from_millis(100));
 
     // Act & Assert
-    tx.unbounded_send(EmbassyTimestamped::new(person_alice(), timer.now()))
+    tx.try_send(EmbassyTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
-    let result = timed.next().await.unwrap();
+    let result: StreamItem<EmbassyTimestamped<Person>> = timed.next().await.unwrap();
     assert!(matches!(result, StreamItem::Value(_)));
     if let StreamItem::Value(v) = result {
         assert_eq!(v.value, person_alice());
     }
 
-    Timer::after(embassy_time::Duration::from_millis(150)).await;
-    assert!(matches!(timed.next().await.unwrap(), StreamItem::Error(_)));
+    embassy_time::Timer::after(embassy_time::Duration::from_millis(150)).await;
+    let timeout_result: StreamItem<EmbassyTimestamped<Person>> = timed.next().await.unwrap();
+    assert!(matches!(timeout_result, StreamItem::Error(_)));
 
     panic!("Test passed - using panic to exit executor");
 }

@@ -245,28 +245,21 @@ Invoke-StepAction "Run embassy-sensors example (ARM Cortex-M4F in QEMU)" {
 
   # Run in QEMU (timeout after 35 seconds to allow 30s runtime + 5s overhead)
   Write-Output "Running in QEMU emulator (30 second demo)..."
-  $qemuArgs = @(
+  $qemuPath = $qemuCheck.Source
+
+  # Run QEMU with output shown on console and timeout control
+  $process = Start-Process -FilePath $qemuPath -ArgumentList @(
     '-cpu', 'cortex-m4',
     '-machine', 'mps2-an386',
     '-nographic',
     '-semihosting-config', 'enable=on,target=native',
     '-kernel', 'target\thumbv7em-none-eabihf\release\embassy-sensors'
-  )
+  ) -NoNewWindow -PassThru
 
-  $job = Start-Job -ScriptBlock {
-    param($QemuPath, $Args)
-    & $QemuPath @Args
-  } -ArgumentList 'qemu-system-arm', $qemuArgs
-
-  $completed = Wait-Job -Job $job -Timeout 35
-  if ($completed) {
-    $output = Receive-Job -Job $job
-    Write-Output $output
-    Remove-Job -Job $job
-  } else {
-    Write-Warning "QEMU execution timed out (expected for 30s demo)"
-    Stop-Job -Job $job
-    Remove-Job -Job $job
+  $timeout = 35
+  if (-not $process.WaitForExit($timeout * 1000)) {
+    Write-Warning "QEMU execution timed out after ${timeout}s (expected for 30s demo)"
+    $process.Kill()
   }
 
   Pop-Location

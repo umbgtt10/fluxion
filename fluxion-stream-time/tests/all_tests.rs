@@ -3,7 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 // Embassy executor requires nightly for #[embassy_executor::task] macro
-// Only enable this feature when runtime-embassy is active AND we're allowing unstable features
 // CI should skip --all-features on stable, or explicitly exclude runtime-embassy
 #![cfg_attr(feature = "runtime-embassy", allow(internal_features))]
 #![cfg_attr(feature = "runtime-embassy", feature(impl_trait_in_assoc_type))]
@@ -32,7 +31,12 @@ pub mod async_std;
 ))]
 pub mod smol;
 
-#[cfg(all(feature = "runtime-wasm", target_arch = "wasm32"))]
+#[cfg(all(
+    feature = "runtime-wasm",
+    not(feature = "runtime-tokio"),
+    not(feature = "runtime-async-std"),
+    not(feature = "runtime-smol")
+))]
 pub mod wasm;
 
 #[cfg(all(

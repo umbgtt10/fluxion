@@ -4,8 +4,7 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::TokioTimestamped;
+use fluxion_stream_time::{TimeoutExt, TokioTimestamped};
 use fluxion_test_utils::helpers::assert_no_recv;
 use fluxion_test_utils::{helpers::recv_timeout, test_channel_with_errors, TestData};
 use futures::channel::mpsc::unbounded;

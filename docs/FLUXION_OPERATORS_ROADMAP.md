@@ -2,36 +2,14 @@
 
 This document tracks future operator additions and runtime capability enhancements.
 
-## Current Status (v0.6.14)
+## Current Status (v0.8.9)
 
 **Implemented:** 27 operators across 5 runtimes
 - ✅ All 27 operators on std runtimes (Tokio, smol, async-std, WASM)
 - ✅ 24/27 operators on Embassy (embedded/no_std)
-- ⏳ 3 operators pending TaskSpawner abstraction (subscribe_latest, partition, share)
-
-## Version 0.9.0 - Complete Embassy Integration 🎯
-
-**Status:** 🚀 **Planned** - The killer feature that sets Fluxion apart
-
-### TaskSpawner Abstraction
-Mirrors the proven `Timer` trait pattern for task spawning across all runtimes.
-
-**Enables:**
-- ✅ `subscribe_latest` on Embassy with spawner injection
-- ✅ `partition` on Embassy with spawner injection
-- ✅ `share` on Embassy with spawner injection
-- ✅ All 27 operators work everywhere (servers to microcontrollers)
-
-**Competitive Advantage:**
-- RxRust: ❌ Requires custom code for non-Tokio runtimes, no embedded support
-- Other reactive libs: ❌ std-only
-- Embassy ecosystem: ❌ No full-featured reactive streams
-- **Fluxion v0.9.0**: ✅ Industry first - complete reactive streams on embedded systems
-
-**Implementation:**
-- TaskSpawner trait with GlobalTaskSpawner and EmbassyTaskSpawner implementations
-- Convenience APIs (subscribe_latest() for global runtimes, subscribe_latest_with_embassy() for Embassy)
-- Zero performance penalty, single operator implementation
+- ❌ 3 operators fundamentally incompatible with Embassy (subscribe_latest, partition, share)
+  - **Why:** Embassy requires compile-time task registration; cannot spawn arbitrary futures with captured state at runtime
+  - **Workaround:** Use MergedStream pattern for stateful aggregation (see embassy-sensors example)
 
 ---
 

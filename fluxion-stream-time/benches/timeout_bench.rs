@@ -3,11 +3,12 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use criterion::{BenchmarkId, Criterion, Throughput};
+use fluxion_runtime::impls::tokio::TokioTimer;
+use fluxion_runtime::timer::Timer;
 use fluxion_stream::IntoFluxionStream;
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::{TokioTimer, TokioTimestamped};
-use futures::stream::StreamExt;
+use fluxion_stream_time::TimeoutExt;
+use fluxion_stream_time::TokioTimestamped;
+use futures::StreamExt;
 use std::hint::black_box;
 use std::time::Duration;
 use tokio::runtime::Builder;
@@ -32,14 +33,14 @@ pub fn bench_timeout(c: &mut Criterion) {
                         .unwrap();
 
                     rt.block_on(async {
-                        let timer = TokioTimer;
                         // 2. Create stream and operator
                         let (tx, rx) = async_channel::unbounded();
                         let stream = rx.into_fluxion_stream().timeout(duration);
                         let mut stream = Box::pin(stream);
 
                         // 3. Emit value BEFORE timeout
-                        tx.try_send(TokioTimestamped::new(1, timer.now())).unwrap();
+                        tx.try_send(TokioTimestamped::new(1, TokioTimer.now()))
+                            .unwrap();
 
                         // 4. Assert result (should be immediate)
                         let item = stream.next().await;

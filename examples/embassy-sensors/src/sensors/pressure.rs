@@ -6,10 +6,10 @@
 
 use crate::info;
 use crate::types::Pressure;
-use embassy_time::{Duration, Timer};
+use embassy_time::Duration;
 use fluxion_core::CancellationToken;
-use fluxion_stream_time::timer::Timer as TimerTrait;
-use fluxion_stream_time::EmbassyTimerImpl;
+use fluxion_runtime::impls::embassy::EmbassyTimer;
+use fluxion_runtime::timer::Timer;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
@@ -18,7 +18,7 @@ use rand_chacha::ChaCha8Rng;
 pub async fn pressure_sensor(tx: async_channel::Sender<Pressure>, cancel: CancellationToken) {
     info!("Pressure sensor task started");
 
-    let timer = EmbassyTimerImpl;
+    let timer = EmbassyTimer;
     let mut rng = ChaCha8Rng::seed_from_u64(67890);
 
     // Simulate sensor readings every 30ms (faster than temperature)
@@ -39,7 +39,7 @@ pub async fn pressure_sensor(tx: async_channel::Sender<Pressure>, cancel: Cancel
         }
 
         let timeout = rng.random_range(100..=1000);
-        Timer::after(Duration::from_millis(timeout)).await;
+        embassy_time::Timer::after(Duration::from_millis(timeout)).await;
     }
 
     info!("Pressure sensor task stopped");

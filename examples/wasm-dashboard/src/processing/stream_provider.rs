@@ -4,7 +4,7 @@
 
 use crate::processing::WasmStream;
 use crate::source::SensorValue;
-use fluxion_stream::fluxion_shared::SharedBoxStream;
+use fluxion_stream::share::SharedBoxStream;
 use fluxion_stream_time::WasmTimestamped;
 
 /// Trait for providing access to all dashboard streams

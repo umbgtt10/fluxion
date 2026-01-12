@@ -49,13 +49,14 @@ tracing = ["dep:tracing"]
 runtime-tokio = ["std", "dep:tokio"]
 runtime-smol = ["std", "dep:smol"]
 runtime-async-std = ["std", "dep:async-std"]
-# runtime-wasm doesn't need a feature flag since wasm-bindgen-futures is always available on WASM
+runtime-wasm = ["alloc"]  # WASM single-threaded runtime
+runtime-embassy = ["alloc"]  # Embassy embedded runtime (no_std)
 
 [dev-dependencies]
 thiserror = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 criterion = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]

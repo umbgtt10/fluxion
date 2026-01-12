@@ -52,7 +52,9 @@ Push-Location $DashboardDir
 try {
     # Build with trunk (index.html is in root)
     # Suppress error records from stderr while checking exit code
-    $buildResult = & { trunk build --release 2>&1 } -ErrorAction SilentlyContinue
+    # We use cmd /c to separate stderr stream handling from PowerShell's NativeCommandError behavior
+    $buildResult = cmd /c "trunk build --release 2>&1"
+    
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Trunk build failed!"
         Write-Host $buildResult

@@ -4,7 +4,7 @@
 
 use crate::source::SensorStreams;
 use fluxion_core::{HasTimestamp, Timestamped};
-use fluxion_stream::fluxion_shared::SharedBoxStream;
+use fluxion_stream::share::SharedBoxStream;
 use fluxion_stream::{CombineLatestExt, FluxionShared, MapOrderedExt, ShareExt};
 use fluxion_stream_time::WasmTimestamped;
 
@@ -45,7 +45,7 @@ impl CombinedStream {
                     // Only pass through even sums
                     let values = state.values();
                     let sum: u32 = values.iter().map(|v| v.value).sum();
-                    sum % 3 == 0
+                    sum.is_multiple_of(3)
                 },
             )
             .map_ordered(|state| {

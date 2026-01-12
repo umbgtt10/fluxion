@@ -3,9 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::smol::helpers::{person_alice, test_channel};
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::{SmolTimer, SmolTimestamped};
+use fluxion_runtime::impls::smol::SmolTimer;
+use fluxion_runtime::timer::Timer;
+use fluxion_stream_time::{SmolTimestamped, ThrottleExt};
 use futures::StreamExt;
 use std::time::Duration;
 
@@ -21,11 +21,11 @@ fn test_throttle_smol_multi_threaded() {
         executor
             .spawn(async move {
                 // Act
-                tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
+                tx.try_send(SmolTimestamped::new(person_alice(), timer.now()))
                     .unwrap();
                 // Wait for throttled result
                 smol::Timer::after(Duration::from_millis(60)).await;
-                tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
+                tx.try_send(SmolTimestamped::new(person_alice(), timer.now()))
                     .unwrap();
             })
             .detach();

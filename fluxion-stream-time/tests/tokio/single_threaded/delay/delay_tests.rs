@@ -2,10 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::TokioTimer;
-use fluxion_stream_time::TokioTimestamped;
+use fluxion_runtime::impls::tokio::TokioTimer;
+use fluxion_runtime::timer::Timer;
+use fluxion_stream_time::{DelayExt, TokioTimestamped};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
     person::Person,

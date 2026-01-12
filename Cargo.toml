@@ -3,15 +3,16 @@ resolver = "2"
 members = [
     "fluxion",
     "fluxion-core",
-    "fluxion-ordered-merge",
-    "fluxion-stream",
     "fluxion-exec",
-    "fluxion-test-utils",
+    "fluxion-ordered-merge",
+    "fluxion-runtime",
+    "fluxion-stream",
     "fluxion-stream-time",
+    "fluxion-test-utils",
 ]
 
 [workspace.package]
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 authors = ["umberto.gotti@umbertogotti.dev"]
 license = "Apache-2.0"
@@ -36,17 +37,17 @@ async-std = { version = "1.13", features = ["attributes"] }
 smol = "2.0"
 embassy-time = "0.5.0"
 
-quick-xml = { version = "0.38.4", features = ["serialize"] }
+quick-xml = { version = "0.39.0", features = ["serialize"] }
 csv = "1.4"
 rand = "0.9.2"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.148"
+serde_json = "1.0.149"
 fastrand = { version = "2.3.0", default-features = false }
 
 # Synchronization
 parking_lot = { version = "0.12.5", default-features = false }
 event-listener = { version = "5.4", default-features = false }
-spin = { version = "0.9.8", default-features = false }
+spin = { version = "0.10.0", default-features = false }
 
 # Logging
 tracing = { version = "0.1.44", default-features = false }
@@ -59,16 +60,18 @@ anyhow = "1.0.100"
 criterion = { version = "0.7.0", features = ["async", "html_reports"] }
 
 # WASM support
+wasm-bindgen = "0.2"
 gloo-timers = "0.3"
 js-sys = "0.3"
 wasm-bindgen-test = "0.3"
 wasm-bindgen-futures = "0.4"
 
 # Internal workspace dependencies
-fluxion-rx = { version = "0.7.0", path = "fluxion" }
-fluxion-core = { version = "0.7.0", path = "fluxion-core", default-features = false }
-fluxion-ordered-merge = { version = "0.7.0", path = "fluxion-ordered-merge" }
-fluxion-stream = { version = "0.7.0", path = "fluxion-stream" }
-fluxion-exec = { version = "0.7.0", path = "fluxion-exec" }
-fluxion-test-utils = { version = "0.7.0", path = "fluxion-test-utils" }
-fluxion-stream-time = { version = "0.7.0", path = "fluxion-stream-time" }
+fluxion-rx = { version = "0.8.0", path = "fluxion" }
+fluxion-core = { version = "0.8.0", path = "fluxion-core", default-features = false }
+fluxion-exec = { version = "0.8.0", path = "fluxion-exec" }
+fluxion-ordered-merge = { version = "0.8.0", path = "fluxion-ordered-merge" }
+fluxion-runtime = { version = "0.8.0", path = "fluxion-runtime", default-features = false }
+fluxion-stream = { version = "0.8.0", path = "fluxion-stream" }
+fluxion-stream-time = { version = "0.8.0", path = "fluxion-stream-time" }
+fluxion-test-utils = { version = "0.8.0", path = "fluxion-test-utils" }

@@ -3,9 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::smol::helpers::{person_alice, test_channel};
-use fluxion_stream_time::prelude::*;
-use fluxion_stream_time::timer::Timer;
-use fluxion_stream_time::{SmolTimer, SmolTimestamped};
+use fluxion_runtime::impls::smol::SmolTimer;
+use fluxion_runtime::timer::Timer;
+use fluxion_stream_time::{DelayExt, SmolTimestamped};
 use futures::StreamExt;
 use std::time::Duration;
 
@@ -21,7 +21,7 @@ fn test_delay_smol_multi_threaded() {
         executor
             .spawn(async move {
                 // Act
-                tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
+                tx.try_send(SmolTimestamped::new(person_alice(), timer.now()))
                     .unwrap();
             })
             .detach();

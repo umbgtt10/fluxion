@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{HasTimestamp, Timestamped};
-use fluxion_stream_time::runtimes::wasm_implementation::WasmInstant;
+use fluxion_runtime::impls::wasm::WasmInstant;
 
 /// A sensor value with timestamp
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

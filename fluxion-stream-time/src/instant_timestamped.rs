@@ -2,11 +2,11 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::timer::Timer;
 use core::cmp::Ordering;
 use core::fmt::Debug;
 use core::ops::Deref;
 use fluxion_core::{HasTimestamp, Timestamped};
+use fluxion_runtime::runtime::Runtime;
 
 /// A timestamped value using a Timer's Instant type for monotonic time operations.
 ///
@@ -18,40 +18,54 @@ use fluxion_core::{HasTimestamp, Timestamped};
 ///
 /// ```rust,no_run
 /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-/// use fluxion_stream_time::{InstantTimestamped, TokioTimer};
+/// use fluxion_stream_time::InstantTimestamped;
 /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-/// use fluxion_stream_time::timer::Timer;
+/// use fluxion_runtime::impls::tokio::{TokioRuntime, TokioTimer};
+/// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+/// use fluxion_runtime::timer::Timer;
 ///
 /// # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 /// # fn main() {
 /// let timer = TokioTimer;
-/// let item: InstantTimestamped<i32, TokioTimer> = InstantTimestamped::new(42, timer.now());
+/// let item: InstantTimestamped<i32, TokioRuntime> = InstantTimestamped::new(42, timer.now());
 /// # }
 /// # #[cfg(not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))))]
 /// # fn main() {}
 /// ```
-#[derive(Debug, Clone)]
-pub struct InstantTimestamped<T, TM: Timer> {
+#[derive(Debug)]
+pub struct InstantTimestamped<T, R: Runtime> {
     pub value: T,
-    pub timestamp: TM::Instant,
+    pub timestamp: R::Instant,
 }
 
-impl<T, TM: Timer> InstantTimestamped<T, TM> {
+impl<T, R: Runtime> Clone for InstantTimestamped<T, R>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            value: self.value.clone(),
+            timestamp: self.timestamp,
+        }
+    }
+}
+
+impl<T, R: Runtime> InstantTimestamped<T, R> {
     /// Creates a new timestamped value with the given timestamp.
-    pub fn new(value: T, timestamp: TM::Instant) -> Self {
+    pub fn new(value: T, timestamp: R::Instant) -> Self {
         Self { value, timestamp }
     }
 }
 
-impl<T, TM: Timer> HasTimestamp for InstantTimestamped<T, TM> {
-    type Timestamp = TM::Instant;
+impl<T, R: Runtime> HasTimestamp for InstantTimestamped<T, R> {
+    type Timestamp = R::Instant;
 
     fn timestamp(&self) -> Self::Timestamp {
         self.timestamp
     }
 }
 
-impl<T, TM: Timer> Timestamped for InstantTimestamped<T, TM>
+impl<T, R: Runtime> Timestamped for InstantTimestamped<T, R>
 where
     T: Clone,
 {
@@ -66,7 +80,7 @@ where
     }
 }
 
-impl<T, TM: Timer> PartialEq for InstantTimestamped<T, TM>
+impl<T, R: Runtime> PartialEq for InstantTimestamped<T, R>
 where
     T: PartialEq,
 {
@@ -75,9 +89,9 @@ where
     }
 }
 
-impl<T, TM: Timer> Eq for InstantTimestamped<T, TM> where T: Eq {}
+impl<T, R: Runtime> Eq for InstantTimestamped<T, R> where T: Eq {}
 
-impl<T, TM: Timer> PartialOrd for InstantTimestamped<T, TM>
+impl<T, R: Runtime> PartialOrd for InstantTimestamped<T, R>
 where
     T: PartialOrd,
 {
@@ -86,7 +100,7 @@ where
     }
 }
 
-impl<T, TM: Timer> Ord for InstantTimestamped<T, TM>
+impl<T, R: Runtime> Ord for InstantTimestamped<T, R>
 where
     T: Ord,
 {
@@ -95,7 +109,7 @@ where
     }
 }
 
-impl<T, TM: Timer> Deref for InstantTimestamped<T, TM> {
+impl<T, R: Runtime> Deref for InstantTimestamped<T, R> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
