@@ -46,7 +46,8 @@ if (-not (Get-Command cargo-nextest -ErrorAction SilentlyContinue)) {
 
 Invoke-StepAction "Run nextest (Tokio runtime tests)" {
   # Exclude embassy tests which require --no-default-features and nightly features
-  cargo nextest run --verbose --lib --bins --tests --examples --workspace
+  # Include all runtimes (except embassy) to test interactions and ensure they coexist
+  cargo nextest run --verbose --lib --bins --tests --examples --workspace --features "runtime-tokio,runtime-async-std,runtime-smol,runtime-wasm"
 }
 
 Invoke-StepAction "Run doc tests" {

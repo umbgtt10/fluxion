@@ -80,6 +80,11 @@ jobs:
       - name: Verify formatting (wasm-dashboard)
         run: cargo fmt --manifest-path examples/wasm-dashboard/Cargo.toml -- --check
 
+      - name: Verify feature gating
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\.ci\test_feature_gating.ps1
+
       - name: Verify no_std compilation
         shell: bash
         run: |

@@ -51,8 +51,20 @@ if ($LASTEXITCODE -ne 0) {
   exit 0
 }
 
+Invoke-StepAction "Run Embassy tests (fluxion-core)" {
+  cargo +nightly test --package fluxion-core --features runtime-embassy --test all_tests -- --test-threads=1
+}
+
+Invoke-StepAction "Run Embassy tests (fluxion-stream)" {
+  cargo +nightly test --package fluxion-stream --features runtime-embassy --test all_tests -- --test-threads=1
+}
+
 Invoke-StepAction "Run Embassy tests with executor (fluxion-stream-time)" {
   cargo +nightly test --package fluxion-stream-time --features runtime-embassy --no-default-features --test all_tests -- --test-threads=1
+}
+
+Invoke-StepAction "Build fluxion-runtime for Embassy (compilation check)" {
+  cargo +nightly build --package fluxion-runtime --no-default-features --features runtime-embassy
 }
 
 Write-Output "Embassy tests completed successfully."

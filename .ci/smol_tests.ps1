@@ -46,5 +46,13 @@ Invoke-StepAction "Run smol tests (fluxion-stream-time)" {
   cargo test --package fluxion-stream-time --features runtime-smol --no-default-features --test all_tests --verbose
 }
 
+Invoke-StepAction "Run smol tests (fluxion-stream)" {
+  cargo test --package fluxion-stream --features runtime-smol --no-default-features --test all_tests --verbose
+}
+
+Invoke-StepAction "Run smol tests (fluxion-exec)" {
+  cargo test --package fluxion-exec --features runtime-smol --no-default-features --verbose
+}
+
 Write-Output "smol tests completed successfully."
 exit 0

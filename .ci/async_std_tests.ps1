@@ -46,5 +46,13 @@ Invoke-StepAction "Run async-std tests (fluxion-stream-time)" {
   cargo test --package fluxion-stream-time --features runtime-async-std --no-default-features --test all_tests --verbose
 }
 
+Invoke-StepAction "Run async-std tests (fluxion-stream)" {
+  cargo test --package fluxion-stream --features runtime-async-std --no-default-features --test all_tests --verbose
+}
+
+Invoke-StepAction "Run async-std tests (fluxion-exec)" {
+  cargo test --package fluxion-exec --features runtime-async-std --no-default-features --verbose
+}
+
 Write-Output "async-std tests completed successfully."
 exit 0
