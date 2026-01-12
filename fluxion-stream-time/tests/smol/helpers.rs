@@ -2,18 +2,24 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use async_channel::Sender;
 use fluxion_core::StreamItem;
 use fluxion_stream_time::SmolTimestamped;
-use futures::channel::mpsc;
-use futures::stream::{Stream, StreamExt};
+use futures::stream::Stream;
+use std::pin::Pin;
 
 pub fn test_channel<T>() -> (
-    mpsc::UnboundedSender<SmolTimestamped<T>>,
-    impl Stream<Item = StreamItem<SmolTimestamped<T>>>,
-) {
-    let (tx, rx) = mpsc::unbounded();
-    let stream = rx.map(StreamItem::Value);
-    (tx, stream)
+    Sender<SmolTimestamped<T>>,
+    Pin<Box<dyn Stream<Item = StreamItem<SmolTimestamped<T>>> + Send + Sync>>,
+)
+where
+    T: Send + 'static,
+{
+    let (tx, rx) = async_channel::unbounded();
+    let stream = futures::stream::unfold(rx, |rx| async move {
+        rx.recv().await.ok().map(|v| (StreamItem::Value(v), rx))
+    });
+    (tx, Box::pin(stream))
 }
 
 // Simple test data

@@ -16,7 +16,7 @@ async fn test_sample_basic() {
     let mut sampled = stream.sample(Duration::from_millis(100));
 
     // Act
-    tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
+    tx.try_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
     async_io::Timer::after(Duration::from_millis(150)).await;

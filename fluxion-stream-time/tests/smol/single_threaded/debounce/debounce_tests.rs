@@ -18,10 +18,10 @@ fn test_debounce_smol_single_threaded() {
         let timer = SmolTimer;
 
         // Act
-        tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
+        tx.try_send(SmolTimestamped::new(person_alice(), timer.now()))
             .unwrap();
         smol::Timer::after(Duration::from_millis(10)).await;
-        tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
+        tx.try_send(SmolTimestamped::new(person_alice(), timer.now()))
             .unwrap();
         drop(tx);
 

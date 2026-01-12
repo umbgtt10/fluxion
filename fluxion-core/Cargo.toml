@@ -56,7 +56,7 @@ runtime-embassy = ["alloc"]  # Embassy embedded runtime (no_std)
 thiserror = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 criterion = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]

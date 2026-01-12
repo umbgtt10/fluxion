@@ -38,7 +38,7 @@ async fn run_test() {
     let mut debounced = stream.debounce(Duration::from_millis(100));
 
     // Act
-    tx.unbounded_send(EmbassyTimestamped::new(person_alice(), timer.now()))
+    tx.try_send(EmbassyTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
     embassy_time::Timer::after(embassy_time::Duration::from_millis(150)).await;

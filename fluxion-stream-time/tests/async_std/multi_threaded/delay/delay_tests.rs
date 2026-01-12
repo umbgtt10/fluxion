@@ -21,7 +21,7 @@ async fn test_delay_across_threads() {
     });
 
     // Act
-    tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
+    tx.try_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
     drop(tx);
 

@@ -18,7 +18,7 @@ fn test_timeout_smol_single_threaded() {
         let timer = SmolTimer;
 
         // Act & Assert
-        tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
+        tx.try_send(SmolTimestamped::new(person_alice(), timer.now()))
             .unwrap();
         assert!(timed.next().await.is_some());
 

@@ -21,7 +21,7 @@ fn test_timeout_smol_multi_threaded() {
         executor
             .spawn(async move {
                 // Act
-                tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
+                tx.try_send(SmolTimestamped::new(person_alice(), timer.now()))
                     .unwrap();
             })
             .detach();

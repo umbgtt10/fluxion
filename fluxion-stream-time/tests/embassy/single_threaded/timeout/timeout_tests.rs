@@ -39,17 +39,18 @@ async fn test_impl() {
     let mut timed = stream.timeout(Duration::from_millis(100));
 
     // Act & Assert
-    tx.unbounded_send(EmbassyTimestamped::new(person_alice(), timer.now()))
+    tx.try_send(EmbassyTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
-    let result = timed.next().await.unwrap();
+    let result: StreamItem<EmbassyTimestamped<Person>> = timed.next().await.unwrap();
     assert!(matches!(result, StreamItem::Value(_)));
     if let StreamItem::Value(v) = result {
         assert_eq!(v.value, person_alice());
     }
 
     embassy_time::Timer::after(embassy_time::Duration::from_millis(150)).await;
-    assert!(matches!(timed.next().await.unwrap(), StreamItem::Error(_)));
+    let timeout_result: StreamItem<EmbassyTimestamped<Person>> = timed.next().await.unwrap();
+    assert!(matches!(timeout_result, StreamItem::Error(_)));
 
     panic!("Test passed - using panic to exit executor");
 }

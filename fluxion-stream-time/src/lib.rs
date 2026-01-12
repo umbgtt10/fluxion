@@ -75,6 +75,13 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    feature = "runtime-embassy",
+    feature = "runtime-wasm"
+))]
 mod debounce;
 mod delay;
 mod instant_timestamped;
@@ -83,6 +90,13 @@ mod sample;
 mod throttle;
 mod timeout;
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std",
+    feature = "runtime-embassy",
+    feature = "runtime-wasm"
+))]
 pub use debounce::DebounceExt;
 pub use delay::DelayExt;
 pub use instant_timestamped::InstantTimestamped;

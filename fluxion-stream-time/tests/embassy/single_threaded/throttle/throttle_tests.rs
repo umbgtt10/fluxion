@@ -49,18 +49,18 @@ async fn test_impl() {
     let mut throttled = stream.throttle(Duration::from_millis(100));
 
     // Act & Assert
-    tx.unbounded_send(EmbassyTimestamped::new(person_alice(), timer.now()))
+    tx.try_send(EmbassyTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
     let result = unwrap_stream(&mut throttled, 50).await;
     assert_eq!(result.unwrap().value, person_alice());
 
-    tx.unbounded_send(EmbassyTimestamped::new(person_bob(), timer.now()))
+    tx.try_send(EmbassyTimestamped::new(person_bob(), timer.now()))
         .unwrap();
 
     embassy_time::Timer::after(embassy_time::Duration::from_millis(150)).await;
 
-    tx.unbounded_send(EmbassyTimestamped::new(person_bob(), timer.now()))
+    tx.try_send(EmbassyTimestamped::new(person_bob(), timer.now()))
         .unwrap();
 
     let result = unwrap_stream(&mut throttled, 200).await;

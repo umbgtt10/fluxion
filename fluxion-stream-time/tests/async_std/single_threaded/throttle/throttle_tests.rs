@@ -16,7 +16,7 @@ async fn test_throttle_basic() {
     let mut throttled = stream.throttle(Duration::from_millis(100));
 
     // Act
-    tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
+    tx.try_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
     // Assert

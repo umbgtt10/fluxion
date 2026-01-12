@@ -17,7 +17,7 @@ async fn test_delay_basic() {
     let mut delayed = stream.delay(Duration::from_millis(100));
 
     // Act
-    tx.unbounded_send(WasmTimestamped::new(person_alice(), timer.now()))
+    tx.try_send(WasmTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
     gloo_timers::future::sleep(Duration::from_millis(150)).await;

@@ -20,7 +20,7 @@ async fn test_sample_across_threads() {
     });
 
     // Act
-    tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
+    tx.try_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
     async_io::Timer::after(Duration::from_millis(150)).await;

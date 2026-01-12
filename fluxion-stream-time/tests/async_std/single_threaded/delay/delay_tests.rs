@@ -17,7 +17,7 @@ async fn test_delay_basic() {
 
     // Act
     let start = timer.now();
-    tx.unbounded_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
+    tx.try_send(AsyncStdTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
     // Assert

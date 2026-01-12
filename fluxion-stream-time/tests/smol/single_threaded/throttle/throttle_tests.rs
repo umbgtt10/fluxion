@@ -18,13 +18,13 @@ fn test_throttle_smol_single_threaded() {
         let timer = SmolTimer;
 
         // Act & Assert
-        tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
+        tx.try_send(SmolTimestamped::new(person_alice(), timer.now()))
             .unwrap();
         let result1 = throttled.next().await;
         assert!(result1.is_some());
 
         // Send second item immediately (should be throttled)
-        tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
+        tx.try_send(SmolTimestamped::new(person_alice(), timer.now()))
             .unwrap();
         drop(tx);
     });

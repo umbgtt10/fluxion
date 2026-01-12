@@ -4,14 +4,20 @@
 
 //! Helper functions for Embassy tests (similar to WASM test helpers)
 
+use async_channel::{unbounded, Sender};
+use core::pin::Pin;
 use fluxion_core::StreamItem;
-use futures::channel::mpsc;
 use futures::stream::{Stream, StreamExt};
 
-pub fn test_channel<T>() -> (mpsc::UnboundedSender<T>, impl Stream<Item = StreamItem<T>>) {
-    let (tx, rx) = mpsc::unbounded();
-    let stream = rx.map(StreamItem::Value);
-    (tx, stream)
+pub fn test_channel<T>() -> (Sender<T>, Pin<Box<dyn Stream<Item = StreamItem<T>> + Send>>)
+where
+    T: Send + 'static,
+{
+    let (tx, rx) = unbounded();
+    let stream = futures::stream::unfold(rx, |rx| async move {
+        rx.recv().await.ok().map(|v| (StreamItem::Value(v), rx))
+    });
+    (tx, Box::pin(stream))
 }
 
 /// Unwrap a single item from the stream with a timeout

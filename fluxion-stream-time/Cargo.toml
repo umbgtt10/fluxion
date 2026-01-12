@@ -12,7 +12,7 @@ categories = ["asynchronous", "concurrency", "date-and-time"]
 readme = "README.md"
 
 [package.metadata.cargo-udeps.ignore]
-development = ["async-std", "smol", "tokio-stream"]
+normal = ["async-std", "smol", "tokio-stream", "fluxion-stream", "fluxion-test-utils"]
 
 [dependencies]
 fluxion-core = { workspace = true, default-features = false, features = ["alloc"] }
@@ -24,6 +24,11 @@ embassy-time = { workspace = true, optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { workspace = true, optional = true, features = ["time", "sync"] }
 async-io = { workspace = true, optional = true }
+async-std = { workspace = true, optional = true }
+smol = { workspace = true, optional = true }
+fluxion-stream = { workspace = true, optional = true }
+fluxion-test-utils = { workspace = true, optional = true }
+tokio-stream = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 gloo-timers = { workspace = true, optional = true, features = ["futures"] }
@@ -35,25 +40,19 @@ std = ["fluxion-core/std", "futures/std"]
 alloc = ["fluxion-core/alloc"]
 
 # Runtime features
-runtime-tokio = ["std", "dep:tokio", "fluxion-runtime/runtime-tokio"]
-runtime-async-std = ["std", "dep:async-io", "fluxion-runtime/runtime-async-std"]
-runtime-smol = ["std", "dep:async-io", "fluxion-runtime/runtime-smol"]
+runtime-tokio = ["std", "dep:tokio", "fluxion-runtime/runtime-tokio", "dep:fluxion-stream", "dep:fluxion-test-utils", "dep:tokio-stream"]
+runtime-async-std = ["std", "dep:async-io", "fluxion-runtime/runtime-async-std", "dep:async-std", "dep:fluxion-stream", "dep:fluxion-test-utils"]
+runtime-smol = ["std", "dep:async-io", "fluxion-runtime/runtime-smol", "dep:smol", "dep:fluxion-stream", "dep:fluxion-test-utils"]
 runtime-wasm = ["std", "dep:gloo-timers", "dep:js-sys", "fluxion-runtime/runtime-wasm"]
 runtime-embassy = ["alloc", "dep:embassy-time", "fluxion-runtime/runtime-embassy"]
 
 [dev-dependencies]
 anyhow = { workspace = true }
+async-channel = { workspace = true }
 embassy-executor = { version = "0.9.1", features = ["nightly", "arch-std", "executor-thread"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-async-std = { workspace = true }
-smol = { workspace = true }
-fluxion-stream = { workspace = true }
-fluxion-test-utils = { workspace = true }
-tokio = { workspace = true }
-tokio-stream = { workspace = true }  # Used in doc examples
 criterion = { workspace = true }
-async-channel = { workspace = true }
 embassy-time = { workspace = true, features = ["std", "generic-queue-8"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]

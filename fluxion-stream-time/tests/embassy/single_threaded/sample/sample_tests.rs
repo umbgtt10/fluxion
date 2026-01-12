@@ -47,11 +47,11 @@ async fn test_impl() {
     let mut sampled = stream.sample(Duration::from_millis(100));
 
     // Act
-    tx.unbounded_send(EmbassyTimestamped::new(person_alice(), timer.now()))
+    tx.try_send(EmbassyTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
     embassy_time::Timer::after(embassy_time::Duration::from_millis(50)).await;
-    tx.unbounded_send(EmbassyTimestamped::new(person_bob(), timer.now()))
+    tx.try_send(EmbassyTimestamped::new(person_bob(), timer.now()))
         .unwrap();
 
     embassy_time::Timer::after(embassy_time::Duration::from_millis(100)).await;

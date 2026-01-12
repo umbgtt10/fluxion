@@ -18,7 +18,7 @@ fn test_delay_smol_single_threaded() {
         let timer = SmolTimer;
 
         // Act
-        tx.unbounded_send(SmolTimestamped::new(person_alice(), timer.now()))
+        tx.try_send(SmolTimestamped::new(person_alice(), timer.now()))
             .unwrap();
         drop(tx);
 
