@@ -13,6 +13,16 @@ macro_rules! define_on_error_impl {
         /// This trait allows any stream of `StreamItem<T>` to handle errors
         /// with a custom handler function.
         pub trait OnErrorExt<T>: Stream<Item = StreamItem<T>> + Sized {
+            /// Handle errors in the stream with a handler function.
+            ///
+            /// The handler receives a reference to each error and returns:
+            /// - `true` to consume the error (remove from stream)
+            /// - `false` to propagate the error downstream
+            ///
+            /// Multiple `on_error` operators can be chained to implement the
+            /// Chain of Responsibility pattern for error handling.
+            ///
+            /// - [Error Handling Guide](../docs/ERROR-HANDLING.md) - Comprehensive error patterns
             fn on_error<F>(self, handler: F) -> impl Stream<Item = StreamItem<T>> + $($bounds)*
             where
                 F: FnMut(&FluxionError) -> bool + $($bounds)* 'static,
