@@ -47,6 +47,7 @@
 //! - **Extraction**: Pull specific fields from complex types
 //! - **Enrichment**: Add computed properties to data
 
+#[macro_use]
 mod implementation;
 
 #[cfg(any(

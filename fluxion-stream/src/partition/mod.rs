@@ -77,6 +77,7 @@
 //! - **Type routing**: Route different enum variants to specialized handlers
 //! - **Threshold filtering**: Split values above/below a threshold
 
+#[macro_use]
 mod implementation;
 
 // Multi-threaded runtime (tokio, smol, async-std)
