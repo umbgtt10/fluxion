@@ -5,7 +5,7 @@
 //! Extension trait to convert futures channels into fluxion streams.
 //!
 //! This module provides [`IntoFluxionStream`] which wraps a futures `UnboundedReceiver`
-//! (from `async-channel`) into a stream that emits [`StreamItem::Value`](crate::StreamItem::Value) for each received item.
+//! (from `async-channel`) into a stream that emits [`StreamItem::Value`](fluxion_core::StreamItem::Value) for each received item.
 //!
 //! # Basic Usage
 //!

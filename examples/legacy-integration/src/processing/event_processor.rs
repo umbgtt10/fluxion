@@ -8,9 +8,8 @@ use crate::domain::{events::UnifiedEvent, repository::OrderAnalytics, Timestampe
 use crate::processing::event_handler::{print_final_analytics, process_event};
 use anyhow::Result;
 use fluxion_core::{stream_item::StreamItem, CancellationToken};
-use fluxion_exec::subscribe::SubscribeExt;
+use fluxion_exec::SubscribeExt;
 use futures::lock::Mutex as FutureMutex;
-use futures::Stream;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -29,7 +28,7 @@ pub struct EventProcessor {
 impl EventProcessor {
     /// Create a new EventProcessor and start processing events
     pub fn start(
-        stream: impl Stream<Item = StreamItem<TimestampedEvent>> + Unpin + Send + 'static,
+        stream: impl SubscribeExt<StreamItem<TimestampedEvent>> + Unpin + Send + 'static,
         cancel: CancellationToken,
     ) -> Self {
         let task_handle = tokio::spawn(Self::process_events(stream, cancel));
@@ -38,7 +37,7 @@ impl EventProcessor {
 
     /// Internal event processing loop using subscribe
     async fn process_events(
-        stream: impl Stream<Item = StreamItem<TimestampedEvent>> + Unpin + Send + 'static,
+        stream: impl SubscribeExt<StreamItem<TimestampedEvent>> + Unpin + Send + 'static,
         cancel: CancellationToken,
     ) -> Result<()> {
         let event_count = Arc::new(AtomicU32::new(0));
