@@ -7,12 +7,7 @@
 /// This macro eliminates duplication between multi-threaded and single-threaded
 /// implementations, which differ only in trait bounds (Send + Sync vs not).
 macro_rules! define_ordered_merge_impl {
-    (
-        inner_bounds: [$($inner_bounds:tt)*],
-        timestamp_bounds: [$($timestamp_bounds:tt)*],
-        stream_bounds: [$($stream_bounds:tt)*],
-        boxed_stream: [$($boxed_stream:tt)*]
-    ) => {
+    ($($bounds:tt)*) => {
         use alloc::boxed::Box;
         use alloc::vec;
         use alloc::vec::Vec;
@@ -22,31 +17,34 @@ macro_rules! define_ordered_merge_impl {
         use futures::task::{Context, Poll};
         use futures::{Stream, StreamExt};
 
+        type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = StreamItem<T>> + $($bounds)* 'static>>>;
+
         pub trait OrderedStreamExt<T>: Stream<Item = StreamItem<T>> + Sized
         where
-            T: Fluxion,
-            T::Inner: Debug + Ord $($inner_bounds)* + 'static,
-            T::Timestamp: Debug + Ord $($timestamp_bounds)* + 'static,
+            T: Fluxion + Unpin,
+            T::Inner: Debug + Ord + Unpin + $($bounds)* 'static,
+            T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
         {
-            fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = StreamItem<T>>
+            fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = StreamItem<T>> + $($bounds)*
             where
                 IS: IntoStream<Item = StreamItem<T>>,
-                IS::Stream: Stream<Item = StreamItem<T>> + $($stream_bounds)* 'static;
+                IS::Stream: Stream<Item = StreamItem<T>> + $($bounds)* 'static;
         }
 
         impl<T, S> OrderedStreamExt<T> for S
         where
-            T: Fluxion,
-            T::Inner: Debug + Ord $($inner_bounds)* + 'static,
-            T::Timestamp: Debug + Ord $($timestamp_bounds)* + 'static,
-            S: Stream<Item = StreamItem<T>> + $($stream_bounds)* 'static,
+            T: Fluxion + Unpin,
+            T::Inner: Debug + Ord + Unpin + $($bounds)* 'static,
+            T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
+            S: Stream<Item = StreamItem<T>> + $($bounds)* 'static,
         {
-            fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = StreamItem<T>>
+            fn ordered_merge<IS>(self, others: Vec<IS>) -> impl Stream<Item = StreamItem<T>> + $($bounds)*
             where
                 IS: IntoStream<Item = StreamItem<T>>,
-                IS::Stream: Stream<Item = StreamItem<T>> + $($stream_bounds)* 'static,
+                IS::Stream: Stream<Item = StreamItem<T>> + $($bounds)* 'static,
             {
-                let mut all_streams = vec![Box::pin(self) as $($boxed_stream)*];
+                let mut all_streams: PinnedStreams<T> = vec![];
+                all_streams.push(Box::pin(self));
                 for into_stream in others {
                     let stream = into_stream.into_stream();
                     all_streams.push(Box::pin(stream));
@@ -60,12 +58,12 @@ macro_rules! define_ordered_merge_impl {
         }
 
         pub fn ordered_merge_with_index<T>(
-            streams: Vec<$($boxed_stream)*>,
-        ) -> impl Stream<Item = (StreamItem<T>, usize)>
+            streams: PinnedStreams<T>,
+        ) -> impl Stream<Item = (StreamItem<T>, usize)> + $($bounds)*
         where
             T: Fluxion + Unpin,
-            T::Inner: Debug + Ord $($inner_bounds)* + 'static,
-            T::Timestamp: Debug + Ord $($timestamp_bounds)* + 'static,
+            T::Inner: Debug + Ord + Unpin + $($bounds)* 'static,
+            T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
         {
             OrderedMergeWithImmediateErrorsIndexed::new(streams)
         }
@@ -73,20 +71,20 @@ macro_rules! define_ordered_merge_impl {
         struct OrderedMergeWithImmediateErrorsIndexed<T>
         where
             T: Fluxion,
-            T::Inner: Debug + Ord $($inner_bounds)* + 'static,
-            T::Timestamp: Debug + Ord $($timestamp_bounds)* + 'static,
+            T::Inner: Debug + Ord + Unpin + $($bounds)* 'static,
+            T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
         {
-            streams: Vec<$($boxed_stream)*>,
+            streams: PinnedStreams<T>,
             buffered: Vec<Option<T>>,
         }
 
         impl<T> OrderedMergeWithImmediateErrorsIndexed<T>
         where
             T: Fluxion,
-            T::Inner: Debug + Ord $($inner_bounds)* + 'static,
-            T::Timestamp: Debug + Ord $($timestamp_bounds)* + 'static,
+            T::Inner: Debug + Ord + Unpin + $($bounds)* 'static,
+            T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
         {
-            fn new(streams: Vec<$($boxed_stream)*>) -> Self {
+            fn new(streams: PinnedStreams<T>) -> Self {
                 let count = streams.len();
                 let buffered = (0..count).map(|_| None).collect();
                 Self { streams, buffered }
@@ -96,8 +94,8 @@ macro_rules! define_ordered_merge_impl {
         impl<T> Stream for OrderedMergeWithImmediateErrorsIndexed<T>
         where
             T: Fluxion + Unpin,
-            T::Inner: Debug + Ord $($inner_bounds)* + 'static,
-            T::Timestamp: Debug + Ord $($timestamp_bounds)* + 'static,
+            T::Inner: Debug + Ord + Unpin + $($bounds)* 'static,
+            T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
         {
             type Item = (StreamItem<T>, usize);
 

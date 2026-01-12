@@ -7,13 +7,7 @@
 /// This macro eliminates duplication between multi-threaded and single-threaded
 /// implementations, which differ only in trait bounds (Send + Sync vs not).
 macro_rules! define_combine_latest_impl {
-    (
-        inner_bounds: [$($inner_bounds:tt)*],
-        timestamp_bounds: [$($timestamp_bounds:tt)*],
-        stream_bounds: [$($stream_bounds:tt)*],
-        state_bounds: [$($state_bounds:tt)*],
-        boxed_stream: [$($boxed_stream:tt)*]
-    ) => {
+    ($($bounds:tt)*) => {
         use $crate::ordered_merge::ordered_merge_with_index;
         use $crate::types::CombinedState;
         use alloc::boxed::Box;
@@ -28,44 +22,44 @@ macro_rules! define_combine_latest_impl {
         use futures::future::ready;
         use futures::{Stream, StreamExt};
 
-        type PinnedStreams<T> = Vec<$($boxed_stream)*>;
+        type PinnedStreams<T> = Vec<Pin<Box<dyn Stream<Item = StreamItem<T>> + $($bounds)* 'static>>>;
 
         pub trait CombineLatestExt<T>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,
-            T::Inner: Clone + Debug + Ord $($inner_bounds)* + 'static,
-            T::Timestamp: Clone + Debug + Ord $($timestamp_bounds)*,
+            T::Inner: Clone + Debug + Ord + Unpin + $($bounds)* 'static,
+            T::Timestamp: Clone + Debug + Ord + Copy + $($bounds)* 'static,
         {
             fn combine_latest<IS>(
                 self,
                 others: Vec<IS>,
-                filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + $($stream_bounds)* 'static,
-            ) -> impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Unpin
+                filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + $($bounds)* 'static,
+            ) -> impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Unpin + $($bounds)*
             where
                 IS: IntoStream<Item = StreamItem<T>>,
-                IS::Stream: Stream<Item = StreamItem<T>> + $($stream_bounds)* 'static,
+                IS::Stream: Stream<Item = StreamItem<T>> + $($bounds)* 'static,
                 CombinedState<T::Inner, T::Timestamp>:
                     Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>
-                    $($state_bounds)*;
+                    + $($bounds)* 'static;
         }
 
         impl<T, S> CombineLatestExt<T> for S
         where
             T: Fluxion,
-            T::Inner: Clone + Debug + Ord $($inner_bounds)* + 'static,
-            T::Timestamp: Clone + Debug + Ord $($timestamp_bounds)*,
-            S: Stream<Item = StreamItem<T>> + $($stream_bounds)* 'static,
+            T::Inner: Clone + Debug + Ord + Unpin + $($bounds)* 'static,
+            T::Timestamp: Clone + Debug + Ord + Copy + $($bounds)* 'static,
+            S: Stream<Item = StreamItem<T>> + $($bounds)* 'static,
             CombinedState<T::Inner, T::Timestamp>: Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>
-                $($state_bounds)*,
+                + $($bounds)* 'static,
         {
             fn combine_latest<IS>(
                 self,
                 others: Vec<IS>,
-                filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + $($stream_bounds)* 'static,
-            ) -> impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Unpin
+                filter: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> bool + $($bounds)* 'static,
+            ) -> impl Stream<Item = StreamItem<CombinedState<T::Inner, T::Timestamp>>> + Unpin + $($bounds)*
             where
                 IS: IntoStream<Item = StreamItem<T>>,
-                IS::Stream: Stream<Item = StreamItem<T>> + $($stream_bounds)* 'static,
+                IS::Stream: Stream<Item = StreamItem<T>> + $($bounds)* 'static,
                 CombinedState<T::Inner, T::Timestamp>:
                     Timestamped<Inner = CombinedState<T::Inner, T::Timestamp>, Timestamp = T::Timestamp>,
             {
@@ -135,7 +129,7 @@ macro_rules! define_combine_latest_impl {
         #[derive(Clone, Debug)]
         struct IntermediateState<V>
         where
-            V: Clone + Ord + Timestamped $($state_bounds)*,
+            V: Clone + Ord + Timestamped + $($bounds)* 'static,
         {
             state: Vec<Option<V>>,
             ordered_values: Vec<V>,
@@ -146,7 +140,7 @@ macro_rules! define_combine_latest_impl {
 
         impl<V> IntermediateState<V>
         where
-            V: Clone + Ord + Timestamped $($state_bounds)*,
+            V: Clone + Ord + Timestamped + $($bounds)* 'static,
         {
             pub fn new(num_streams: usize) -> Self {
                 Self {
