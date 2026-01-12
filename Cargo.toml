@@ -5,8 +5,8 @@ members = [
     "fluxion-core",
     "fluxion-exec",
     "fluxion-ordered-merge",
-    "fluxion-stream",
     "fluxion-runtime",
+    "fluxion-stream",
     "fluxion-stream-time",
     "fluxion-test-utils",
 ]
