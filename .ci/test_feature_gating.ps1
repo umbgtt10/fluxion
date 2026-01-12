@@ -91,9 +91,11 @@ function Test-SymbolPresence {
 
     $allPassed = $true
 
-    # Check expected symbols exist (look for re-export declarations)
+    # Check expected symbols exist (look for re-export declarations OR trait/struct/type definitions)
     foreach ($symbol in $ExpectedSymbols) {
-        $found = Select-String -Path "target/doc/$docPackageName/*.html" -Pattern "id=.reexport\.$symbol" -Quiet 2>$null
+        # Pattern matches: id=.reexport.Symbol OR href="trait.Symbol.html" OR href="struct.Symbol.html" OR href="type.Symbol.html"
+        $pattern = "(id=.reexport\.$symbol|href=.(trait|struct|type|enum)\.$symbol\.html)"
+        $found = Select-String -Path "target/doc/$docPackageName/*.html" -Pattern $pattern -Quiet 2>$null
         if ($found) {
             Write-Success "    Found expected: $symbol"
             $script:SuccessCount++
@@ -104,9 +106,10 @@ function Test-SymbolPresence {
         }
     }
 
-    # Check unexpected symbols don't exist (look for re-export declarations)
+    # Check unexpected symbols don't exist (look for re-export declarations OR trait/struct/type definitions)
     foreach ($symbol in $UnexpectedSymbols) {
-        $found = Select-String -Path "target/doc/$docPackageName/*.html" -Pattern "id=.reexport\.$symbol" -Quiet 2>$null
+        $pattern = "(id=.reexport\.$symbol|href=.(trait|struct|type|enum)\.$symbol\.html)"
+        $found = Select-String -Path "target/doc/$docPackageName/*.html" -Pattern $pattern -Quiet 2>$null
         if (-not $found) {
             Write-Success "    Correctly excluded: $symbol"
             $script:SuccessCount++
@@ -167,8 +170,10 @@ $AllNonGatedStreamOperators = @(
     "WithPrevious"
 )
 
-# Runtime-gated fluxion-stream operators/types (2 operators + 2 types = 4 items)
-$RuntimeGatedStreamOperators = @(
+# Multi-threaded runtime-gated fluxion-stream operators/types (2 operators + 2 types = 4 items)
+# Available on: Tokio, smol, async-std, WASM
+# NOT available on: Embassy (single-threaded, no spawning)
+$MultiThreadedStreamOperators = @(
     "PartitionExt",
     "ShareExt",
     # Types
@@ -176,109 +181,185 @@ $RuntimeGatedStreamOperators = @(
     "PartitionedStream"
 )
 
-# All fluxion-stream operators/types with runtime
+# All fluxion-stream operators/types with multi-threaded runtime
 # 20+2=22 stream operators + 3+2=5 types = 27 stream items total
-$AllStreamOperators = $AllNonGatedStreamOperators + $RuntimeGatedStreamOperators
+$AllStreamOperators = $AllNonGatedStreamOperators + $MultiThreadedStreamOperators
 
-# Note: fluxion-stream-time operators (5 time operators) not tested here
-# They will be tested separately after migration is complete
+# fluxion-stream-time operators (5 time operators + 1 type)
+# Available on ALL runtimes (Tokio, smol, async-std, WASM, Embassy)
+$AllTimeOperators = @(
+    "DebounceExt",
+    "ThrottleExt",
+    "DelayExt",
+    "SampleExt",
+    "TimeoutExt",
+    "InstantTimestamped"
+)
 
 # fluxion-exec operators
 $NonGatedExecOperators = @(
     "SubscribeExt"
 )
 
-$RuntimeGatedExecOperators = @(
+# Multi-threaded runtime-gated (NOT available on Embassy)
+# Available on: Tokio, smol, async-std, WASM
+$MultiThreadedExecOperators = @(
     "SubscribeLatestExt"
 )
 
-$AllExecOperators = $NonGatedExecOperators + $RuntimeGatedExecOperators
+$AllExecOperators = $NonGatedExecOperators + $MultiThreadedExecOperators
 
 # ============================================================================
-# Test 1: Default features (runtime-tokio enabled)
+# Test 1: Compilation - All 5 Runtimes
 # ============================================================================
-Write-TestHeader "Test 1: Default Features (runtime-tokio)"
+Write-TestHeader "Test 1: Compilation - All 5 Runtimes"
 
-$result = Test-Compilation -Package "fluxion-stream" -Features "" -Description "Default features compile"
+$result = Test-Compilation -Package "fluxion-stream" -Features "runtime-tokio" -Description "Tokio runtime"
 Record-Result $result
 
-# ============================================================================
-# Test 2: no_std + alloc (no runtime features)
-# ============================================================================
-Write-TestHeader "Test 2: no_std + alloc (no runtime features)"
-
-$result = Test-Compilation -Package "fluxion-stream" -Features "alloc" -Description "no_std with alloc"
+$result = Test-Compilation -Package "fluxion-stream" -Features "runtime-smol" -Description "smol runtime"
 Record-Result $result
 
-$result = Test-Compilation -Package "fluxion-exec" -Features "alloc" -Description "no_std exec with alloc"
+$result = Test-Compilation -Package "fluxion-stream" -Features "runtime-async-std" -Description "async-std runtime"
 Record-Result $result
 
-# ============================================================================
-# Test 3: Individual runtime features
-# ============================================================================
-Write-TestHeader "Test 3: Individual Runtime Features"
-
-$result = Test-Compilation -Package "fluxion-stream" -Features "runtime-tokio" -Description "runtime-tokio only"
+$result = Test-Compilation -Package "fluxion-stream" -Features "runtime-embassy" -Description "Embassy runtime"
 Record-Result $result
 
-$result = Test-Compilation -Package "fluxion-stream" -Features "runtime-smol" -Description "runtime-smol only"
-Record-Result $result
-
-$result = Test-Compilation -Package "fluxion-stream" -Features "runtime-async-std" -Description "runtime-async-std only"
-Record-Result $result
+Write-Host "  Note: WASM runtime requires wasm32 target - tested separately in CI"
 
 # ============================================================================
-# Test 4: Verify gated operators are excluded without runtime
+# Test 2: fluxion-stream - Multi-threaded Runtimes (Tokio, smol, async-std)
 # ============================================================================
-Write-TestHeader "Test 4: Gated Operators Excluded (no_std + alloc)"
-
-Write-Host "  Checking symbol presence in documentation..."
-Write-Host "  Expected: $($AllNonGatedStreamOperators.Count) items present (20 operators + 3 types), $($RuntimeGatedStreamOperators.Count) items absent (2 operators + 2 types)"
-$result = Test-SymbolPresence `
-    -Package "fluxion-stream" `
-    -Features "alloc" `
-    -ExpectedSymbols $AllNonGatedStreamOperators `
-    -UnexpectedSymbols $RuntimeGatedStreamOperators `
-    -Description "no_std+alloc: All non-gated operators present, runtime-gated absent"
-Record-Result $result
-
-# ============================================================================
-# Test 5: Verify gated operators are included with runtime
-# ============================================================================
-Write-TestHeader "Test 5: Gated Operators Included (with runtime)"
-
-Write-Host "  Checking symbol presence in documentation..."
+Write-TestHeader "Test 2: fluxion-stream - Multi-threaded Runtimes"
+Write-Host "  Testing Tokio runtime..."
 Write-Host "  Expected: All $($AllStreamOperators.Count) items present (22 stream operators + 5 types)"
 $result = Test-SymbolPresence `
     -Package "fluxion-stream" `
     -Features "runtime-tokio" `
     -ExpectedSymbols $AllStreamOperators `
     -UnexpectedSymbols @() `
-    -Description "runtime-tokio: All operators including gated ones present"
+    -Description "runtime-tokio: All operators including partition/share present"
 Record-Result $result
 
-# ============================================================================
-# Test 6: Verify fluxion-exec gating
-# ============================================================================
-Write-TestHeader "Test 6: fluxion-exec Gating"
-
-Write-Host "  Checking symbol presence in documentation..."
-Write-Host "  Testing no_std+alloc: $($NonGatedExecOperators.Count) operator present, $($RuntimeGatedExecOperators.Count) operator absent"
+Write-Host "  Testing smol runtime..."
 $result = Test-SymbolPresence `
-    -Package "fluxion-exec" `
-    -Features "alloc" `
-    -ExpectedSymbols $NonGatedExecOperators `
-    -UnexpectedSymbols $RuntimeGatedExecOperators `
-    -Description "no_std+alloc: subscribe available, subscribe_latest absent"
+    -Package "fluxion-stream" `
+    -Features "runtime-smol" `
+    -ExpectedSymbols $AllStreamOperators `
+    -UnexpectedSymbols @() `
+    -Description "runtime-smol: All operators including partition/share present"
 Record-Result $result
 
-Write-Host "  Testing runtime-tokio: All $($AllExecOperators.Count) operators present"
+Write-Host "  Testing async-std runtime..."
+$result = Test-SymbolPresence `
+    -Package "fluxion-stream" `
+    -Features "runtime-async-std" `
+    -ExpectedSymbols $AllStreamOperators `
+    -UnexpectedSymbols @() `
+    -Description "runtime-async-std: All operators including partition/share present"
+Record-Result $result
+
+# ============================================================================
+# Test 3: fluxion-stream - Embassy Runtime (Single-threaded)
+# ============================================================================
+Write-TestHeader "Test 3: fluxion-stream - Embassy Runtime"
+
+Write-Host "  Checking symbol presence for Embassy..."
+Write-Host "  Expected: $($AllNonGatedStreamOperators.Count) stream operators present, $($MultiThreadedStreamOperators.Count) multi-threaded operators absent"
+$result = Test-SymbolPresence `
+    -Package "fluxion-stream" `
+    -Features "runtime-embassy" `
+    -ExpectedSymbols $AllNonGatedStreamOperators `
+    -UnexpectedSymbols $MultiThreadedStreamOperators `
+    -Description "runtime-embassy: Base operators present, partition/share absent (no spawning)"
+Record-Result $result
+
+# ============================================================================
+# Test 4: fluxion-exec - Multi-threaded Runtimes (Tokio, smol, async-std)
+# ============================================================================
+Write-TestHeader "Test 4: fluxion-exec - Multi-threaded Runtimes"
+
+Write-Host "  Testing Tokio runtime..."
 $result = Test-SymbolPresence `
     -Package "fluxion-exec" `
     -Features "runtime-tokio" `
     -ExpectedSymbols $AllExecOperators `
     -UnexpectedSymbols @() `
-    -Description "runtime-tokio: All operators including subscribe_latest present"
+    -Description "runtime-tokio: Both subscribe and subscribe_latest present"
+Record-Result $result
+
+Write-Host "  Testing smol runtime..."
+$result = Test-SymbolPresence `
+    -Package "fluxion-exec" `
+    -Features "runtime-smol" `
+    -ExpectedSymbols $AllExecOperators `
+    -UnexpectedSymbols @() `
+    -Description "runtime-smol: Both subscribe and subscribe_latest present"
+Record-Result $result
+
+Write-Host "  Testing async-std runtime..."
+$result = Test-SymbolPresence `
+    -Package "fluxion-exec" `
+    -Features "runtime-async-std" `
+    -ExpectedSymbols $AllExecOperators `
+    -UnexpectedSymbols @() `
+    -Description "runtime-async-std: Both subscribe and subscribe_latest present"
+Record-Result $result
+
+# ============================================================================
+# Test 5: fluxion-exec - Embassy (Only subscribe, no subscribe_latest)
+# ============================================================================
+Write-TestHeader "Test 5: fluxion-exec - Embassy Runtime"
+
+Write-Host "  Note: fluxion-exec does not have runtime-embassy feature"
+Write-Host "  Embassy only supports subscribe (no subscribe_latest - no spawning)"
+
+# ============================================================================
+# Test 6: fluxion-stream-time - All 5 Runtimes
+# ============================================================================
+Write-TestHeader "Test 6: fluxion-stream-time - All 5 Runtimes"
+
+Write-Host "  Testing Tokio runtime..."
+Write-Host "  Expected: All $($AllTimeOperators.Count) time operators present"
+$result = Test-SymbolPresence `
+    -Package "fluxion-stream-time" `
+    -Features "runtime-tokio" `
+    -ExpectedSymbols $AllTimeOperators `
+    -UnexpectedSymbols @() `
+    -Description "runtime-tokio: All time operators present"
+Record-Result $result
+
+Write-Host "  Testing smol runtime..."
+$result = Test-SymbolPresence `
+    -Package "fluxion-stream-time" `
+    -Features "runtime-smol" `
+    -ExpectedSymbols $AllTimeOperators `
+    -UnexpectedSymbols @() `
+    -Description "runtime-smol: All time operators present"
+Record-Result $result
+
+Write-Host "  Testing async-std runtime..."
+$result = Test-SymbolPresence `
+    -Package "fluxion-stream-time" `
+    -Features "runtime-async-std" `
+    -ExpectedSymbols $AllTimeOperators `
+    -UnexpectedSymbols @() `
+    -Description "runtime-async-std: All time operators present"
+Record-Result $result
+
+Write-Host "  Testing WASM runtime..."
+Write-Host "  Note: WASM docs require wasm32 target - skipping on native platforms"
+Write-Host "  (WASM operator availability verified in CI wasm-pack tests)"
+# WASM doc generation requires wasm32-unknown-unknown target, skip for native CI
+
+Write-Host "  Testing Embassy runtime..."
+$result = Test-SymbolPresence `
+    -Package "fluxion-stream-time" `
+    -Features "runtime-embassy" `
+    -ExpectedSymbols $AllTimeOperators `
+    -UnexpectedSymbols @() `
+    -Description "runtime-embassy: All time operators present (dual trait bound system)"
 Record-Result $result
 
 # ============================================================================

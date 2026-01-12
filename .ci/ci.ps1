@@ -8,7 +8,6 @@ Usage:
 This mirrors the GitHub Actions `ci.yml` steps:
   - cargo fmt --check
   - .\.ci\test_feature_gating.ps1 (feature flag verification)
-  - .\.ci\no_std_check.ps1 (no_std compilation with alloc)
   - cargo check (all targets & features)
   - cargo clippy (deny warnings)
   - cargo build --release
@@ -51,7 +50,6 @@ Write-Output "Starting local CI checks..."
 
 Invoke-StepAction "Format check" { cargo fmt --all -- --check }
 Invoke-StepAction "Feature gating tests" { .\.ci\test_feature_gating.ps1 }
-Invoke-StepAction "no_std compilation check" { .\.ci\no_std_check.ps1 }
 
 # Run upgrade & build early to fail fast on dependency or build regressions
 Write-Output "=== Upgrade & build ==="

@@ -44,7 +44,7 @@ runtime-async-std = ["std", "fluxion-core/runtime-async-std"]
 runtime-wasm = ["alloc", "fluxion-core/runtime-wasm"]  # WASM single-threaded runtime
 runtime-embassy = ["alloc", "fluxion-core/runtime-embassy"]  # Embassy embedded runtime
 
-[target.'cfg(not(target_os = "none"))'.dev-dependencies]
+[dev-dependencies]
 tokio = { workspace = true }
 fluxion-test-utils = { workspace = true }
 criterion = { workspace = true }
