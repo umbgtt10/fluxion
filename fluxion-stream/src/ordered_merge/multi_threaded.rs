@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-crate::define_ordered_merge_impl! {
+define_ordered_merge_impl! {
     inner_bounds: [+ Send + Sync + Unpin],
     timestamp_bounds: [+ Send + Sync + Copy],
     stream_bounds: [Send + Sync +],

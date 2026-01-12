@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-crate::define_combine_latest_impl! {
+define_combine_latest_impl! {
     inner_bounds: [+ Unpin],
     timestamp_bounds: [+ Copy],
     stream_bounds: [],

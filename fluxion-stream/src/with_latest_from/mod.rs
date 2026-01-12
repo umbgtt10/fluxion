@@ -43,14 +43,8 @@
 //! # }
 //! ```
 
-use crate::types::CombinedState;
-use core::fmt::Debug;
-use fluxion_core::into_stream::IntoStream;
-use fluxion_core::{Fluxion, StreamItem};
-use futures::Stream;
-
 #[macro_use]
-pub(crate) mod implementation;
+mod implementation;
 
 #[cfg(any(
     all(feature = "runtime-tokio", not(target_arch = "wasm32")),
@@ -59,6 +53,13 @@ pub(crate) mod implementation;
 ))]
 mod multi_threaded;
 
+#[cfg(any(
+    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    feature = "runtime-smol",
+    feature = "runtime-async-std"
+))]
+pub use multi_threaded::WithLatestFromExt;
+
 #[cfg(not(any(
     all(feature = "runtime-tokio", not(target_arch = "wasm32")),
     feature = "runtime-smol",
@@ -66,54 +67,9 @@ mod multi_threaded;
 )))]
 mod single_threaded;
 
-/// Extension trait providing the `with_latest_from` operator for timestamped streams.
-#[cfg(any(
-    all(feature = "runtime-tokio", not(target_arch = "wasm32")),
-    feature = "runtime-smol",
-    feature = "runtime-async-std"
-))]
-pub trait WithLatestFromExt<T>: Stream<Item = StreamItem<T>> + Sized
-where
-    T: Fluxion,
-    T::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-    T::Timestamp: Debug + Ord + Send + Sync + Copy + 'static,
-{
-    /// Combines elements from the primary stream (self) with the latest element from the secondary stream (other).
-    fn with_latest_from<IS, R>(
-        self,
-        other: IS,
-        result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + Send + Sync + 'static,
-    ) -> impl Stream<Item = StreamItem<R>>
-    where
-        IS: IntoStream<Item = StreamItem<T>>,
-        IS::Stream: Send + Sync + 'static,
-        R: Fluxion,
-        R::Inner: Clone + Debug + Ord + Send + Sync + Unpin + 'static,
-        R::Timestamp: From<T::Timestamp> + Debug + Ord + Send + Sync + Copy + 'static;
-}
-
-/// Extension trait providing the `with_latest_from` operator for timestamped streams.
 #[cfg(not(any(
     all(feature = "runtime-tokio", not(target_arch = "wasm32")),
     feature = "runtime-smol",
     feature = "runtime-async-std"
 )))]
-pub trait WithLatestFromExt<T>: Stream<Item = StreamItem<T>> + Sized
-where
-    T: Fluxion,
-    T::Inner: Clone + Debug + Ord + Unpin + 'static,
-    T::Timestamp: Debug + Ord + Copy + 'static,
-{
-    /// Combines elements from the primary stream (self) with the latest element from the secondary stream (other).
-    fn with_latest_from<IS, R>(
-        self,
-        other: IS,
-        result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + 'static,
-    ) -> impl Stream<Item = StreamItem<R>>
-    where
-        IS: IntoStream<Item = StreamItem<T>>,
-        IS::Stream: 'static,
-        R: Fluxion,
-        R::Inner: Clone + Debug + Ord + Unpin + 'static,
-        R::Timestamp: From<T::Timestamp> + Debug + Ord + Copy + 'static;
-}
+pub use single_threaded::WithLatestFromExt;

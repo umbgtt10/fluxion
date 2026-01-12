@@ -6,8 +6,6 @@
 ///
 /// This macro eliminates duplication between multi-threaded and single-threaded
 /// implementations, which differ only in trait bounds (Send + Sync vs not).
-#[doc(hidden)]
-#[macro_export]
 macro_rules! define_combine_latest_impl {
     (
         inner_bounds: [$($inner_bounds:tt)*],

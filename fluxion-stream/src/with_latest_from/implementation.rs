@@ -39,7 +39,6 @@ impl<T: Clone> IntermediateState<T> {
 macro_rules! define_with_latest_from_impl {
     ($($bounds:tt)*) => {
         use super::implementation::IntermediateState;
-        use super::WithLatestFromExt;
         use crate::ordered_merge::ordered_merge_with_index;
         use crate::types::CombinedState;
         use alloc::boxed::Box;
@@ -54,6 +53,27 @@ macro_rules! define_with_latest_from_impl {
         use futures::{Stream, StreamExt};
 
         type PinnedStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + $($bounds)* 'static>>;
+
+        /// Extension trait providing the `with_latest_from` operator for timestamped streams.
+        pub trait WithLatestFromExt<T>: Stream<Item = StreamItem<T>> + Sized
+        where
+            T: Fluxion,
+            T::Inner: Clone + Debug + Ord + Unpin + $($bounds)* 'static,
+            T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
+        {
+            /// Combines elements from the primary stream (self) with the latest element from the secondary stream (other).
+            fn with_latest_from<IS, R>(
+                self,
+                other: IS,
+                result_selector: impl Fn(&CombinedState<T::Inner, T::Timestamp>) -> R + $($bounds)* 'static,
+            ) -> impl Stream<Item = StreamItem<R>>
+            where
+                IS: IntoStream<Item = StreamItem<T>>,
+                IS::Stream: $($bounds)* 'static,
+                R: Fluxion,
+                R::Inner: Clone + Debug + Ord + Unpin + $($bounds)* 'static,
+                R::Timestamp: From<T::Timestamp> + Debug + Ord + Copy + $($bounds)* 'static;
+        }
 
         impl<T, S> WithLatestFromExt<T> for S
         where

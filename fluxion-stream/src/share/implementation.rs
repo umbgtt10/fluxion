@@ -14,8 +14,6 @@
 /// - Drop implementation
 /// - ShareExt trait with share() method
 /// - Blanket trait implementation
-#[doc(hidden)]
-#[macro_export]
 macro_rules! define_share_impl {
     (
         stream_bounds: [$($stream_bounds:tt)*],

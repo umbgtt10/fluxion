@@ -46,6 +46,7 @@
 //! # }
 //! ```
 
+#[macro_use]
 mod implementation;
 
 #[cfg(any(

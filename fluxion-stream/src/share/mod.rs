@@ -62,6 +62,7 @@
 //!
 //! Both are subscription factories with the same `subscribe()` pattern.
 
+#[macro_use]
 mod implementation;
 
 #[cfg(any(
