@@ -31,6 +31,7 @@
 //! - [`OnErrorExt`] - Handle stream errors
 //! - [`OrderedStreamExt`] - Merge streams with temporal ordering
 //! - [`ScanOrderedExt`] - Stateful accumulation
+//! #[cfg(any(feature = "runtime-tokio", feature = "runtime-smol", feature = "runtime-async-std", target_arch = "wasm32"))]
 //! - [`ShareExt`] - Convert stream to multi-subscriber source
 //! - [`SkipItemsExt`] - Skip first n items
 //! - [`StartWithExt`] - Prepend initial values
@@ -46,6 +47,7 @@
 //!
 //! - [`CombinedState`] - Combined state from multiple streams
 //! - [`WithPrevious`] - Pair of current and previous values
+//! #[cfg(any(feature = "runtime-tokio", feature = "runtime-smol", feature = "runtime-async-std", target_arch = "wasm32"))]
 //! - [`FluxionShared`] - Multi-subscriber subscription factory
 //! - [`MergedStream`] - Merged stream type
 
