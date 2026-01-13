@@ -572,6 +572,7 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
 
 - **[Integration Guide](INTEGRATION.md)** - Learn the three patterns for integrating events (intrinsic, extrinsic, wrapper ordering)
 - **[Error Handling Guide](docs/ERROR-HANDLING.md)** - Comprehensive guide to error propagation and recovery strategies
+- **[Future Architecture](docs/FUTURE_ARCHITECTURE.md)** - Complete runtime abstraction vision and migration path
 
 ### 📦 Crate Documentation
 
