@@ -50,16 +50,16 @@ async fn test_ordered_merge_combine_with_previous_emit_when() -> anyhow::Result<
         .emit_when(threshold_mapped, filter_fn);
 
     // Act: Set threshold to Bob (age 30)
-    threshold_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    threshold_tx.try_send(Sequenced::new(person_bob()))?;
 
     // Act: Send Alice (25) from stream 1 - below threshold
-    person1_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    person1_tx.try_send(Sequenced::new(person_alice()))?;
 
     // Assert: Should not emit (25 < 30)
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Send Charlie (35) from stream 2 - above threshold
-    person2_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    person2_tx.try_send(Sequenced::new(person_charlie()))?;
 
     // Assert: Should emit (35 >= 30)
     let emitted = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -70,13 +70,13 @@ async fn test_ordered_merge_combine_with_previous_emit_when() -> anyhow::Result<
     );
 
     // Act: Send Dave (28) from stream 1 - below threshold
-    person1_tx.unbounded_send(Sequenced::new(person_dave()))?;
+    person1_tx.try_send(Sequenced::new(person_dave()))?;
 
     // Assert: Should not emit (28 < 30)
     assert_no_element_emitted(&mut output_stream, 100).await;
 
     // Act: Send Diane (40) from stream 2 - above threshold
-    person2_tx.unbounded_send(Sequenced::new(person_diane()))?;
+    person2_tx.try_send(Sequenced::new(person_diane()))?;
 
     // Assert: Should emit (40 >= 30)
     let emitted = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -87,7 +87,7 @@ async fn test_ordered_merge_combine_with_previous_emit_when() -> anyhow::Result<
     );
 
     // Act: Lower threshold to Alice (25)
-    threshold_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    threshold_tx.try_send(Sequenced::new(person_alice()))?;
 
     // Assert: Should re-emit Diane since she still meets the new threshold
     let emitted = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -98,7 +98,7 @@ async fn test_ordered_merge_combine_with_previous_emit_when() -> anyhow::Result<
     );
 
     // Act: Send Bob (30) from stream 1 - meets new threshold
-    person1_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    person1_tx.try_send(Sequenced::new(person_bob()))?;
 
     // Assert: Should emit (30 >= 25)
     let emitted = unwrap_value(Some(unwrap_stream(&mut output_stream, 500).await));
@@ -140,11 +140,11 @@ async fn test_combine_with_previous_emit_when_map_ordered() -> anyhow::Result<()
         .emit_when(threshold_stream, filter_fn);
 
     // Act & Assert
-    threshold_tx.unbounded_send(Sequenced::new(person_bob()))?; // Threshold 30
-    source_tx.unbounded_send(Sequenced::new(person_alice()))?; // 25 - below threshold
+    threshold_tx.try_send(Sequenced::new(person_bob()))?; // Threshold 30
+    source_tx.try_send(Sequenced::new(person_alice()))?; // 25 - below threshold
     assert_no_element_emitted(&mut stream, 100).await;
 
-    source_tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - above threshold
+    source_tx.try_send(Sequenced::new(person_charlie()))?; // 35 - above threshold
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
 
     // Result is TestData (Charlie)

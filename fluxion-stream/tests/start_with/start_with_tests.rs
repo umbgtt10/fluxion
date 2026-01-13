@@ -32,7 +32,7 @@ async fn test_start_with_prepends_initial_values() -> anyhow::Result<()> {
     );
 
     // Now send from source stream
-    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    tx.try_send(Sequenced::new(person_charlie()))?;
 
     assert_eq!(
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
@@ -51,7 +51,7 @@ async fn test_start_with_empty_initial_values() -> anyhow::Result<()> {
     let mut result = stream.start_with(initial);
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
     drop(tx);
 
     // Assert - Only source stream values emitted

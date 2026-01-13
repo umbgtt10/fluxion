@@ -33,9 +33,9 @@ async fn shared_with_filter_ordered_each_subscriber_filters_independently() -> a
         .filter_ordered(|data| matches!(data, TestData::Person(p) if p.age < 30));
 
     // Act - send people of various ages
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // 25 - young
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // 30 - adult
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - adult
+    tx.try_send(Sequenced::new(person_alice()))?; // 25 - young
+    tx.try_send(Sequenced::new(person_bob()))?; // 30 - adult
+    tx.try_send(Sequenced::new(person_charlie()))?; // 35 - adult
 
     // Assert - adults_only sees Bob and Charlie
     assert!(matches!(
@@ -82,7 +82,7 @@ async fn shared_with_map_ordered_transforms_per_subscriber() -> anyhow::Result<(
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Alice, 25
+    tx.try_send(Sequenced::new(person_alice()))?; // Alice, 25
 
     // Assert - add_10_years sees Alice at 35
     assert!(matches!(
@@ -112,8 +112,8 @@ async fn shared_with_combine_with_previous_tracks_state_per_subscriber() -> anyh
     let mut sub2 = shared.subscribe().unwrap().combine_with_previous();
 
     // Act - send two items
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(person_bob()))?;
 
     // Assert sub1 - first item has no previous
     let first1 = unwrap_value(Some(unwrap_stream(&mut sub1, 500).await));
@@ -176,9 +176,9 @@ async fn shared_with_scan_ordered_accumulates_per_subscriber() -> anyhow::Result
             });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // age 25
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // age 30
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // age 35
+    tx.try_send(Sequenced::new(person_alice()))?; // age 25
+    tx.try_send(Sequenced::new(person_bob()))?; // age 30
+    tx.try_send(Sequenced::new(person_charlie()))?; // age 35
 
     // Assert sum_ages: 25, 55, 90
     let result = unwrap_stream::<Sequenced<u32>, _>(&mut sum_ages, 500)
@@ -228,8 +228,8 @@ async fn shared_with_mixed_combine_latest_combines_subscribers() -> anyhow::Resu
         .combine_latest(vec![stream], |_| true);
 
     // Act - send items
-    tx1.unbounded_send(Sequenced::new(person_charlie()))?;
-    tx2.unbounded_send(Sequenced::new(person_alice()))?;
+    tx1.try_send(Sequenced::new(person_charlie()))?;
+    tx2.try_send(Sequenced::new(person_alice()))?;
 
     // Assert - combine_latest emits when both have values
     // After Alice is sent, both subscribers receive it, so we get (Alice, Alice)
@@ -245,7 +245,7 @@ async fn shared_with_mixed_combine_latest_combines_subscribers() -> anyhow::Resu
     );
 
     // Send Bob
-    tx2.unbounded_send(Sequenced::new(person_bob()))?;
+    tx2.try_send(Sequenced::new(person_bob()))?;
 
     // After Bob is sent, we get a combination with Bob on one side
     assert_eq!(
@@ -260,7 +260,7 @@ async fn shared_with_mixed_combine_latest_combines_subscribers() -> anyhow::Resu
     );
 
     // Send Bob
-    tx1.unbounded_send(Sequenced::new(person_diane()))?;
+    tx1.try_send(Sequenced::new(person_diane()))?;
 
     // After Bob is sent, we get a combination with Bob on one side
     assert_eq!(
@@ -292,7 +292,7 @@ async fn shared_with_transient_combine_latest_combines_subscribers() -> anyhow::
         .combine_latest(vec![shared.subscribe().unwrap()], |_| true);
 
     // Act - send items
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
 
     // Assert - combine_latest emits when both have values
     // After Alice is sent, both subscribers receive it, so we get (Alice, Alice)
@@ -308,7 +308,7 @@ async fn shared_with_transient_combine_latest_combines_subscribers() -> anyhow::
     );
 
     // Send Bob
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(person_bob()))?;
 
     // After Bob is sent, we get a combination with Bob on one side
     assert_eq!(
@@ -357,7 +357,7 @@ async fn shared_with_transient_filtered_combine_latest_combines_subscribers() ->
             });
 
     // Act - send items
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
 
     // Assert - combine_latest emits when both have values with matching timestamps
     assert_eq!(
@@ -372,7 +372,7 @@ async fn shared_with_transient_filtered_combine_latest_combines_subscribers() ->
     );
 
     // Send Bob
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(person_bob()))?;
 
     // After Bob is sent, both subscribers receive it with the same timestamp, so we get (Bob, Bob)
     assert_eq!(
@@ -402,11 +402,11 @@ async fn shared_with_distinct_until_changed_tracks_state_per_subscriber() -> any
     let mut sub2 = shared.subscribe().unwrap().distinct_until_changed();
 
     // Act - send sequence with duplicates: Alice, Alice, Bob, Bob, Alice
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // duplicate - should be filtered
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // duplicate - should be filtered
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // back to Alice - should emit
+    tx.try_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(person_alice()))?; // duplicate - should be filtered
+    tx.try_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(person_bob()))?; // duplicate - should be filtered
+    tx.try_send(Sequenced::new(person_alice()))?; // back to Alice - should emit
 
     // Assert sub1 - receives Alice, Bob, Alice (duplicates filtered)
     assert!(matches!(

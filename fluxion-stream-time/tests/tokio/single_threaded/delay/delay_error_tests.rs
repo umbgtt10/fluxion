@@ -25,7 +25,7 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
     let mut delayed = stream.delay(Duration::from_secs(1));
 
     // Act & Assert
-    tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
+    tx.try_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
@@ -38,13 +38,13 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
         person_alice()
     );
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut delayed, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
+    tx.try_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
     )))?;
@@ -70,13 +70,13 @@ async fn test_delay_multiple_errors_with_values_in_flight() -> anyhow::Result<()
     let mut delayed = stream.delay(Duration::from_secs(1));
 
     // Act - send value, then error while value is still delayed
-    tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
+    tx.try_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
 
     // Send error while Alice is in flight
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
 
     // Assert - error passes through immediately
     assert!(matches!(
@@ -85,14 +85,14 @@ async fn test_delay_multiple_errors_with_values_in_flight() -> anyhow::Result<()
     ));
 
     // Send another value and error
-    tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
+    tx.try_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
     )))?;
 
     advance(Duration::from_millis(200)).await;
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 2")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("error 2")))?;
 
     // Assert - second error also passes through immediately
     assert!(matches!(

@@ -23,14 +23,14 @@ async fn test_sample_ratio_after_filter_ordered() -> anyhow::Result<()> {
         .sample_ratio(1.0, 42);
 
     // Act & Assert
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered out
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(animal_dog()))?; // Filtered out
+    tx.try_send(Sequenced::new(person_bob()))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_bob()
@@ -48,14 +48,14 @@ async fn test_sample_ratio_before_filter_ordered() -> anyhow::Result<()> {
         .filter_ordered(|item| matches!(item, TestData::Person(_)));
 
     // Act & Assert
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // Sampled but then filtered
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(animal_dog()))?; // Sampled but then filtered
+    tx.try_send(Sequenced::new(person_bob()))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_bob()
@@ -81,7 +81,7 @@ async fn test_sample_ratio_after_map_ordered() -> anyhow::Result<()> {
         .sample_ratio(1.0, 42);
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert!(matches!(
@@ -109,7 +109,7 @@ async fn test_sample_ratio_before_map_ordered() -> anyhow::Result<()> {
         });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert!(matches!(
@@ -127,13 +127,13 @@ async fn test_chained_sample_ratios() -> anyhow::Result<()> {
     let mut result = stream.sample_ratio(1.0, 42).sample_ratio(1.0, 99);
 
     // Act & Assert
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(person_bob()))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_bob()
@@ -149,8 +149,8 @@ async fn test_chained_sample_ratios_zero_in_chain() -> anyhow::Result<()> {
     let mut result = stream.sample_ratio(1.0, 42).sample_ratio(0.0, 99);
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(person_bob()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 500).await;
@@ -176,8 +176,8 @@ async fn test_sample_ratio_complex_pipeline() -> anyhow::Result<()> {
         });
 
     // Act
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Passes filter, sampled, mapped
+    tx.try_send(Sequenced::new(animal_dog()))?; // Filtered
+    tx.try_send(Sequenced::new(person_alice()))?; // Passes filter, sampled, mapped
 
     // Assert
     assert!(matches!(
@@ -214,8 +214,8 @@ async fn test_sample_ratio_maintains_determinism_in_composition() -> anyhow::Res
         .sample_ratio(0.5, 12345);
 
     for item in &items {
-        tx1.unbounded_send(Sequenced::new(item.clone()))?;
-        tx2.unbounded_send(Sequenced::new(item.clone()))?;
+        tx1.try_send(Sequenced::new(item.clone()))?;
+        tx2.try_send(Sequenced::new(item.clone()))?;
     }
 
     // Assert

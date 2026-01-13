@@ -2,10 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use async_channel::unbounded;
 use fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
-use fluxion_test_utils::{unwrap_stream, Sequenced};
+use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
 
 #[tokio::test]
 async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
@@ -17,13 +16,10 @@ async fn test_take_latest_when_int_bool() -> anyhow::Result<()> {
     }
 
     // Create int stream and bool trigger stream
-    let (tx_int, rx_int) = unbounded::<Sequenced<Value>>();
-    let (tx_trigger, rx_trigger) = unbounded::<Sequenced<Value>>();
+    let (tx_int, rx_int) = test_channel::<Sequenced<Value>>();
+    let (tx_trigger, rx_trigger) = test_channel::<Sequenced<Value>>();
 
-    let int_stream = rx_int.into_fluxion_stream();
-    let trigger_stream = rx_trigger.into_fluxion_stream();
-
-    let mut pipeline = int_stream.take_latest_when(trigger_stream, |_| true);
+    let mut pipeline = rx_int.take_latest_when(rx_trigger, |_| true);
 
     // Send int values first - they will be buffered
     // Use realistic nanosecond timestamps

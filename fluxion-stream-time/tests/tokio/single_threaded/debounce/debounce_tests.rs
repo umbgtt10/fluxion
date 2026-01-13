@@ -24,7 +24,7 @@ async fn test_debounce_emits_after_quiet_period() -> anyhow::Result<()> {
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut debounced, 0).await;
 
     advance(Duration::from_millis(100)).await;
@@ -52,11 +52,11 @@ async fn test_debounce_resets_on_new_value() -> anyhow::Result<()> {
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_element_emitted(&mut debounced, 0).await;
 
     advance(Duration::from_millis(300)).await;
@@ -81,13 +81,13 @@ async fn test_debounce_multiple_resets() -> anyhow::Result<()> {
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
 
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
 
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
@@ -110,7 +110,7 @@ async fn test_debounce_emits_pending_on_stream_end() -> anyhow::Result<()> {
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(200)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
@@ -133,7 +133,7 @@ async fn test_debounce_stream_ends_without_pending() -> anyhow::Result<()> {
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Act - send value and wait for debounce period to complete
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(500)).await;
 
     // Assert - value emitted after debounce period
@@ -162,15 +162,15 @@ async fn test_debounce_zero_duration() -> anyhow::Result<()> {
     let mut debounced = stream.debounce(Duration::from_millis(0));
 
     // Act & Assert - zero duration means immediate emission
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_alice()
     );
 
     // Multiple values with zero duration - last one wins immediately
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
 
     // Should emit the last value immediately (Charlie)
     assert_eq!(

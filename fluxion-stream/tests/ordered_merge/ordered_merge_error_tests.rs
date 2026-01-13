@@ -24,14 +24,14 @@ async fn test_ordered_merge_propagates_error_from_first_stream() -> anyhow::Resu
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
     // Act: Send values and error from first stream
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error(
         "Error from stream 1",
     )))?;
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
         2,
     )))?;
@@ -71,14 +71,14 @@ async fn test_ordered_merge_propagates_error_from_second_stream() -> anyhow::Res
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
     // Act
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         1,
     )))?;
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error(
         "Error from stream 2",
     )))?;
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_charlie(),
         3,
     )))?;
@@ -114,13 +114,13 @@ async fn test_ordered_merge_multiple_errors_from_different_streams() -> anyhow::
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
     // Act: Interleave values and errors
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         plant_rose(),
         1,
     )))?;
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_spider(),
         4,
     )))?;
@@ -161,8 +161,8 @@ async fn test_ordered_merge_error_at_start() -> anyhow::Result<()> {
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
     // Act: Send error before any values
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_dave(),
         1,
     )))?;
@@ -192,11 +192,11 @@ async fn test_ordered_merge_error_before_stream_ends() -> anyhow::Result<()> {
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
     // Act
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_bird(),
         1,
     )))?;
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
 
     let item = unwrap_stream(&mut merged, 100).await;
     assert!(matches!(item, StreamItem::Value(_)));
@@ -228,9 +228,9 @@ async fn test_ordered_merge_consecutive_errors_same_stream() -> anyhow::Result<(
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
     // Act: Send multiple consecutive errors from same stream
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(plant_oak(), 1)))?;
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(plant_oak(), 1)))?;
 
     // Assert: Both errors should propagate
     assert!(matches!(
@@ -258,14 +258,14 @@ async fn test_ordered_merge_error_ordering_by_timestamp() -> anyhow::Result<()> 
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
     // Act: Send values and errors with explicit timestamps
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
 
     // Error has priority (Error < Value), so it's emitted before buffered value with ts=3
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
 
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
 
     // Assert: Values with ts=1,2 emitted first (already in buffer), then error (priority), then remaining values
     let item1 = unwrap_stream(&mut merged, 100).await;
@@ -296,11 +296,11 @@ async fn test_ordered_merge_three_streams_with_errors() -> anyhow::Result<()> {
     let mut merged = stream1.ordered_merge(vec![stream2, stream3]);
 
     // Act: Send values and errors from all three streams
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
-    tx3.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx3.try_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
 
     // Assert: Error1, Value(1,1), Error2, Value(2,2), Value(3,3)
     assert!(matches!(
@@ -336,8 +336,8 @@ async fn test_ordered_merge_only_errors_no_values() -> anyhow::Result<()> {
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
     // Act: Send only errors, no values
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
 
     // Assert: Both errors should be propagated
     assert!(matches!(
@@ -367,11 +367,11 @@ async fn test_ordered_merge_continues_after_multiple_errors() -> anyhow::Result<
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
     // Act: Send pattern of value, error, error, value
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
 
     // Assert: Error2, Value(1,1), Error1, Value(2,2), Value(3,3)
     assert!(matches!(

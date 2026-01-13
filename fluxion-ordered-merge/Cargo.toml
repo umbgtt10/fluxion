@@ -20,6 +20,7 @@ futures = { workspace = true, default-features = false, features = ["alloc"] }
 pin-project = { workspace = true }
 
 [dev-dependencies]
+async-channel = { workspace = true }
 criterion = { workspace = true }
 fluxion-test-utils = { workspace = true }
 tokio = { workspace = true }

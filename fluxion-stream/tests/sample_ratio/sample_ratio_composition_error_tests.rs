@@ -20,19 +20,19 @@ async fn test_sample_ratio_after_filter_ordered_with_errors() -> anyhow::Result<
         .sample_ratio(1.0, 42);
 
     // Act & Assert
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(e) if e.to_string().contains("test error")
     ),);
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_bob()
@@ -50,13 +50,13 @@ async fn test_sample_ratio_before_filter_ordered_with_errors() -> anyhow::Result
         .filter_ordered(|item| matches!(item, TestData::Person(_)));
 
     // Act & Assert
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(e) if e.to_string().contains("test error")
@@ -74,9 +74,9 @@ async fn test_sample_ratio_zero_still_passes_errors_in_composition() -> anyhow::
         .filter_ordered(|_: &TestData| true); // Pass-through filter
 
     // Act
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
 
     // Assert
     assert!(matches!(
@@ -104,13 +104,13 @@ async fn test_sample_ratio_with_map_ordered_and_errors() -> anyhow::Result<()> {
         });
 
     // Act & Assert
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         TestData::Person(p) if p.name.starts_with("Mapped: ")
     ));
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(_)
@@ -126,19 +126,19 @@ async fn test_chained_sample_ratios_with_errors() -> anyhow::Result<()> {
     let mut result = stream.sample_ratio(1.0, 42).sample_ratio(1.0, 99);
 
     // Act & Assert
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(_)
     ));
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_bob()
@@ -165,27 +165,27 @@ async fn test_complex_pipeline_with_multiple_errors() -> anyhow::Result<()> {
         });
 
     // Act & Assert - interleaved pattern
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // Filtered out
+    tx.try_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // Filtered out
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(_)
     ));
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         TestData::Person(p) if p.name.starts_with("Pipeline: ")
     ));
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(_)
     ));
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert!(matches!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         TestData::Person(p) if p.name.starts_with("Pipeline: ")
@@ -204,7 +204,7 @@ async fn test_sample_ratio_error_preserves_through_composition() -> anyhow::Resu
 
     // Act
     let error_message = "specific error message preserved";
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(error_message)))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(error_message)))?;
 
     // Assert
     assert!(matches!(

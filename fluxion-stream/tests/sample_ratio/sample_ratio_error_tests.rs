@@ -18,21 +18,21 @@ async fn test_sample_ratio_passes_through_errors_with_ratio_one() -> anyhow::Res
     let mut result = stream.sample_ratio(1.0, 42);
 
     // Act & Assert - value should pass through
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
     // Act & Assert - error should pass through
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(_)
     ));
 
     // Act & Assert - value after error should pass through
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_bob()
@@ -48,20 +48,20 @@ async fn test_sample_ratio_passes_through_errors_with_ratio_zero() -> anyhow::Re
     let mut result = stream.sample_ratio(0.0, 42);
 
     // Act - value should be dropped (ratio 0)
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
 
     // Act & Assert - error should still pass through
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(_)
     ),);
 
     // Act - another value should be dropped
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
 
     // Act & Assert - another error should pass through
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "another error",
     )))?;
     assert!(matches!(
@@ -83,9 +83,9 @@ async fn test_sample_ratio_multiple_errors_pass_through() -> anyhow::Result<()> 
     let error2 = FluxionError::stream_error("error 2");
     let error3 = FluxionError::stream_error("error 3");
 
-    tx.unbounded_send(StreamItem::Error(error1))?;
-    tx.unbounded_send(StreamItem::Error(error2))?;
-    tx.unbounded_send(StreamItem::Error(error3))?;
+    tx.try_send(StreamItem::Error(error1))?;
+    tx.try_send(StreamItem::Error(error2))?;
+    tx.try_send(StreamItem::Error(error3))?;
 
     // Assert
     assert!(matches!(
@@ -115,7 +115,7 @@ async fn test_sample_ratio_error_preserves_message() -> anyhow::Result<()> {
     // Act
     let error_message = "specific error message";
     let error = FluxionError::stream_error(error_message);
-    tx.unbounded_send(StreamItem::Error(error))?;
+    tx.try_send(StreamItem::Error(error))?;
 
     // Assert
     let item = unwrap_stream(&mut result, 500).await;
@@ -141,25 +141,25 @@ async fn test_sample_ratio_interleaved_errors_and_values() -> anyhow::Result<()>
     let mut result = stream.sample_ratio(1.0, 42);
 
     // Act & Assert - interleaved pattern
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
     assert!(unwrap_stream(&mut result, 500).await.is_error());
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_bob()
     );
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 2")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("error 2")))?;
     assert!(unwrap_stream(&mut result, 500).await.is_error());
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_charlie()
@@ -175,7 +175,7 @@ async fn test_sample_ratio_error_on_empty_stream() -> anyhow::Result<()> {
     let mut result = stream.sample_ratio(0.5, 42);
 
     // Act - only send an error
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("lone error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("lone error")))?;
 
     // Assert
     assert!(matches!(

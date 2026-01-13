@@ -13,7 +13,7 @@
 //! Fluxion maintains a clean separation between production and test code:
 //!
 //! - **Production**: Use `FluxionStream` for pure, functional stream operations
-//! - **Testing**: Use `futures::channel::mpsc::unbounded` for imperative test setup
+//! - **Testing**: Use `async_channel::unbounded` for imperative test setup
 //!
 //! This separation solves the conflict between consuming operations (stream extensions
 //! that take `self`) and mutation operations (sending values via channels).

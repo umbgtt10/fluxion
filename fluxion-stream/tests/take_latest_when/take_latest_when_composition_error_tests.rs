@@ -41,14 +41,14 @@ async fn test_take_latest_when_propagates_error_from_mapped_source() -> anyhow::
 
     // Act & Assert
     // 1. Send value to source (buffered)
-    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // 2. Trigger emission (Dog has 4 legs > 2)
-    trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    trigger_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
         2,
     )))?;
@@ -58,7 +58,7 @@ async fn test_take_latest_when_propagates_error_from_mapped_source() -> anyhow::
     ));
 
     // 3. Send error to source
-    source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    source_tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "Source Error",
     )))?;
 
@@ -70,11 +70,11 @@ async fn test_take_latest_when_propagates_error_from_mapped_source() -> anyhow::
 
     // 4. Continue after error
     // Ensure source update (ts=3) is processed BEFORE trigger (ts=4)
-    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         3,
     )))?;
-    trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    trigger_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_cat(),
         4,
     )))?;
@@ -107,20 +107,20 @@ async fn test_take_latest_when_propagates_error_from_filtered_trigger() -> anyho
 
     // Act & Assert
     // 1. Send value to source
-    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
 
     // 2. Send ignored trigger value (Dog legs=4 <= 4) - filtered out by filter_ordered
-    trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    trigger_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
         2,
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // 3. Send valid trigger value (Ant legs=6 > 4)
-    trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    trigger_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_ant(),
         3,
     )))?;
@@ -130,7 +130,7 @@ async fn test_take_latest_when_propagates_error_from_filtered_trigger() -> anyho
     ));
 
     // 4. Send error to trigger stream
-    trigger_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    trigger_tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "Trigger Error",
     )))?;
 
@@ -141,11 +141,11 @@ async fn test_take_latest_when_propagates_error_from_filtered_trigger() -> anyho
     ));
 
     // 5. Continue
-    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         4,
     )))?;
-    trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    trigger_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_spider(),
         5,
     )))?;
@@ -195,25 +195,25 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
 
     // Act & Assert
     // 1. Build up source state: Alice(25) + Bob(30) = 55
-    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
-    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         2,
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // 2. Trigger with Dog(4 legs) -> mapped to 8 legs -> predicate (8 > 10) is false
-    trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    trigger_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
         3,
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     // 3. Trigger with Ant(6 legs) -> mapped to 12 legs -> predicate (12 > 10) is true
-    trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    trigger_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_ant(),
         4,
     )))?;
@@ -223,14 +223,14 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
     ));
 
     // 4. Error in source (scan)
-    source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Scan Error")))?;
+    source_tx.try_send(StreamItem::Error(FluxionError::stream_error("Scan Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(e) if e.to_string().contains("Scan Error")
     ));
 
     // 5. Error in trigger (map)
-    trigger_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map Error")))?;
+    trigger_tx.try_send(StreamItem::Error(FluxionError::stream_error("Map Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(e) if e.to_string().contains("Map Error")
@@ -239,12 +239,12 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
     // 6. Recovery
     // Source state should be preserved (55)
     // Add Charlie(35) -> 90
-    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_charlie(),
         5,
     )))?;
     // Trigger with Spider(8 legs) -> mapped to 16 legs -> true
-    trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    trigger_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_spider(),
         6,
     )))?;

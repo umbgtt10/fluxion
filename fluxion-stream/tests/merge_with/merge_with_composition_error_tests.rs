@@ -33,22 +33,22 @@ async fn test_merge_with_multiple_streams_error() -> anyhow::Result<()> {
         });
 
     // Act & Assert
-    tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx1.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref v) if v.value.age == 25)
     );
 
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error2")))?;
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error2")))?;
     assert!(
         matches!(result.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string() == "Stream processing error: Error2")
     );
 
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error1")))?;
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error("Error1")))?;
     assert!(
         matches!(result.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string() == "Stream processing error: Error1")
     );
 
-    tx2.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx2.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref v) if v.value.age == 55)
     );

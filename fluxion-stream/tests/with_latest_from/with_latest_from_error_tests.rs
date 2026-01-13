@@ -24,16 +24,16 @@ async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> 
         });
 
     // Act & Assert: Send secondary first (required for with_latest_from)
-    secondary_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
+    secondary_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
     assert_no_element_emitted(&mut result, 100).await;
-    primary_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 2)))?;
+    primary_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(1, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
     // Send error in primary
-    primary_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    primary_tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "Primary error",
     )))?;
     assert!(
@@ -42,7 +42,7 @@ async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> 
     );
 
     // Continue with more values
-    primary_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 4)))?;
+    primary_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(3, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -66,16 +66,16 @@ async fn test_with_latest_from_propagates_secondary_error() -> anyhow::Result<()
         });
 
     // Act: Send secondary value first
-    secondary_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
+    secondary_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
     assert_no_element_emitted(&mut result, 100).await;
-    primary_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 2)))?;
+    primary_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(1, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
     // Send error in secondary
-    secondary_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    secondary_tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "Secondary error",
     )))?;
     assert!(matches!(
@@ -84,9 +84,9 @@ async fn test_with_latest_from_propagates_secondary_error() -> anyhow::Result<()
     ));
 
     // Update secondary with new value
-    secondary_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(30, 5)))?;
+    secondary_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(30, 5)))?;
     assert_no_element_emitted(&mut result, 100).await;
-    primary_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 6)))?;
+    primary_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(2, 6)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -110,7 +110,7 @@ async fn test_with_latest_from_error_before_secondary_ready() -> anyhow::Result<
         });
 
     // Act: Send error in primary before secondary has value
-    primary_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
+    primary_tx.try_send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
 
     // Assert
     assert!(matches!(
@@ -134,25 +134,25 @@ async fn test_with_latest_from_selector_continues_after_error() -> anyhow::Resul
     let mut result = primary_stream.with_latest_from(secondary_stream, |combined| combined.clone());
 
     // Act & Assert: Send secondary first
-    secondary_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(100, 1)))?;
+    secondary_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(100, 1)))?;
     assert_no_element_emitted(&mut result, 100).await;
-    primary_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 2)))?;
+    primary_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(1, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
     // Send error in primary
-    primary_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    primary_tx.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Update secondary
-    secondary_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(200, 4)))?;
+    secondary_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(200, 4)))?;
     assert_no_element_emitted(&mut result, 100).await;
-    primary_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 5)))?;
+    primary_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(3, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)

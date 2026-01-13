@@ -12,6 +12,7 @@ categories = ["development-tools::testing"]
 readme = "README.md"
 
 [dependencies]
+async-channel = { workspace = true }
 fluxion-core = { workspace = true, default-features = false, features = ["std", "runtime-tokio"] }
 futures = { workspace = true }
 tokio = { workspace = true, features = ["rt", "sync", "macros", "time", "test-util"] }

@@ -24,21 +24,21 @@ async fn test_scan_ordered_propagates_errors() -> anyhow::Result<()> {
     });
 
     // Act & Assert: First value
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 1
     ));
 
     // Error should be propagated
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Test error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Test error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // State should be preserved after error
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 2
@@ -60,7 +60,7 @@ async fn test_scan_ordered_error_at_start() -> anyhow::Result<()> {
     });
 
     // Act & Assert: Error before any values
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "Initial error",
     )))?;
     assert!(matches!(
@@ -69,14 +69,14 @@ async fn test_scan_ordered_error_at_start() -> anyhow::Result<()> {
     ));
 
     // First value should still work with initial accumulator
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 101
     ));
 
     // Second value continues accumulation
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 102
@@ -100,35 +100,35 @@ async fn test_scan_ordered_multiple_consecutive_errors() -> anyhow::Result<()> {
     });
 
     // Act & Assert: Value
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<Vec<String>>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == vec!["Alice"]
     ));
 
     // Error 1
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<Vec<String>>, _>(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Error 2
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<Vec<String>>, _>(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Error 3
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 3")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error 3")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<Vec<String>>, _>(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // State should still be preserved
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<Vec<String>>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == vec!["Alice", "Bob"]
@@ -150,35 +150,35 @@ async fn test_scan_ordered_error_between_values() -> anyhow::Result<()> {
     });
 
     // Act & Assert: First value
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<Vec<TestData>>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == vec![person_alice()]
     ));
 
     // Error
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<Vec<TestData>>, _>(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Second value - list should continue
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<Vec<TestData>>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == vec![person_alice(), person_bob()]
     ));
 
     // Another error
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<Vec<TestData>>, _>(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Third value - list continues
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<Vec<TestData>>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == vec![person_alice(), person_bob(), person_charlie()]
@@ -206,28 +206,28 @@ async fn test_scan_ordered_error_doesnt_reset_complex_state() -> anyhow::Result<
     );
 
     // Act & Assert: First value (age 25)
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<(u32, u32)>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == (25, 25)
     ));
 
     // Second value (age 30)
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<(u32, u32)>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == (25, 30)
     ));
 
     // Error - state should be preserved
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<(u32, u32)>, _>(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Third value (age 35) - min/max continues from (25, 30)
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<(u32, u32)>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == (25, 35)
@@ -249,19 +249,19 @@ async fn test_scan_ordered_only_errors() -> anyhow::Result<()> {
     });
 
     // Act & Assert: Only send errors
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 3")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error 3")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
         StreamItem::Error(_)
@@ -283,21 +283,21 @@ async fn test_scan_ordered_error_with_type_transformation() -> anyhow::Result<()
     });
 
     // Act & Assert
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<String>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == "Item #1: Person[name=Alice, age=25]"
     ));
 
     // Error
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<String>, _>(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // Count should continue from 1
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<String>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == "Item #2: Person[name=Bob, age=30]"
@@ -321,31 +321,31 @@ async fn test_scan_ordered_alternating_values_and_errors() -> anyhow::Result<()>
     });
 
     // Act & Assert: Alternate between values and errors
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25
     assert!(matches!(
         unwrap_stream::<Sequenced<u32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 25
     ));
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<u32>, _>(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?; // age 30
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?; // age 30
     assert!(matches!(
         unwrap_stream::<Sequenced<u32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 55
     )); // 25 + 30
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<u32>, _>(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?; // age 35
+    tx.try_send(StreamItem::Value(Sequenced::new(person_charlie())))?; // age 35
     assert!(matches!(
         unwrap_stream::<Sequenced<u32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 90
@@ -370,20 +370,20 @@ async fn test_scan_ordered_error_with_string_accumulation() -> anyhow::Result<()
     });
 
     // Act & Assert
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<String>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == "Person[name=Alice, age=25]"
     ));
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<String>, _>(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
     // String accumulation should continue
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<String>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == "Person[name=Alice, age=25], Person[name=Bob, age=30]"

@@ -25,7 +25,7 @@ async fn test_debounce_returns_pending_while_waiting() -> anyhow::Result<()> {
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Send a value to start the debounce timer
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
     // Should return Pending because timer hasn't expired yet (Poll::Pending branch line 151-152)
     assert_no_element_emitted(&mut debounced, 0).await;
@@ -53,7 +53,7 @@ async fn test_debounce_pending_without_timer() -> anyhow::Result<()> {
     assert_no_element_emitted(&mut debounced, 0).await;
 
     // Now verify stream works normally
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut debounced, 0).await; // Still pending during debounce
     advance(Duration::from_millis(500)).await;
     assert_eq!(
@@ -74,7 +74,7 @@ async fn test_debounce_pending_then_new_value_resets() -> anyhow::Result<()> {
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Send first value
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
     // Should be pending
     assert_no_element_emitted(&mut debounced, 0).await;
@@ -83,7 +83,7 @@ async fn test_debounce_pending_then_new_value_resets() -> anyhow::Result<()> {
     advance(Duration::from_millis(300)).await;
 
     // Send new value - this should reset the timer
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
 
     // Should still be pending with new timer
     assert_no_element_emitted(&mut debounced, 0).await;
@@ -116,7 +116,7 @@ async fn test_debounce_pending_with_stream_end() -> anyhow::Result<()> {
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
     // Send value
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
     // Should be pending
     assert_no_element_emitted(&mut debounced, 0).await;

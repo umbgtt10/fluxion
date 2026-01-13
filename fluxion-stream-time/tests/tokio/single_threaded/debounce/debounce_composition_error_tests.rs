@@ -29,12 +29,12 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
         .debounce(Duration::from_millis(500));
 
     // Act & Assert
-    tx_source.unbounded_send(StreamItem::Value(TokioTimestamped::new(
+    tx_source.try_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
     let error = FluxionError::stream_error("trigger error");
-    tx_trigger.unbounded_send(StreamItem::Error(error.clone()))?;
+    tx_trigger.try_send(StreamItem::Error(error.clone()))?;
 
     assert_eq!(
         unwrap_stream(&mut processed, 100)
@@ -45,7 +45,7 @@ async fn test_take_latest_when_debounce_error_propagation() -> anyhow::Result<()
         error.to_string()
     );
 
-    tx_trigger.unbounded_send(StreamItem::Value(TokioTimestamped::new(
+    tx_trigger.try_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
     )))?;

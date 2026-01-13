@@ -26,8 +26,8 @@ async fn test_start_with_then_take_items() -> anyhow::Result<()> {
     let mut result = stream.start_with(initial).take_items(3); // Take 2 initial + 1 from stream
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_charlie()))?;
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // Should not be emitted
+    tx.try_send(Sequenced::new(person_charlie()))?;
+    tx.try_send(Sequenced::new(person_dave()))?; // Should not be emitted
     assert_eq!(
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
         person_alice()
@@ -55,11 +55,11 @@ async fn test_skip_items_then_take_items() -> anyhow::Result<()> {
         .take_items(2); // Then take next 2
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Skipped
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Skipped
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // Taken
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // Taken
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Not emitted (take limit reached)
+    tx.try_send(Sequenced::new(person_alice()))?; // Skipped
+    tx.try_send(Sequenced::new(person_bob()))?; // Skipped
+    tx.try_send(Sequenced::new(person_charlie()))?; // Taken
+    tx.try_send(Sequenced::new(person_dave()))?; // Taken
+    tx.try_send(Sequenced::new(person_alice()))?; // Not emitted (take limit reached)
 
     // Assert - Only charlie and dave
     assert_eq!(
@@ -92,10 +92,10 @@ async fn test_start_with_skip_items_take_items() -> anyhow::Result<()> {
         .take_items(4); // Take next 4: [dave, bob, charlie, diane]
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // age=30
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // age=35
-    tx.unbounded_send(Sequenced::new(person_diane()))?; // age=40
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Should not be emitted (take limit)
+    tx.try_send(Sequenced::new(person_bob()))?; // age=30
+    tx.try_send(Sequenced::new(person_charlie()))?; // age=35
+    tx.try_send(Sequenced::new(person_diane()))?; // age=40
+    tx.try_send(Sequenced::new(person_alice()))?; // Should not be emitted (take limit)
 
     // Assert - [dave, bob, charlie, diane]
     assert_eq!(
@@ -137,10 +137,10 @@ async fn test_map_ordered_then_take_items() -> anyhow::Result<()> {
         .take_items(3);
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
-    tx.unbounded_send(Sequenced::new(person_charlie()))?;
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // Should not be emitted
+    tx.try_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(person_charlie()))?;
+    tx.try_send(Sequenced::new(person_dave()))?; // Should not be emitted
 
     // Assert
     assert_eq!(
@@ -186,24 +186,24 @@ async fn test_with_latest_from_then_take_items() -> anyhow::Result<()> {
         .take_items(2);
 
     // Act & Assert
-    secondary_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    secondary_tx.try_send(Sequenced::new(animal_dog()))?;
 
     // 1. First emission
-    primary_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    primary_tx.try_send(Sequenced::new(person_alice()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Alice with Dog"
     );
 
     // 2. Second emission
-    primary_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    primary_tx.try_send(Sequenced::new(person_bob()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Bob with Dog"
     );
 
     // 3. Third emission (Should be ignored/stream ended)
-    primary_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    primary_tx.try_send(Sequenced::new(person_charlie()))?;
     assert_stream_ended(&mut stream, 100).await;
 
     Ok(())

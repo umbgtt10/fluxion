@@ -29,9 +29,9 @@ async fn test_partition_then_filter_ordered_error_propagation() -> anyhow::Resul
     });
 
     // Act - send values then error
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // 4 legs
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25
+    tx.try_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // 4 legs
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
 
     // Assert - values arrive before error
     assert_eq!(
@@ -72,9 +72,9 @@ async fn test_partition_then_map_ordered_error_propagation() -> anyhow::Result<(
     });
 
     // Act
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("map error")))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("map error")))?;
 
     // Assert
     assert_eq!(
@@ -110,9 +110,9 @@ async fn test_filter_then_partition_error_propagation() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25 - young
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?; // age 30 - adult
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25 - young
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?; // age 30 - adult
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "filter chain error",
     )))?;
 
@@ -150,9 +150,9 @@ async fn test_map_then_partition_error_propagation() -> anyhow::Result<()> {
     let (mut adults, mut young) = ages.partition(|&age| age >= 30);
 
     // Act
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25 - young
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?; // age 30 - adult
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25 - young
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?; // age 30 - adult
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "map chain error",
     )))?;
 
@@ -199,9 +199,9 @@ async fn test_partition_then_scan_ordered_error_propagation() -> anyhow::Result<
     });
 
     // Act
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // 4 legs
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("scan error")))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25
+    tx.try_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // 4 legs
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("scan error")))?;
 
     // Assert
     assert_eq!(
@@ -255,9 +255,9 @@ async fn test_partition_error_terminates_downstream_chains() -> anyhow::Result<(
         .filter_ordered(|&legs| legs > 2);
 
     // Act
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // 4 legs
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25
+    tx.try_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // 4 legs
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "chain termination",
     )))?;
 

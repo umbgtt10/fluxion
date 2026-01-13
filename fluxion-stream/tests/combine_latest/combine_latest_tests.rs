@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use async_channel::Sender;
 use fluxion_core::{StreamItem, Timestamped};
 use fluxion_stream::combine_latest::CombineLatestExt;
 use fluxion_stream::CombinedState;
@@ -14,19 +15,18 @@ use fluxion_test_utils::{
     },
     Sequenced,
 };
-use futures::channel::mpsc::UnboundedSender;
 use futures::Stream;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 fn send_variant(
     variant: &DataVariant,
-    senders: &[UnboundedSender<Sequenced<TestData>>],
+    senders: &[Sender<Sequenced<TestData>>],
 ) -> anyhow::Result<()> {
     match variant {
-        DataVariant::Person => senders[0].unbounded_send(Sequenced::new(person_alice()))?,
-        DataVariant::Animal => senders[1].unbounded_send(Sequenced::new(animal_dog()))?,
-        DataVariant::Plant => senders[2].unbounded_send(Sequenced::new(plant_rose()))?,
+        DataVariant::Person => senders[0].try_send(Sequenced::new(person_alice()))?,
+        DataVariant::Animal => senders[1].try_send(Sequenced::new(animal_dog()))?,
+        DataVariant::Plant => senders[2].try_send(Sequenced::new(plant_rose()))?,
     }
 
     Ok(())
@@ -74,13 +74,13 @@ async fn test_combine_latest_not_all_streams_have_published_does_not_emit() -> a
     let mut result = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
-    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    animal_tx.try_send(Sequenced::new(animal_dog()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
@@ -100,8 +100,8 @@ async fn test_combine_latest_stream_closes_before_publish_no_output() -> anyhow:
     // Act
     drop(plant_tx);
 
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
+    animal_tx.try_send(Sequenced::new(animal_dog()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
@@ -125,9 +125,9 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues(
     let mut result = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    plant_tx.unbounded_send(Sequenced::new(plant_rose()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
+    animal_tx.try_send(Sequenced::new(animal_dog()))?;
+    plant_tx.try_send(Sequenced::new(plant_rose()))?;
 
     // Assert
     let state = unwrap_stream(&mut result, 500).await.unwrap();
@@ -136,13 +136,13 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues(
 
     drop(plant_tx);
 
-    person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    person_tx.try_send(Sequenced::new(person_bob()))?;
 
     let state = unwrap_stream(&mut result, 500).await.unwrap();
     let actual: Vec<TestData> = state.clone().into_inner().values().clone();
     assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
 
-    animal_tx.unbounded_send(Sequenced::new(animal_spider()))?;
+    animal_tx.try_send(Sequenced::new(animal_spider()))?;
 
     let state = unwrap_stream(&mut result, 500).await.unwrap();
     let actual: Vec<TestData> = state.clone().into_inner().values().clone();
@@ -220,27 +220,27 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() -> anyho
     let mut result = person_stream.combine_latest(vec![animal_stream, plant_stream], FILTER);
 
     // Act
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    plant_tx.unbounded_send(Sequenced::new(plant_rose()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
+    animal_tx.try_send(Sequenced::new(animal_dog()))?;
+    plant_tx.try_send(Sequenced::new(plant_rose()))?;
 
     // Assert
     expect_next_combined_equals(&mut result, &[person_alice(), animal_dog(), plant_rose()]).await;
 
     // Act
-    person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    person_tx.try_send(Sequenced::new(person_bob()))?;
 
     // Assert
     expect_next_combined_equals(&mut result, &[person_bob(), animal_dog(), plant_rose()]).await;
 
     // Act
-    animal_tx.unbounded_send(Sequenced::new(animal_spider()))?;
+    animal_tx.try_send(Sequenced::new(animal_spider()))?;
 
     // Assert
     expect_next_combined_equals(&mut result, &[person_bob(), animal_spider(), plant_rose()]).await;
 
     // Act
-    plant_tx.unbounded_send(Sequenced::new(plant_sunflower()))?;
+    plant_tx.try_send(Sequenced::new(plant_sunflower()))?;
 
     // Assert
     expect_next_combined_equals(
@@ -359,9 +359,9 @@ async fn combine_latest_stream_order_test(
     let mut result = first_stream.combine_latest(remaining_streams, FILTER);
 
     // Act
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    plant_tx.unbounded_send(Sequenced::new(plant_rose()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
+    animal_tx.try_send(Sequenced::new(animal_dog()))?;
+    plant_tx.try_send(Sequenced::new(plant_rose()))?;
 
     // Assert - values should be in the order streams were registered
     let state = unwrap_stream(&mut result, 500).await.unwrap();
@@ -379,20 +379,20 @@ async fn test_combine_latest_with_identical_streams_emits_updates() -> anyhow::R
     let mut result = stream1.combine_latest(vec![stream2], FILTER);
 
     // Act
-    stream1_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    stream2_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    stream1_tx.try_send(Sequenced::new(person_alice()))?;
+    stream2_tx.try_send(Sequenced::new(person_bob()))?;
 
     // Assert
     expect_next_combined_equals(&mut result, &[person_alice(), person_bob()]).await;
 
     // Act
-    stream1_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    stream1_tx.try_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     expect_next_combined_equals(&mut result, &[person_charlie(), person_bob()]).await;
 
     // Act
-    stream2_tx.unbounded_send(Sequenced::new(person_diane()))?;
+    stream2_tx.try_send(Sequenced::new(person_diane()))?;
 
     // Assert
     expect_next_combined_equals(&mut result, &[person_charlie(), person_diane()]).await;
@@ -420,14 +420,14 @@ async fn test_combine_latest_filter_rejects_initial_state() -> anyhow::Result<()
     let mut result = person_stream.combine_latest(vec![animal_stream], filter);
 
     // Act: Publish Alice and Dog (should be rejected)
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
+    animal_tx.try_send(Sequenced::new(animal_dog()))?;
 
     // Assert: No emission due to filter rejection
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act: Update to Bob (should pass filter)
-    person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    person_tx.try_send(Sequenced::new(person_bob()))?;
 
     // Assert: Now we get an emission
     expect_next_combined_equals(&mut result, &[person_bob(), animal_dog()]).await;
@@ -454,38 +454,38 @@ async fn test_combine_latest_filter_alternates_between_true_false() -> anyhow::R
     let mut result = person_stream.combine_latest(vec![animal_stream], filter);
 
     // Act: Alice + Dog (passes filter)
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
+    animal_tx.try_send(Sequenced::new(animal_dog()))?;
 
     // Assert: Emission occurs
     expect_next_combined_equals(&mut result, &[person_alice(), animal_dog()]).await;
 
     // Act: Bob + Dog (rejected by filter)
-    person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    person_tx.try_send(Sequenced::new(person_bob()))?;
 
     // Assert: No emission
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act: Charlie + Dog (passes filter)
-    person_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    person_tx.try_send(Sequenced::new(person_charlie()))?;
 
     // Assert: Emission occurs
     expect_next_combined_equals(&mut result, &[person_charlie(), animal_dog()]).await;
 
     // Act: Diane + Dog (rejected by filter)
-    person_tx.unbounded_send(Sequenced::new(person_diane()))?;
+    person_tx.try_send(Sequenced::new(person_diane()))?;
 
     // Assert: No emission
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act: Update animal to Spider while Diane is still latest (still rejected)
-    animal_tx.unbounded_send(Sequenced::new(animal_spider()))?;
+    animal_tx.try_send(Sequenced::new(animal_spider()))?;
 
     // Assert: Still no emission
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act: Alice + Spider (passes filter)
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
 
     // Assert: Emission occurs
     expect_next_combined_equals(&mut result, &[person_alice(), animal_spider()]).await;
@@ -513,18 +513,12 @@ async fn test_combine_latest_filter_function_panics() {
     let mut result = person_stream.combine_latest(vec![animal_stream], filter);
 
     // Act: First emission should succeed
-    person_tx
-        .unbounded_send(Sequenced::new(person_alice()))
-        .unwrap();
-    animal_tx
-        .unbounded_send(Sequenced::new(animal_dog()))
-        .unwrap();
+    person_tx.try_send(Sequenced::new(person_alice())).unwrap();
+    animal_tx.try_send(Sequenced::new(animal_dog())).unwrap();
 
     let _first = unwrap_stream(&mut result, 100).await;
 
-    person_tx
-        .unbounded_send(Sequenced::new(person_bob()))
-        .unwrap();
+    person_tx.try_send(Sequenced::new(person_bob())).unwrap();
 
     // Assert: This will panic
     let _second = unwrap_stream(&mut result, 100).await;

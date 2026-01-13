@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use async_channel::unbounded;
 use fluxion_core::StreamItem;
 use fluxion_runtime::impls::tokio::TokioTimer;
 use fluxion_runtime::timer::Timer;
@@ -13,7 +14,6 @@ use fluxion_test_utils::{
     test_data::{person_alice, person_bob, person_charlie},
     TestData,
 };
-use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use std::time::Duration;
 use tokio::spawn;
@@ -30,30 +30,27 @@ async fn test_sample_chained_with_map() -> anyhow::Result<()> {
         .map_ordered(|item| TokioTimestamped::new(item.value, item.timestamp))
         .sample(Duration::from_millis(100));
 
-    let (result_tx, mut result_rx) = unbounded();
+    let (result_tx, result_rx) = unbounded();
 
     spawn(async move {
         let mut stream = pipeline;
         while let Some(item) = stream.next().await {
             // map returns StreamItem<T>, we want to unwrap it
             if let StreamItem::Value(val) = item {
-                let _ = result_tx.unbounded_send(val.value);
+                let _ = result_tx.try_send(val.value);
             }
         }
     });
 
     // Act
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
 
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
 
     // Assert
-    assert_eq!(
-        recv_timeout(&mut result_rx, 1000).await.unwrap(),
-        person_bob()
-    );
+    assert_eq!(recv_timeout(&result_rx, 1000).await.unwrap(), person_bob());
 
     Ok(())
 }
@@ -75,35 +72,35 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
         })
         .sample(Duration::from_millis(100));
 
-    let (result_tx, mut result_rx) = unbounded();
+    let (result_tx, result_rx) = unbounded();
 
     spawn(async move {
         let mut stream = pipeline;
         while let Some(item) = stream.next().await {
             if let StreamItem::Value(val) = item {
                 let wp = val.value;
-                let _ = result_tx.unbounded_send((wp.previous, wp.current));
+                let _ = result_tx.try_send((wp.previous, wp.current));
             }
         }
     });
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
     advance(Duration::from_millis(50)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
     assert_eq!(
-        recv_timeout(&mut result_rx, 1000).await.unwrap(),
+        recv_timeout(&result_rx, 1000).await.unwrap(),
         (Some(person_alice()), person_bob())
     );
 
     advance(Duration::from_millis(50)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
 
     assert_eq!(
-        recv_timeout(&mut result_rx, 1000).await.unwrap(),
+        recv_timeout(&result_rx, 1000).await.unwrap(),
         (Some(person_bob()), person_charlie())
     );
 
@@ -127,28 +124,28 @@ async fn test_sample_chained_with_scan_ordered() -> anyhow::Result<()> {
         })
         .sample(Duration::from_millis(100));
 
-    let (result_tx, mut result_rx) = unbounded::<TokioTimestamped<u32>>();
+    let (result_tx, result_rx) = unbounded::<TokioTimestamped<u32>>();
 
     spawn(async move {
         let mut stream = pipeline;
         while let Some(item) = stream.next().await {
             if let StreamItem::Value(val) = item {
-                let _ = result_tx.unbounded_send(val);
+                let _ = result_tx.try_send(val);
             }
         }
     });
 
     // Act and Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
-    assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 55);
+    assert_eq!(recv_timeout(&result_rx, 1000).await.unwrap().value, 55);
 
     advance(Duration::from_millis(50)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
-    assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 90);
+    assert_eq!(recv_timeout(&result_rx, 1000).await.unwrap().value, 90);
 
     Ok(())
 }
@@ -164,28 +161,25 @@ async fn test_sample_before_map_ordered() -> anyhow::Result<()> {
         .sample(Duration::from_millis(100))
         .map_ordered(|item| TokioTimestamped::new(item.value, item.timestamp));
 
-    let (result_tx, mut result_rx) = unbounded();
+    let (result_tx, result_rx) = unbounded();
 
     spawn(async move {
         let mut stream = pipeline;
         while let Some(item) = stream.next().await {
             if let StreamItem::Value(val) = item {
-                let _ = result_tx.unbounded_send(val.value);
+                let _ = result_tx.try_send(val.value);
             }
         }
     });
 
     // Act
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
 
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
 
-    assert_eq!(
-        recv_timeout(&mut result_rx, 100).await.unwrap(),
-        person_bob()
-    );
+    assert_eq!(recv_timeout(&result_rx, 100).await.unwrap(), person_bob());
 
     Ok(())
 }

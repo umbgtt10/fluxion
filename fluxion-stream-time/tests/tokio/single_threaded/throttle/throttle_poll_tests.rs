@@ -24,14 +24,14 @@ async fn test_throttle_returns_pending_while_throttling() -> anyhow::Result<()> 
     let mut throttled = stream.throttle(Duration::from_millis(500));
 
     // Send first value - should emit immediately
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         unwrap_stream(&mut throttled, 100).await.unwrap().value,
         person_alice()
     );
 
     // Send second value immediately - should be dropped (throttling active)
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
 
     // Should return Pending because throttling is active (line 170 in throttle.rs)
     assert_no_element_emitted(&mut throttled, 0).await;
@@ -40,7 +40,7 @@ async fn test_throttle_returns_pending_while_throttling() -> anyhow::Result<()> 
     advance(Duration::from_millis(500)).await;
 
     // Send another value - should emit now
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_eq!(
         unwrap_stream(&mut throttled, 100).await.unwrap().value,
         person_charlie()
@@ -63,7 +63,7 @@ async fn test_throttle_pending_without_values() -> anyhow::Result<()> {
     // Stream still works normally after
     let timer = TokioTimer;
     pause();
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         unwrap_stream(&mut throttled, 100).await.unwrap().value,
         person_alice()
@@ -82,7 +82,7 @@ async fn test_throttle_pending_during_throttle_period() -> anyhow::Result<()> {
     let mut throttled = stream.throttle(Duration::from_millis(500));
 
     // Send first value - emits immediately
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         unwrap_stream(&mut throttled, 100).await.unwrap().value,
         person_alice()
@@ -92,8 +92,8 @@ async fn test_throttle_pending_during_throttle_period() -> anyhow::Result<()> {
     advance(Duration::from_millis(250)).await;
 
     // Send values during throttle - they should be dropped
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
 
     // Should be pending
     assert_no_element_emitted(&mut throttled, 0).await;
@@ -117,14 +117,14 @@ async fn test_throttle_pending_then_timer_expires() -> anyhow::Result<()> {
     let mut throttled = stream.throttle(Duration::from_millis(500));
 
     // Send first value
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         unwrap_stream(&mut throttled, 100).await.unwrap().value,
         person_alice()
     );
 
     // Send second value (will be dropped)
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
 
     // Advance to just before timer expires
     advance(Duration::from_millis(499)).await;
@@ -136,7 +136,7 @@ async fn test_throttle_pending_then_timer_expires() -> anyhow::Result<()> {
     advance(Duration::from_millis(1)).await;
 
     // Send new value - should emit now
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_eq!(
         unwrap_stream(&mut throttled, 100).await.unwrap().value,
         person_charlie()

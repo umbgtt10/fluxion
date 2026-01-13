@@ -45,24 +45,24 @@ async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
         });
 
     // Act & Assert
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_alice());
 
     // Send early error - should be consumed by first handler
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "early error 1",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
     assert_eq!(*early_errors.lock(), 1);
     assert_eq!(*late_errors.lock(), 0);
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_bob());
 
     // Send late error - should be propagated and consumed by second handler
-    tx.unbounded_send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
         "late error 1",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
@@ -70,19 +70,19 @@ async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
     assert_eq!(*late_errors.lock(), 1);
 
     // Send another early error - should be consumed by first handler
-    tx.unbounded_send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
         "early error 2",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
     assert_eq!(*early_errors.lock(), 2);
     assert_eq!(*late_errors.lock(), 1);
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_charlie());
 
     // Send another late error - should be propagated and consumed by second handler
-    tx.unbounded_send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
         "late error 2",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
@@ -136,12 +136,12 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
         });
 
     // Act & Assert - send and verify each item with error handling at each stage
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_alice());
 
     // Send network error - consumed by first handler
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "network timeout",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
@@ -149,12 +149,12 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
     assert_eq!(*validation_errors.lock(), 0);
     assert_eq!(*other_errors.lock(), 0);
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_bob());
 
     // Send validation error - propagated past first, consumed by second handler
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "validation failed",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
@@ -162,12 +162,12 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
     assert_eq!(*validation_errors.lock(), 1);
     assert_eq!(*other_errors.lock(), 0);
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_charlie());
 
     // Send unknown error - propagated past first two, consumed by catch-all
-    tx.unbounded_send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
         "unknown error",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;
@@ -175,12 +175,12 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
     assert_eq!(*validation_errors.lock(), 1);
     assert_eq!(*other_errors.lock(), 1);
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_dave())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_dave())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_dave());
 
     // Send another network error - consumed by first handler
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "network connection lost",
     )))?;
     assert_no_element_emitted(&mut stream, 100).await;

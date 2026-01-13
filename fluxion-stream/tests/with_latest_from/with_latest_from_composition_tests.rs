@@ -44,22 +44,22 @@ async fn test_take_latest_when_with_latest_from_custom_selector() -> anyhow::Res
         .with_latest_from(secondary_rx, age_difference_selector);
 
     // Act & Assert
-    secondary_tx.unbounded_send(Sequenced::new(person_alice()))?; // 25
-    source_tx.unbounded_send(Sequenced::new(person_bob()))?; // 30
-    trigger_tx.unbounded_send(Sequenced::new(person_alice()))?; // trigger emission
+    secondary_tx.try_send(Sequenced::new(person_alice()))?; // 25
+    source_tx.try_send(Sequenced::new(person_bob()))?; // 30
+    trigger_tx.try_send(Sequenced::new(person_alice()))?; // trigger emission
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.clone().into_inner(), "Age difference: 5"); // 30 - 25
 
-    source_tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35
-    trigger_tx.unbounded_send(Sequenced::new(person_bob()))?; // trigger emission
+    source_tx.try_send(Sequenced::new(person_charlie()))?; // 35
+    trigger_tx.try_send(Sequenced::new(person_bob()))?; // trigger emission
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.clone().into_inner(), "Age difference: 10"); // 35 - 25
 
     // Update secondary
-    secondary_tx.unbounded_send(Sequenced::new(person_diane()))?; // 40
-    source_tx.unbounded_send(Sequenced::new(person_dave()))?; // 28
-    trigger_tx.unbounded_send(Sequenced::new(person_charlie()))?; // trigger emission
+    secondary_tx.try_send(Sequenced::new(person_diane()))?; // 40
+    source_tx.try_send(Sequenced::new(person_dave()))?; // 28
+    trigger_tx.try_send(Sequenced::new(person_charlie()))?; // trigger emission
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(result.clone().into_inner(), "Age difference: -12"); // 28 - 40
@@ -95,25 +95,25 @@ async fn test_filter_ordered_with_latest_from() -> anyhow::Result<()> {
         .with_latest_from(secondary_rx, name_combiner);
 
     // Act & Assert
-    secondary_tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    primary_tx.unbounded_send(Sequenced::new(plant_rose()))?; // Filtered
-    primary_tx.unbounded_send(Sequenced::new(person_alice()))?; // Kept
+    secondary_tx.try_send(Sequenced::new(animal_dog()))?;
+    primary_tx.try_send(Sequenced::new(plant_rose()))?; // Filtered
+    primary_tx.try_send(Sequenced::new(person_alice()))?; // Kept
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     let combined_name = result.clone().into_inner();
     assert_eq!(combined_name, "Alice with animal Dog (4 legs)");
 
     // Update secondary to a person
-    secondary_tx.unbounded_send(Sequenced::new(person_bob()))?;
-    primary_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    secondary_tx.try_send(Sequenced::new(person_bob()))?;
+    primary_tx.try_send(Sequenced::new(person_charlie()))?;
 
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     let combined_name = result.clone().into_inner();
     assert_eq!(combined_name, "Charlie with person Bob (age 30)");
 
     // Send animal (filtered) and plant (filtered)
-    primary_tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered
-    primary_tx.unbounded_send(Sequenced::new(plant_rose()))?; // Filtered
+    primary_tx.try_send(Sequenced::new(animal_dog()))?; // Filtered
+    primary_tx.try_send(Sequenced::new(plant_rose()))?; // Filtered
 
     // Verify no emission yet by checking with a timeout
     assert_no_element_emitted(&mut stream, 100).await;
@@ -144,23 +144,23 @@ async fn test_with_latest_from_composition_end_of_chain() -> anyhow::Result<()> 
         .with_latest_from(secondary_rx, age_combiner);
 
     // Act & Assert
-    secondary_tx.unbounded_send(Sequenced::new(person_alice()))?; // 25
-    primary_tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered
-    primary_tx.unbounded_send(Sequenced::new(person_bob()))?; // 30
+    secondary_tx.try_send(Sequenced::new(person_alice()))?; // 25
+    primary_tx.try_send(Sequenced::new(animal_dog()))?; // Filtered
+    primary_tx.try_send(Sequenced::new(person_bob()))?; // 30
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Combined age: 55"
     ); // 30 + 25
 
-    primary_tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35
+    primary_tx.try_send(Sequenced::new(person_charlie()))?; // 35
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Combined age: 60"
     ); // 35 + 25
 
     // Update secondary
-    secondary_tx.unbounded_send(Sequenced::new(person_diane()))?; // 40
-    primary_tx.unbounded_send(Sequenced::new(person_dave()))?; // 28
+    secondary_tx.try_send(Sequenced::new(person_diane()))?; // 40
+    primary_tx.try_send(Sequenced::new(person_dave()))?; // 28
 
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
@@ -197,27 +197,27 @@ async fn test_ordered_merge_into_with_latest_from() -> anyhow::Result<()> {
 
     // Act & Assert
     // 1. Set secondary value
-    s3_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    s3_tx.try_send(Sequenced::new(person_alice()))?;
 
     // 2. Send to Stream 1 (Primary)
-    s1_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    s1_tx.try_send(Sequenced::new(person_bob()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Bob with Alice"
     );
 
     // 3. Send to Stream 2 (Primary)
-    s2_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    s2_tx.try_send(Sequenced::new(animal_dog()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Dog with Alice"
     );
 
     // 4. Update secondary
-    s3_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    s3_tx.try_send(Sequenced::new(person_charlie()))?;
 
     // 5. Send to Stream 1
-    s1_tx.unbounded_send(Sequenced::new(person_dave()))?;
+    s1_tx.try_send(Sequenced::new(person_dave()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Dave with Charlie"

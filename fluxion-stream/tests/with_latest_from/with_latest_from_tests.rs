@@ -28,8 +28,8 @@ async fn test_with_latest_from_basic() -> anyhow::Result<()> {
     let mut result = animal_stream.with_latest_from(person_stream, result_selector);
 
     // Act
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
+    animal_tx.try_send(Sequenced::new(animal_cat()))?;
 
     // Assert CombinedState order: [primary (index 0), secondary (index 1)]
     let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
@@ -37,13 +37,13 @@ async fn test_with_latest_from_basic() -> anyhow::Result<()> {
     assert_eq!(element.clone().into_inner().values()[1], person_alice());
 
     // Act - primary emits again
-    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    animal_tx.try_send(Sequenced::new(animal_dog()))?;
     let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(element.clone().into_inner().values()[0], animal_dog());
     assert_eq!(element.clone().into_inner().values()[1], person_alice());
 
     // Act - secondary emits Bob (should NOT emit because only primary triggers emissions)
-    person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    person_tx.try_send(Sequenced::new(person_bob()))?;
     assert!(
         result.next().now_or_never().is_none(),
         "Should not emit when only secondary stream emits"
@@ -61,10 +61,10 @@ async fn test_with_latest_from_ordering_preserved() -> anyhow::Result<()> {
     let mut result = primary_stream.with_latest_from(secondary_stream, result_selector);
 
     // Act - interleave emissions to test ordering
-    secondary_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    primary_tx.unbounded_send(Sequenced::new(animal_cat()))?;
-    primary_tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    secondary_tx.unbounded_send(Sequenced::new(person_bob()))?; // should NOT emit
+    secondary_tx.try_send(Sequenced::new(person_alice()))?;
+    primary_tx.try_send(Sequenced::new(animal_cat()))?;
+    primary_tx.try_send(Sequenced::new(animal_dog()))?;
+    secondary_tx.try_send(Sequenced::new(person_bob()))?; // should NOT emit
 
     // Assert - should get two emissions in order
     let element1 = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
@@ -107,8 +107,8 @@ async fn test_with_latest_from_custom_selector() -> anyhow::Result<()> {
     let mut result = animal_stream.with_latest_from(person_stream, custom_selector);
 
     // Act
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
+    animal_tx.try_send(Sequenced::new(animal_cat()))?;
 
     // Assert - should get a String result wrapped in TestWrapper
     let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
@@ -130,7 +130,7 @@ async fn test_with_latest_from_secondary_emits_first_no_output() -> anyhow::Resu
     let mut result = animal_stream.with_latest_from(person_stream, result_selector);
 
     // Act - primary emits but no secondary value yet
-    animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    animal_tx.try_send(Sequenced::new(animal_cat()))?;
 
     // Assert - should not emit because secondary hasn't emitted
     assert!(result.next().now_or_never().is_none());
@@ -147,11 +147,11 @@ async fn test_with_latest_from_secondary_completes_early() -> anyhow::Result<()>
     let mut result = animal_stream.with_latest_from(person_stream, result_selector);
 
     // Act - secondary emits and completes
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
     drop(person_tx); // secondary completes
 
     // Primary emits
-    animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    animal_tx.try_send(Sequenced::new(animal_cat()))?;
 
     // Assert - should still emit with latest secondary value (Alice)
     let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
@@ -159,7 +159,7 @@ async fn test_with_latest_from_secondary_completes_early() -> anyhow::Result<()>
     assert_eq!(element.clone().into_inner().values()[1], person_alice());
 
     // Primary emits again
-    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    animal_tx.try_send(Sequenced::new(animal_dog()))?;
 
     // Assert - should still emit with same secondary value
     let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
@@ -178,8 +178,8 @@ async fn test_with_latest_from_primary_completes_early() -> anyhow::Result<()> {
     let mut result = animal_stream.with_latest_from(person_stream, result_selector);
 
     // Act
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
+    animal_tx.try_send(Sequenced::new(animal_cat()))?;
 
     // Assert
     let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
@@ -188,7 +188,7 @@ async fn test_with_latest_from_primary_completes_early() -> anyhow::Result<()> {
 
     // Act - primary completes
     drop(animal_tx);
-    person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    person_tx.try_send(Sequenced::new(person_bob()))?;
 
     // The stream won't complete until the secondary also completes (ordered_merge behavior)
     // So we need to close the secondary stream too
@@ -209,11 +209,11 @@ async fn test_with_latest_from_large_number_of_emissions() -> anyhow::Result<()>
     let mut result = animal_stream.with_latest_from(person_stream, result_selector);
 
     // Act - send secondary first
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
 
     // Send many primary emissions
     for i in 0..100 {
-        animal_tx.unbounded_send(Sequenced::new(animal(format!("Animal{}", i), 4)))?;
+        animal_tx.try_send(Sequenced::new(animal(format!("Animal{}", i), 4)))?;
     }
 
     // Assert - should get 100 emissions, all with Alice
@@ -257,18 +257,18 @@ async fn test_with_latest_from_secondary_updates_latest() -> anyhow::Result<()> 
     let mut result = animal_stream.with_latest_from(person_stream, result_selector);
 
     // Act & Assert
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    person_tx.try_send(Sequenced::new(person_alice()))?;
+    animal_tx.try_send(Sequenced::new(animal_cat()))?;
     let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(element.clone().into_inner().values()[0], animal_cat());
     assert_eq!(element.clone().into_inner().values()[1], person_alice());
 
     // Act - secondary updates to Bob (no emission yet)
-    person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    person_tx.try_send(Sequenced::new(person_bob()))?;
     assert!(result.next().now_or_never().is_none());
 
     // Act - primary emits again
-    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    animal_tx.try_send(Sequenced::new(animal_dog()))?;
     // Assert - should emit with latest secondary (Bob)
     let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(element.clone().into_inner().values()[0], animal_dog());
@@ -292,12 +292,12 @@ async fn test_with_latest_from_multiple_concurrent_streams() -> anyhow::Result<(
     let mut stream2 = stream2;
 
     // Emit to stream1
-    person_tx1.unbounded_send(Sequenced::new(person_alice()))?;
-    animal_tx1.unbounded_send(Sequenced::new(animal_cat()))?;
+    person_tx1.try_send(Sequenced::new(person_alice()))?;
+    animal_tx1.try_send(Sequenced::new(animal_cat()))?;
 
     // Emit to stream2
-    person_tx2.unbounded_send(Sequenced::new(person_bob()))?;
-    animal_tx2.unbounded_send(Sequenced::new(animal_dog()))?;
+    person_tx2.try_send(Sequenced::new(person_bob()))?;
+    animal_tx2.try_send(Sequenced::new(animal_dog()))?;
 
     // Assert stream1
     let element1 = unwrap_value(Some(unwrap_stream(&mut stream1, 500).await));

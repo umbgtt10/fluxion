@@ -37,10 +37,10 @@ async fn test_ordered_merge_timestamp_ordering() -> anyhow::Result<()> {
     let mut merged = s1.ordered_merge(vec![s2]);
 
     // Act: Send out-of-order timestamps on different streams
-    tx1.unbounded_send(Sequenced::with_timestamp(person_charlie(), 3))?;
-    tx2.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
-    tx1.unbounded_send(Sequenced::with_timestamp(person_dave(), 4))?;
-    tx2.unbounded_send(Sequenced::with_timestamp(person_bob(), 2))?;
+    tx1.try_send(Sequenced::with_timestamp(person_charlie(), 3))?;
+    tx2.try_send(Sequenced::with_timestamp(person_alice(), 1))?;
+    tx1.try_send(Sequenced::with_timestamp(person_dave(), 4))?;
+    tx2.try_send(Sequenced::with_timestamp(person_bob(), 2))?;
 
     // Assert: Items must be emitted in timestamp order
     assert_eq!(
@@ -73,11 +73,11 @@ async fn test_ordered_merge_multiple_streams() -> anyhow::Result<()> {
     let mut merged = person_stream.ordered_merge(vec![animal_stream, plant_stream]);
 
     // Act: Interleave timestamps across three streams
-    person_tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 5))?;
-    animal_tx.unbounded_send(Sequenced::with_timestamp(animal_dog(), 1))?;
-    plant_tx.unbounded_send(Sequenced::with_timestamp(plant_rose(), 3))?;
-    animal_tx.unbounded_send(Sequenced::with_timestamp(animal_spider(), 2))?;
-    plant_tx.unbounded_send(Sequenced::with_timestamp(plant_oak(), 4))?;
+    person_tx.try_send(Sequenced::with_timestamp(person_alice(), 5))?;
+    animal_tx.try_send(Sequenced::with_timestamp(animal_dog(), 1))?;
+    plant_tx.try_send(Sequenced::with_timestamp(plant_rose(), 3))?;
+    animal_tx.try_send(Sequenced::with_timestamp(animal_spider(), 2))?;
+    plant_tx.try_send(Sequenced::with_timestamp(plant_oak(), 4))?;
 
     // Assert: Expect sequence in timestamp order (1,2,3,4,5)
     assert_eq!(
@@ -113,8 +113,8 @@ async fn test_ordered_merge_ends_when_all_closed() -> anyhow::Result<()> {
     let mut merged = s1.ordered_merge(vec![s2]);
 
     // Act
-    tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
-    tx2.unbounded_send(Sequenced::with_timestamp(person_bob(), 2))?;
+    tx1.try_send(Sequenced::with_timestamp(person_alice(), 1))?;
+    tx2.try_send(Sequenced::with_timestamp(person_bob(), 2))?;
 
     // Consume both
     let _ = unwrap_stream(&mut merged, 200).await;
@@ -138,13 +138,13 @@ async fn test_ordered_merge_one_stream_closes_early() -> anyhow::Result<()> {
     let mut merged = s1.ordered_merge(vec![s2]);
 
     // Act: Stream 1 sends and closes
-    tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
-    tx1.unbounded_send(Sequenced::with_timestamp(person_bob(), 2))?;
+    tx1.try_send(Sequenced::with_timestamp(person_alice(), 1))?;
+    tx1.try_send(Sequenced::with_timestamp(person_bob(), 2))?;
     drop(tx1);
 
     // Stream 2 continues
-    tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 3))?;
-    tx2.unbounded_send(Sequenced::with_timestamp(animal_spider(), 4))?;
+    tx2.try_send(Sequenced::with_timestamp(animal_dog(), 3))?;
+    tx2.try_send(Sequenced::with_timestamp(animal_spider(), 4))?;
 
     // Assert: All values should be emitted in order
     assert_eq!(
@@ -179,10 +179,10 @@ async fn test_ordered_merge_duplicate_timestamps() -> anyhow::Result<()> {
     let mut merged = s1.ordered_merge(vec![s2]);
 
     // Act: Send items with same timestamp from different streams
-    tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
-    tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 1))?;
-    tx1.unbounded_send(Sequenced::with_timestamp(person_bob(), 2))?;
-    tx2.unbounded_send(Sequenced::with_timestamp(animal_spider(), 2))?;
+    tx1.try_send(Sequenced::with_timestamp(person_alice(), 1))?;
+    tx2.try_send(Sequenced::with_timestamp(animal_dog(), 1))?;
+    tx1.try_send(Sequenced::with_timestamp(person_bob(), 2))?;
+    tx2.try_send(Sequenced::with_timestamp(animal_spider(), 2))?;
 
     // Assert: Both items with timestamp 1 should be emitted, then both with timestamp 2
     // Order between items with same timestamp is implementation-defined but stable
@@ -214,8 +214,8 @@ async fn test_ordered_merge_large_volume() -> anyhow::Result<()> {
 
     // Act: Send 1000 items from each stream
     for i in 0..1000 {
-        tx1.unbounded_send(Sequenced::with_timestamp(i * 2, (i * 2) as u64))?;
-        tx2.unbounded_send(Sequenced::with_timestamp(i * 2 + 1, (i * 2 + 1) as u64))?;
+        tx1.try_send(Sequenced::with_timestamp(i * 2, (i * 2) as u64))?;
+        tx2.try_send(Sequenced::with_timestamp(i * 2 + 1, (i * 2 + 1) as u64))?;
     }
 
     // Assert: All 2000 items should be emitted in order
@@ -238,14 +238,14 @@ async fn test_ordered_merge_parallel_sends() -> anyhow::Result<()> {
     // Act: Spawn tasks that send concurrently
     spawn(async move {
         for i in 0..100 {
-            tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), (i * 2) as u64))
+            tx1.try_send(Sequenced::with_timestamp(person_alice(), (i * 2) as u64))
                 .unwrap();
         }
     });
 
     spawn(async move {
         for i in 0..100 {
-            tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), (i * 2 + 1) as u64))
+            tx2.try_send(Sequenced::with_timestamp(animal_dog(), (i * 2 + 1) as u64))
                 .unwrap();
         }
     });
@@ -271,8 +271,8 @@ async fn test_ordered_merge_preserves_timestamp_metadata() -> anyhow::Result<()>
     let mut merged = s1.ordered_merge(vec![s2]);
 
     // Act
-    tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 10))?;
-    tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 20))?;
+    tx1.try_send(Sequenced::with_timestamp(person_alice(), 10))?;
+    tx2.try_send(Sequenced::with_timestamp(animal_dog(), 20))?;
 
     // Assert: Timestamps should be preserved
     let first = unwrap_stream(&mut merged, 200).await;
@@ -296,7 +296,7 @@ async fn test_ordered_merge_does_not_wait_for_all_streams() -> anyhow::Result<()
     let mut merged = s1.ordered_merge(vec![s2]);
 
     // Act: Only send on stream 1
-    tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
+    tx1.try_send(Sequenced::with_timestamp(person_alice(), 1))?;
 
     // Assert: Should emit immediately without waiting for stream 2
     assert_eq!(
@@ -317,12 +317,12 @@ async fn test_ordered_merge_mixed_types_in_enum() -> anyhow::Result<()> {
     let mut merged = person_stream.ordered_merge(vec![animal_stream, plant_stream]);
 
     // Act: Send mixed types interleaved
-    person_tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
-    animal_tx.unbounded_send(Sequenced::with_timestamp(animal_dog(), 2))?;
-    plant_tx.unbounded_send(Sequenced::with_timestamp(plant_rose(), 3))?;
-    person_tx.unbounded_send(Sequenced::with_timestamp(person_bob(), 4))?;
-    animal_tx.unbounded_send(Sequenced::with_timestamp(animal_bird(), 5))?;
-    plant_tx.unbounded_send(Sequenced::with_timestamp(plant_sunflower(), 6))?;
+    person_tx.try_send(Sequenced::with_timestamp(person_alice(), 1))?;
+    animal_tx.try_send(Sequenced::with_timestamp(animal_dog(), 2))?;
+    plant_tx.try_send(Sequenced::with_timestamp(plant_rose(), 3))?;
+    person_tx.try_send(Sequenced::with_timestamp(person_bob(), 4))?;
+    animal_tx.try_send(Sequenced::with_timestamp(animal_bird(), 5))?;
+    plant_tx.try_send(Sequenced::with_timestamp(plant_sunflower(), 6))?;
 
     // Assert: All types should be emitted in timestamp order
     assert_eq!(

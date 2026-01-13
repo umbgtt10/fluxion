@@ -22,8 +22,8 @@ async fn shared_propagates_error_and_closes_all_subscribers() -> anyhow::Result<
     let mut sub3 = shared.subscribe().unwrap();
 
     // Act - send value then error
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "critical failure",
     )))?;
 
@@ -78,7 +78,7 @@ async fn shared_error_from_source_operator_propagates_to_subscribers() -> anyhow
     let mut sub2 = shared.subscribe().unwrap();
 
     // Act - send error from source
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "upstream error",
     )))?;
 
@@ -109,8 +109,8 @@ async fn shared_multiple_errors_propagate_in_order() -> anyhow::Result<()> {
     let mut sub = shared.subscribe().unwrap();
 
     // Act - send value, error, value (stream continues after error if source allows)
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("first error")))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("first error")))?;
 
     // Assert - subscriber receives value
     assert!(matches!(

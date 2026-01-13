@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use async_channel::unbounded;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_runtime::impls::tokio::TokioTimer;
 use fluxion_runtime::timer::Timer;
@@ -11,7 +12,6 @@ use fluxion_test_utils::{
     helpers::recv_timeout, person::Person, test_channel_with_errors, test_data::person_alice,
     TestData,
 };
-use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use std::time::Duration;
 use tokio::spawn;
@@ -37,21 +37,21 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
         })
         .throttle(Duration::from_millis(100));
 
-    let (result_tx, mut result_rx) = unbounded();
+    let (result_tx, result_rx) = unbounded();
 
     spawn(async move {
         let mut stream = throttled;
         while let Some(item) = stream.next().await {
-            result_tx.unbounded_send(item).unwrap();
+            result_tx.try_send(item).unwrap();
         }
     });
 
     // Act & Assert
     let error = FluxionError::stream_error("test error");
-    tx.unbounded_send(StreamItem::Error(error.clone()))?;
+    tx.try_send(StreamItem::Error(error.clone()))?;
 
     assert_eq!(
-        recv_timeout(&mut result_rx, 1000)
+        recv_timeout(&result_rx, 1000)
             .await
             .unwrap()
             .err()
@@ -60,12 +60,12 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
         error.to_string()
     );
 
-    tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
+    tx.try_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
     assert_eq!(
-        recv_timeout(&mut result_rx, 1000)
+        recv_timeout(&result_rx, 1000)
             .await
             .unwrap()
             .ok()

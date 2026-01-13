@@ -2,9 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_core::CancellationToken;
+use fluxion_core::{CancellationToken, StreamItem};
 use fluxion_exec::subscribe::SubscribeExt;
-use futures::channel::mpsc::unbounded;
+use fluxion_test_utils::test_channel;
 use futures::lock::Mutex as FutureMutex;
 use std::sync::Arc;
 use tokio::spawn;
@@ -25,24 +25,25 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
     struct TestError(String);
 
     // Step 1: Create a stream
-    let (tx, rx) = unbounded::<Item>();
-    let stream = rx;
+    let (tx, rx) = test_channel::<Item>();
 
     // Step 2: Create a shared results container
     let results = Arc::new(FutureMutex::new(Vec::new()));
-    let (notify_tx, mut notify_rx) = unbounded();
+    let (notify_tx, mut notify_rx) = test_channel::<()>();
 
     // Step 3: Define the async processing function
     let process_func = {
         let results = results.clone();
         let notify_tx = notify_tx.clone();
-        move |item: Item, _ctx: CancellationToken| {
+        move |item: StreamItem<Item>, _ctx: CancellationToken| {
             let results = results.clone();
             let notify_tx = notify_tx.clone();
             async move {
                 // Process the item (in this example, just store it)
-                results.lock().await.push(item);
-                let _ = notify_tx.unbounded_send(()); // Signal completion
+                if let StreamItem::Value(item) = item {
+                    results.lock().await.push(item);
+                    let _ = notify_tx.try_send(()); // Signal completion
+                }
                 Ok::<(), TestError>(())
             }
         }
@@ -50,8 +51,7 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
 
     // Step 4: Subscribe to the stream
     let task = spawn(async move {
-        stream
-            .subscribe(process_func, |_| {}, None)
+        rx.subscribe(process_func, |_| {}, None)
             .await
             .expect("subscribe should succeed");
     });
@@ -71,15 +71,15 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
     };
 
     // Act & Assert
-    tx.unbounded_send(item1.clone())?;
+    tx.try_send(item1.clone())?;
     notify_rx.next().await.unwrap();
     assert_eq!(*results.lock().await, vec![item1.clone()]);
 
-    tx.unbounded_send(item2.clone())?;
+    tx.try_send(item2.clone())?;
     notify_rx.next().await.unwrap();
     assert_eq!(*results.lock().await, vec![item1.clone(), item2.clone()]);
 
-    tx.unbounded_send(item3.clone())?;
+    tx.try_send(item3.clone())?;
     notify_rx.next().await.unwrap();
     assert_eq!(*results.lock().await, vec![item1, item2, item3]);
 

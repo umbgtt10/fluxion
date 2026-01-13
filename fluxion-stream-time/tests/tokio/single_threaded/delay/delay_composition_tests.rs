@@ -36,7 +36,7 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
         .delay(Duration::from_secs(1));
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
@@ -46,7 +46,7 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
         person_bob()
     );
 
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
@@ -71,7 +71,7 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
         .delay(Duration::from_secs(1));
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
@@ -81,8 +81,8 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
         person_alice()
     );
 
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
 
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
@@ -117,13 +117,13 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
         .delay(Duration::from_millis(200));
 
     // Act & Assert
-    tx1.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx1.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 0).await;
 
-    tx2.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx2.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
@@ -161,7 +161,7 @@ async fn test_delay_before_map_ordered() -> anyhow::Result<()> {
             });
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 

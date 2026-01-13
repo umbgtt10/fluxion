@@ -25,7 +25,7 @@ async fn test_timeout_returns_pending_while_waiting() -> anyhow::Result<()> {
     let mut timeout_stream = stream.timeout(Duration::from_millis(500));
 
     // Send first value - resets timer
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         unwrap_stream(&mut timeout_stream, 100).await.unwrap().value,
         person_alice()
@@ -36,7 +36,7 @@ async fn test_timeout_returns_pending_while_waiting() -> anyhow::Result<()> {
 
     // Send next value before timeout
     advance(Duration::from_millis(300)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_eq!(
         unwrap_stream(&mut timeout_stream, 100).await.unwrap().value,
         person_bob()
@@ -57,7 +57,7 @@ async fn test_timeout_pending_without_values() -> anyhow::Result<()> {
     // Stream still works normally after
     let timer = TokioTimer;
     pause();
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         unwrap_stream(&mut timeout_stream, 100).await.unwrap().value,
         person_alice()
@@ -76,7 +76,7 @@ async fn test_timeout_pending_then_timer_expires() -> anyhow::Result<()> {
     let mut timeout_stream = stream.timeout(Duration::from_millis(500));
 
     // Send value to start timer
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         unwrap_stream(&mut timeout_stream, 100).await.unwrap().value,
         person_alice()
@@ -106,7 +106,7 @@ async fn test_timeout_pending_with_stream_end() -> anyhow::Result<()> {
     let mut timeout_stream = stream.timeout(Duration::from_millis(500));
 
     // Send value
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_eq!(
         unwrap_stream(&mut timeout_stream, 100).await.unwrap().value,
         person_alice()

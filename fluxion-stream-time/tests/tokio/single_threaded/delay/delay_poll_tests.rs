@@ -25,7 +25,7 @@ async fn test_delay_returns_pending_while_waiting() -> anyhow::Result<()> {
     let mut delayed = stream.delay(Duration::from_millis(500));
 
     // Send value - starts delay
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
     // Should return Pending because delay hasn't completed (line 177 in delay.rs)
     assert_no_element_emitted(&mut delayed, 0).await;
@@ -55,7 +55,7 @@ async fn test_delay_pending_without_values() -> anyhow::Result<()> {
     assert_no_element_emitted(&mut delayed, 0).await;
 
     // Now verify stream works normally
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut delayed, 0).await; // Still pending during delay
     advance(Duration::from_millis(500)).await;
     assert_eq!(
@@ -76,9 +76,9 @@ async fn test_delay_pending_with_multiple_in_flight() -> anyhow::Result<()> {
     let mut delayed = stream.delay(Duration::from_millis(500));
 
     // Send multiple values
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
 
     // Should be Pending (Alice's delay not done yet)
     assert_no_element_emitted(&mut delayed, 0).await;
@@ -110,7 +110,7 @@ async fn test_delay_pending_until_upstream_ends() -> anyhow::Result<()> {
     let mut delayed = stream.delay(Duration::from_millis(500));
 
     // Send value
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
     // End stream
     drop(tx);

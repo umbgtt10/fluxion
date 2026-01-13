@@ -45,13 +45,13 @@ async fn test_emit_when_propagates_error_from_scanned_source() -> anyhow::Result
 
     // Act & Assert
     // 1. Send value to source (Alice 25) -> Sum 25
-    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
 
     // 2. Send value to trigger (Dog 4 legs) -> Threshold 40. 25 > 40 is False.
-    trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    trigger_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
         2,
     )))?;
@@ -61,7 +61,7 @@ async fn test_emit_when_propagates_error_from_scanned_source() -> anyhow::Result
     // 3. Send value to source (Bob 30) -> Sum 55.
     // Trigger is still Dog (4 legs) -> Threshold 40.
     // 55 > 40 is True. Should emit.
-    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         3,
     )))?;
@@ -72,7 +72,7 @@ async fn test_emit_when_propagates_error_from_scanned_source() -> anyhow::Result
     ));
 
     // 4. Send error to source
-    source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    source_tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "Source Error",
     )))?;
 
@@ -86,7 +86,7 @@ async fn test_emit_when_propagates_error_from_scanned_source() -> anyhow::Result
     // Source state preserved (55).
     // Send Charlie (35) -> Sum 90.
     // Trigger still Dog (40). 90 > 40 is True.
-    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_charlie(),
         5,
     )))?;
@@ -131,13 +131,13 @@ async fn test_emit_when_propagates_error_from_mapped_trigger() -> anyhow::Result
 
     // Act & Assert
     // 1. Setup trigger (Dog 4 legs -> Mapped to 8 legs)
-    trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    trigger_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
         1,
     )))?;
 
     // 2. Send source value (Alice 25). 25 > 8 is True.
-    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         2,
     )))?;
@@ -148,7 +148,7 @@ async fn test_emit_when_propagates_error_from_mapped_trigger() -> anyhow::Result
     ));
 
     // 3. Send error to trigger
-    trigger_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    trigger_tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "Trigger Error",
     )))?;
 
@@ -160,7 +160,7 @@ async fn test_emit_when_propagates_error_from_mapped_trigger() -> anyhow::Result
 
     // 4. Continue
     // Update trigger to Spider (8 legs -> 16 legs)
-    trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    trigger_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_spider(),
         4,
     )))?;
@@ -172,7 +172,7 @@ async fn test_emit_when_propagates_error_from_mapped_trigger() -> anyhow::Result
     ));
 
     // Send source value (Bob 30). 30 > 16 is True.
-    source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    source_tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         5,
     )))?;

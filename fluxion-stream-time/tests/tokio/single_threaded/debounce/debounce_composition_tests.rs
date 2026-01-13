@@ -38,11 +38,11 @@ async fn test_debounce_chaining_with_map_ordered() -> anyhow::Result<()> {
         .debounce(Duration::from_millis(500));
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(200)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(300)).await;
@@ -54,7 +54,7 @@ async fn test_debounce_chaining_with_map_ordered() -> anyhow::Result<()> {
         person_charlie()
     );
 
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(500)).await;
@@ -80,15 +80,15 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
         .debounce(Duration::from_millis(500));
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(100)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(100)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(300)).await;
@@ -100,11 +100,11 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
         person_charlie()
     );
 
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(200)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(300)).await;
@@ -113,7 +113,7 @@ async fn test_debounce_chaining_with_filter_ordered() -> anyhow::Result<()> {
         person_alice()
     );
 
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(500)).await;
@@ -147,11 +147,11 @@ async fn test_debounce_before_map_ordered() -> anyhow::Result<()> {
             });
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(200)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(300)).await;
@@ -177,11 +177,11 @@ async fn test_debounce_then_delay() -> anyhow::Result<()> {
         .delay(Duration::from_millis(200));
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(100)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(200)).await;
@@ -211,11 +211,11 @@ async fn test_delay_then_debounce() -> anyhow::Result<()> {
         .debounce(Duration::from_millis(300));
 
     // Act & Assert
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(100)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
 
     advance(Duration::from_millis(200)).await;
     assert_no_element_emitted(&mut processed, 0).await;
@@ -249,12 +249,12 @@ async fn test_combine_latest_then_debounce() -> anyhow::Result<()> {
         .debounce(Duration::from_millis(500));
 
     // Act & Assert
-    tx1.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
-    tx2.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx1.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx2.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(200)).await;
-    tx1.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx1.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
     advance(Duration::from_millis(300)).await;

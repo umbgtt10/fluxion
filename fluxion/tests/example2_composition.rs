@@ -2,10 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use async_channel::unbounded;
 use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
-use fluxion_test_utils::{unwrap_stream, Sequenced};
+use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
 
 #[tokio::test]
 async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
@@ -17,15 +16,12 @@ async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
     }
 
     // Create two input streams
-    let (tx_int, rx_int) = unbounded::<Sequenced<Value>>();
-    let (tx_str, rx_str) = unbounded::<Sequenced<Value>>();
-
-    let int_stream = rx_int.into_fluxion_stream();
-    let str_stream = rx_str.into_fluxion_stream();
+    let (tx_int, rx_int) = test_channel::<Sequenced<Value>>();
+    let (tx_str, rx_str) = test_channel::<Sequenced<Value>>();
 
     // Chain: combine_latest -> filter
-    let mut pipeline = int_stream
-        .combine_latest(vec![str_stream], |_| true)
+    let mut pipeline = rx_int
+        .combine_latest(vec![rx_str], |_| true)
         .filter_ordered(|combined| {
             // Keep only if first value (int) is > 50
             matches!(combined.values()[0], Value::Int(x) if x > 50)

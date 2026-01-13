@@ -32,11 +32,11 @@ async fn test_partition_then_filter_ordered() -> anyhow::Result<()> {
     let mut animals = non_persons.filter_ordered(|data| matches!(data, TestData::Animal(_)));
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // age 25 - filtered out
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // age 30 - kept
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // animal - kept
-    tx.unbounded_send(Sequenced::new(plant_rose()))?; // plant - filtered out
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // age 35 - kept
+    tx.try_send(Sequenced::new(person_alice()))?; // age 25 - filtered out
+    tx.try_send(Sequenced::new(person_bob()))?; // age 30 - kept
+    tx.try_send(Sequenced::new(animal_dog()))?; // animal - kept
+    tx.try_send(Sequenced::new(plant_rose()))?; // plant - filtered out
+    tx.try_send(Sequenced::new(person_charlie()))?; // age 35 - kept
 
     // Assert
     assert_eq!(
@@ -74,10 +74,10 @@ async fn test_partition_then_map_ordered() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
-    tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(animal_dog()))?;
+    tx.try_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(animal_cat()))?;
 
     // Assert
     assert_eq!(
@@ -116,10 +116,10 @@ async fn test_filter_ordered_then_partition() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // 25 - young adult
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - senior
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // 28 - young adult
-    tx.unbounded_send(Sequenced::new(person_diane()))?; // 40 - senior
+    tx.try_send(Sequenced::new(person_alice()))?; // 25 - young adult
+    tx.try_send(Sequenced::new(person_charlie()))?; // 35 - senior
+    tx.try_send(Sequenced::new(person_dave()))?; // 28 - young adult
+    tx.try_send(Sequenced::new(person_diane()))?; // 40 - senior
 
     // Assert - all are adults, partitioned by age threshold
     assert_eq!(
@@ -155,9 +155,9 @@ async fn test_map_ordered_then_partition() -> anyhow::Result<()> {
     let (mut many_legs, mut few_legs) = leg_counts.partition(|&legs| legs >= 4);
 
     // Act
-    tx.unbounded_send(Sequenced::new(animal_bird()))?; // 2 legs - few
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // 4 legs - many
-    tx.unbounded_send(Sequenced::new(animal_spider()))?; // 8 legs - many
+    tx.try_send(Sequenced::new(animal_bird()))?; // 2 legs - few
+    tx.try_send(Sequenced::new(animal_dog()))?; // 4 legs - many
+    tx.try_send(Sequenced::new(animal_spider()))?; // 8 legs - many
 
     // Assert
     assert_eq!(
@@ -186,10 +186,10 @@ async fn test_partition_then_ordered_merge() -> anyhow::Result<()> {
     let mut merged = persons.ordered_merge(vec![non_persons]);
 
     // Act
-    tx.unbounded_send((person_alice(), 1).into())?;
-    tx.unbounded_send((animal_dog(), 2).into())?;
-    tx.unbounded_send((person_bob(), 3).into())?;
-    tx.unbounded_send((animal_cat(), 4).into())?;
+    tx.try_send((person_alice(), 1).into())?;
+    tx.try_send((animal_dog(), 2).into())?;
+    tx.try_send((person_bob(), 3).into())?;
+    tx.try_send((animal_cat(), 4).into())?;
     drop(tx);
 
     // Assert - items arrive in original order
@@ -223,11 +223,11 @@ async fn test_partition_then_skip_items() -> anyhow::Result<()> {
     let mut animals_skip1 = animals.skip_items(1);
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // skipped
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // skipped
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // kept
-    tx.unbounded_send(Sequenced::new(animal_cat()))?; // kept
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // kept
+    tx.try_send(Sequenced::new(person_alice()))?; // skipped
+    tx.try_send(Sequenced::new(animal_dog()))?; // skipped
+    tx.try_send(Sequenced::new(person_bob()))?; // kept
+    tx.try_send(Sequenced::new(animal_cat()))?; // kept
+    tx.try_send(Sequenced::new(person_charlie()))?; // kept
 
     // Assert
     assert_eq!(
@@ -256,11 +256,11 @@ async fn test_partition_then_take_items() -> anyhow::Result<()> {
     let mut animals_take1 = animals.take_items(1);
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
-    tx.unbounded_send(Sequenced::new(animal_cat()))?;
-    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(animal_dog()))?;
+    tx.try_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(animal_cat()))?;
+    tx.try_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     assert_eq!(
@@ -305,10 +305,10 @@ async fn test_partition_then_scan_ordered() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // age 25, sum: 25
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // 4 legs, sum: 4
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // age 30, sum: 55
-    tx.unbounded_send(Sequenced::new(animal_bird()))?; // 2 legs, sum: 6
+    tx.try_send(Sequenced::new(person_alice()))?; // age 25, sum: 25
+    tx.try_send(Sequenced::new(animal_dog()))?; // 4 legs, sum: 4
+    tx.try_send(Sequenced::new(person_bob()))?; // age 30, sum: 55
+    tx.try_send(Sequenced::new(animal_bird()))?; // 2 legs, sum: 6
 
     // Assert
     assert_eq!(
@@ -353,12 +353,12 @@ async fn test_partition_then_distinct_until_changed() -> anyhow::Result<()> {
     let mut animals_distinct = animals.distinct_until_changed();
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // duplicate person - suppressed
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // duplicate animal - suppressed
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // new person
-    tx.unbounded_send(Sequenced::new(animal_cat()))?; // new animal
+    tx.try_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(animal_dog()))?;
+    tx.try_send(Sequenced::new(person_alice()))?; // duplicate person - suppressed
+    tx.try_send(Sequenced::new(animal_dog()))?; // duplicate animal - suppressed
+    tx.try_send(Sequenced::new(person_bob()))?; // new person
+    tx.try_send(Sequenced::new(animal_cat()))?; // new animal
 
     // Assert
     assert_eq!(
@@ -399,8 +399,8 @@ async fn test_share_then_partition() -> anyhow::Result<()> {
     let (mut persons2, _non_persons2) = sub2.partition(|data| matches!(data, TestData::Person(_)));
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // age 25 - young, person
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // age 35 - adult, person
+    tx.try_send(Sequenced::new(person_alice()))?; // age 25 - young, person
+    tx.try_send(Sequenced::new(person_charlie()))?; // age 35 - adult, person
 
     // Assert - both partitions receive from shared source
     assert_eq!(
@@ -429,8 +429,8 @@ async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
     let mut combined = persons.combine_latest(vec![animals], |_| true);
 
     // Act - send one of each to satisfy combine_latest requirements
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(animal_dog()))?;
 
     // Assert - should have both values combined
     assert_eq!(
@@ -441,7 +441,7 @@ async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
     );
 
     // Act - update person, combined should emit with latest animal
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(person_bob()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
             .into_inner()
@@ -450,7 +450,7 @@ async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
     );
 
     // Act - update animal, combined should emit with latest person
-    tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    tx.try_send(Sequenced::new(animal_cat()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
             .into_inner()
@@ -530,8 +530,8 @@ async fn test_partition_share_then_combine_latest() -> anyhow::Result<()> {
     let mut combined = persons1.combine_latest(vec![animals2], |_| true);
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(animal_dog()))?;
 
     // Assert - both streams need to emit before combine_latest produces
     assert_eq!(
@@ -543,7 +543,7 @@ async fn test_partition_share_then_combine_latest() -> anyhow::Result<()> {
     );
 
     // Act - update both
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(person_bob()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
             .clone()
@@ -552,7 +552,7 @@ async fn test_partition_share_then_combine_latest() -> anyhow::Result<()> {
         [person_bob(), animal_dog()]
     );
 
-    tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    tx.try_send(Sequenced::new(animal_cat()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
             .clone()
@@ -577,8 +577,8 @@ async fn test_partition_then_with_latest_from() -> anyhow::Result<()> {
         });
 
     // Act - need animal first (secondary), then person (primary) triggers
-    tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(animal_dog()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert_eq!(
@@ -590,11 +590,11 @@ async fn test_partition_then_with_latest_from() -> anyhow::Result<()> {
     );
 
     // Act - animal update alone shouldn't emit (only primary triggers)
-    tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    tx.try_send(Sequenced::new(animal_cat()))?;
     assert_no_element_emitted(&mut person_with_animal, 100).await;
 
     // Act - person update triggers with latest animal
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(person_bob()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut person_with_animal, 500).await))
             .clone()
@@ -616,10 +616,10 @@ async fn test_partition_then_combine_with_previous() -> anyhow::Result<()> {
     let mut animals_with_prev = animals.combine_with_previous();
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    tx.unbounded_send(Sequenced::new(person_bob()))?;
-    tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    tx.try_send(Sequenced::new(person_alice()))?;
+    tx.try_send(Sequenced::new(animal_dog()))?;
+    tx.try_send(Sequenced::new(person_bob()))?;
+    tx.try_send(Sequenced::new(animal_cat()))?;
 
     // Assert - first emissions have no previous
     let item1 = unwrap_value(Some(unwrap_stream(&mut persons_with_prev, 500).await));

@@ -25,7 +25,7 @@ async fn test_sample_returns_pending_while_waiting() -> anyhow::Result<()> {
     let mut sampled = stream.sample(Duration::from_millis(500));
 
     // Send value
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
     // Should return Pending because sample period hasn't elapsed (line 176 in sample.rs)
     assert_no_element_emitted(&mut sampled, 0).await;
@@ -58,7 +58,7 @@ async fn test_sample_pending_without_values() -> anyhow::Result<()> {
     assert_no_element_emitted(&mut sampled, 0).await;
 
     // Send value in next period
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(500)).await;
 
     assert_eq!(
@@ -79,21 +79,21 @@ async fn test_sample_pending_with_value_updates() -> anyhow::Result<()> {
     let mut sampled = stream.sample(Duration::from_millis(500));
 
     // Send Alice
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
     // Should be Pending
     assert_no_element_emitted(&mut sampled, 0).await;
 
     // Advance partway, send Bob (replaces Alice)
     advance(Duration::from_millis(250)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_bob(), timer.now()))?;
 
     // Still Pending
     assert_no_element_emitted(&mut sampled, 0).await;
 
     // Advance rest of period, send Charlie (replaces Bob)
     advance(Duration::from_millis(200)).await;
-    tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
 
     // Complete sample period
     advance(Duration::from_millis(50)).await;
@@ -117,7 +117,7 @@ async fn test_sample_pending_then_stream_ends() -> anyhow::Result<()> {
     let mut sampled = stream.sample(Duration::from_millis(500));
 
     // Send value
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
     // Should be Pending
     assert_no_element_emitted(&mut sampled, 0).await;
@@ -148,7 +148,7 @@ async fn test_sample_multiple_periods_all_pending() -> anyhow::Result<()> {
     }
 
     // Send value and advance
-    tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+    tx.try_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(500)).await;
 
     // Should emit now

@@ -28,20 +28,20 @@ async fn test_ordered_merge_then_filter_with_errors() -> anyhow::Result<()> {
         });
 
     // Act
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P1".to_string(), 25),
         1,
     )))?; // age 25 odd, filtered
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P2".to_string(), 30),
         2,
     )))?; // age 30 even, passes
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P3".to_string(), 27),
         3,
     )))?; // age 27 odd, filtered
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P4".to_string(), 40),
         4,
     )))?; // age 40 even, passes
@@ -83,12 +83,12 @@ async fn test_ordered_merge_then_map_with_errors() -> anyhow::Result<()> {
     });
 
     // Act
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P1".to_string(), 10),
         1,
     )))?;
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P2".to_string(), 15),
         2,
     )))?;
@@ -138,20 +138,20 @@ async fn test_filter_then_ordered_merge_with_errors() -> anyhow::Result<()> {
     let mut result = filtered1.ordered_merge(vec![filtered2]);
 
     // Act
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P1".to_string(), 3),
         1,
     )))?; // age 3, filtered
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P2".to_string(), 7),
         2,
     )))?; // age 7, passes
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P3".to_string(), 2),
         3,
     )))?; // age 2, filtered
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal("A1".to_string(), 8),
         4,
     )))?; // legs 8, passes
@@ -205,16 +205,16 @@ async fn test_ordered_merge_map_filter_chain_with_errors() -> anyhow::Result<()>
         });
 
     // Act
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P1".to_string(), 1),
         1,
     )))?; // 1*2=2, filtered
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P2".to_string(), 3),
         2,
     )))?; // 3*2=6, passes
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P3".to_string(), 2),
         3,
     )))?; // 2*2=4, filtered
@@ -251,17 +251,17 @@ async fn test_ordered_merge_chained_with_errors() -> anyhow::Result<()> {
     let mut result = merged_12.ordered_merge(vec![s3]);
 
     // Act: Send values and errors from all three streams
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P1".to_string(), 10),
         1,
     )))?;
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
-    tx3.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx3.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P2".to_string(), 20),
         2,
     )))?;
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P3".to_string(), 30),
         3,
     )))?;
@@ -307,20 +307,20 @@ async fn test_ordered_merge_error_after_filter() -> anyhow::Result<()> {
         });
 
     // Act: Mix values (some filtered) and errors
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P1".to_string(), 1),
         1,
     )))?; // odd, filtered
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P2".to_string(), 2),
         2,
     )))?; // even, passes
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P3".to_string(), 3),
         3,
     )))?; // odd, filtered
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P4".to_string(), 4),
         4,
     )))?; // even, passes
@@ -367,17 +367,17 @@ async fn test_ordered_merge_multiple_errors_through_map() -> anyhow::Result<()> 
     });
 
     // Act: Multiple errors from both streams
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P1".to_string(), 10),
         1,
     )))?;
-    tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P2".to_string(), 20),
         2,
     )))?; // Send value with ts > 1 so ordered_merge can emit value at ts=1
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 3")))?;
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error 3")))?;
 
     // Assert: Errors emitted immediately, values in timestamp order
     assert!(matches!(
@@ -425,8 +425,8 @@ async fn test_ordered_merge_errors_only_through_filter() -> anyhow::Result<()> {
     });
 
     // Act: Send only errors (no values pass filter)
-    tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    tx1.try_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
 
     // Assert: Errors should still propagate even though no values pass
     assert!(matches!(
@@ -471,16 +471,16 @@ async fn test_ordered_merge_three_streams_filter_map_errors() -> anyhow::Result<
         });
 
     // Act
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P1".to_string(), 2),
         1,
     )))?; // age 2 -> 1
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    tx3.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx3.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P2".to_string(), 3),
         2,
     )))?; // age 3 odd, filtered
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         animal("A1".to_string(), 4),
         3,
     )))?; // legs 4 -> 2
@@ -527,12 +527,12 @@ async fn test_ordered_merge_error_preserves_timestamp_through_pipeline() -> anyh
     });
 
     // Act
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P1".to_string(), 10),
         5,
     )))?;
-    tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-    tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx2.try_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    tx1.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P2".to_string(), 20),
         10,
     )))?;

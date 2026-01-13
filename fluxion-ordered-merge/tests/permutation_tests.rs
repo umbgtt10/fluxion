@@ -2,13 +2,13 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use async_channel::unbounded;
 use fluxion_ordered_merge::OrderedMergeExt;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_fern,
     plant_rose, plant_sunflower, TestData,
 };
 use fluxion_test_utils::Sequenced;
-use futures::channel::mpsc;
 use futures::StreamExt;
 
 /// Generate all permutations of [0, 1, 2]
@@ -85,9 +85,9 @@ async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
     for channel_order in &channel_permutations {
         for send_order in &send_orders {
             // Arrange - create three channels
-            let (person_tx, person_rx) = mpsc::unbounded::<Sequenced<TestData>>();
-            let (animal_tx, animal_rx) = mpsc::unbounded::<Sequenced<TestData>>();
-            let (plant_tx, plant_rx) = mpsc::unbounded::<Sequenced<TestData>>();
+            let (person_tx, person_rx) = unbounded::<Sequenced<TestData>>();
+            let (animal_tx, animal_rx) = unbounded::<Sequenced<TestData>>();
+            let (plant_tx, plant_rx) = unbounded::<Sequenced<TestData>>();
 
             let person_stream = person_rx;
             let animal_stream = animal_rx;
@@ -123,9 +123,7 @@ async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
                             2 => person_charlie(),
                             _ => panic!("Too many person values"),
                         };
-                        person_tx
-                            .unbounded_send(Sequenced::new(value.clone()))
-                            .unwrap();
+                        person_tx.try_send(Sequenced::new(value.clone())).unwrap();
                         expected_order.push(value);
                         person_idx += 1;
                     }
@@ -136,9 +134,7 @@ async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
                             2 => animal_cat(),
                             _ => panic!("Too many animal values"),
                         };
-                        animal_tx
-                            .unbounded_send(Sequenced::new(value.clone()))
-                            .unwrap();
+                        animal_tx.try_send(Sequenced::new(value.clone())).unwrap();
                         expected_order.push(value);
                         animal_idx += 1;
                     }
@@ -149,9 +145,7 @@ async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
                             2 => plant_fern(),
                             _ => panic!("Too many plant values"),
                         };
-                        plant_tx
-                            .unbounded_send(Sequenced::new(value.clone()))
-                            .unwrap();
+                        plant_tx.try_send(Sequenced::new(value.clone())).unwrap();
                         expected_order.push(value);
                         plant_idx += 1;
                     }

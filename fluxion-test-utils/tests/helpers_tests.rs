@@ -38,7 +38,7 @@ async fn test_unwrap_stream_empty() {
 async fn test_unwrap_stream_error_injected() {
     let (tx, mut stream) = test_channel_with_errors::<i32>();
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "injected error",
     )))
     .unwrap();
@@ -65,7 +65,7 @@ async fn test_assert_stream_ended_returns_value() {
     let (tx, mut stream) = test_channel::<i32>();
 
     // Send a value
-    tx.unbounded_send(42).unwrap();
+    tx.try_send(42).unwrap();
 
     // This should panic because the stream returns a value
     assert_stream_ended(&mut stream, 500).await;

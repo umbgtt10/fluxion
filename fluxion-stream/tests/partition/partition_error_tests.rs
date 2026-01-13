@@ -19,7 +19,7 @@ async fn test_partition_propagates_error_to_both_streams() -> anyhow::Result<()>
         stream.partition(|data| matches!(data, TestData::Person(_)));
 
     // Act - send an error
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
 
     // Assert - both streams receive the error
     assert!(matches!(
@@ -47,9 +47,9 @@ async fn test_partition_error_after_values() -> anyhow::Result<()> {
         stream.partition(|data| matches!(data, TestData::Person(_)));
 
     // Act - send values then error
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "error after values",
     )))?;
 
@@ -86,7 +86,7 @@ async fn test_partition_error_message_preserved() -> anyhow::Result<()> {
 
     // Act
     let error_msg = "custom partition error";
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(error_msg)))?;
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(error_msg)))?;
 
     // Assert - error message is preserved in both streams
     let result1 = unwrap_stream(&mut persons, 500).await;
@@ -114,14 +114,14 @@ async fn test_partition_mixed_values_and_error() -> anyhow::Result<()> {
         stream.partition(|data| matches!(data, TestData::Person(_)));
 
     // Act - send mixed partition values then error
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?; // person
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // non-person
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?; // person
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?; // person
+    tx.try_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // non-person
+    tx.try_send(StreamItem::Value(Sequenced::new(person_bob())))?; // person
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "mid-stream error",
     )))?;
     // These won't be received due to error termination
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_spider())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(animal_spider())))?;
 
     // Assert - values arrive in correct streams
     assert_eq!(
@@ -163,13 +163,13 @@ async fn test_partition_error_terminates_routing() -> anyhow::Result<()> {
         stream.partition(|data| matches!(data, TestData::Person(_)));
 
     // Act - send error
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "termination error",
     )))?;
 
     // Try to send more (these should be ignored by subjects since they're closed)
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
 
     // Assert - only error is received
     assert!(matches!(

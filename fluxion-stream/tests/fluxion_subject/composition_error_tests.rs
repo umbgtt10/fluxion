@@ -80,7 +80,7 @@ async fn subject_in_middle_gate_error_terminates_stream() -> anyhow::Result<()> 
         |data| matches!(data, TestData::Animal(animal) if animal.legs >= 4),
     );
 
-    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.try_send(Sequenced::new(animal_dog()))?;
     gate.send(StreamItem::Value(Sequenced::new(animal_spider())))?; // initializes gate
     assert!(matches!(
         unwrap_stream(&mut stream, 200).await.unwrap().into_inner(),
@@ -104,7 +104,7 @@ async fn subject_at_end_forwarding_chain_propagates_error() -> anyhow::Result<()
     let mut combined = rx.combine_latest(vec![subject.subscribe().unwrap()], |_| true);
 
     // First, provide both sides so combine_latest can emit a value
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(plant_rose())))?;
+    tx.try_send(StreamItem::Value(Sequenced::new(plant_rose())))?;
     subject.send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream(&mut combined, 200).await,
@@ -135,14 +135,14 @@ async fn subject_on_error_with_ordered_merge_skips_transient() -> anyhow::Result
         .on_error(|err| err.to_string().contains("transient"))
         .ordered_merge(vec![gate.subscribe().unwrap()]);
 
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
+    tx.try_send(StreamItem::Error(FluxionError::stream_error(
         "transient failure",
     )))?;
     gate.send(StreamItem::Value(Sequenced::with_timestamp(
         plant_rose(),
         1,
     )))?;
-    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
+    tx.try_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         2,
     )))?;

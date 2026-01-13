@@ -30,7 +30,7 @@ async fn share_broadcasts_to_multiple_subscribers() {
     let mut sub2 = shared.subscribe().unwrap();
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
+    tx.try_send(Sequenced::new(person_alice())).unwrap();
 
     // Assert - both subscribers receive the same value
     assert_eq!(
@@ -53,7 +53,7 @@ async fn share_completes_subscribers_when_source_completes() {
     let mut sub1 = shared.subscribe().unwrap();
 
     // Act - drop sender to complete source
-    tx.unbounded_send(Sequenced::new(person_bob())).unwrap();
+    tx.try_send(Sequenced::new(person_bob())).unwrap();
     drop(tx);
 
     // Assert - subscriber receives value then completes
@@ -75,7 +75,7 @@ async fn share_propagates_errors_to_all_subscribers() {
     let mut sub2 = shared.subscribe().unwrap();
 
     // Act - send an error
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))
+    tx.try_send(StreamItem::Error(FluxionError::stream_error("test error")))
         .unwrap();
 
     // Assert - both subscribers receive the error
@@ -105,8 +105,8 @@ async fn late_subscriber_does_not_receive_past_items() {
     let mut _consumer = shared.subscribe().unwrap();
 
     // Send before late subscriber subscribes
-    tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
-    tx.unbounded_send(Sequenced::new(person_bob())).unwrap();
+    tx.try_send(Sequenced::new(person_alice())).unwrap();
+    tx.try_send(Sequenced::new(person_bob())).unwrap();
 
     // Consume items to ensure they're processed
     let _ = unwrap_stream(&mut _consumer, 500).await;
@@ -116,7 +116,7 @@ async fn late_subscriber_does_not_receive_past_items() {
     let mut late_sub = shared.subscribe().unwrap();
 
     // Send after subscribing
-    tx.unbounded_send(Sequenced::new(person_charlie())).unwrap();
+    tx.try_send(Sequenced::new(person_charlie())).unwrap();
 
     // Assert - late subscriber only sees Charlie
     assert_eq!(
@@ -145,7 +145,7 @@ async fn subscriber_count_tracks_active_subscribers() {
 
     // Drop one subscriber and send to trigger cleanup
     drop(sub2);
-    tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
+    tx.try_send(Sequenced::new(person_alice())).unwrap();
 
     // Consume to trigger cleanup
     let _ = unwrap_stream(&mut sub1, 500).await;
@@ -221,8 +221,8 @@ async fn each_subscriber_can_chain_independently() {
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice())).unwrap(); // Alice(25): filtered out, mapped to 35
-    tx.unbounded_send(Sequenced::new(person_charlie())).unwrap(); // Charlie(35): passes filter, mapped to 45
+    tx.try_send(Sequenced::new(person_alice())).unwrap(); // Alice(25): filtered out, mapped to 35
+    tx.try_send(Sequenced::new(person_charlie())).unwrap(); // Charlie(35): passes filter, mapped to 45
 
     // Assert - filtered subscriber only sees Charlie (age > 30)
     assert!(matches!(
@@ -267,7 +267,7 @@ async fn source_operators_run_once_per_emission() {
     let mut sub3 = shared.subscribe().unwrap();
 
     // Act - send one item
-    tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
+    tx.try_send(Sequenced::new(person_alice())).unwrap();
 
     // Consume from all subscribers
     let _ = sub1.next().await;
@@ -291,7 +291,7 @@ async fn drop_closes_subject_and_cancels_task() {
     drop(shared);
 
     // Try to send - should work (sender not connected to shared)
-    let _ = tx.unbounded_send(Sequenced::new(person_diane()));
+    let _ = tx.try_send(Sequenced::new(person_diane()));
 
     // Subscriber should complete (subject closed)
     assert_stream_ended(&mut sub, 500).await;
@@ -325,7 +325,7 @@ async fn subscriber_dropped_mid_stream_does_not_affect_others() {
     let sub3 = shared.subscribe().unwrap(); // Will be dropped
 
     // Act - send first item
-    tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
+    tx.try_send(Sequenced::new(person_alice())).unwrap();
 
     // Consume from all three
     let _ = unwrap_stream(&mut sub1, 500).await;
@@ -335,8 +335,8 @@ async fn subscriber_dropped_mid_stream_does_not_affect_others() {
     drop(sub3);
 
     // Send more items - remaining subscribers should still receive them
-    tx.unbounded_send(Sequenced::new(person_bob())).unwrap();
-    tx.unbounded_send(Sequenced::new(person_charlie())).unwrap();
+    tx.try_send(Sequenced::new(person_bob())).unwrap();
+    tx.try_send(Sequenced::new(person_charlie())).unwrap();
 
     // Assert - sub1 and sub2 still receive items
     assert_eq!(
@@ -372,8 +372,8 @@ async fn high_subscriber_count_broadcasts_correctly() {
         .collect();
 
     // Act - send items
-    tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
-    tx.unbounded_send(Sequenced::new(person_bob())).unwrap();
+    tx.try_send(Sequenced::new(person_alice())).unwrap();
+    tx.try_send(Sequenced::new(person_bob())).unwrap();
 
     // Assert - all subscribers receive both items
     for (i, sub) in subscribers.iter_mut().enumerate() {

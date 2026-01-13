@@ -40,20 +40,20 @@ async fn subject_at_start_map_and_filter() -> anyhow::Result<()> {
     subject.send(StreamItem::Value(Sequenced::new(person_alice())))?;
     subject.send(StreamItem::Value(Sequenced::new(person_bob())))?;
     subject.send(StreamItem::Value(Sequenced::new(person_charlie())))?;
-    other_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    other_tx.try_send(Sequenced::new(person_alice()))?;
     assert!(matches!(
         unwrap_stream(&mut stream, 200).await.unwrap().into_inner(),
         TestData::Person(ref person) if person.name == "Charlie" && person.age == 40
     ));
 
     // Assert
-    other_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    other_tx.try_send(Sequenced::new(person_bob()))?;
     assert!(matches!(
         unwrap_stream(&mut stream, 200).await.unwrap().into_inner(),
         TestData::Person(ref person) if person.name == "Charlie" && person.age == 40
     ));
 
-    other_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    other_tx.try_send(Sequenced::new(person_charlie()))?;
     assert!(matches!(
         unwrap_stream(&mut stream, 200).await.unwrap().into_inner(),
         TestData::Person(ref person) if person.name == "Charlie" && person.age == 40
@@ -73,7 +73,7 @@ async fn subject_combined_with_stream_via_combine_latest() -> anyhow::Result<()>
 
     // Act
     gate_subject.send(StreamItem::Value(Sequenced::new(plant_sunflower())))?;
-    primary_tx.unbounded_send(Sequenced::new(person_alice()))?; // first combined output
+    primary_tx.try_send(Sequenced::new(person_alice()))?; // first combined output
 
     // Assert first emission
     let first = unwrap_stream(&mut combined, 200)
@@ -87,7 +87,7 @@ async fn subject_combined_with_stream_via_combine_latest() -> anyhow::Result<()>
     );
 
     // Assert second emission
-    primary_tx.unbounded_send(Sequenced::new(person_bob()))?; // second combined output
+    primary_tx.try_send(Sequenced::new(person_bob()))?; // second combined output
     let second = unwrap_stream(&mut combined, 200)
         .await
         .unwrap()
@@ -115,7 +115,7 @@ async fn subject_in_middle_take_latest_when() -> anyhow::Result<()> {
     );
 
     // Act
-    src_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    src_tx.try_send(Sequenced::new(person_alice()))?;
     gate_subject.send(StreamItem::Value(Sequenced::new(animal_spider())))?;
 
     // Assert
@@ -124,7 +124,7 @@ async fn subject_in_middle_take_latest_when() -> anyhow::Result<()> {
     );
 
     // Act
-    src_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    src_tx.try_send(Sequenced::new(person_bob()))?;
     gate_subject.send(StreamItem::Value(Sequenced::new(animal_bird())))?;
     assert_no_element_emitted(&mut stream, 100).await;
 
@@ -154,7 +154,7 @@ async fn subject_combines_with_latest_from() -> anyhow::Result<()> {
 
     // Act
     secondary_subject.send(StreamItem::Value(Sequenced::new(animal_cat())))?;
-    primary_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    primary_tx.try_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     assert_eq!(
@@ -176,7 +176,7 @@ async fn subject_as_filter_for_emit_when() -> anyhow::Result<()> {
     );
 
     // Act
-    src_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    src_tx.try_send(Sequenced::new(person_alice()))?;
     filter_subject.send(StreamItem::Value(Sequenced::new(plant_rose())))?;
     assert_no_element_emitted(&mut stream, 100).await;
 
@@ -188,7 +188,7 @@ async fn subject_as_filter_for_emit_when() -> anyhow::Result<()> {
     );
 
     // Act
-    src_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    src_tx.try_send(Sequenced::new(person_bob()))?;
     filter_subject.send(StreamItem::Value(Sequenced::new(plant_fern())))?;
 
     // Assert
@@ -293,7 +293,7 @@ async fn subject_take_while_with_stops_on_short_plants() -> anyhow::Result<()> {
 
     // Initialize gate before first source so emission is allowed
     gate.send(StreamItem::Value(Sequenced::new(plant_sunflower())))?;
-    src_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    src_tx.try_send(Sequenced::new(person_alice()))?;
     assert!(matches!(
         unwrap_stream(&mut stream, 200).await.unwrap().into_inner(),
         TestData::Person(ref person) if person.name == "Alice"
@@ -301,7 +301,7 @@ async fn subject_take_while_with_stops_on_short_plants() -> anyhow::Result<()> {
 
     // Drop gate below threshold, then send next source to trigger termination
     gate.send(StreamItem::Value(Sequenced::new(plant_rose())))?;
-    src_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    src_tx.try_send(Sequenced::new(person_bob()))?;
 
     // After predicate becomes false, stream stays silent; ensure no further output is emitted
     assert_no_element_emitted(&mut stream, 200).await;
@@ -421,7 +421,7 @@ async fn subject_start_with_take_items_preserves_temporal_merge() -> anyhow::Res
         .ordered_merge(vec![animal_rx])
         .take_items(3);
 
-    animal_tx.unbounded_send(Sequenced::with_timestamp(animal_dog(), 3))?;
+    animal_tx.try_send(Sequenced::with_timestamp(animal_dog(), 3))?;
     assert!(
         matches!(unwrap_stream(&mut merged, 200).await.unwrap().into_inner(), TestData::Plant(ref p) if p.species == "Rose")
     );
@@ -490,7 +490,7 @@ async fn subject_ordered_merge_distinct_by_species() -> anyhow::Result<()> {
         plant_rose(),
         1,
     )))?;
-    other_tx.unbounded_send(Sequenced::with_timestamp(plant_rose(), 2))?;
+    other_tx.try_send(Sequenced::with_timestamp(plant_rose(), 2))?;
     plants.send(StreamItem::Value(Sequenced::with_timestamp(
         plant_sunflower(),
         3,
@@ -517,7 +517,7 @@ async fn subject_combine_latest_then_take_items_limits_output() -> anyhow::Resul
         .combine_latest(vec![secondary_rx], |_| true)
         .take_items(2);
 
-    secondary_tx.unbounded_send(Sequenced::new(plant_fern()))?;
+    secondary_tx.try_send(Sequenced::new(plant_fern()))?;
     primary.send(StreamItem::Value(Sequenced::new(person_alice())))?;
     primary.send(StreamItem::Value(Sequenced::new(person_bob())))?;
 
