@@ -1,7 +1,7 @@
 # CI/Testing Automation Options
 
-**Status**: Planning / Design Phase  
-**Goal**: Eliminate discrepancy between local testing scripts and GitHub Actions CI  
+**Status**: Planning / Design Phase
+**Goal**: Eliminate discrepancy between local testing scripts and GitHub Actions CI
 **Decision Date**: TBD
 
 ---
@@ -13,7 +13,7 @@ Fluxion currently has **two sources of truth** for testing/CI logic:
 1. **GitHub Actions** (`.github/workflows/ci.yml`, `bench.yml`)
    - Runs on push/PR
    - Inline YAML commands
-   
+
 2. **Local PowerShell Scripts** (`.ci/*.ps1`)
    - Run by developers locally
    - Similar but not identical logic
@@ -440,7 +440,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: dtolnay/rust-toolchain@nightly
-      
+
       - name: Run CI validation
         run: cargo xtask ci
 ```
@@ -463,10 +463,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: dtolnay/rust-toolchain@nightly
-      
+
       - name: Install Just
         run: cargo install just
-      
+
       - name: Run CI validation
         run: just ci
 ```
@@ -504,5 +504,5 @@ jobs:
 
 ---
 
-*Document Status: Planning phase, decision pending*  
+*Document Status: Planning phase, decision pending*
 *Last Updated: January 13, 2026*
