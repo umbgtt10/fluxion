@@ -5,7 +5,7 @@ All notable changes to the Fluxion project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.0] - 2026-01-12
+## [0.8.0] - 2026-01-13
 
 ### Added
 - **Complete Runtime Abstraction Achievement**
@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Documentation Overhaul**
   - Removed `KNOWN_LIMITATIONS.md` - Content superseded by runtime abstraction completion
-  - Removed `FUTURE_ARCHITECTURE.md` - Alternative architecture not needed; actual solution documented in ROADMAP.md
+  - `FUTURE_ARCHITECTURE.md` rewritten including final implementation details
   - Updated all documentation to reflect that API migration is complete (not "future v0.9.0")
   - Fixed 20+ misleading future-tense references across documentation
   - Clarified Embassy's 3 incompatible operators as architectural constraints, not temporary limitations
@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 - **Accuracy Improvements**
-  - All documentation now accurately reflects current capabilities (v0.7.1 state)
+  - All documentation now accurately reflects current capabilities (v0.8.0 state)
   - Eliminated confusion between completed work and future plans
   - Embassy limitations clearly documented as architectural constraints, not temporary gaps
   - Documentation audit complete with zero broken links
