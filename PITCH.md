@@ -2,6 +2,11 @@
 
 > A reactive stream processing library for Rust that sets new standards for quality, testing, and documentation.
 
+## Design Philosophy
+
+Fluxion is designed around correctness-first abstractions.
+Implementation details may evolve, but ordering guarantees, panic-free execution, and runtime invariance are treated as non-negotiable constraints.
+
 ---
 
 ## 📊 Quality Metrics & Comparison

@@ -6,9 +6,10 @@
 
 ---
 
-## Vision
+## Vision & Philosophy
 
 Fluxion should abstract **all runtime-varying primitives** through a single `Runtime` trait, allowing each runtime to optimize for its specific constraints while maintaining zero user-facing impact.
+This document intentionally separates what is possible from what is prudent, and describes an architecture that is desirable but not urgent.
 
 ### Design Principle
 
