@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+ï»¿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -132,7 +132,7 @@ impl Aggregator {
             .combine_latest(vec![metrics_stream, events_stream], |_| true)
             .map_ordered(create_aggregated_event)
             .filter_ordered(|agg| {
-                // Only process reasonable temperatures (150-300 represents 15.0-30.0°C)
+                // Only process reasonable temperatures (150-300 represents 15.0-30.0Â°C)
                 agg.temperature.is_some_and(|t| (150..=300).contains(&t))
             })
             .subscribe_latest(
@@ -144,7 +144,7 @@ impl Aggregator {
                         let metric_display = agg.metric_value.map(|m| m as f64).unwrap_or(0.0);
 
                         println!(
-                            "\n  [Aggregator] @ {}: Temp={:.1}°C, Metric={:.1}, Alert={}",
+                            "\n  [Aggregator] @ {}: Temp={:.1}C, Metric={:.1}, Alert={}",
                             agg.timestamp, temp_display, metric_display, agg.has_alert
                         );
                         let _ = tx.try_send(agg);

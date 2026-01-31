@@ -50,7 +50,7 @@ impl FinalConsumer {
                     let temp_display = event.temperature.map(|t| t as f64 / 10.0).unwrap_or(0.0);
 
                     println!(
-                        "  [Consumer] seq {} - Temp: {:.1}°C, Alert: {}",
+                        "  [Consumer] seq {} - Temp: {:.1}Â°C, Alert: {}",
                         event.timestamp, temp_display, event.has_alert
                     );
                 }

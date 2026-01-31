@@ -60,7 +60,7 @@ impl SensorProducer {
                     if tx.try_send(reading).is_err() {
                         break;
                     }
-                    println!("  [Producer<Sensor>] {:.1}°C @ ts {}", temp_float, timestamp);
+                    println!("  [Producer<Sensor>] {:.1}Â°C @ ts {}", temp_float, timestamp);
                 }
                 _ = cancel_token.cancelled() => {
                     break;
