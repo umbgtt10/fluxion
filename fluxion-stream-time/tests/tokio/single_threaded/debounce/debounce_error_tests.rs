@@ -27,11 +27,17 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
         person_alice(),
         timer.now(),
     )))?;
-    assert_no_element_emitted(&mut debounced, 0).await; // Poll the stream to let debounce see the value
 
-    advance(Duration::from_millis(300)).await;
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
+    // Act
+    advance(Duration::from_millis(300)).await;
+
+    // Assert
+    assert_no_element_emitted(&mut debounced, 0).await;
+
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
 
     // Assert
@@ -40,19 +46,31 @@ async fn test_debounce_errors_pass_through() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
+    // Act
     advance(Duration::from_millis(300)).await;
+
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
     )))?;
-    assert_no_element_emitted(&mut debounced, 0).await; // Poll the stream to let debounce see the value
 
-    advance(Duration::from_millis(300)).await;
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
+    // Act
+    advance(Duration::from_millis(300)).await;
+
+    // Assert
+    assert_no_element_emitted(&mut debounced, 0).await;
+
+    // Act
     advance(Duration::from_millis(200)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_bob()
@@ -75,13 +93,11 @@ async fn test_debounce_error_discards_pending() -> anyhow::Result<()> {
         person_alice(),
         timer.now(),
     )))?;
-
     advance(Duration::from_millis(200)).await;
     tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
     )))?;
-
     advance(Duration::from_millis(200)).await;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
 
@@ -91,7 +107,10 @@ async fn test_debounce_error_discards_pending() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
+    // Act
     advance(Duration::from_millis(500)).await;
+
+    // Assert
     assert_no_element_emitted(&mut debounced, 100).await;
 
     Ok(())

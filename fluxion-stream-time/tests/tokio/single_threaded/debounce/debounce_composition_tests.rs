@@ -192,13 +192,20 @@ async fn test_debounce_before_map_ordered() -> anyhow::Result<()> {
     // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(200)).await;
     tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+
+    // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(300)).await;
+
+    // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(200)).await;
 
     // Assert
@@ -222,18 +229,30 @@ async fn test_debounce_then_delay() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+
+    // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(100)).await;
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+
+    // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(200)).await;
+
+    // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(200)).await;
 
     // Assert
@@ -258,17 +277,25 @@ async fn test_delay_then_debounce() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+
+    // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(100)).await;
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
-
     advance(Duration::from_millis(200)).await;
+
+    // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(300)).await;
 
     // Assert
@@ -299,21 +326,29 @@ async fn test_combine_latest_then_debounce() -> anyhow::Result<()> {
     // Act
     tx1.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     tx2.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+
+    // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(200)).await;
     tx1.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+
+    // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(300)).await;
+
+    // Assert
     assert_no_element_emitted(&mut processed, 0).await;
 
+    // Act
     advance(Duration::from_millis(200)).await;
 
     // Assert
     let item = unwrap_stream(&mut processed, 100).await.unwrap();
     let values = item.value.values();
-    // stream1 is index 0, stream2 is index 1
     assert_eq!(values[0], person_charlie());
     assert_eq!(values[1], person_bob());
 

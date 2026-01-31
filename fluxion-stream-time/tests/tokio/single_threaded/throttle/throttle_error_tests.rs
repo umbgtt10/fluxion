@@ -48,10 +48,13 @@ async fn test_throttle_propagates_errors_immediately() -> anyhow::Result<()> {
         error.to_string()
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await
@@ -87,7 +90,7 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
         person_alice(),
         timer.now(),
     )))?;
-    let _ = recv_timeout(&mut result_rx, 1000).await; // Consume Alice
+    let _ = recv_timeout(&mut result_rx, 1000).await;
 
     let error = FluxionError::stream_error("error during throttle");
     tx.unbounded_send(StreamItem::Error(error.clone()))?;
@@ -103,11 +106,14 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
         error.to_string()
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
     )))?;
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())

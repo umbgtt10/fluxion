@@ -29,7 +29,6 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
     )))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
-
     advance(Duration::from_millis(900)).await;
 
     // Assert
@@ -38,20 +37,29 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
         person_alice()
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut delayed, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
     )))?;
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_element_emitted(&mut delayed, 100).await;
 
+    // Act
     advance(Duration::from_millis(900)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut delayed, 100).await.unwrap().value,
         person_bob()

@@ -15,20 +15,23 @@ use tokio::time::{advance, pause};
 
 #[tokio::test]
 async fn test_debounce_returns_pending_while_waiting() -> anyhow::Result<()> {
-    // This test covers the Poll::Pending branch when the sleep timer is still running
+    // Arrange
     let timer = TokioTimer;
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
-    // Send a value to start the debounce timer
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    // Advance past debounce and verify value eventually emits
+    // Act
     advance(Duration::from_millis(500)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_alice()
@@ -39,20 +42,26 @@ async fn test_debounce_returns_pending_while_waiting() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_debounce_pending_without_timer() -> anyhow::Result<()> {
-    // This test covers the Poll::Pending branch when no value has been received yet
+    // Arrange
     let timer = TokioTimer;
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
-    // Should return Pending - no values received yet (line 183-187 in debounce.rs)
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    // Now verify stream works normally
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
-    assert_no_element_emitted(&mut debounced, 0).await; // Still pending during debounce
+
+    // Assert
+    assert_no_element_emitted(&mut debounced, 0).await;
+
+    // Act
     advance(Duration::from_millis(500)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_alice()
@@ -63,38 +72,36 @@ async fn test_debounce_pending_without_timer() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_debounce_pending_then_new_value_resets() -> anyhow::Result<()> {
-    // Test that a pending timer is properly reset when a new value arrives
+    // Arrange
     let timer = TokioTimer;
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
-    // Send first value
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
-    // Should be pending
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    // Advance partway through debounce period
+    // Act
     advance(Duration::from_millis(300)).await;
-
-    // Send new value - this should reset the timer
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
 
-    // Should still be pending with new timer
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    // Advance only 300ms more (600ms total from first value, but only 300ms from second)
+    // Act
     advance(Duration::from_millis(300)).await;
 
-    // Should still be pending (need 500ms from Bob)
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    // Advance remaining time
+    // Act
     advance(Duration::from_millis(200)).await;
 
-    // Now Bob should be emitted
+    // Assert
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_bob()
@@ -105,29 +112,29 @@ async fn test_debounce_pending_then_new_value_resets() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_debounce_pending_with_stream_end() -> anyhow::Result<()> {
-    // Test Poll::Pending followed by stream end with pending value
+    // Arrange
     let timer = TokioTimer;
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
-    // Send value
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
-    // Should be pending
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
-    // Drop sender to end stream
+    // Act
     drop(tx);
 
-    // Stream should now emit the pending value immediately
+    // Assert
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_alice()
     );
 
-    // Next poll should return None
+    // Assert
     assert!(debounced.next().await.is_none());
 
     Ok(())

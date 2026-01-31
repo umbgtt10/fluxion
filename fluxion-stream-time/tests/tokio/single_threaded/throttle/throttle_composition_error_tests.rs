@@ -24,7 +24,6 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
 
     let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
 
-    // Map then Throttle
     let throttled = stream
         .map_ordered(|x| {
             let val = if let TestData::Person(p) = x.value {
@@ -60,10 +59,13 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
         error.to_string()
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await

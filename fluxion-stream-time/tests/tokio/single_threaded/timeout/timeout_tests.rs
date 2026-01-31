@@ -90,7 +90,10 @@ async fn test_timeout_with_emissions() -> anyhow::Result<()> {
         person_bob()
     );
 
+    // Act
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())

@@ -22,7 +22,6 @@ where
     (tx, Box::pin(stream))
 }
 
-// Simple test data
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Person {
     pub name: String,

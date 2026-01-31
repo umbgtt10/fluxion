@@ -15,23 +15,23 @@ use tokio::time::{advance, pause};
 
 #[tokio::test]
 async fn test_delay_returns_pending_while_waiting() -> anyhow::Result<()> {
-    // This test covers the Poll::Pending branch when delay timers are in flight
+    // Arrange
     let timer = TokioTimer;
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut delayed = stream.delay(Duration::from_millis(500));
 
-    // Send value - starts delay
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
-    // Should return Pending because delay hasn't completed (line 177 in delay.rs)
+    // Assert
     assert_no_element_emitted(&mut delayed, 0).await;
 
-    // Advance past delay
+    // Act
     advance(Duration::from_millis(500)).await;
 
-    // Value should now be ready
+    // Assert
     assert_eq!(
         unwrap_stream(&mut delayed, 100).await.unwrap().value,
         person_alice()
@@ -42,20 +42,26 @@ async fn test_delay_returns_pending_while_waiting() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_delay_pending_without_values() -> anyhow::Result<()> {
-    // This test covers Poll::Pending when no values received yet
+    // Arrange
     let timer = TokioTimer;
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut delayed = stream.delay(Duration::from_millis(500));
 
-    // Should return Pending - no values yet
+    // Assert
     assert_no_element_emitted(&mut delayed, 0).await;
 
-    // Now verify stream works normally
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
-    assert_no_element_emitted(&mut delayed, 0).await; // Still pending during delay
+
+    // Assert
+    assert_no_element_emitted(&mut delayed, 0).await;
+
+    // Act
     advance(Duration::from_millis(500)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut delayed, 100).await.unwrap().value,
         person_alice()
@@ -66,30 +72,34 @@ async fn test_delay_pending_without_values() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_delay_pending_with_multiple_in_flight() -> anyhow::Result<()> {
-    // Test Poll::Pending with multiple delayed values in flight
+    // Arrange
     let timer = TokioTimer;
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut delayed = stream.delay(Duration::from_millis(500));
 
-    // Send multiple values
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
 
-    // Should be Pending (Alice's delay not done yet)
+    // Assert
     assert_no_element_emitted(&mut delayed, 0).await;
 
-    // Advance to complete Alice's delay
+    // Act
     advance(Duration::from_millis(400)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut delayed, 100).await.unwrap().value,
         person_alice()
     );
 
-    // Complete Bob's delay (400ms already passed above, need 100ms more)
+    // Act
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut delayed, 100).await.unwrap().value,
         person_bob()
@@ -100,32 +110,30 @@ async fn test_delay_pending_with_multiple_in_flight() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_delay_pending_until_upstream_ends() -> anyhow::Result<()> {
-    // Test Poll::Pending when upstream ends with in-flight delays
+    // Arrange
     let timer = TokioTimer;
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut delayed = stream.delay(Duration::from_millis(500));
 
-    // Send value
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
-
-    // End stream
     drop(tx);
 
-    // Should be Pending (delay not complete)
+    // Assert
     assert_no_element_emitted(&mut delayed, 0).await;
 
-    // Complete delay
+    // Act
     advance(Duration::from_millis(500)).await;
 
-    // Value should emit
+    // Assert
     assert_eq!(
         unwrap_stream(&mut delayed, 100).await.unwrap().value,
         person_alice()
     );
 
-    // Stream should end
+    // Assert
     assert!(delayed.next().await.is_none());
 
     Ok(())

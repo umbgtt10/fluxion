@@ -33,7 +33,6 @@ async fn test_sample_chained_with_map() -> anyhow::Result<()> {
     spawn(async move {
         let mut stream = pipeline;
         while let Some(item) = stream.next().await {
-            // map returns StreamItem<T>, we want to unwrap it
             if let StreamItem::Value(val) = item {
                 let _ = result_tx.unbounded_send(val.value);
             }
@@ -87,7 +86,6 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
 
     // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
-
     advance(Duration::from_millis(50)).await;
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
@@ -98,10 +96,12 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
         (Some(person_alice()), person_bob())
     );
 
+    // Act
     advance(Duration::from_millis(50)).await;
     tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
 
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         (Some(person_bob()), person_charlie())
@@ -138,16 +138,21 @@ async fn test_sample_chained_with_scan_ordered() -> anyhow::Result<()> {
         }
     });
 
-    // Act and Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 55);
 
+    // Act
     advance(Duration::from_millis(50)).await;
     tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 90);
 
     Ok(())
@@ -178,10 +183,10 @@ async fn test_sample_before_map_ordered() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
-
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
 
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 100).await.unwrap(),
         person_bob()

@@ -30,6 +30,8 @@ async fn test_timeout_returns_pending_while_waiting() -> anyhow::Result<()> {
         unwrap_stream(&mut timeout_stream, 100).await.unwrap().value,
         person_alice()
     );
+
+    // Assert
     assert_no_element_emitted(&mut timeout_stream, 0).await;
 
     // Act
@@ -119,6 +121,8 @@ async fn test_timeout_pending_with_stream_end() -> anyhow::Result<()> {
         unwrap_stream(&mut timeout_stream, 100).await.unwrap().value,
         person_alice()
     );
+
+    // Assert
     assert_no_element_emitted(&mut timeout_stream, 0).await;
 
     // Act

@@ -54,7 +54,6 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
         timer.now(),
     )))?;
 
-
     // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 100)

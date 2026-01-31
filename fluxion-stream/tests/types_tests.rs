@@ -5,7 +5,6 @@
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::types::{CombinedState, WithPrevious};
 
-// Simple test wrapper for Timestamped trait tests
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct TestItem<T> {
     value: T,
@@ -37,8 +36,6 @@ impl<T: Clone + Send + Sync + 'static> Timestamped for TestItem<T> {
         self.value
     }
 }
-
-// WithPrevious tests
 
 #[test]
 fn test_with_previous_new() {
@@ -118,8 +115,6 @@ fn test_with_previous_ord() {
     assert!(wp2 < wp3);
 }
 
-// WithPrevious Timestamped implementation tests
-
 #[test]
 fn test_with_previous_timestamped_timestamp() {
     let current = TestItem::new(100, 42u64);
@@ -146,8 +141,6 @@ fn test_with_previous_timestamped_into_inner() {
     let inner = wp.into_inner();
     assert_eq!(inner, 42);
 }
-
-// CombinedState tests
 
 #[test]
 fn test_combined_state_new() {
@@ -238,8 +231,6 @@ fn test_combined_state_ord() {
     assert!(state1 < state3);
 }
 
-// CombinedState Timestamped implementation tests
-
 #[test]
 fn test_combined_state_timestamped_timestamp() {
     let state = CombinedState::new(vec![(10, 999u64), (20, 999u64), (30, 999u64)], 999u64);
@@ -263,8 +254,6 @@ fn test_combined_state_timestamped_into_inner() {
 
     assert_eq!(inner, cloned);
 }
-
-// Integration tests combining both types
 
 #[test]
 fn test_with_previous_containing_combined_state() {
@@ -298,8 +287,6 @@ fn test_combined_state_mutation_through_with_previous() {
     let inner = wp.into_inner();
     assert_eq!(inner, updated);
 }
-
-// Edge case tests
 
 #[test]
 fn test_combined_state_single_element() {
@@ -360,7 +347,6 @@ fn test_combined_state_with_complex_types() {
 
 #[test]
 fn test_timestamped_trait_bounds_compile() {
-    // This test verifies that the trait implementations satisfy the required bounds
     fn requires_timestamped<T: Timestamped>(_value: T) {}
 
     let wp = WithPrevious::new(None, TestItem::new(42, 100u64));

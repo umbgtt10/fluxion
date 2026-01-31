@@ -54,10 +54,16 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
         TestData::Person(Person::new("Alice".to_string(), 50))
     );
 
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+
+    // Assert
     assert_no_recv(&mut result_rx, 100).await;
 
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         TestData::Person(Person::new("Charlie".to_string(), 70))

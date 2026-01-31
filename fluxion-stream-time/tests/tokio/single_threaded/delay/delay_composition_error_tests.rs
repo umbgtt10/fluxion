@@ -50,7 +50,10 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
         error.to_string()
     );
 
+    // Act
     advance(Duration::from_millis(200)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_alice()

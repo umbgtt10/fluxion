@@ -9,6 +9,7 @@ use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, test_channel, unwrap_stream},
     test_data::{person_alice, person_bob, person_charlie, TestData},
 };
+use futures::StreamExt;
 use std::time::Duration;
 use tokio::time::{advance, pause};
 
@@ -23,14 +24,23 @@ async fn test_debounce_emits_after_quiet_period() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
+    // Act
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
+    // Act
     advance(Duration::from_millis(300)).await;
+
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
+    // Act
     advance(Duration::from_millis(100)).await;
 
     // Assert
@@ -54,14 +64,23 @@ async fn test_debounce_resets_on_new_value() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(300)).await;
+
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
+    // Act
     advance(Duration::from_millis(300)).await;
+
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
+    // Act
     advance(Duration::from_millis(200)).await;
 
     // Assert
@@ -85,14 +104,15 @@ async fn test_debounce_multiple_resets() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
-
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
-
     tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
+    // Act
     advance(Duration::from_millis(400)).await;
 
     // Assert
@@ -116,8 +136,11 @@ async fn test_debounce_emits_pending_on_stream_end() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(200)).await;
+
+    // Assert
     assert_no_element_emitted(&mut debounced, 0).await;
 
+    // Act
     drop(tx);
 
     // Assert
@@ -138,21 +161,20 @@ async fn test_debounce_stream_ends_without_pending() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
-    // Act - send value and wait for debounce period to complete
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(500)).await;
 
-    // Assert - value emitted after debounce period
-    use futures::StreamExt;
+    // Assert
     assert_eq!(
         debounced.next().await.unwrap().unwrap().value,
         person_alice()
     );
 
-    // Drop sender without sending new value - stream ends with no pending
+    // Act
     drop(tx);
 
-    // Assert - stream ends gracefully with None
+    // Assert
     assert!(debounced.next().await.is_none());
 
     Ok(())
@@ -170,17 +192,17 @@ async fn test_debounce_zero_duration() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
-    // Assert - zero duration means immediate emission
+    // Assert
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_alice()
     );
 
-    // Multiple values with zero duration - last one wins immediately
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
 
-    // Should emit the last value immediately (Charlie)
+    // Assert
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_charlie()
