@@ -4,10 +4,9 @@
 
 use fluxion_stream::SkipItemsExt;
 use fluxion_test_utils::{
-    helpers::{assert_stream_ended, unwrap_stream},
-    test_channel,
+    helpers::{assert_stream_ended, test_channel, unwrap_stream},
+    sequenced::Sequenced,
     test_data::{person_alice, person_bob, person_charlie},
-    Sequenced,
 };
 
 #[tokio::test]

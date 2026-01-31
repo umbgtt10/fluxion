@@ -5,18 +5,16 @@
 use fluxion_core::into_stream::IntoStream;
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::MergedStream;
-use fluxion_test_utils::Sequenced;
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::{
     animal::Animal,
-    assert_stream_ended,
+    helpers::{assert_stream_ended, test_channel, unwrap_stream},
     person::Person,
     plant::Plant,
-    test_channel,
     test_data::{
         animal_bird, animal_dog, animal_spider, person, person_alice, person_bob, person_charlie,
         person_dave, plant_fern, plant_oak, TestData,
     },
-    unwrap_stream,
 };
 use tokio::spawn;
 

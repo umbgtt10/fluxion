@@ -5,11 +5,9 @@
 use fluxion_core::{HasTimestamp, StreamItem};
 use fluxion_stream::ScanOrderedExt;
 use fluxion_test_utils::{
-    assert_stream_ended,
-    helpers::unwrap_stream,
-    test_channel,
+    helpers::{assert_stream_ended, test_channel, unwrap_stream, unwrap_value},
+    sequenced::Sequenced,
     test_data::{person_alice, person_bob, person_charlie, person_dave, TestData},
-    unwrap_value, Sequenced,
 };
 
 #[tokio::test]

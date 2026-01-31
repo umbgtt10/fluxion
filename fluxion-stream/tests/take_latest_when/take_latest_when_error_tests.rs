@@ -2,12 +2,11 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Error propagation tests for `take_latest_when` operator.
-
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::TakeLatestWhenExt;
 use fluxion_test_utils::{
-    assert_no_element_emitted, test_channel_with_errors, unwrap_stream, Sequenced,
+    helpers::{assert_no_element_emitted, test_channel_with_errors, unwrap_stream},
+    sequenced::Sequenced,
 };
 
 #[tokio::test]

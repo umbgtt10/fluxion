@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -50,7 +50,7 @@ pub async fn assert_no_recv<T>(rx: &mut UnboundedReceiver<T>, timeout_ms: u64) {
 /// # Example
 ///
 /// ```rust
-/// use fluxion_test_utils::{test_channel, unwrap_value, unwrap_stream, Sequenced};
+/// use fluxion_test_utils::{helpers::{test_channel, unwrap_value, unwrap_stream}, sequenced::Sequenced};
 /// use fluxion_test_utils::test_data::person_alice;
 /// use futures::StreamExt;
 ///
@@ -86,7 +86,7 @@ pub fn unwrap_value<T>(item: Option<StreamItem<T>>) -> T {
 /// # Example
 ///
 /// ```rust
-/// use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
+/// use fluxion_test_utils::{helpers::{test_channel, unwrap_stream}, sequenced::Sequenced};
 /// use fluxion_test_utils::test_data::person_alice;
 /// use futures::StreamExt;
 ///
@@ -120,7 +120,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// use fluxion_test_utils::{test_channel, Sequenced};
+/// use fluxion_test_utils::{helpers::test_channel, sequenced::Sequenced};
 /// use fluxion_test_utils::test_data::person_alice;
 /// use futures::StreamExt;
 ///
@@ -151,7 +151,7 @@ pub fn test_channel<T: Send + 'static>(
 /// # Example
 ///
 /// ```rust
-/// use fluxion_test_utils::test_channel_with_errors;
+/// use fluxion_test_utils::helpers::test_channel_with_errors;
 /// use fluxion_core::{StreamItem, FluxionError};
 /// use futures::StreamExt;
 ///
@@ -207,7 +207,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// use fluxion_test_utils::{test_channel, assert_stream_ended};
+/// use fluxion_test_utils::{helpers::{test_channel, assert_stream_ended}};
 /// # async fn example() {
 /// let (tx, mut stream) = test_channel::<i32>();
 /// drop(tx); // Close the stream
@@ -242,7 +242,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// use fluxion_test_utils::{test_channel, unwrap_all, Sequenced};
+/// use fluxion_test_utils::{helpers::{test_channel, unwrap_all}, sequenced::Sequenced};
 /// use fluxion_test_utils::test_data::{person_alice, person_bob};
 ///
 /// # async fn example() {

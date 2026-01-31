@@ -5,7 +5,7 @@
 use async_channel::unbounded;
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_stream::{IntoFluxionStream, ShareExt};
-use fluxion_test_utils::Sequenced;
+use fluxion_test_utils::sequenced::Sequenced;
 use futures::{future::join_all, StreamExt};
 use std::hint::black_box;
 use tokio::runtime::Runtime;

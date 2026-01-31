@@ -5,8 +5,9 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::{TimeoutExt, TokioTimestamped};
-use fluxion_test_utils::helpers::assert_no_recv;
-use fluxion_test_utils::{helpers::recv_timeout, test_channel_with_errors, TestData};
+use fluxion_test_utils::helpers::recv_timeout;
+use fluxion_test_utils::helpers::{assert_no_recv, test_channel_with_errors};
+use fluxion_test_utils::test_data::TestData;
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use std::time::Duration;
@@ -31,9 +32,11 @@ async fn test_timeout_chained_error_propagation() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     let error = FluxionError::stream_error("Chain Error");
     tx.unbounded_send(StreamItem::Error(error))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 100)
             .await
@@ -44,10 +47,16 @@ async fn test_timeout_chained_error_propagation() -> anyhow::Result<()> {
         "Stream processing error: Chain Error"
     );
 
+    // Act
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_no_recv(&mut result_rx, 50).await;
 
+    // Act
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 100)
             .await

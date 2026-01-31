@@ -8,10 +8,8 @@ use fluxion_runtime::timer::Timer;
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::{DelayExt, TokioTimestamped};
 use fluxion_test_utils::{
-    helpers::{assert_no_element_emitted, unwrap_stream},
-    test_channel_with_errors,
-    test_data::{person_alice, person_bob},
-    TestData,
+    helpers::{assert_no_element_emitted, test_channel_with_errors, unwrap_stream},
+    test_data::{person_alice, person_bob, TestData},
 };
 use std::time::Duration;
 use tokio::time::{advance, pause};
@@ -28,7 +26,7 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
         .emit_when(filter, |_| true)
         .delay(Duration::from_millis(200));
 
-    // Act & Assert
+    // Act
     tx_filter.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
@@ -41,6 +39,8 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
 
     let error = FluxionError::stream_error("filter error");
     tx_filter.unbounded_send(StreamItem::Error(error.clone()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut processed, 100)
             .await

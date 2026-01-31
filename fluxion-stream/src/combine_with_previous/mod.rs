@@ -39,7 +39,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::CombineWithPreviousExt;
-//! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{unwrap_stream, unwrap_value, test_channel}
+//! };
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! # async fn example() {

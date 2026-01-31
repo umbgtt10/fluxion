@@ -5,7 +5,11 @@
 use fluxion_core::{FluxionError, HasTimestamp, StreamItem};
 
 use fluxion_stream::{MapOrderedExt, TakeWhileExt};
-use fluxion_test_utils::{person::Person, test_channel_with_errors, unwrap_stream, Sequenced};
+use fluxion_test_utils::{
+    helpers::{test_channel_with_errors, unwrap_stream},
+    person::Person,
+    sequenced::Sequenced,
+};
 
 #[tokio::test]
 async fn test_take_while_with_error_propagation_at_end_of_chain() -> anyhow::Result<()> {

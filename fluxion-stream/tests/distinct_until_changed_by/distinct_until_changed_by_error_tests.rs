@@ -5,11 +5,10 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::DistinctUntilChangedByExt;
 use fluxion_test_utils::{
-    helpers::{assert_no_element_emitted, unwrap_stream},
+    helpers::{assert_no_element_emitted, test_channel_with_errors, unwrap_stream},
     person::Person,
-    test_channel_with_errors,
+    sequenced::Sequenced,
     test_data::{person_alice, person_bob, person_charlie, TestData},
-    Sequenced,
 };
 
 #[tokio::test]

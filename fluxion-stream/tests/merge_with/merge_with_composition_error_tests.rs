@@ -5,10 +5,10 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::MergedStream;
 use fluxion_test_utils::{
+    helpers::{test_channel_with_errors, unwrap_stream},
     person::Person,
-    test_channel_with_errors,
+    sequenced::Sequenced,
     test_data::{person_alice, person_bob, TestData},
-    unwrap_stream, Sequenced,
 };
 use futures::StreamExt;
 

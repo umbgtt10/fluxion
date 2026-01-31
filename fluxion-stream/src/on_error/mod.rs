@@ -24,7 +24,7 @@
 /// ```rust
 /// use fluxion_stream::{OnErrorExt, IntoFluxionStream};
 /// use fluxion_core::{FluxionError, StreamItem};
-/// use fluxion_test_utils::Sequenced;
+/// use fluxion_test_utils::sequenced::Sequenced;
 /// use futures::StreamExt;
 ///
 /// # async fn example() {

@@ -5,13 +5,14 @@
 use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_stream::CombinedState;
+use fluxion_test_utils::helpers::test_channel;
+use fluxion_test_utils::helpers::unwrap_value;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
-    test_channel,
+    sequenced::Sequenced,
     test_data::{
         animal_dog, person_alice, person_bob, person_charlie, person_dave, plant_rose, TestData,
     },
-    unwrap_value, Sequenced,
 };
 
 static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;

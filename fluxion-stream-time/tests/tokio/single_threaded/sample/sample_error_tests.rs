@@ -4,7 +4,8 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream_time::{SampleExt, TokioTimestamped};
-use fluxion_test_utils::{helpers::recv_timeout, test_channel_with_errors, TestData};
+use fluxion_test_utils::helpers::{recv_timeout, test_channel_with_errors};
+use fluxion_test_utils::test_data::TestData;
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use std::time::Duration;
@@ -28,9 +29,11 @@ async fn test_sample_propagates_errors() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     let error = FluxionError::stream_error("Test Error");
     tx.unbounded_send(StreamItem::Error(error.clone()))?;
+
+    // Assert
     assert!(matches!(
         recv_timeout(&mut result_rx, 100).await.unwrap(),
         StreamItem::Error(e) if e.to_string() == "Stream processing error: Test Error"

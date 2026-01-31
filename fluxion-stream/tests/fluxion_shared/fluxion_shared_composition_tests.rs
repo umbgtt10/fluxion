@@ -11,7 +11,10 @@ use fluxion_test_utils::person::Person;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_diane, TestData,
 };
-use fluxion_test_utils::{test_channel, unwrap_stream, unwrap_value, Sequenced};
+use fluxion_test_utils::{
+    helpers::{test_channel, unwrap_stream, unwrap_value},
+    sequenced::Sequenced,
+};
 
 #[tokio::test]
 async fn shared_with_filter_ordered_each_subscriber_filters_independently() -> anyhow::Result<()> {

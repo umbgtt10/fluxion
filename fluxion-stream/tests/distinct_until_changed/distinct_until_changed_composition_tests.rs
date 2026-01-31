@@ -9,10 +9,9 @@ use fluxion_stream::{
     MapOrderedExt,
 };
 use fluxion_test_utils::{
-    helpers::unwrap_stream,
-    test_channel,
+    helpers::{test_channel, unwrap_stream, unwrap_value},
+    sequenced::Sequenced,
     test_data::{person_alice, person_bob, person_charlie, TestData},
-    unwrap_value, Sequenced,
 };
 
 #[tokio::test]

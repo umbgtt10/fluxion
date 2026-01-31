@@ -5,12 +5,13 @@
 use fluxion_core::StreamItem;
 use fluxion_stream::prelude::*;
 use fluxion_stream::CombinedState;
+use fluxion_test_utils::helpers::test_channel;
+use fluxion_test_utils::helpers::unwrap_value;
 use fluxion_test_utils::test_data::TestData;
 use fluxion_test_utils::{
     helpers::{assert_stream_ended, unwrap_stream},
-    test_channel,
+    sequenced::Sequenced,
     test_data::{animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane},
-    unwrap_value, Sequenced,
 };
 
 #[tokio::test]

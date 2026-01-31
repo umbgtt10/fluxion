@@ -38,10 +38,11 @@ async fn test_impl() {
     let (tx, stream) = test_channel::<EmbassyTimestamped<Person>>();
     let mut timed = stream.timeout(Duration::from_millis(100));
 
-    // Act & Assert
+    // Act
     tx.try_send(EmbassyTimestamped::new(person_alice(), timer.now()))
         .unwrap();
 
+    // Assert
     let result: StreamItem<EmbassyTimestamped<Person>> = timed.next().await.unwrap();
     assert!(matches!(result, StreamItem::Value(_)));
     if let StreamItem::Value(v) = result {

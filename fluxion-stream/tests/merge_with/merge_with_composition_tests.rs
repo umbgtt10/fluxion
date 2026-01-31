@@ -6,10 +6,10 @@ use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_stream::MergedStream;
 use fluxion_test_utils::{
+    helpers::{test_channel, unwrap_stream},
     person::Person,
-    test_channel,
+    sequenced::Sequenced,
     test_data::{person_alice, person_bob, person_charlie, person_dave, TestData},
-    unwrap_stream, Sequenced,
 };
 
 #[tokio::test]

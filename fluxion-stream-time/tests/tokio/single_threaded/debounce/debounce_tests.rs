@@ -6,10 +6,8 @@ use fluxion_runtime::impls::tokio::TokioTimer;
 use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::{DebounceExt, TokioTimestamped};
 use fluxion_test_utils::{
-    helpers::{assert_no_element_emitted, unwrap_stream},
-    test_channel,
-    test_data::{person_alice, person_bob, person_charlie},
-    TestData,
+    helpers::{assert_no_element_emitted, test_channel, unwrap_stream},
+    test_data::{person_alice, person_bob, person_charlie, TestData},
 };
 use std::time::Duration;
 use tokio::time::{advance, pause};
@@ -23,7 +21,7 @@ async fn test_debounce_emits_after_quiet_period() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut debounced, 0).await;
 
@@ -34,6 +32,8 @@ async fn test_debounce_emits_after_quiet_period() -> anyhow::Result<()> {
     assert_no_element_emitted(&mut debounced, 0).await;
 
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_alice()
@@ -51,7 +51,7 @@ async fn test_debounce_resets_on_new_value() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(300)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
@@ -63,6 +63,8 @@ async fn test_debounce_resets_on_new_value() -> anyhow::Result<()> {
     assert_no_element_emitted(&mut debounced, 0).await;
 
     advance(Duration::from_millis(200)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_bob()
@@ -80,7 +82,7 @@ async fn test_debounce_multiple_resets() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
 
@@ -92,6 +94,8 @@ async fn test_debounce_multiple_resets() -> anyhow::Result<()> {
     assert_no_element_emitted(&mut debounced, 0).await;
 
     advance(Duration::from_millis(400)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_charlie()
@@ -109,12 +113,14 @@ async fn test_debounce_emits_pending_on_stream_end() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut debounced = stream.debounce(Duration::from_millis(500));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(200)).await;
     assert_no_element_emitted(&mut debounced, 0).await;
 
     drop(tx);
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_alice()
@@ -161,8 +167,10 @@ async fn test_debounce_zero_duration() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut debounced = stream.debounce(Duration::from_millis(0));
 
-    // Act & Assert - zero duration means immediate emission
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+
+    // Assert - zero duration means immediate emission
     assert_eq!(
         unwrap_stream(&mut debounced, 100).await.unwrap().value,
         person_alice()

@@ -6,11 +6,10 @@ use fluxion_core::HasTimestamp;
 use fluxion_stream::DistinctUntilChangedByExt;
 use fluxion_test_utils::{
     animal::Animal,
-    helpers::{assert_no_element_emitted, assert_stream_ended, unwrap_stream},
+    helpers::{assert_no_element_emitted, assert_stream_ended, test_channel, unwrap_stream},
     person::Person,
-    test_channel,
+    sequenced::Sequenced,
     test_data::{animal_dog, animal_spider, person_alice, person_bob, person_diane, TestData},
-    Sequenced,
 };
 
 #[tokio::test]

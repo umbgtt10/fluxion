@@ -3,10 +3,11 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-
 use fluxion_stream::{FilterOrderedExt, MapOrderedExt, ScanOrderedExt};
+use fluxion_test_utils::person::Person;
 use fluxion_test_utils::{
-    assert_no_element_emitted, person::Person, test_channel_with_errors, unwrap_stream, Sequenced,
+    helpers::{assert_no_element_emitted, test_channel_with_errors, unwrap_stream},
+    sequenced::Sequenced,
 };
 
 #[tokio::test]

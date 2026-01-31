@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -14,14 +14,14 @@
 //! Architecture:
 //! ```text
 //! Producer Tasks (3)        Aggregator Task           Consumer Task
-//! ┌─────────────┐          ┌──────────────┐          ┌──────────┐
-//! │  Queue 1    │────────▶ │              │          │          │
-//! │ (sensors)   │          │ FluxionStream│────────▶ │  Queue 4 │
-//! │  Queue 2    │────────▶ │  combine &   │          │ (output) │
-//! │ (metrics)   │          │  transform   │          │          │
-//! │  Queue 3    │────────▶ │              │          │          │
-//! │ (events)    │          └──────────────┘          └──────────┘
-//! └─────────────┘
+//! +-------------+          +--------------+          +----------+
+//!   Queue 1      ----------?
+//!  (sensors)                FluxionStream  --------?   Queue 4
+//!   Queue 2      ----------? combine &                 (output)
+//!  (metrics)                 transform
+//!   Queue 3      ----------?
+//!  (events)              +--------------+          +----------+
+//! +-------------+
 //! ```
 //!
 //! Run with: `cargo run --example rabbitmq_aggregator`
@@ -38,34 +38,27 @@ use fluxion_core::CancellationToken;
 use tokio::select;
 use tokio::signal;
 
-// ============================================================================
-// Main - Single-threaded with parallel tasks
-// ============================================================================
-
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    println!("\n🚀 RabbitMQ Event Aggregator Example");
+    println!("\n?? RabbitMQ Event Aggregator Example");
     println!("=====================================\n");
     println!("Press Ctrl+C to stop\n");
 
-    // Create cancellation token for graceful shutdown
     let cancel_token = CancellationToken::new();
 
-    // Create and start aggregator (which manages all producers and consumer)
     let mut aggregator = Aggregator::new(cancel_token.clone());
     aggregator.start();
 
-    // Wait for Ctrl+C or 5 seconds timeout
     select! {
         _ = signal::ctrl_c() => {
-            println!("\n\n🛑 Shutting down gracefully...\n");
+            println!("\n\n?? Shutting down gracefully...\n");
             aggregator.stop().await;
-            println!("✅ All tasks stopped\n");
+            println!("? All tasks stopped\n");
         }
         _ = tokio::time::sleep(tokio::time::Duration::from_secs(5)) => {
-            println!("\n\n⏱️  5 seconds elapsed, shutting down...\n");
+            println!("\n\n??  5 seconds elapsed, shutting down...\n");
             aggregator.stop().await;
-            println!("✅ All tasks stopped\n");
+            println!("? All tasks stopped\n");
         }
     }
 }

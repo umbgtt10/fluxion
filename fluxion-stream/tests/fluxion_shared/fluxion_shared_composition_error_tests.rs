@@ -10,7 +10,8 @@ use fluxion_stream::ShareExt;
 use fluxion_test_utils::person::Person;
 use fluxion_test_utils::test_data::{person_alice, TestData};
 use fluxion_test_utils::{
-    assert_stream_ended, test_channel_with_errors, unwrap_stream, unwrap_value, Sequenced,
+    helpers::{assert_stream_ended, test_channel_with_errors, unwrap_stream, unwrap_value},
+    sequenced::Sequenced,
 };
 
 #[tokio::test]

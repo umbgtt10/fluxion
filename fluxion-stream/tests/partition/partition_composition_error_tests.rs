@@ -5,11 +5,9 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{
-    assert_stream_ended,
-    helpers::unwrap_stream,
-    test_channel_with_errors,
+    helpers::{assert_stream_ended, test_channel_with_errors, unwrap_stream, unwrap_value},
+    sequenced::Sequenced,
     test_data::{animal_dog, person_alice, person_bob, TestData},
-    unwrap_value, Sequenced,
 };
 
 #[tokio::test]

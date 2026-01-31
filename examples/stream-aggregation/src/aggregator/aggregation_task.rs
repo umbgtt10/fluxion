@@ -119,7 +119,7 @@ impl Aggregator {
         output_tx: Sender<AggregatedEvent>,
         cancel_token: CancellationToken,
     ) {
-        println!("🔄 Aggregator started\n");
+        println!("?? Aggregator started\n");
 
         // Transform domain events to DataEvent (boxing happens inside into_fluxion_stream)
         let sensor_stream = sensor_rx.into_fluxion_stream_map(|s| DataEvent::Sensor(s.clone()));
@@ -144,7 +144,7 @@ impl Aggregator {
                         let metric_display = agg.metric_value.map(|m| m as f64).unwrap_or(0.0);
 
                         println!(
-                            "\n  [Aggregator] @ {}: Temp={:.1}°C, Metric={:.1}, Alert={}",
+                            "\n  [Aggregator] @ {}: Temp={:.1}C, Metric={:.1}, Alert={}",
                             agg.timestamp, temp_display, metric_display, agg.has_alert
                         );
                         let _ = tx.try_send(agg);
@@ -156,6 +156,6 @@ impl Aggregator {
             )
             .await;
 
-        println!("\n🔄 Aggregator stopped");
+        println!("\n?? Aggregator stopped");
     }
 }

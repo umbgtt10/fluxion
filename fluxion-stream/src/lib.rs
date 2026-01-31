@@ -69,7 +69,10 @@
 //!
 //! ```
 //! use fluxion_stream::OrderedStreamExt;
-//! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, test_channel};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{unwrap_stream, test_channel}
+//! };
 //!
 //! # #[tokio::main]
 //! # async fn main() {
@@ -205,7 +208,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::WithLatestFromExt;
-//! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{unwrap_stream, unwrap_value, test_channel}
+//! };
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! # async fn example() {
@@ -234,7 +240,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::OrderedStreamExt;
-//! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{unwrap_stream, unwrap_value, test_channel}
+//! };
 //!
 //! # async fn example() {
 //! // Combine logs from multiple services in temporal order
@@ -259,7 +268,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::CombineWithPreviousExt;
-//! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{unwrap_stream, unwrap_value, test_channel}
+//! };
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! # async fn example() {
@@ -293,7 +305,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::EmitWhenExt;
-//! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{unwrap_stream, unwrap_value, test_channel}
+//! };
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! # async fn example() {
@@ -378,7 +393,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::{CombineWithPreviousExt, TakeLatestWhenExt};
-//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{test_channel, unwrap_stream, unwrap_value}
+//! };
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! async fn example() {
@@ -406,7 +424,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::{MapOrderedExt, FilterOrderedExt};
-//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{test_channel, unwrap_stream, unwrap_value}
+//! };
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! async fn example() {
@@ -431,7 +452,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::{CombineLatestExt, CombineWithPreviousExt};
-//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{test_channel, unwrap_stream, unwrap_value}
+//! };
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! async fn example() {
@@ -469,7 +493,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::{OrderedStreamExt, CombineWithPreviousExt};
-//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{test_channel, unwrap_stream, unwrap_value}
+//! };
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! async fn example() {
@@ -499,7 +526,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::{CombineLatestExt, CombineWithPreviousExt};
-//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{test_channel, unwrap_stream, unwrap_value}
+//! };
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! async fn example() {
@@ -531,7 +561,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::{CombineLatestExt, TakeWhileExt};
-//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{test_channel, unwrap_stream, unwrap_value}
+//! };
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! async fn example() {
@@ -559,7 +592,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::{OrderedStreamExt, TakeWhileExt};
-//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{test_channel, unwrap_stream, unwrap_value}
+//! };
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! async fn example() {
@@ -590,7 +626,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::{TakeLatestWhenExt, CombineWithPreviousExt};
-//! use fluxion_test_utils::{Sequenced, test_channel, helpers::unwrap_stream, unwrap_value};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{test_channel, unwrap_stream, unwrap_value}
+//! };
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! async fn example() {

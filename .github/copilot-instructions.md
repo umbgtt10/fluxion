@@ -1,3 +1,6 @@
+<!-- markdownlint-disable -->
+<!-- markdown-link-check-disable -->
+
 # Fluxion AI Coding Instructions
 
 ## Project Overview

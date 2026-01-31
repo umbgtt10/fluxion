@@ -5,15 +5,15 @@
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::prelude::*;
 use fluxion_stream::CombinedState;
+use fluxion_test_utils::helpers::{test_channel, unwrap_stream, unwrap_value};
 use fluxion_test_utils::{
-    helpers::{assert_no_element_emitted, unwrap_stream},
-    test_channel,
+    helpers::assert_no_element_emitted,
+    sequenced::Sequenced,
     test_data::{
         animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
         plant_rose, TestData,
     },
     test_wrapper::TestWrapper,
-    unwrap_value, Sequenced,
 };
 
 static FILTER: fn(&TestData) -> bool = |_| true;

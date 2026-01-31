@@ -35,7 +35,7 @@
 ///
 /// ```rust
 /// use fluxion_stream::{DistinctUntilChangedByExt, IntoFluxionStream};
-/// use fluxion_test_utils::Sequenced;
+/// use fluxion_test_utils::sequenced::Sequenced;
 /// use futures::StreamExt;
 ///
 /// #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -67,7 +67,7 @@
 ///
 /// ```rust
 /// use fluxion_stream::{DistinctUntilChangedByExt, IntoFluxionStream};
-/// use fluxion_test_utils::Sequenced;
+/// use fluxion_test_utils::sequenced::Sequenced;
 /// use futures::StreamExt;
 ///
 /// # async fn example() {
@@ -93,7 +93,7 @@
 ///
 /// ```rust
 /// use fluxion_stream::{DistinctUntilChangedByExt, IntoFluxionStream};
-/// use fluxion_test_utils::Sequenced;
+/// use fluxion_test_utils::sequenced::Sequenced;
 /// use futures::StreamExt;
 /// use std::cmp::Ordering;
 ///

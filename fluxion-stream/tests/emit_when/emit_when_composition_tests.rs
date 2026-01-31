@@ -6,10 +6,9 @@ use fluxion_core::StreamItem;
 use fluxion_stream::prelude::*;
 use fluxion_stream::{CombinedState, WithPrevious};
 use fluxion_test_utils::{
-    helpers::{assert_no_element_emitted, unwrap_stream},
-    test_channel,
+    helpers::{assert_no_element_emitted, test_channel, unwrap_stream, unwrap_value},
+    sequenced::Sequenced,
     test_data::{person_alice, person_bob, person_charlie, person_dave, person_diane, TestData},
-    unwrap_value, Sequenced,
 };
 use futures::StreamExt;
 

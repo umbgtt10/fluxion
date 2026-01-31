@@ -5,7 +5,7 @@
 use async_channel::unbounded;
 use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
-use fluxion_test_utils::{unwrap_stream, Sequenced};
+use fluxion_test_utils::{helpers::unwrap_stream, sequenced::Sequenced};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum Value {

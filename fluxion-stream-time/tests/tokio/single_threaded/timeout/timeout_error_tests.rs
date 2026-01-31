@@ -6,9 +6,9 @@ use fluxion_core::{FluxionError, StreamItem};
 use fluxion_runtime::impls::tokio::TokioTimer;
 use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::{TimeoutExt, TokioTimestamped};
-use fluxion_test_utils::{
-    helpers::recv_timeout, test_channel_with_errors, test_data::person_alice, TestData,
-};
+use fluxion_test_utils::helpers::test_channel_with_errors;
+use fluxion_test_utils::test_data::TestData;
+use fluxion_test_utils::{helpers::recv_timeout, test_data::person_alice};
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use std::time::Duration;
@@ -32,9 +32,11 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     let error = FluxionError::stream_error("Test Error");
     tx.unbounded_send(StreamItem::Error(error))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 100)
             .await
@@ -45,11 +47,15 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
         "Stream processing error: Test Error"
     );
 
+    // Act
     advance(Duration::from_millis(50)).await;
     tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
+
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 100)
             .await

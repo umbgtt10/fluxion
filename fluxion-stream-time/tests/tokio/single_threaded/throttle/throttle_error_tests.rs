@@ -7,10 +7,8 @@ use fluxion_runtime::impls::tokio::TokioTimer;
 use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::{ThrottleExt, TokioTimestamped};
 use fluxion_test_utils::{
-    helpers::{assert_no_recv, recv_timeout},
-    test_channel_with_errors,
-    test_data::{person_alice, person_bob},
-    TestData,
+    helpers::{assert_no_recv, recv_timeout, test_channel_with_errors},
+    test_data::{person_alice, person_bob, TestData},
 };
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
@@ -35,9 +33,11 @@ async fn test_throttle_propagates_errors_immediately() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     let error = FluxionError::stream_error("test error");
     tx.unbounded_send(StreamItem::Error(error.clone()))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await
@@ -82,7 +82,7 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
@@ -91,6 +91,8 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
 
     let error = FluxionError::stream_error("error during throttle");
     tx.unbounded_send(StreamItem::Error(error.clone()))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await

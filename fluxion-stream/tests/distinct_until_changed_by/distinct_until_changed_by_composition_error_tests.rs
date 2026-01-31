@@ -6,9 +6,9 @@ use fluxion_core::{FluxionError, StreamItem};
 
 use fluxion_stream::{DistinctUntilChangedByExt, MapOrderedExt};
 use fluxion_test_utils::{
-    test_channel_with_errors,
+    helpers::{test_channel_with_errors, unwrap_stream},
+    sequenced::Sequenced,
     test_data::{person_alice, TestData},
-    unwrap_stream, Sequenced,
 };
 
 #[tokio::test]

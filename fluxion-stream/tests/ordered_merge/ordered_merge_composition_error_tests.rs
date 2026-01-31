@@ -10,7 +10,9 @@ use fluxion_core::{into_stream::IntoStream, FluxionError, HasTimestamp, StreamIt
 use fluxion_stream::{FilterOrderedExt, MapOrderedExt, OrderedStreamExt};
 use fluxion_test_utils::test_data::{animal, person};
 use fluxion_test_utils::{
-    assert_stream_ended, test_channel_with_errors, unwrap_stream, Sequenced, TestData,
+    helpers::{assert_stream_ended, test_channel_with_errors, unwrap_stream},
+    sequenced::Sequenced,
+    test_data::TestData,
 };
 
 #[tokio::test]

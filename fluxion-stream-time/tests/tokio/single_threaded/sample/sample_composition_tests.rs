@@ -8,10 +8,8 @@ use fluxion_runtime::timer::Timer;
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::{SampleExt, TokioTimestamped};
 use fluxion_test_utils::{
-    helpers::recv_timeout,
-    test_channel,
-    test_data::{person_alice, person_bob, person_charlie},
-    TestData,
+    helpers::{recv_timeout, test_channel},
+    test_data::{person_alice, person_bob, person_charlie, TestData},
 };
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
@@ -87,12 +85,14 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
     advance(Duration::from_millis(50)).await;
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         (Some(person_alice()), person_bob())

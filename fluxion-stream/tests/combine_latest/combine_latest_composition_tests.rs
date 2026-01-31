@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -6,9 +6,9 @@ use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
-    test_channel,
-    test_data::{animal_dog, person_alice, plant_rose},
-    unwrap_stream, unwrap_value, Sequenced, TestData,
+    helpers::{test_channel, unwrap_stream, unwrap_value},
+    sequenced::Sequenced,
+    test_data::{animal_dog, person_alice, plant_rose, TestData},
 };
 
 static COMBINE_FILTER: fn(&CombinedState<TestData, u64>) -> bool = |_| true;

@@ -10,8 +10,10 @@ use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_diane, TestData,
 };
 use fluxion_test_utils::{
-    assert_stream_ended, test_channel, test_channel_with_errors, unwrap_stream, unwrap_value,
-    Sequenced,
+    helpers::{
+        assert_stream_ended, test_channel, test_channel_with_errors, unwrap_stream, unwrap_value,
+    },
+    sequenced::Sequenced,
 };
 use futures::StreamExt;
 use std::sync::{

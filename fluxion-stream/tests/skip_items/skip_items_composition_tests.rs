@@ -3,11 +3,11 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream::{MapOrderedExt, OrderedStreamExt, SkipItemsExt};
-use fluxion_test_utils::helpers::unwrap_stream;
+use fluxion_test_utils::helpers::{test_channel, unwrap_stream, unwrap_value};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_dave, person_diane, TestData,
 };
-use fluxion_test_utils::{test_channel, unwrap_value, Sequenced};
 
 #[tokio::test]
 async fn test_map_ordered_skip_items() -> anyhow::Result<()> {

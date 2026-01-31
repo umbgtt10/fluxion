@@ -6,13 +6,14 @@ use fluxion_core::{StreamItem, Timestamped};
 use fluxion_stream::combine_latest::CombineLatestExt;
 use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
-    helpers::{assert_no_element_emitted, assert_stream_ended, unwrap_stream, unwrap_value},
-    test_channel,
+    helpers::{
+        assert_no_element_emitted, assert_stream_ended, test_channel, unwrap_stream, unwrap_value,
+    },
+    sequenced::Sequenced,
     test_data::{
         animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_diane,
         plant_rose, plant_sunflower, DataVariant, TestData,
     },
-    Sequenced,
 };
 use futures::channel::mpsc::UnboundedSender;
 use futures::Stream;

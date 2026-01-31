@@ -6,10 +6,8 @@ use fluxion_runtime::impls::tokio::TokioTimer;
 use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::{SampleExt, TokioTimestamped};
 use fluxion_test_utils::{
-    helpers::{assert_no_recv, recv_timeout},
-    test_channel,
-    test_data::{person_alice, person_bob, person_charlie},
-    TestData,
+    helpers::{assert_no_recv, recv_timeout, test_channel},
+    test_data::{person_alice, person_bob, person_charlie, TestData},
 };
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
@@ -34,13 +32,15 @@ async fn test_sample_emits_latest_in_window() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     assert_no_recv(&mut result_rx, 10).await;
 
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_bob()
@@ -67,13 +67,15 @@ async fn test_sample_no_emission_if_no_value() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     advance(Duration::from_millis(100)).await;
     assert_no_recv(&mut result_rx, 100).await;
 
     advance(Duration::from_millis(50)).await;
     tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_charlie()
@@ -99,7 +101,7 @@ async fn test_sample_multiple_periods_without_values() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert - multiple sample periods without values
+    // Act - multiple sample periods without values
     advance(Duration::from_millis(100)).await;
     assert_no_recv(&mut result_rx, 10).await;
 

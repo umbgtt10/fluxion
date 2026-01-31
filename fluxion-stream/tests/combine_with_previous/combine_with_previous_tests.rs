@@ -3,10 +3,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
-use fluxion_test_utils::helpers::unwrap_stream;
+use fluxion_test_utils::helpers::{assert_stream_ended, test_channel, unwrap_stream};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{person, person_alice, person_bob, person_charlie};
-use fluxion_test_utils::Sequenced;
-use fluxion_test_utils::{assert_stream_ended, test_channel};
 
 #[tokio::test]
 async fn test_combine_with_previous_no_previous_value_emits() -> anyhow::Result<()> {

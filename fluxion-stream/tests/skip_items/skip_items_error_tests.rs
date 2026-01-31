@@ -3,9 +3,11 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-
 use fluxion_stream::SkipItemsExt;
-use fluxion_test_utils::{helpers::unwrap_stream, test_channel_with_errors, Sequenced};
+use fluxion_test_utils::{
+    helpers::{test_channel_with_errors, unwrap_stream},
+    sequenced::Sequenced,
+};
 
 #[tokio::test]
 async fn test_skip_propagates_errors() -> anyhow::Result<()> {

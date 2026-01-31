@@ -5,13 +5,14 @@
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::with_latest_from::WithLatestFromExt;
 use fluxion_stream::CombinedState;
+use fluxion_test_utils::helpers::{
+    assert_no_element_emitted, assert_stream_ended, test_channel, unwrap_stream, unwrap_value,
+};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     animal, animal_cat, animal_dog, person_alice, person_bob, TestData,
 };
 use fluxion_test_utils::test_wrapper::TestWrapper;
-use fluxion_test_utils::Sequenced;
-use fluxion_test_utils::{assert_no_element_emitted, assert_stream_ended, unwrap_value};
-use fluxion_test_utils::{helpers::unwrap_stream, test_channel};
 use futures::{FutureExt, StreamExt};
 
 // Identity selector for testing - returns the CombinedState as-is

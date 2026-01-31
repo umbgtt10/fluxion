@@ -8,7 +8,10 @@ use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_stream::ShareExt;
 use fluxion_test_utils::test_data::{person_alice, TestData};
-use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors, unwrap_stream, Sequenced};
+use fluxion_test_utils::{
+    helpers::{assert_stream_ended, test_channel_with_errors, unwrap_stream},
+    sequenced::Sequenced,
+};
 
 #[tokio::test]
 async fn shared_propagates_error_and_closes_all_subscribers() -> anyhow::Result<()> {

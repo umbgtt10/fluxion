@@ -7,10 +7,9 @@ use fluxion_runtime::impls::tokio::TokioTimer;
 use fluxion_runtime::timer::Timer;
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::{ThrottleExt, TokioTimestamped};
-use fluxion_test_utils::{
-    helpers::recv_timeout, person::Person, test_channel_with_errors, test_data::person_alice,
-    TestData,
-};
+use fluxion_test_utils::helpers::test_channel_with_errors;
+use fluxion_test_utils::test_data::TestData;
+use fluxion_test_utils::{helpers::recv_timeout, person::Person, test_data::person_alice};
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use std::time::Duration;
@@ -46,10 +45,11 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
         }
     });
 
-    // Act & Assert
+    // Act
     let error = FluxionError::stream_error("test error");
     tx.unbounded_send(StreamItem::Error(error.clone()))?;
 
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await

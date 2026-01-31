@@ -28,7 +28,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::ScanOrderedExt;
-//! use fluxion_test_utils::{Sequenced, test_channel, unwrap_stream, unwrap_value};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{test_channel, unwrap_stream, unwrap_value}
+//! };
 //!
 //! # async fn example() -> anyhow::Result<()> {
 //! let (tx, stream) = test_channel::<Sequenced<i32>>();
@@ -54,7 +57,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::ScanOrderedExt;
-//! use fluxion_test_utils::{Sequenced, test_channel, unwrap_stream, unwrap_value};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{test_channel, unwrap_stream, unwrap_value}
+//! };
 //!
 //! # async fn example() -> anyhow::Result<()> {
 //! let (tx, stream) = test_channel::<Sequenced<String>>();
@@ -78,7 +84,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::ScanOrderedExt;
-//! use fluxion_test_utils::{Sequenced, test_channel, unwrap_stream, unwrap_value};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{test_channel, unwrap_stream, unwrap_value}
+//! };
 //!
 //! # async fn example() -> anyhow::Result<()> {
 //! let (tx, stream) = test_channel::<Sequenced<i32>>();
@@ -112,7 +121,10 @@
 //!
 //! ```rust
 //! use fluxion_stream::ScanOrderedExt;
-//! use fluxion_test_utils::{Sequenced, test_channel, unwrap_stream};
+//! use fluxion_test_utils::{
+//!     sequenced::Sequenced,
+//!     helpers::{test_channel, unwrap_stream}
+//! };
 //!
 //! #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 //! enum Event { Login, Logout, Action(String) }

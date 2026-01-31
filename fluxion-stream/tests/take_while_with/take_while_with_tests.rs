@@ -3,11 +3,13 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_stream::take_while_with::TakeWhileExt;
-use fluxion_test_utils::helpers::{assert_no_element_emitted, assert_stream_ended};
+use fluxion_test_utils::helpers::{
+    assert_no_element_emitted, assert_stream_ended, test_channel, unwrap_stream, unwrap_value,
+};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, person_alice, person_bob, person_charlie, TestData,
 };
-use fluxion_test_utils::{test_channel, unwrap_stream, unwrap_value, Sequenced};
 
 #[tokio::test]
 async fn test_take_while_basic() -> anyhow::Result<()> {

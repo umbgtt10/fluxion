@@ -4,9 +4,9 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::TapExt;
-use fluxion_test_utils::test_channel_with_errors;
+use fluxion_test_utils::helpers::{test_channel_with_errors, unwrap_stream, unwrap_value};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{person_alice, person_bob, person_charlie, TestData};
-use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value, Sequenced};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -19,8 +19,8 @@ async fn test_tap_passes_through_errors() -> anyhow::Result<()> {
     // Act & Assert
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_alice()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_alice()
     );
 
     // Act & Assert
@@ -33,8 +33,8 @@ async fn test_tap_passes_through_errors() -> anyhow::Result<()> {
     // Act & Assert
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_bob()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_bob()
     );
 
     Ok(())

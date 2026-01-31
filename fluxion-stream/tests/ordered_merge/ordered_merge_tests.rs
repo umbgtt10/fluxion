@@ -4,11 +4,12 @@
 
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_stream::OrderedStreamExt;
+use fluxion_test_utils::helpers::{assert_stream_ended, test_channel, unwrap_stream};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     animal_bird, animal_dog, animal_spider, person_alice, person_bob, person_charlie, person_dave,
     plant_oak, plant_rose, plant_sunflower, TestData,
 };
-use fluxion_test_utils::{assert_stream_ended, test_channel, unwrap_stream, Sequenced};
 use tokio::spawn;
 
 #[tokio::test]

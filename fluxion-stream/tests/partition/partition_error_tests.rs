@@ -4,12 +4,13 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::PartitionExt;
+use fluxion_test_utils::helpers::{
+    assert_stream_ended, test_channel_with_errors, unwrap_stream, unwrap_value,
+};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     animal_dog, animal_spider, person_alice, person_bob, TestData,
 };
-use fluxion_test_utils::Sequenced;
-use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors};
-use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value};
 
 #[tokio::test]
 async fn test_partition_propagates_error_to_both_streams() -> anyhow::Result<()> {

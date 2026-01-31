@@ -10,11 +10,13 @@
 use fluxion_core::{into_stream::IntoStream, FluxionError, StreamItem};
 use fluxion_stream::MergedStream;
 use fluxion_test_utils::{
-    assert_no_element_emitted, assert_stream_ended,
+    helpers::{
+        assert_no_element_emitted, assert_stream_ended, test_channel_with_errors, unwrap_stream,
+        unwrap_value,
+    },
     person::Person,
-    test_channel_with_errors,
+    sequenced::Sequenced,
     test_data::{person, person_alice, person_bob, person_diane, TestData},
-    unwrap_stream, unwrap_value, Sequenced,
 };
 use futures::{FutureExt, StreamExt};
 
