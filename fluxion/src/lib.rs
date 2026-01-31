@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -88,8 +88,8 @@
 
 pub use fluxion_core::into_stream::IntoStream;
 pub use fluxion_core::{HasTimestamp, Timestamped};
-pub use fluxion_stream::{CombinedState, WithPrevious};
 pub use fluxion_exec;
+pub use fluxion_stream::{CombinedState, WithPrevious};
 
 /// Prelude module for convenient imports.
 ///
