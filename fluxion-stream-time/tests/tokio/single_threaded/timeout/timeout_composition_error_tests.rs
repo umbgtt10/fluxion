@@ -5,9 +5,9 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::{TimeoutExt, TokioTimestamped};
+use fluxion_test_utils::helpers::recv_timeout;
 use fluxion_test_utils::helpers::{assert_no_recv, test_channel_with_errors};
 use fluxion_test_utils::test_data::TestData;
-use fluxion_test_utils::{helpers::recv_timeout};
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use std::time::Duration;

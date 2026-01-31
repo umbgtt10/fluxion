@@ -8,7 +8,7 @@ use fluxion_stream_time::{DelayExt, TokioTimestamped};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, test_channel, unwrap_stream},
     person::Person,
-    test_data::{TestData, person_alice, person_bob},
+    test_data::{person_alice, person_bob, TestData},
 };
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;

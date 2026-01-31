@@ -7,7 +7,7 @@ use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::{SampleExt, TokioTimestamped};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, test_channel, unwrap_stream},
-    test_data::{TestData, person_alice, person_bob, person_charlie},
+    test_data::{person_alice, person_bob, person_charlie, TestData},
 };
 use futures::StreamExt;
 use std::time::Duration;

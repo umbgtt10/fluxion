@@ -9,7 +9,7 @@ use fluxion_stream::prelude::*;
 use fluxion_stream_time::{DelayExt, TokioTimestamped};
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, test_channel_with_errors, unwrap_stream},
-    test_data::{TestData, person_alice, person_bob},
+    test_data::{person_alice, person_bob, TestData},
 };
 use std::time::Duration;
 use tokio::time::{advance, pause};
