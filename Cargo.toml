@@ -53,7 +53,7 @@ spin = { version = "0.10.0", default-features = false }
 tracing = { version = "0.1.44", default-features = false }
 
 # Error handling
-thiserror = "2.0.17"
+thiserror = "2.0.18"
 anyhow = "1.0.100"
 
 # Bench & testing utilities

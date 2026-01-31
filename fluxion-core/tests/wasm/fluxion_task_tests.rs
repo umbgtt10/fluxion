@@ -8,8 +8,10 @@ use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
 async fn test_task_cancellation_on_drop() {
+    // Arrange
     let (tx, rx) = oneshot::channel();
 
+    // Act
     let task = FluxionTask::spawn(|cancel| async move {
         cancel.cancelled().await;
         let _ = tx.send(());
@@ -17,23 +19,28 @@ async fn test_task_cancellation_on_drop() {
 
     drop(task);
 
-    // Wait for task to signal completion
-    assert!(rx.await.is_ok(), "Task should complete after cancellation");
+    // Assert
+    assert!(rx.await.is_ok());
 }
 
 #[wasm_bindgen_test]
 async fn test_task_manual_cancel() {
+    // Arrange
     let (tx, rx) = oneshot::channel();
 
+    // Act
     let task = FluxionTask::spawn(|cancel| async move {
         cancel.cancelled().await;
         let _ = tx.send(());
     });
 
+    // Assert
     assert!(!task.is_cancelled());
-    task.cancel();
-    assert!(task.is_cancelled());
 
-    // Wait for task to signal completion
-    assert!(rx.await.is_ok(), "Task should complete after cancellation");
+    // Act
+    task.cancel();
+
+    // Assert
+    assert!(task.is_cancelled());
+    assert!(rx.await.is_ok());
 }

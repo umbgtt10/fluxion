@@ -8,9 +8,17 @@ use core::fmt;
 ///
 /// These errors represent subject-specific failures distinct from stream processing errors.
 /// They can be converted to `FluxionError` when needed for stream propagation.
+///
+/// # Examples
+///
+/// ```
+/// use fluxion_core::SubjectError;
+///
+/// let error = SubjectError::Closed;
+/// assert_eq!(error.to_string(), "Subject is closed");
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubjectError {
-    /// The subject has been closed and cannot accept new items.
     Closed,
 }
 

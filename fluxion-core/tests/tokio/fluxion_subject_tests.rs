@@ -57,7 +57,7 @@ async fn subscribe_after_close_returns_closed_error() {
     subject.close();
     let result = subject.subscribe();
 
-    // Assert - subscribe() returns SubjectError::Closed
+    // Assert
     assert!(matches!(result, Err(SubjectError::Closed)));
 }
 
@@ -69,11 +69,13 @@ async fn error_after_close_returns_error() {
     // Act
     subject.close();
 
-    // Assert - can't send error to closed subject
-    let err = subject
-        .error(FluxionError::stream_error("test"))
-        .unwrap_err();
-    assert!(matches!(err, SubjectError::Closed));
+    // Assert
+    assert!(matches!(
+        subject
+            .error(FluxionError::stream_error("test"))
+            .unwrap_err(),
+        SubjectError::Closed
+    ));
 }
 
 #[tokio::test]
@@ -81,7 +83,7 @@ async fn late_subscriber_does_not_receive_past_items() {
     // Arrange
     let subject = FluxionSubject::<i32>::new();
 
-    // Act - send before subscribing
+    // Act
     subject.send(StreamItem::Value(1)).unwrap();
     subject.send(StreamItem::Value(2)).unwrap();
 
@@ -89,7 +91,7 @@ async fn late_subscriber_does_not_receive_past_items() {
 
     subject.send(StreamItem::Value(3)).unwrap();
 
-    // Assert - late subscriber only sees item 3
+    // Assert
     assert_eq!(late_subscriber.next().await, Some(StreamItem::Value(3)));
 }
 
@@ -100,10 +102,10 @@ async fn clone_shares_same_state() {
     let cloned = subject.clone();
     let mut stream = subject.subscribe().unwrap();
 
-    // Act - send from clone
+    // Act
     cloned.send(StreamItem::Value(42)).unwrap();
 
-    // Assert - original subject's subscriber receives it
+    // Assert
     assert_eq!(stream.next().await, Some(StreamItem::Value(42)));
 }
 
@@ -114,14 +116,12 @@ async fn clone_can_close_subject() {
     let cloned = subject.clone();
     let mut stream = subject.subscribe().unwrap();
 
-    // Act - close from clone
+    // Act
     cloned.close();
 
-    // Assert - original subject is closed
+    // Assert
     let err = subject.send(StreamItem::Value(1)).unwrap_err();
     assert!(matches!(err, SubjectError::Closed));
-
-    // Assert - stream completes
     assert_eq!(stream.next().await, None);
 }
 
@@ -134,12 +134,12 @@ async fn multiple_clones_all_share_state() {
 
     let mut stream = subject1.subscribe().unwrap();
 
-    // Act - send from each clone
+    // Act
     subject1.send(StreamItem::Value(1)).unwrap();
     subject2.send(StreamItem::Value(2)).unwrap();
     subject3.send(StreamItem::Value(3)).unwrap();
 
-    // Assert - all items received
+    // Assert
     assert_eq!(stream.next().await, Some(StreamItem::Value(1)));
     assert_eq!(stream.next().await, Some(StreamItem::Value(2)));
     assert_eq!(stream.next().await, Some(StreamItem::Value(3)));
@@ -152,13 +152,11 @@ async fn dropped_subscribers_are_cleaned_up() {
     let mut stream1 = subject.subscribe().unwrap();
     let stream2 = subject.subscribe().unwrap();
 
-    // Act - drop one subscriber
+    // Act
     drop(stream2);
-
-    // Send item - should only go to remaining subscriber
     subject.send(StreamItem::Value(1)).unwrap();
 
-    // Assert - stream1 still receives items
+    // Assert
     assert_eq!(stream1.next().await, Some(StreamItem::Value(1)));
 }
 
@@ -167,10 +165,10 @@ async fn send_to_subject_with_no_subscribers_succeeds() {
     // Arrange
     let subject = FluxionSubject::<i32>::new();
 
-    // Act - send with no subscribers
+    // Act
     let result = subject.send(StreamItem::Value(1));
 
-    // Assert - succeeds (items are just dropped)
+    // Assert
     assert!(result.is_ok());
 }
 
@@ -184,10 +182,9 @@ async fn error_closes_all_subscribers() {
     // Act
     subject.error(FluxionError::stream_error("error")).unwrap();
 
-    // Assert - both subscribers receive error and complete
+    // Assert
     assert!(matches!(stream1.next().await, Some(StreamItem::Error(_))));
     assert_eq!(stream1.next().await, None);
-
     assert!(matches!(stream2.next().await, Some(StreamItem::Error(_))));
     assert_eq!(stream2.next().await, None);
 }
@@ -197,13 +194,13 @@ async fn is_closed_reflects_subject_state() {
     // Arrange
     let subject = FluxionSubject::<i32>::new();
 
-    // Assert - initially open
+    // Assert
     assert!(!subject.is_closed());
 
     // Act
     subject.close();
 
-    // Assert - now closed
+    // Assert
     assert!(subject.is_closed());
 }
 
@@ -211,22 +208,25 @@ async fn is_closed_reflects_subject_state() {
 async fn subscriber_count_tracks_active_subscribers() {
     // Arrange
     let subject = FluxionSubject::<i32>::new();
-
-    // Assert - no subscribers initially
     assert_eq!(subject.subscriber_count(), 0);
 
-    // Act - add subscribers
+    // Act
     let _stream1 = subject.subscribe().unwrap();
+
+    // Assert
     assert_eq!(subject.subscriber_count(), 1);
 
+    // Act
     let stream2 = subject.subscribe().unwrap();
+
+    // Assert
     assert_eq!(subject.subscriber_count(), 2);
 
-    // Act - drop one subscriber and send to trigger cleanup
+    // Act
     drop(stream2);
     subject.send(StreamItem::Value(1)).unwrap();
 
-    // Assert - count decreases after dropped subscriber is cleaned up
+    // Assert
     assert_eq!(subject.subscriber_count(), 1);
 }
 
@@ -236,7 +236,7 @@ async fn next_sends_value_to_subscribers() {
     let subject = FluxionSubject::<i32>::new();
     let mut stream = subject.subscribe().unwrap();
 
-    // Act - use next() convenience method
+    // Act
     subject.next(42).unwrap();
     subject.next(100).unwrap();
 

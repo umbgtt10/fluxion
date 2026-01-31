@@ -9,134 +9,200 @@ use std::mem::size_of;
 
 #[test]
 fn test_error_display() {
+    // Arrange
     let err = FluxionError::stream_error("processing failed");
-    assert_eq!(
-        err.to_string(),
-        "Stream processing error: processing failed"
-    );
+
+    // Act
+    let display = err.to_string();
+
+    // Assert
+    assert_eq!(display, "Stream processing error: processing failed");
 }
 
 #[test]
 fn test_error_constructors() {
+    // Arrange & Act
     let err = FluxionError::stream_error("processing failed");
+
+    // Assert
     assert!(matches!(err, FluxionError::StreamProcessingError { .. }));
 }
 
 #[test]
 fn test_is_recoverable() {
-    assert!(!FluxionError::stream_error("test").is_recoverable());
-    assert!(!FluxionError::timeout_error("test").is_recoverable());
+    // Arrange & Act
+    let stream_err = FluxionError::stream_error("test");
+    let timeout_err = FluxionError::timeout_error("test");
+
+    // Assert
+    assert!(!stream_err.is_recoverable());
+    assert!(!timeout_err.is_recoverable());
 }
 
 #[test]
 fn test_is_permanent() {
-    assert!(FluxionError::stream_error("test").is_permanent());
-    assert!(!FluxionError::timeout_error("test").is_permanent());
+    // Arrange & Act
+    let stream_err = FluxionError::stream_error("test");
+    let timeout_err = FluxionError::timeout_error("test");
+
+    // Assert
+    assert!(stream_err.is_permanent());
+    assert!(!timeout_err.is_permanent());
 }
 
 #[test]
 fn test_result_context_ok() {
+    // Arrange
     let result: Result<i32> = Ok(42);
+
+    // Act
     let value = result.context("operation failed").unwrap();
+
+    // Assert
     assert_eq!(value, 42);
 }
 
 #[test]
 fn test_with_context_ok() {
+    // Arrange
     let result: Result<i32> = Ok(42);
+
+    // Act
     let value = result
         .with_context(|| "should not be called".to_string())
         .unwrap();
+
+    // Assert
     assert_eq!(value, 42);
 }
 
 #[test]
 fn test_clone_stream_error() {
+    // Arrange
     let err = FluxionError::stream_error("test stream");
+
+    // Act
     let cloned = err.clone();
 
+    // Assert
     assert!(matches!(cloned, FluxionError::StreamProcessingError { .. }));
     assert_eq!(err.to_string(), cloned.to_string());
 }
 
 #[test]
 fn test_timeout_error_constructor() {
+    // Arrange & Act
     let err = FluxionError::timeout_error("Operation took too long");
+
+    // Assert
     assert!(matches!(err, FluxionError::TimeoutError { .. }));
     assert_eq!(err.to_string(), "Timeout error: Operation took too long");
 }
 
 #[test]
 fn test_timeout_error_display() {
+    // Arrange
     let err = FluxionError::timeout_error("No data within 5 seconds");
-    assert!(err.to_string().contains("Timeout error"));
-    assert!(err.to_string().contains("No data within 5 seconds"));
+
+    // Act
+    let display = err.to_string();
+
+    // Assert
+    assert!(display.contains("Timeout error"));
+    assert!(display.contains("No data within 5 seconds"));
 }
 
 #[test]
 fn test_timeout_error_not_permanent() {
+    // Arrange & Act
     let err = FluxionError::timeout_error("timeout");
+
+    // Assert
     assert!(!err.is_permanent());
 }
 
 #[test]
 fn test_timeout_error_not_recoverable() {
+    // Arrange & Act
     let err = FluxionError::timeout_error("timeout");
+
+    // Assert
     assert!(!err.is_recoverable());
 }
 
 #[test]
 fn test_clone_timeout_error() {
+    // Arrange
     let err = FluxionError::timeout_error("test timeout");
+
+    // Act
     let cloned = err.clone();
 
+    // Assert
     assert!(matches!(cloned, FluxionError::TimeoutError { .. }));
     assert_eq!(err.to_string(), cloned.to_string());
 }
 
 #[test]
 fn test_stream_error_with_empty_string() {
+    // Arrange & Act
     let err = FluxionError::stream_error("");
+
+    // Assert
     assert_eq!(err.to_string(), "Stream processing error: ");
 }
 
 #[test]
 fn test_timeout_error_with_empty_string() {
+    // Arrange & Act
     let err = FluxionError::timeout_error("");
+
+    // Assert
     assert_eq!(err.to_string(), "Timeout error: ");
 }
 
 #[test]
 fn test_context_with_timeout_error() {
+    // Arrange
     let result: Result<()> = Err(FluxionError::timeout_error("no response"));
 
+    // Act
     let err = result.context("operation timed out").unwrap_err();
-    // Timeout errors pass through without wrapping
+
+    // Assert
     assert!(matches!(err, FluxionError::TimeoutError { .. }));
 }
 
 #[test]
 fn test_debug_formatting() {
+    // Arrange
     let err = FluxionError::stream_error("debug test");
+
+    // Act
     let debug_str = format!("{:?}", err);
+
+    // Assert
     assert!(debug_str.contains("StreamProcessingError"));
 }
 
 #[test]
 fn test_error_type_sizes() {
-    // Ensure error types are reasonably sized
+    // Arrange & Act
     let error_size = size_of::<FluxionError>();
-    // FluxionError should be reasonably sized (less than 128 bytes)
-    assert!(
-        error_size < 128,
-        "FluxionError is too large: {error_size} bytes"
-    );
+
+    // Assert
+    assert!(error_size < 128);
 }
 
 #[test]
 fn test_stream_error_creation_from_string() {
+    // Arrange
     let msg = String::from("dynamic error");
+
+    // Act
     let error = FluxionError::stream_error(msg);
+
+    // Assert
     match error {
         FluxionError::StreamProcessingError { context } => {
             assert_eq!(context, "dynamic error");
@@ -147,9 +213,13 @@ fn test_stream_error_creation_from_string() {
 
 #[test]
 fn test_clone_preserves_context() {
+    // Arrange
     let error = FluxionError::stream_error("original context");
+
+    // Act
     let cloned = error.clone();
 
+    // Assert
     match (error, cloned) {
         (
             FluxionError::StreamProcessingError { context: c1 },
@@ -164,9 +234,13 @@ fn test_clone_preserves_context() {
 
 #[test]
 fn test_result_context_adds_nested_context() {
+    // Arrange
     let result: Result<()> = Err(FluxionError::stream_error("inner"));
+
+    // Act
     let with_context = result.context("outer");
 
+    // Assert
     match with_context {
         Err(FluxionError::StreamProcessingError { context }) => {
             assert_eq!(context, "outer: inner");
@@ -177,15 +251,18 @@ fn test_result_context_adds_nested_context() {
 
 #[test]
 fn test_with_context_lazy_evaluation() {
+    // Arrange
     let result: Result<()> = Err(FluxionError::stream_error("base"));
     let mut called = false;
 
+    // Act
     let with_context = result.with_context(|| {
         called = true;
         String::from("lazy")
     });
 
-    assert!(called, "Closure should have been called");
+    // Assert
+    assert!(called);
     match with_context {
         Err(FluxionError::StreamProcessingError { context }) => {
             assert_eq!(context, "lazy: base");
@@ -196,23 +273,30 @@ fn test_with_context_lazy_evaluation() {
 
 #[test]
 fn test_with_context_not_called_on_ok() {
+    // Arrange
     let result: Result<i32> = Ok(100);
     let mut called = false;
 
+    // Act
     let with_context = result.with_context(|| {
         called = true;
         String::from("should not be called")
     });
 
-    assert!(!called, "Closure should not have been called for Ok result");
+    // Assert
+    assert!(!called);
     assert_eq!(with_context.unwrap(), 100);
 }
 
 #[test]
 fn test_multiple_context_chaining() {
+    // Arrange
     let result: Result<()> = Err(FluxionError::stream_error("root"));
+
+    // Act
     let chained = result.context("level1").context("level2");
 
+    // Assert
     match chained {
         Err(FluxionError::StreamProcessingError { context }) => {
             assert_eq!(context, "level2: level1: root");
@@ -223,18 +307,19 @@ fn test_multiple_context_chaining() {
 
 #[test]
 fn test_context_from_different_string_types() {
-    let result: Result<()> = Err(FluxionError::stream_error("error"));
+    // Arrange
+    let result1: Result<()> = Err(FluxionError::stream_error("error"));
+    let result2: Result<()> = Err(FluxionError::stream_error("error"));
 
-    // Test with &str
-    let with_str = result.context("string slice");
+    // Act
+    let with_str = result1.context("string slice");
+    let with_string = result2.context(String::from("owned string"));
+
+    // Assert
     assert!(matches!(
         with_str,
         Err(FluxionError::StreamProcessingError { .. })
     ));
-
-    // Test with String
-    let result2: Result<()> = Err(FluxionError::stream_error("error"));
-    let with_string = result2.context(String::from("owned string"));
     assert!(matches!(
         with_string,
         Err(FluxionError::StreamProcessingError { .. })
@@ -243,16 +328,20 @@ fn test_context_from_different_string_types() {
 
 #[test]
 fn test_error_trait_implementation() {
+    // Arrange & Act
     let error = FluxionError::stream_error("test error");
-    // Ensure it implements std::error::Error
+
+    // Assert
     let _: &dyn std::error::Error = &error;
 }
 
 #[test]
 fn test_display_formats_correctly() {
+    // Arrange
     let stream_err = FluxionError::stream_error("connection lost");
     let timeout_err = FluxionError::timeout_error("5 seconds exceeded");
 
+    // Act & Assert
     assert_eq!(
         format!("{}", stream_err),
         "Stream processing error: connection lost"

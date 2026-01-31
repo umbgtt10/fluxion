@@ -3,8 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
-
 extern crate alloc;
 
 pub mod cancellation_token;

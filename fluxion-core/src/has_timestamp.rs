@@ -78,10 +78,6 @@ use core::fmt::Debug;
 /// }
 /// ```
 pub trait HasTimestamp {
-    /// The type representing the timestamp
     type Timestamp: Ord + Copy + Send + Sync + Debug;
-
-    /// Returns the timestamp value for this item.
-    /// Stream operators use this to determine the order of items.
     fn timestamp(&self) -> Self::Timestamp;
 }

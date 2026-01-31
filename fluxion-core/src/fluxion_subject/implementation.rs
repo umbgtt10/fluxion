@@ -24,22 +24,11 @@ macro_rules! define_subject_impl {
 
         type SubjectBoxStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + $($bounds)* 'static>>;
 
-        /// A hot, unbounded subject that broadcasts items to all current subscribers.
-        ///
-        /// `FluxionSubject` is the entry point for pushing values into a Fluxion stream pipeline.
-        /// It implements a publish-subscribe pattern where multiple subscribers can receive
-        /// the same items.
-        ///
-        /// See the [module documentation](crate::fluxion_subject) for examples and more details.
         pub struct FluxionSubject<T: Clone + $($bounds)* 'static> {
             state: Arc<Mutex<SubjectState<T>>>,
         }
 
         impl<T: Clone + $($bounds)* 'static> FluxionSubject<T> {
-            /// Creates a new unbounded subject with no subscribers.
-            ///
-            /// The subject starts in an open state and can immediately accept
-            /// subscriptions and items.
             #[must_use]
             pub fn new() -> Self {
                 Self {
@@ -50,8 +39,6 @@ macro_rules! define_subject_impl {
                 }
             }
 
-            /// Subscribe to this subject and receive a stream of `StreamItem<T>`.
-            /// Late subscribers do not receive previously sent items.
             pub fn subscribe(&self) -> Result<SubjectBoxStream<T>, SubjectError> {
                 let mut state = self.state.lock();
                 if state.closed {
@@ -63,10 +50,6 @@ macro_rules! define_subject_impl {
                 Ok(Box::pin(rx))
             }
 
-            /// Send an item to all active subscribers.
-            ///
-            /// Returns a subject-specific error if the operation fails:
-            /// - `SubjectError::Closed` if the subject has been closed
             pub fn send(&self, item: StreamItem<T>) -> Result<(), SubjectError> {
                 let mut state = self.state.lock();
                 if state.closed {
@@ -85,52 +68,27 @@ macro_rules! define_subject_impl {
                 Ok(())
             }
 
-            /// Send a value to all active subscribers.
-            ///
-            /// This is a convenience wrapper around `send(StreamItem::Value(value))`.
-            ///
-            /// # Errors
-            ///
-            /// Returns `SubjectError::Closed` if the subject has been closed.
             pub fn next(&self, value: T) -> Result<(), SubjectError> {
                 self.send(StreamItem::Value(value))
             }
 
-            /// Convenience helper to send a stream error to all subscribers and terminate the subject.
-            ///
-            /// This bridges stream errors (FluxionError) with subject operations (SubjectError).
             pub fn error(&self, err: FluxionError) -> Result<(), SubjectError> {
                 let result = self.send(StreamItem::Error(err));
                 self.close();
                 result
             }
 
-            /// Closes the subject, completing all subscriber streams.
-            ///
-            /// After closing:
-            /// - All existing subscribers will receive `None` on their next poll (stream ends).
-            /// - `send()` and `error()` will return `SubjectError::Closed`.
-            /// - `subscribe()` will return `SubjectError::Closed`.
-            ///
-            /// Closing is idempotent—calling it multiple times has no additional effect.
             pub fn close(&self) {
                 let mut state = self.state.lock();
                 state.closed = true;
                 state.senders.clear();
             }
 
-            /// Returns `true` if the subject has been closed.
-            ///
-            /// A closed subject cannot accept new items or subscribers.
             #[must_use]
             pub fn is_closed(&self) -> bool {
                 self.state.lock().closed
             }
 
-            /// Returns the number of currently active subscribers.
-            ///
-            /// Note: This count is updated lazily—dropped subscribers are removed
-            /// on the next `send()` call, not immediately when dropped.
             #[must_use]
             pub fn subscriber_count(&self) -> usize {
                 self.state.lock().senders.len()

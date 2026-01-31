@@ -7,9 +7,11 @@ use futures::channel::oneshot;
 
 #[test]
 fn test_task_cancellation_on_drop() {
+    // Arrange
     smol::block_on(async {
         let (tx, rx) = oneshot::channel();
 
+        // Act
         let task = FluxionTask::spawn(|cancel| async move {
             cancel.cancelled().await;
             let _ = tx.send(());
@@ -17,26 +19,31 @@ fn test_task_cancellation_on_drop() {
 
         drop(task);
 
-        // Wait for task to signal completion
-        assert!(rx.await.is_ok(), "Task should complete after cancellation");
+        // Assert
+        assert!(rx.await.is_ok());
     });
 }
 
 #[test]
 fn test_task_manual_cancel() {
+    // Arrange
     smol::block_on(async {
         let (tx, rx) = oneshot::channel();
 
+        // Act
         let task = FluxionTask::spawn(|cancel| async move {
             cancel.cancelled().await;
             let _ = tx.send(());
         });
 
+        // Assert
         assert!(!task.is_cancelled());
-        task.cancel();
-        assert!(task.is_cancelled());
 
-        // Wait for task to signal completion
-        assert!(rx.await.is_ok(), "Task should complete after cancellation");
+        // Act
+        task.cancel();
+
+        // Assert
+        assert!(task.is_cancelled());
+        assert!(rx.await.is_ok());
     });
 }

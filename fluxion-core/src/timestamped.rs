@@ -104,14 +104,7 @@ use crate::HasTimestamp;
 /// }
 /// ```
 pub trait Timestamped: HasTimestamp + Clone {
-    /// The type of the inner value wrapped by this timestamped type
     type Inner: Clone;
-
-    /// Creates a new instance wrapping the given value with the specified timestamp.
     fn with_timestamp(value: Self::Inner, timestamp: Self::Timestamp) -> Self;
-
-    /// Consumes self and returns the inner value.
-    /// For wrapper types like `Sequenced<T>`, this extracts `T`.
-    /// For domain types where `Inner = Self`, this typically returns `self`.
     fn into_inner(self) -> Self::Inner;
 }

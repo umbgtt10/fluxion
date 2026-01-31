@@ -46,7 +46,6 @@ where
 {
 }
 
-// Single-threaded runtimes (wasm/embassy) - no Send + Sync required
 #[cfg(not(any(
     all(feature = "runtime-tokio", not(target_arch = "wasm32")),
     feature = "runtime-smol",

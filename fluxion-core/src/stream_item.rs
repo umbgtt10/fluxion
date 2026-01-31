@@ -9,12 +9,24 @@ use core::cmp::Ordering;
 ///
 /// This enum allows operators to naturally propagate errors through the stream
 /// while processing values, following Rx-style error semantics where errors
-/// are propagated and do NOT terminate the stream
+/// are propagated and do NOT terminate the stream.
+///
+/// # Examples
+///
+/// ```
+/// use fluxion_core::{StreamItem, FluxionError};
+///
+/// let value: StreamItem<i32> = StreamItem::Value(42);
+/// assert!(value.is_value());
+/// assert_eq!(value.ok(), Some(42));
+///
+/// let error: StreamItem<i32> = StreamItem::Error(FluxionError::stream_error("test"));
+/// assert!(error.is_error());
+/// assert_eq!(error.ok(), None);
+/// ```
 #[derive(Debug, Clone)]
 pub enum StreamItem<T> {
-    /// A successful value
     Value(T),
-    /// An error that does not terminate the stream (it only gets propagated)
     Error(FluxionError),
 }
 
@@ -22,7 +34,7 @@ impl<T: PartialEq> PartialEq for StreamItem<T> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (StreamItem::Value(a), StreamItem::Value(b)) => a == b,
-            _ => false, // Errors are never equal
+            _ => false,
         }
     }
 }
@@ -52,17 +64,14 @@ impl<T: Ord> Ord for StreamItem<T> {
 }
 
 impl<T> StreamItem<T> {
-    /// Returns `true` if this is a `Value`.
     pub const fn is_value(&self) -> bool {
         matches!(self, StreamItem::Value(_))
     }
 
-    /// Returns `true` if this is an `Error`.
     pub const fn is_error(&self) -> bool {
         matches!(self, StreamItem::Error(_))
     }
 
-    /// Converts from `StreamItem<T>` to `Option<T>`, discarding errors.
     pub fn ok(self) -> Option<T> {
         match self {
             StreamItem::Value(v) => Some(v),
@@ -70,7 +79,6 @@ impl<T> StreamItem<T> {
         }
     }
 
-    /// Converts from `StreamItem<T>` to `Option<FluxionError>`, discarding values.
     pub fn err(self) -> Option<FluxionError> {
         match self {
             StreamItem::Value(_) => None,
@@ -78,9 +86,6 @@ impl<T> StreamItem<T> {
         }
     }
 
-    /// Maps a `StreamItem<T>` to `StreamItem<U>` by applying a function to the contained value.
-    ///
-    /// Errors are propagated unchanged.
     pub fn map<U, F>(self, f: F) -> StreamItem<U>
     where
         F: FnOnce(T) -> U,
@@ -91,9 +96,6 @@ impl<T> StreamItem<T> {
         }
     }
 
-    /// Maps a `StreamItem<T>` to `StreamItem<U>` by applying a function that can fail.
-    ///
-    /// Errors are propagated unchanged.
     pub fn and_then<U, F>(self, f: F) -> StreamItem<U>
     where
         F: FnOnce(T) -> StreamItem<U>,
@@ -104,11 +106,6 @@ impl<T> StreamItem<T> {
         }
     }
 
-    /// Returns the contained value, panicking if it's an error.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the item is an `Error`.
     pub fn unwrap(self) -> T
     where
         FluxionError: core::fmt::Debug,
@@ -121,11 +118,6 @@ impl<T> StreamItem<T> {
         }
     }
 
-    /// Returns the contained value, panicking with a custom message if it's an error.
-    ///
-    /// # Panics
-    ///
-    /// Panics with the provided message if the item is an `Error`.
     pub fn expect(self, msg: &str) -> T
     where
         FluxionError: core::fmt::Debug,

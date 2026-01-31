@@ -7,32 +7,34 @@ use futures::channel::oneshot;
 
 #[tokio::test]
 async fn test_task_cancellation_on_drop() {
+    // Arrange
     let (tx, rx) = oneshot::channel();
-
     let task = FluxionTask::spawn(|cancel| async move {
         cancel.cancelled().await;
         let _ = tx.send(());
     });
 
+    // Act
     drop(task);
 
-    // Wait for task to signal completion
-    assert!(rx.await.is_ok(), "Task should complete after cancellation");
+    // Assert
+    assert!(rx.await.is_ok());
 }
 
 #[tokio::test]
 async fn test_task_manual_cancel() {
+    // Arrange
     let (tx, rx) = oneshot::channel();
-
     let task = FluxionTask::spawn(|cancel| async move {
         cancel.cancelled().await;
         let _ = tx.send(());
     });
 
+    // Act
     assert!(!task.is_cancelled());
     task.cancel();
-    assert!(task.is_cancelled());
 
-    // Wait for task to signal completion
-    assert!(rx.await.is_ok(), "Task should complete after cancellation");
+    // Assert
+    assert!(task.is_cancelled());
+    assert!(rx.await.is_ok());
 }
