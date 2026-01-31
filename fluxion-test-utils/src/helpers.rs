@@ -34,7 +34,6 @@ pub async fn assert_no_recv<T>(rx: &mut UnboundedReceiver<T>, timeout_ms: u64) {
             if item.is_some() { panic!("Unexpected item received within {} ms", timeout_ms) }
         }
         () = sleep(Duration::from_millis(timeout_ms)) => {
-            // Timeout occurred, which is success
         }
     }
 }
@@ -105,7 +104,7 @@ where
 {
     select! {
         item = stream.next() => {
-            item.expect("Expected StreamItem but stream ended")
+            item.unwrap()
         }
         () = sleep(Duration::from_millis(timeout_ms)) => {
             panic!("Timeout: No item received within {} ms", timeout_ms)
@@ -188,10 +187,7 @@ where
 {
     select! {
         state = stream.next() => {
-            panic!(
-                "Unexpected combination emitted {:?}, expected no output.",
-                state
-            );
+            panic!("Unexpected element emitted {:?}, expected no output.", state);
         }
         () = sleep(Duration::from_millis(timeout_ms)) => {
         }
@@ -272,19 +268,18 @@ where
 
         match item {
             Some(StreamItem::Value(val)) => results.push(val),
-            Some(StreamItem::Error(_)) => continue, // Ignore errors
-            None => break,                          // Stream ended
+            Some(StreamItem::Error(_)) => continue,
+            None => break,
         }
     }
     results
 }
 
-/// Macro to wrap test bodies with timeout to prevent hanging tests
 #[macro_export]
 macro_rules! with_timeout {
     ($test_body:expr) => {
         timeout(Duration::from_secs(5), async { $test_body })
             .await
-            .expect("Test timed out after 5 seconds")
+            .unwrap()
     };
 }

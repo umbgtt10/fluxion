@@ -99,7 +99,6 @@
 //! - `person`, `animal`, `plant` - Specific fixture types
 //! - `helpers` - Assertion and utility functions
 
-#![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 pub mod animal;
 pub mod error_injection;
 pub mod helpers;
@@ -109,7 +108,6 @@ pub mod sequenced;
 pub mod test_data;
 pub mod test_wrapper;
 
-// Re-export commonly used test utilities
 pub use error_injection::ErrorInjectingStream;
 pub use helpers::{
     assert_no_element_emitted, assert_stream_ended, test_channel, test_channel_with_errors,

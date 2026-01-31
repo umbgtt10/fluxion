@@ -55,24 +55,6 @@ pub struct ErrorInjectingStream<S> {
 }
 
 impl<S> ErrorInjectingStream<S> {
-    /// Creates a new error-injecting stream wrapper.
-    ///
-    /// # Arguments
-    ///
-    /// * `inner` - The base stream to wrap
-    /// * `inject_error_at` - The position (0-indexed) at which to inject an error
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use fluxion_test_utils::{Sequenced, ErrorInjectingStream};
-    /// use futures::stream;
-    ///
-    /// let items = vec![Sequenced::new(1), Sequenced::new(2)];
-    /// let base = stream::iter(items);
-    /// let error_stream = ErrorInjectingStream::new(base, 1);
-    /// // Will inject error at position 1 (after first value)
-    /// ```
     pub fn new(inner: S, inject_error_at: usize) -> Self {
         Self {
             inner,
@@ -90,10 +72,9 @@ where
     type Item = StreamItem<S::Item>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        // Check if we should inject an error at this position
         if let Some(error_pos) = self.inject_error_at {
             if self.count == error_pos {
-                self.inject_error_at = None; // Only inject once
+                self.inject_error_at = None;
                 self.count += 1;
                 return Poll::Ready(Some(StreamItem::Error(FluxionError::stream_error(
                     "Injected test error",
@@ -101,7 +82,6 @@ where
             }
         }
 
-        // Otherwise, poll the inner stream and wrap in StreamItem::Value
         match Pin::new(&mut self.inner).poll_next(cx) {
             Poll::Ready(Some(item)) => {
                 self.count += 1;

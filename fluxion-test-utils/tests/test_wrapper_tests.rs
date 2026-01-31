@@ -7,49 +7,78 @@ use fluxion_test_utils::test_wrapper::TestWrapper;
 
 #[test]
 fn test_new_creates_wrapper_with_timestamp() {
+    // Arrange & Act
     let wrapper = TestWrapper::new(42, 100);
+
+    // Assert
     assert_eq!(wrapper.value(), &42);
     assert_eq!(wrapper.timestamp(), 100);
 }
 
 #[test]
 fn test_new_with_string() {
+    // Arrange & Act
     let wrapper = TestWrapper::new("hello".to_string(), 200);
+
+    // Assert
     assert_eq!(wrapper.value(), &"hello".to_string());
     assert_eq!(wrapper.timestamp(), 200);
 }
 
 #[test]
 fn test_value_returns_reference() {
+    // Arrange & Act
     let wrapper = TestWrapper::new(vec![1, 2, 3], 50);
+
+    // Assert
     assert_eq!(wrapper.value(), &vec![1, 2, 3]);
 }
 
 #[test]
 fn test_timestamped_into_inner() {
+    // Arrange
     let wrapper = TestWrapper::new(42, 100);
+
+    // Act
     let inner = wrapper.clone().into_inner();
+
+    // Assert
     assert_eq!(inner, 42);
 }
 
 #[test]
 fn test_timestamped_timestamp() {
+    // Arrange & Act
     let wrapper = TestWrapper::new("test", 250);
+
+    // Assert
     assert_eq!(wrapper.timestamp(), 250);
 }
 
 #[test]
 fn test_timestamped_with_timestamp() {
+    // Arrange
     let _original = TestWrapper::new(42, 100);
+
+    // Act
+
+    // Act
     let new_wrapper = TestWrapper::with_timestamp(42, 500);
+
+    // Assert
     assert_eq!(new_wrapper.value(), &42);
     assert_eq!(new_wrapper.timestamp(), 500);
 }
 
 #[test]
 fn test_clone() {
+    // Arrange
     let original = TestWrapper::new(42, 100);
+
+    // Act
     let cloned = original.clone();
+
+    // Assert
     assert_eq!(original, cloned);
     assert_eq!(cloned.value(), &42);
     assert_eq!(cloned.timestamp(), 100);
@@ -57,8 +86,13 @@ fn test_clone() {
 
 #[test]
 fn test_debug_format() {
+    // Arrange
     let wrapper = TestWrapper::new(42, 100);
+
+    // Act
     let debug_str = format!("{:?}", wrapper);
+
+    // Assert
     assert!(debug_str.contains("TestWrapper"));
     assert!(debug_str.contains("42"));
     assert!(debug_str.contains("100"));
@@ -66,44 +100,54 @@ fn test_debug_format() {
 
 #[test]
 fn test_partial_eq_same_values() {
+    // Arrange & Act
     let wrapper1 = TestWrapper::new(42, 100);
     let wrapper2 = TestWrapper::new(42, 100);
+
+    // Assert
     assert_eq!(wrapper1, wrapper2);
 }
 
 #[test]
 fn test_partial_eq_different_values() {
+    // Arrange & Act
     let wrapper1 = TestWrapper::new(42, 100);
     let wrapper2 = TestWrapper::new(43, 100);
+
+    // Assert
     assert_ne!(wrapper1, wrapper2);
 }
 
 #[test]
 fn test_partial_eq_different_timestamps() {
+    // Arrange & Act
     let wrapper1 = TestWrapper::new(42, 100);
     let wrapper2 = TestWrapper::new(42, 200);
+
+    // Assert
     assert_ne!(wrapper1, wrapper2);
 }
 
 #[test]
 fn test_ord_by_timestamp_then_value() {
+    // Arrange & Act
     let wrapper1 = TestWrapper::new(10, 100);
     let wrapper2 = TestWrapper::new(20, 100);
     let wrapper3 = TestWrapper::new(10, 200);
 
-    // Same timestamp, different values - ordered by value
+    // Assert
     assert!(wrapper1 < wrapper2);
-
-    // Different timestamps - ordered by timestamp
     assert!(wrapper1 < wrapper3);
     assert!(wrapper2 < wrapper3);
 }
 
 #[test]
 fn test_partial_ord() {
+    // Arrange & Act
     let wrapper1 = TestWrapper::new(42, 100);
     let wrapper2 = TestWrapper::new(42, 200);
 
+    // Assert
     assert!(wrapper1 < wrapper2);
     assert!(wrapper2 > wrapper1);
     assert!(wrapper1 <= wrapper1);
@@ -112,20 +156,26 @@ fn test_partial_ord() {
 
 #[test]
 fn test_ord_with_same_wrapper() {
+    // Arrange & Act
     let wrapper = TestWrapper::new(42, 100);
+
+    // Assert
     assert_eq!(wrapper.cmp(&wrapper), std::cmp::Ordering::Equal);
 }
 
 #[test]
 fn test_sorting_by_timestamp() {
+    // Arrange
     let mut wrappers = [
         TestWrapper::new(1, 300),
         TestWrapper::new(2, 100),
         TestWrapper::new(3, 200),
     ];
 
+    // Act
     wrappers.sort();
 
+    // Assert
     assert_eq!(wrappers[0].timestamp(), 100);
     assert_eq!(wrappers[1].timestamp(), 200);
     assert_eq!(wrappers[2].timestamp(), 300);
@@ -133,6 +183,7 @@ fn test_sorting_by_timestamp() {
 
 #[test]
 fn test_with_complex_type() {
+    // Arrange
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     struct Person {
         name: String,
@@ -144,29 +195,37 @@ fn test_with_complex_type() {
         age: 30,
     };
 
+    // Act
     let wrapper = TestWrapper::new(person.clone(), 500);
+
+    // Assert
     assert_eq!(wrapper.value(), &person);
     assert_eq!(wrapper.timestamp(), 500);
 }
 
 #[test]
 fn test_with_timestamp_preserves_value() {
+    // Arrange
     let _original = TestWrapper::new("test".to_string(), 100);
+
+    // Act
     let updated = TestWrapper::with_timestamp("test".to_string(), 200);
 
+    // Assert
     assert_eq!(updated.value(), "test");
     assert_eq!(updated.timestamp(), 200);
 }
 
 #[test]
 fn test_clone_independence() {
+    // Arrange
     let original = TestWrapper::new(vec![1, 2, 3], 100);
     let cloned = original.clone();
 
-    // Create a modified version
+    // Act
     let modified = TestWrapper::with_timestamp(vec![4, 5, 6], 200);
 
-    // Original and first clone should be unchanged
+    // Assert
     assert_eq!(original.value(), &vec![1, 2, 3]);
     assert_eq!(original.timestamp(), 100);
     assert_eq!(cloned.value(), &vec![1, 2, 3]);
@@ -177,19 +236,23 @@ fn test_clone_independence() {
 
 #[test]
 fn test_eq_trait() {
+    // Arrange & Act
     let wrapper1 = TestWrapper::new(42, 100);
     let wrapper2 = TestWrapper::new(42, 100);
     let wrapper3 = TestWrapper::new(42, 200);
 
+    // Assert
     assert!(wrapper1.eq(&wrapper2));
     assert!(!wrapper1.eq(&wrapper3));
 }
 
 #[test]
 fn test_multiple_timestamps() {
+    // Arrange & Act
     let wrapper1 = TestWrapper::new(42, 0);
     let wrapper2 = TestWrapper::new(42, u64::MAX);
 
+    // Assert
     assert_eq!(wrapper1.timestamp(), 0);
     assert_eq!(wrapper2.timestamp(), u64::MAX);
     assert!(wrapper1 < wrapper2);
@@ -197,66 +260,91 @@ fn test_multiple_timestamps() {
 
 #[test]
 fn test_value_reference_lifetime() {
+    // Arrange
     let wrapper = TestWrapper::new(42, 100);
+
+    // Act
     let value_ref = wrapper.value();
+
+    // Assert
     assert_eq!(*value_ref, 42);
-    // value_ref should still be valid here
     assert_eq!(*value_ref, 42);
 }
 
 #[test]
 fn test_with_option_type() {
+    // Arrange & Act
     let wrapper = TestWrapper::new(Some(42), 100);
+
+    // Assert
     assert_eq!(wrapper.value(), &Some(42));
     assert_eq!(wrapper.timestamp(), 100);
 
+    // Act
     let wrapper_none: TestWrapper<Option<i32>> = TestWrapper::new(None, 200);
+
+    // Assert
     assert_eq!(wrapper_none.value(), &None);
     assert_eq!(wrapper_none.timestamp(), 200);
 }
 
 #[test]
 fn test_with_result_type() {
+    // Arrange & Act
     let wrapper_ok: TestWrapper<Result<i32, String>> = TestWrapper::new(Ok(42), 100);
+
+    // Assert
     assert_eq!(wrapper_ok.value(), &Ok(42));
 
+    // Act
     let wrapper_err: TestWrapper<Result<i32, String>> =
         TestWrapper::new(Err("error".to_string()), 200);
+
+    // Assert
     assert_eq!(wrapper_err.value(), &Err("error".to_string()));
 }
 
 #[test]
 fn test_ordering_transitivity() {
+    // Arrange & Act
     let wrapper1 = TestWrapper::new(10, 100);
     let wrapper2 = TestWrapper::new(20, 200);
     let wrapper3 = TestWrapper::new(30, 300);
 
+    // Assert
     assert!(wrapper1 < wrapper2);
     assert!(wrapper2 < wrapper3);
-    assert!(wrapper1 < wrapper3); // Transitivity
+    assert!(wrapper1 < wrapper3);
 }
 
 #[test]
 fn test_equality_reflexive() {
+    // Arrange & Act
     let wrapper = TestWrapper::new(42, 100);
+
+    // Assert
     assert_eq!(wrapper, wrapper);
 }
 
 #[test]
 fn test_equality_symmetric() {
+    // Arrange & Act
     let wrapper1 = TestWrapper::new(42, 100);
     let wrapper2 = TestWrapper::new(42, 100);
 
+    // Assert
     assert_eq!(wrapper1, wrapper2);
     assert_eq!(wrapper2, wrapper1);
 }
 
 #[test]
 fn test_equality_transitive() {
+    // Arrange & Act
     let wrapper1 = TestWrapper::new(42, 100);
     let wrapper2 = TestWrapper::new(42, 100);
     let wrapper3 = TestWrapper::new(42, 100);
 
+    // Assert
     assert_eq!(wrapper1, wrapper2);
     assert_eq!(wrapper2, wrapper3);
     assert_eq!(wrapper1, wrapper3);
@@ -264,42 +352,62 @@ fn test_equality_transitive() {
 
 #[test]
 fn test_zero_timestamp() {
+    // Arrange & Act
     let wrapper = TestWrapper::new("zero", 0);
+
+    // Assert
     assert_eq!(wrapper.timestamp(), 0);
 }
 
 #[test]
 fn test_max_timestamp() {
+    // Arrange & Act
     let wrapper = TestWrapper::new("max", u64::MAX);
+
+    // Assert
     assert_eq!(wrapper.timestamp(), u64::MAX);
 }
 
 #[test]
 fn test_into_inner_consumes_wrapper() {
+    // Arrange
     let wrapper = TestWrapper::new(42, 100);
+
+    // Act
     let inner = wrapper.into_inner();
-    // wrapper is consumed, can't use it anymore
+
+    // Assert
     assert_eq!(inner, 42);
 }
 
 #[test]
 fn test_with_unit_type() {
+    // Arrange & Act
     let wrapper = TestWrapper::new((), 100);
+
+    // Assert
     assert_eq!(wrapper.value(), &());
     assert_eq!(wrapper.timestamp(), 100);
 }
 
 #[test]
 fn test_with_tuple_type() {
+    // Arrange & Act
     let wrapper = TestWrapper::new((1, "hello", true), 100);
+
+    // Assert
     assert_eq!(wrapper.value(), &(1, "hello", true));
 }
 
 #[test]
 fn test_nested_wrappers() {
+    // Arrange
     let inner_wrapper = TestWrapper::new(42, 50);
+
+    // Act
     let outer_wrapper = TestWrapper::new(inner_wrapper.clone(), 100);
 
+    // Assert
     assert_eq!(outer_wrapper.value(), &inner_wrapper);
     assert_eq!(outer_wrapper.timestamp(), 100);
     assert_eq!(outer_wrapper.value().timestamp(), 50);

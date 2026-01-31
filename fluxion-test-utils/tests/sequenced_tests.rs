@@ -139,24 +139,18 @@ fn test_sequenced_clone_independence() {
 
 #[test]
 fn test_sequenced_sequence_monotonic() {
-    // Arrange & Act - Add small delays to ensure timestamp differences
+    // Arrange & Act
     let items: Vec<Sequenced<i32>> = (0..10)
         .map(|i| {
             let item = Sequenced::new(i);
-            // Small sleep to ensure timestamp differences
             std::thread::sleep(Duration::from_micros(100));
             item
         })
         .collect();
 
-    // Assert - timestamps should increase or stay same (due to precision limits)
+    // Assert
     for i in 1..items.len() {
-        assert!(
-            items[i - 1].timestamp() <= items[i].timestamp(),
-            "Timestamp at {} should be <= timestamp at {}",
-            i - 1,
-            i
-        );
+        assert!(items[i - 1].timestamp() <= items[i].timestamp());
     }
 }
 
@@ -197,7 +191,6 @@ fn test_sequenced_sorting_by_sequence() {
 
     let mut items = [item1.clone(), item2.clone(), item3.clone()];
 
-    // Capture the original sequence order
     let original_order: Vec<_> = items.iter().map(|x| x.timestamp()).collect();
 
     // Act

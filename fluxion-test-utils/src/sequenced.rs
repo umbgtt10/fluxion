@@ -8,10 +8,6 @@ use std::sync::atomic::{AtomicU64, Ordering::SeqCst};
 
 static GLOBAL_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-/// A wrapper that adds automatic sequencing to any value for temporal ordering.
-///
-/// Uses a monotonically increasing sequence counter to establish a total ordering of events.
-/// The sequence is assigned when the value is created.
 #[derive(Debug, Clone)]
 pub struct Sequenced<T> {
     pub value: T,
@@ -27,7 +23,6 @@ impl<T: PartialEq> PartialEq for Sequenced<T> {
 impl<T: Eq> Eq for Sequenced<T> {}
 
 impl<T> Sequenced<T> {
-    /// Creates a new timestamped value with an automatically assigned sequence number.
     pub fn new(value: T) -> Self {
         Self {
             value,
