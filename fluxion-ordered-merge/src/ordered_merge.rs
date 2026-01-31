@@ -8,10 +8,6 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 use futures::Stream;
 
-/// Low-level ordered merge that combines multiple streams emitting items in order.
-/// Items are emitted based on their `Ord` implementation - smallest items first.
-///
-/// Streams must be `Send + Sync` to ensure safe concurrent access.
 pub struct OrderedMerge<T> {
     streams: Vec<Pin<Box<dyn Stream<Item = T> + Send + Sync>>>,
     buffered: Vec<Option<T>>,
@@ -47,7 +43,6 @@ where
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = Pin::into_inner(self);
 
-        // Poll streams to fill empty buffer slots
         let mut any_pending = false;
 
         for i in 0..this.streams.len() {
@@ -56,9 +51,7 @@ where
                     Poll::Ready(Some(item)) => {
                         this.buffered[i] = Some(item);
                     }
-                    Poll::Ready(None) => {
-                        // Stream is done, leave as None
-                    }
+                    Poll::Ready(None) => {}
                     Poll::Pending => {
                         any_pending = true;
                     }
@@ -66,7 +59,6 @@ where
             }
         }
 
-        // Find the minimum item among all buffered items
         let mut min_idx = None;
         let mut min_val: Option<&T> = None;
 
@@ -84,7 +76,6 @@ where
             if let Some(item) = this.buffered[idx].take() {
                 Poll::Ready(Some(item))
             } else {
-                // This branch is unreachable: min_idx is only Some when buffered[idx] is Some
                 unreachable!("min_idx is only Some when buffered[idx] is Some")
             }
         } else if any_pending {
@@ -95,11 +86,9 @@ where
     }
 }
 
-/// Extension trait for merging a vector of streams in order.
 pub trait OrderedMergeExt {
     type Item;
 
-    /// Merges multiple streams, emitting items in order based on their `Ord` implementation.
     fn ordered_merge(self) -> OrderedMerge<Self::Item>;
 }
 

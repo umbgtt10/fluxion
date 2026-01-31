@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_ordered_merge::OrderedMergeExt;
+use fluxion_ordered_merge::ordered_merge::OrderedMergeExt;
 use fluxion_test_utils::test_data::{
     animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_rose,
     plant_sunflower, TestData,
@@ -38,20 +38,28 @@ async fn test_ordered_merge_single_stream() -> anyhow::Result<()> {
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
     let mut ordered_stream = vec![rx].ordered_merge();
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut ordered_stream, 100).await)).value,
         person_alice()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut ordered_stream, 100).await)).value,
         person_bob()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut ordered_stream, 100).await)).value,
         person_charlie()
@@ -70,22 +78,29 @@ async fn test_ordered_merge_one_empty_stream() -> anyhow::Result<()> {
     let streams_list = vec![person_rx, animal_rx, plant_rx];
     let mut results = streams_list.ordered_merge();
 
-    // Act & Assert
+    // Act
     drop(animal_tx);
-
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         person_alice()
     );
 
+    // Act
     plant_tx.unbounded_send(Sequenced::new(plant_rose()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         plant_rose()
     );
 
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         person_bob()
@@ -103,38 +118,55 @@ async fn test_ordered_merge_interleaved_emissions() -> anyhow::Result<()> {
 
     let mut results = vec![person_rx, animal_rx, plant_rx].ordered_merge();
 
-    // Act & Assert
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         person_alice()
     );
 
+    // Act
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         animal_dog()
     );
 
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         person_bob()
     );
 
+    // Act
     plant_tx.unbounded_send(Sequenced::new(plant_rose()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         plant_rose()
     );
 
+    // Act
     animal_tx.unbounded_send(Sequenced::new(animal_spider()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         animal_spider()
     );
 
+    // Act
     plant_tx.unbounded_send(Sequenced::new(plant_sunflower()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         plant_sunflower()
@@ -151,12 +183,13 @@ async fn test_ordered_merge_stream_completes_early() -> anyhow::Result<()> {
 
     let mut results = vec![person_rx, animal_rx].ordered_merge();
 
-    // Act & Assert
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     drop(person_tx);
     animal_tx.unbounded_send(Sequenced::new(animal_spider()))?;
 
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         person_alice()
@@ -221,20 +254,28 @@ async fn test_ordered_merge_one_stream_closes_midway_three_streams() -> anyhow::
 
     let mut results = vec![person_rx, animal_rx, plant_rx].ordered_merge();
 
-    // Act & Assert stepwise
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         person_alice()
     );
 
+    // Act
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         animal_dog()
     );
 
+    // Act
     plant_tx.unbounded_send(Sequenced::new(plant_rose()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         plant_rose()
@@ -242,20 +283,29 @@ async fn test_ordered_merge_one_stream_closes_midway_three_streams() -> anyhow::
 
     drop(plant_tx);
 
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         person_bob()
     );
 
+    // Act
     animal_tx.unbounded_send(Sequenced::new(animal_spider()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut results, 100).await)).value,
         animal_spider()
     );
 
+    // Act
     drop(person_tx);
     drop(animal_tx);
+
+    // Assert
     assert_stream_ended(&mut results, 500).await;
 
     Ok(())
@@ -288,7 +338,7 @@ async fn test_ordered_merge_large_volume() -> anyhow::Result<()> {
         count += 1;
     }
 
-    assert_eq!(count, 1000, "Expected 1000 items");
+    assert_eq!(count, 1000);
 
     Ok(())
 }
@@ -331,15 +381,20 @@ async fn test_ordered_merge_maximum_concurrent_streams() -> anyhow::Result<()> {
 
             let mut results2 = vec![rx4, rx5].ordered_merge();
 
-            // Act & Assert
+            // Act
             tx4.unbounded_send(Sequenced::new(person_bob())).unwrap();
+
+            // Assert
             assert_eq!(
                 unwrap_value(Some(unwrap_stream(&mut results2, 100).await)).value,
                 person_bob()
             );
 
+            // Act
             tx5.unbounded_send(Sequenced::new(person_charlie()))
                 .unwrap();
+
+            // Assert
             assert_eq!(
                 unwrap_value(Some(unwrap_stream(&mut results2, 100).await)).value,
                 person_charlie()
@@ -350,9 +405,7 @@ async fn test_ordered_merge_maximum_concurrent_streams() -> anyhow::Result<()> {
     }
 
     for handle in handles {
-        handle
-            .await
-            .expect("Concurrent stream task should complete successfully");
+        handle.await.unwrap();
     }
 
     Ok(())

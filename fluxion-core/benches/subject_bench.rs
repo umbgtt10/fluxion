@@ -11,7 +11,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 
-// Simple timestamped wrapper for benchmarks (no test-utils dependency)
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct BenchValue<T> {
     value: T,
@@ -50,16 +49,12 @@ impl<T: Clone> Timestamped for BenchValue<T> {
 
 pub fn bench_subject(c: &mut Criterion) {
     let mut group = c.benchmark_group("subject");
-
-    // Subscriber counts to test scalability
     let subscriber_counts = [1usize, 8, 64, 256];
 
-    // Scenario 1: small numeric payload (BenchValue<u64>)
     for &subs in &subscriber_counts {
         group.throughput(Throughput::Elements(subs as u64));
         let id = BenchmarkId::from_parameter(format!("simple_subs_{subs}"));
         group.bench_with_input(id, &subs, |bencher, &subs| {
-            // Setup: create subject (not timed)
             let setup = || {
                 let rt = Runtime::new().unwrap();
                 let subj: Arc<FluxionSubject<BenchValue<u64>>> = Arc::new(FluxionSubject::new());
@@ -67,9 +62,7 @@ pub fn bench_subject(c: &mut Criterion) {
             };
 
             bencher.iter_with_setup(setup, |(rt, subj)| {
-                // Only measure send/wait time
                 rt.block_on(async {
-                    // Spawn subscriber tasks that await a single item
                     let mut handles = Vec::with_capacity(subs);
                     for _ in 0..subs {
                         let s = subj.subscribe();
@@ -80,11 +73,9 @@ pub fn bench_subject(c: &mut Criterion) {
                         }));
                     }
 
-                    // Send a small numeric value (no test fixtures used)
                     subj.send(StreamItem::Value(BenchValue::new(42u64)))
                         .unwrap();
 
-                    // Wait for subscribers
                     for h in handles {
                         let _ = h.await;
                     }
@@ -93,14 +84,12 @@ pub fn bench_subject(c: &mut Criterion) {
         });
     }
 
-    // Scenario 2: large payload cloning cost - use Vec<u8>
     let payload_sizes = [256usize, 1024usize, 4096usize];
     for &size in &payload_sizes {
         for &subs in &subscriber_counts {
             group.throughput(Throughput::Bytes((size * subs) as u64));
             let id = BenchmarkId::from_parameter(format!("large_p{}_subs_{}", size, subs));
             group.bench_with_input(id, &(size, subs), |bencher, &(size, subs)| {
-                // Setup: create subject (not timed)
                 let setup = || {
                     let rt = Runtime::new().unwrap();
                     let subj: Arc<FluxionSubject<BenchValue<Vec<u8>>>> =
@@ -109,7 +98,6 @@ pub fn bench_subject(c: &mut Criterion) {
                 };
 
                 bencher.iter_with_setup(setup, |(rt, subj)| {
-                    // Only measure send/wait time
                     rt.block_on(async {
                         let mut handles = Vec::with_capacity(subs);
                         for _ in 0..subs {

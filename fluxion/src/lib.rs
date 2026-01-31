@@ -86,14 +86,9 @@
 //! - `fluxion_exec` - Async execution and subscription utilities
 // fluxion_error - Error types and handling
 
-// Re-export core types
 pub use fluxion_core::into_stream::IntoStream;
 pub use fluxion_core::{HasTimestamp, Timestamped};
-
-// Re-export commonly used types
 pub use fluxion_stream::{CombinedState, WithPrevious};
-
-// Re-export exec utilities
 pub use fluxion_exec;
 
 /// Prelude module for convenient imports.

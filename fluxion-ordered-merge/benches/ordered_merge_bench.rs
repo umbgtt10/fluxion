@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use criterion::{BenchmarkId, Criterion, Throughput};
-use fluxion_ordered_merge::OrderedMergeExt;
+use fluxion_ordered_merge::ordered_merge::OrderedMergeExt;
 use fluxion_test_utils::Sequenced;
 use futures::stream::{self, StreamExt};
 use std::hint::black_box;
@@ -19,9 +19,6 @@ fn make_stream(
     stream::iter(items)
 }
 
-/// # Panics
-///
-/// This benchmark constructs a local `Runtime` with `Runtime::new().unwrap()`, which may panic.
 pub fn bench_ordered_merge(c: &mut Criterion) {
     let mut group = c.benchmark_group("ordered_merge");
     let sizes = [100usize, 1000usize, 10000];
@@ -38,7 +35,6 @@ pub fn bench_ordered_merge(c: &mut Criterion) {
                     id,
                     &(size, payload_size, num_streams),
                     |bencher, &(size, payload_size, num_streams)| {
-                        // Setup: create streams (not timed)
                         let setup = || {
                             let streams: Vec<_> = (0..num_streams)
                                 .map(|_| make_stream(size, payload_size))
@@ -47,7 +43,6 @@ pub fn bench_ordered_merge(c: &mut Criterion) {
                         };
 
                         bencher.iter_with_setup(setup, |merged| {
-                            // Only measure execution time
                             let rt = Runtime::new().unwrap();
                             rt.block_on(async move {
                                 let mut s = Box::pin(merged);

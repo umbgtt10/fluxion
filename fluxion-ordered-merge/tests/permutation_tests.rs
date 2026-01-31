@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use fluxion_ordered_merge::OrderedMergeExt;
+use fluxion_ordered_merge::ordered_merge::OrderedMergeExt;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_fern,
     plant_rose, plant_sunflower, TestData,
@@ -30,7 +30,6 @@ fn all_channel_permutations() -> Vec<[usize; 3]> {
 fn generate_send_orders() -> Vec<[usize; 9]> {
     let mut orders = Vec::new();
 
-    // Generate all permutations of [0, 1, 2] for each of 3 rounds
     let round_perms = vec![
         [0, 1, 2],
         [0, 2, 1],
@@ -57,30 +56,11 @@ fn generate_send_orders() -> Vec<[usize; 9]> {
 
 #[tokio::test]
 async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
-    // Test that temporal ordering (sequence numbers) is preserved
-    // regardless of channel order or send pattern
-    // This tests 6 channel permutations x 216 send orders = 1296 test cases
-
     let channel_permutations = all_channel_permutations();
     let send_orders = generate_send_orders();
 
-    assert_eq!(
-        send_orders.len(),
-        216,
-        "Expected 216 send order patterns (6^3)"
-    );
-    assert_eq!(
-        channel_permutations.len(),
-        6,
-        "Expected 6 channel permutations"
-    );
-
-    println!(
-        "Testing {} channel permutations � {} send orders = {} total test cases",
-        channel_permutations.len(),
-        send_orders.len(),
-        channel_permutations.len() * send_orders.len()
-    );
+    assert_eq!(send_orders.len(), 216);
+    assert_eq!(channel_permutations.len(), 6);
 
     for channel_order in &channel_permutations {
         for send_order in &send_orders {
@@ -93,7 +73,6 @@ async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
             let animal_stream = animal_rx;
             let plant_stream = plant_rx;
 
-            // Build streams vec based on permutation order
             let streams = match channel_order {
                 [0, 1, 2] => vec![person_stream, animal_stream, plant_stream],
                 [0, 2, 1] => vec![person_stream, plant_stream, animal_stream],
@@ -106,8 +85,6 @@ async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
 
             let mut results = Box::pin(streams.ordered_merge());
 
-            // Act - send values according to send_order
-            // Track which value to send next for each channel
             let mut person_idx = 0;
             let mut animal_idx = 0;
             let mut plant_idx = 0;
@@ -159,15 +136,12 @@ async fn test_ordered_merge_all_permutations() -> anyhow::Result<()> {
                 }
             }
 
-            // Drop senders to signal end of streams
             drop(person_tx);
             drop(animal_tx);
             drop(plant_tx);
 
-            // Yield to allow all messages to be processed
             tokio::task::yield_now().await;
 
-            // Assert - all 9 values come out in send order
             for (i, expected_value) in expected_order.iter().enumerate() {
                 let result = results.next().await;
                 assert!(

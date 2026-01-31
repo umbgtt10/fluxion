@@ -69,6 +69,7 @@ Errors **flow through streams** like data (no short-circuiting). Handle with `.o
 - **Integration tests only** in `tests/` directory (avoid `#[cfg(test)]` modules)
 - One test file per operator: `tests/operator_name_tests.rs`
 - Use `#[tokio::test]` for all async tests
+- **Benchmarks** in `benches/` directory follow same comment standards as productive code
 
 ### Test Patterns
 
