@@ -21,7 +21,6 @@ pub(crate) struct State<T> {
 }
 
 impl<T> Context<T> {
-    /// Enqueues an item. Returns true if we should spawn a processing task.
     pub async fn enqueue_and_try_start_processing(&self, value: T) -> bool {
         let mut state = self.state.lock().await;
         state.item = Some(value);
@@ -34,7 +33,6 @@ impl<T> Context<T> {
         }
     }
 
-    /// Gets the current item for processing.
     pub async fn get_item(&self) -> Option<T>
     where
         T: Clone,
@@ -55,7 +53,6 @@ impl<T> Context<T> {
         )
     }
 
-    /// Called when processing finishes. Returns true if there's another item to process.
     pub async fn finish_processing_and_check_for_next(&self) -> bool {
         let mut state = self.state.lock().await;
 
@@ -67,12 +64,10 @@ impl<T> Context<T> {
         }
     }
 
-    /// Notify that a processing task has completed
     pub fn notify_task_complete(&self) {
         self.processing_complete.notify(usize::MAX);
     }
 
-    /// Wait for all processing to complete
     pub async fn wait_for_processing_complete(&self) {
         loop {
             {
@@ -110,10 +105,6 @@ macro_rules! define_subscribe_latest_impl {
         use futures::{Stream, StreamExt};
         use crate::subscribe_latest::implementation::Context;
 
-        /// Extension trait providing async subscription with automatic cancellation of outdated work.
-        ///
-        /// This trait enables processing stream items where newer items automatically cancel
-        /// processing of older items, ensuring only the latest value is being processed.
         #[$attr]
         pub trait SubscribeLatestExt<T>: Stream<Item = T> + Sized {
             /// Subscribes to the stream, automatically cancelling processing of older items when new items arrive.
@@ -223,12 +214,10 @@ macro_rules! define_subscribe_latest_impl {
         }
     };
 
-    // Single threaded (no bounds)
     () => {
         define_subscribe_latest_impl!(@step #[async_trait(?Send)], );
     };
 
-    // Multi threaded (bounds provided)
     ($($bounds:tt)+) => {
         define_subscribe_latest_impl!(@step #[async_trait], $($bounds)+);
     };

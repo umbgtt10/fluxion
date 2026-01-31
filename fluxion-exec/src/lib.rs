@@ -11,7 +11,6 @@
     )),
     no_std
 )]
-#![allow(clippy::multiple_crate_versions, clippy::doc_markdown)]
 
 //! Async execution utilities for stream processing.
 //!
@@ -351,7 +350,6 @@ pub mod subscribe;
 ))]
 pub mod subscribe_latest;
 
-// Re-export commonly used types
 pub use subscribe::SubscribeExt;
 #[cfg(any(
     feature = "runtime-tokio",

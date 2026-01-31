@@ -84,7 +84,6 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
     // Assert
     assert_eq!(*results.lock().await, vec![item1, item2, item3]);
 
-    // Clean up
     drop(tx);
     task.await.unwrap();
 

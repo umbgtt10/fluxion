@@ -26,7 +26,6 @@ macro_rules! info {
     }};
 }
 
-// With std available (runtime features enabled)
 #[cfg(all(
     not(feature = "tracing"),
     any(
@@ -75,7 +74,6 @@ macro_rules! info {
     }};
 }
 
-// In no_std mode (no runtime features), logging is a no-op
 #[cfg(all(
     not(feature = "tracing"),
     not(any(

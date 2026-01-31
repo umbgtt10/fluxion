@@ -69,34 +69,34 @@ async fn test_subscribe_latest_no_skipping_no_error_no_cancellation() -> anyhow:
 
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
-    notify_rx.next().await.expect("Alice processed");
+    notify_rx.next().await.unwrap();
 
     tx.unbounded_send(Sequenced::new(person_bob()))?;
-    notify_rx.next().await.expect("Bob processed");
+    notify_rx.next().await.unwrap();
 
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
-    notify_rx.next().await.expect("Charlie processed");
+    notify_rx.next().await.unwrap();
 
     tx.unbounded_send(Sequenced::new(person_diane()))?;
-    notify_rx.next().await.expect("Diane processed");
+    notify_rx.next().await.unwrap();
 
     tx.unbounded_send(Sequenced::new(person_dave()))?;
-    notify_rx.next().await.expect("Dave processed");
+    notify_rx.next().await.unwrap();
 
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    notify_rx.next().await.expect("Dog processed");
+    notify_rx.next().await.unwrap();
 
     tx.unbounded_send(Sequenced::new(animal_cat()))?;
-    notify_rx.next().await.expect("Cat processed");
+    notify_rx.next().await.unwrap();
 
     tx.unbounded_send(Sequenced::new(animal_ant()))?;
-    notify_rx.next().await.expect("Ant processed");
+    notify_rx.next().await.unwrap();
 
     tx.unbounded_send(Sequenced::new(animal_spider()))?;
-    notify_rx.next().await.expect("Spider processed");
+    notify_rx.next().await.unwrap();
 
     tx.unbounded_send(Sequenced::new(plant_rose()))?;
-    notify_rx.next().await.expect("Rose processed");
+    notify_rx.next().await.unwrap();
 
     // Assert
     let processed = {
@@ -258,19 +258,19 @@ async fn test_subscribe_latest_no_skipping_with_error_no_cancellation() -> anyho
 
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
-    notify_rx.next().await.expect("Alice processed");
+    notify_rx.next().await.unwrap();
 
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Error
-    notify_rx.next().await.expect("Bob handled (error)");
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    notify_rx.next().await.unwrap();
 
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
-    notify_rx.next().await.expect("Charlie processed");
+    notify_rx.next().await.unwrap();
 
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // Error
-    notify_rx.next().await.expect("Dave handled (error)");
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
+    notify_rx.next().await.unwrap();
 
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    notify_rx.next().await.expect("Dog processed");
+    notify_rx.next().await.unwrap();
 
     // Assert
     let processed = {
@@ -412,13 +412,13 @@ async fn test_subscribe_latest_no_skipping_with_cancellation_and_errors() -> any
 
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
-    notify_rx.next().await.expect("Alice processed");
+    notify_rx.next().await.unwrap();
 
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // Error
-    notify_rx.next().await.expect("Dog handled (error)");
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    notify_rx.next().await.unwrap();
 
     tx.unbounded_send(Sequenced::new(person_bob()))?;
-    notify_rx.next().await.expect("Bob processed");
+    notify_rx.next().await.unwrap();
 
     cancellation_token.cancel();
 
@@ -642,7 +642,7 @@ async fn test_subscribe_latest_high_volume() -> anyhow::Result<()> {
     for _ in 0..total_flood {
         tx.unbounded_send(Sequenced::new(person_alice()))?;
     }
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // sentinel latest
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     let expected_enqueue_count = 1 + total_flood + 1;
     while enqueue_count.load(Ordering::SeqCst) < expected_enqueue_count {
@@ -719,7 +719,6 @@ async fn test_subscribe_latest_single_item() -> anyhow::Result<()> {
     assert_eq!(processed.len(), 1);
     assert_eq!(processed[0], person_alice());
 
-    // Cleanup
     drop(tx);
     task_handle.await.unwrap();
 

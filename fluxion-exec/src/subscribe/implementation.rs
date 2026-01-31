@@ -7,7 +7,6 @@ use core::future::Future;
 use fluxion_core::{CancellationToken, Result};
 use futures::stream::{Stream, StreamExt};
 
-// Shared implementation logic
 pub async fn subscribe_impl<S, T, F, Fut, E, OnError>(
     mut stream: S,
     on_next_func: F,
@@ -28,7 +27,6 @@ where
             break;
         }
 
-        // Call handler directly (sequential processing)
         let result = on_next_func(item.clone(), cancellation_token.clone()).await;
 
         if let Err(error) = result {
@@ -49,9 +47,6 @@ macro_rules! define_subscribe_impl {
         use futures::stream::Stream;
         use crate::subscribe::implementation::subscribe_impl;
 
-        /// Extension trait providing async subscription capabilities for streams.
-        ///
-        /// This trait enables processing stream items with async handlers in a sequential manner.
         #[$attr]
         pub trait SubscribeExt<T>: Stream<Item = T> + Sized {
             /// Subscribes to the stream with an async handler, processing items sequentially.
@@ -114,12 +109,10 @@ macro_rules! define_subscribe_impl {
         }
     };
 
-    // Single threaded (no bounds)
     () => {
         define_subscribe_impl!(@step #[async_trait(?Send)], );
     };
 
-    // Multi threaded (bounds provided)
     ($($bounds:tt)+) => {
         define_subscribe_impl!(@step #[async_trait], $($bounds)+);
     };

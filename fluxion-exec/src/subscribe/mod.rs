@@ -2,10 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Extension trait providing async subscription capabilities for streams.
-//!
-//! This trait enables processing stream items with async handlers in a sequential manner.
-
 #[macro_use]
 mod implementation;
 
