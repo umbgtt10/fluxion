@@ -45,10 +45,11 @@ async fn test_throttle_chained_with_map_error_propagation() -> anyhow::Result<()
         }
     });
 
-    // Act & Assert
+    // Act
     let error = FluxionError::stream_error("test error");
     tx.unbounded_send(StreamItem::Error(error.clone()))?;
 
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await

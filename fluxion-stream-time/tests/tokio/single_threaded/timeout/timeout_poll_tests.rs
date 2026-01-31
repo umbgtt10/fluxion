@@ -15,26 +15,28 @@ use tokio::time::{advance, pause};
 
 #[tokio::test]
 async fn test_timeout_returns_pending_while_waiting() -> anyhow::Result<()> {
-    // This test covers the Poll::Pending branch when waiting for next value
+    // Arrange
     let timer = TokioTimer;
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut timeout_stream = stream.timeout(Duration::from_millis(500));
 
-    // Send first value - resets timer
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut timeout_stream, 100).await.unwrap().value,
         person_alice()
     );
-
-    // Should return Pending because stream has no values and timer hasn't expired yet (line 150 in timeout.rs)
     assert_no_element_emitted(&mut timeout_stream, 0).await;
 
-    // Send next value before timeout
+    // Act
     advance(Duration::from_millis(300)).await;
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut timeout_stream, 100).await.unwrap().value,
         person_bob()
@@ -45,17 +47,19 @@ async fn test_timeout_returns_pending_while_waiting() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_timeout_pending_without_values() -> anyhow::Result<()> {
-    // This test covers Poll::Pending when no values received yet
+    // Arrange
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut timeout_stream = stream.timeout(Duration::from_millis(500));
 
-    // Should return Pending - no values yet
+    // Assert
     assert_no_element_emitted(&mut timeout_stream, 0).await;
 
-    // Stream still works normally after
+    // Act
     let timer = TokioTimer;
     pause();
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut timeout_stream, 100).await.unwrap().value,
         person_alice()
@@ -66,28 +70,32 @@ async fn test_timeout_pending_without_values() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_timeout_pending_then_timer_expires() -> anyhow::Result<()> {
-    // Test transition from Pending to timeout error
+    // Arrange
     let timer = TokioTimer;
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut timeout_stream = stream.timeout(Duration::from_millis(500));
 
-    // Send value to start timer
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut timeout_stream, 100).await.unwrap().value,
         person_alice()
     );
 
-    // Advance partway - should be Pending
+    // Act
     advance(Duration::from_millis(300)).await;
+
+    // Assert
     assert_no_element_emitted(&mut timeout_stream, 0).await;
 
-    // Advance past timeout
+    // Act
     advance(Duration::from_millis(200)).await;
 
-    // Should get timeout error
+    // Assert
     let result = unwrap_stream(&mut timeout_stream, 100).await;
     assert!(result.is_error());
 
@@ -96,27 +104,27 @@ async fn test_timeout_pending_then_timer_expires() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_timeout_pending_with_stream_end() -> anyhow::Result<()> {
-    // Test Poll::Pending followed by stream end
+    // Arrange
     let timer = TokioTimer;
     pause();
 
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut timeout_stream = stream.timeout(Duration::from_millis(500));
 
-    // Send value
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut timeout_stream, 100).await.unwrap().value,
         person_alice()
     );
-
-    // Should be Pending
     assert_no_element_emitted(&mut timeout_stream, 0).await;
 
-    // End stream
+    // Act
     drop(tx);
 
-    // Stream should end gracefully (no timeout error)
+    // Assert
     assert!(timeout_stream.next().await.is_none());
 
     Ok(())

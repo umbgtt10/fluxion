@@ -38,15 +38,20 @@ async fn test_timeout_chained_with_map() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
+    // Act
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())
@@ -81,22 +86,30 @@ async fn test_timeout_chained_with_combine_with_previous() -> anyhow::Result<()>
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         (None, person_alice())
     );
 
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         (Some(person_alice()), person_bob())
     );
 
+    // Act
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())
@@ -131,16 +144,24 @@ async fn test_timeout_chained_with_scan_ordered() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 25);
 
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(recv_timeout(&mut result_rx, 1000).await.unwrap().value, 55);
 
+    // Act
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())
@@ -167,16 +188,21 @@ async fn test_timeout_before_map_ordered() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_bob()

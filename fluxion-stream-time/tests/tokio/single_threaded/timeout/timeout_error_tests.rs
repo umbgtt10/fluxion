@@ -32,9 +32,11 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     let error = FluxionError::stream_error("Test Error");
     tx.unbounded_send(StreamItem::Error(error))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 100)
             .await
@@ -45,11 +47,15 @@ async fn test_timeout_error_propagation() -> anyhow::Result<()> {
         "Stream processing error: Test Error"
     );
 
+    // Act
     advance(Duration::from_millis(50)).await;
     tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
     )))?;
+
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 100)
             .await

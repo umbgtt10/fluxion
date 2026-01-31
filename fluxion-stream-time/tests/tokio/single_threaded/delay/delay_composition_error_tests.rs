@@ -26,7 +26,7 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
         .emit_when(filter, |_| true)
         .delay(Duration::from_millis(200));
 
-    // Act & Assert
+    // Act
     tx_filter.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),
@@ -39,6 +39,8 @@ async fn test_emit_when_delay_error_propagation() -> anyhow::Result<()> {
 
     let error = FluxionError::stream_error("filter error");
     tx_filter.unbounded_send(StreamItem::Error(error.clone()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut processed, 100)
             .await

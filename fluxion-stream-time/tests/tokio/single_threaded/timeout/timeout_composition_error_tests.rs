@@ -32,9 +32,11 @@ async fn test_timeout_chained_error_propagation() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     let error = FluxionError::stream_error("Chain Error");
     tx.unbounded_send(StreamItem::Error(error))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 100)
             .await
@@ -45,10 +47,16 @@ async fn test_timeout_chained_error_propagation() -> anyhow::Result<()> {
         "Stream processing error: Chain Error"
     );
 
+    // Act
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_no_recv(&mut result_rx, 50).await;
 
+    // Act
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 100)
             .await

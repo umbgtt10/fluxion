@@ -33,9 +33,11 @@ async fn test_throttle_propagates_errors_immediately() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     let error = FluxionError::stream_error("test error");
     tx.unbounded_send(StreamItem::Error(error.clone()))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await
@@ -80,7 +82,7 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
@@ -89,6 +91,8 @@ async fn test_throttle_propagates_errors_during_throttle() -> anyhow::Result<()>
 
     let error = FluxionError::stream_error("error during throttle");
     tx.unbounded_send(StreamItem::Error(error.clone()))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000)
             .await

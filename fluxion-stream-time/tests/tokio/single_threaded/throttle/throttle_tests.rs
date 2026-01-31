@@ -35,20 +35,27 @@ async fn test_throttle_with_instant_timestamped() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_recv(&mut result_rx, 100).await;
 
+    // Act
     advance(Duration::from_millis(900)).await;
     tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
 
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_charlie()
@@ -66,38 +73,43 @@ async fn test_throttle_drops_intermediate_values() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut throttled = stream.throttle(Duration::from_millis(100));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(
         TestData::Person(Person::new("Alice".to_string(), 0)),
         timer.now(),
     ))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut throttled, 100).await.unwrap().value,
         TestData::Person(Person::new("Alice".to_string(), 0))
     );
 
-    // Send intermediate values during throttle period - all should be dropped
+    // Act
     for i in 1..10 {
         tx.unbounded_send(TokioTimestamped::new(
             TestData::Person(Person::new("Alice".to_string(), i)),
             timer.now(),
         ))?;
-        // Verify nothing is emitted (still throttling)
+
+        // Assert
         assert_no_element_emitted(&mut throttled, 0).await;
     }
 
-    // Advance 99ms - still throttling
+    // Act
     advance(Duration::from_millis(99)).await;
+
+    // Assert
     assert_no_element_emitted(&mut throttled, 0).await;
 
-    // Advance final 1ms - throttle window complete
+    // Act
     advance(Duration::from_millis(1)).await;
-
-    // Send next value - should be emitted since throttle expired
     tx.unbounded_send(TokioTimestamped::new(
         TestData::Person(Person::new("Alice".to_string(), 10)),
         timer.now(),
     ))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut throttled, 100).await.unwrap().value,
         TestData::Person(Person::new("Alice".to_string(), 10))
@@ -115,24 +127,31 @@ async fn test_throttle_zero_duration() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut throttled = stream.throttle(Duration::from_millis(0));
 
-    // Act & Assert - zero duration means all values pass through (no throttling)
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
-    // Advance to allow zero-duration sleep to complete and unwrap_stream timeout to work
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut throttled, 100).await.unwrap().value,
         person_alice()
     );
 
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut throttled, 100).await.unwrap().value,
         person_bob()
     );
 
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_charlie(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut throttled, 100).await.unwrap().value,
         person_charlie()

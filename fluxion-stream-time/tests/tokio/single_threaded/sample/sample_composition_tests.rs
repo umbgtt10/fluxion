@@ -85,12 +85,14 @@ async fn test_sample_chained_with_combine_with_previous() -> anyhow::Result<()> 
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
     advance(Duration::from_millis(50)).await;
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         (Some(person_alice()), person_bob())

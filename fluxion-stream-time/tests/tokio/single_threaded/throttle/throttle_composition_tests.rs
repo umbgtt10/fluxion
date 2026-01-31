@@ -45,8 +45,10 @@ async fn test_throttle_chained_with_map() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         TestData::Person(Person::new("Alice".to_string(), 50))
@@ -84,8 +86,10 @@ async fn test_throttle_chained_with_throttle() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
@@ -131,9 +135,11 @@ async fn test_throttle_chained_with_take_while_with() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     filter_tx.unbounded_send(TokioTimestamped::new(true, timer.now()))?;
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
@@ -187,9 +193,11 @@ async fn test_throttle_before_map_ordered() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(1)).await;
+
+    // Assert
     let received = recv_timeout(&mut result_rx, 100).await.unwrap();
     assert_eq!(
         received,

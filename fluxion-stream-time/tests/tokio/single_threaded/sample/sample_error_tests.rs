@@ -29,9 +29,11 @@ async fn test_sample_propagates_errors() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     let error = FluxionError::stream_error("Test Error");
     tx.unbounded_send(StreamItem::Error(error.clone()))?;
+
+    // Assert
     assert!(matches!(
         recv_timeout(&mut result_rx, 100).await.unwrap(),
         StreamItem::Error(e) if e.to_string() == "Stream processing error: Test Error"

@@ -32,8 +32,10 @@ async fn test_timeout_no_emission() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     advance(Duration::from_millis(150)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 100)
             .await
@@ -68,16 +70,21 @@ async fn test_timeout_with_emissions() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_alice()
     );
 
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(50)).await;
+
+    // Assert
     assert_eq!(
         recv_timeout(&mut result_rx, 1000).await.unwrap(),
         person_bob()
@@ -106,24 +113,18 @@ async fn test_timeout_zero_duration() -> anyhow::Result<()> {
         }
     });
 
-    // Advance time to let zero-duration timeout fire and recv_timeout work
+    // Act
     advance(Duration::from_millis(100)).await;
 
-    // Act & Assert - zero duration timeout should fire immediately
-    assert_eq!(
-        recv_timeout(&mut result_rx, 100)
-            .await
-            .unwrap()
-            .err()
-            .unwrap()
-            .to_string(),
-        "Timeout error: Timeout"
-    );
+    // Assert
+    let result = recv_timeout(&mut result_rx, 100).await.unwrap();
+    assert_eq!(result.err().unwrap().to_string(), "Timeout error: Timeout");
 
-    // Even if we send a value, stream is already terminated
-    // The spawned task has exited and dropped result_tx, so this send will fail
+    // Act
     let _ = tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()));
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())
@@ -148,7 +149,7 @@ async fn test_timeout_timer_reset_on_each_emission() -> anyhow::Result<()> {
         }
     });
 
-    // Act & Assert - verify timer resets on each value
+    // Act
     for i in 0..5 {
         advance(Duration::from_millis(80)).await;
         tx.unbounded_send(TokioTimestamped::new(
@@ -161,6 +162,8 @@ async fn test_timeout_timer_reset_on_each_emission() -> anyhow::Result<()> {
         ))?;
 
         let received = recv_timeout(&mut result_rx, 100).await.unwrap();
+
+        // Assert
         assert_eq!(
             received,
             if i % 2 == 0 {
@@ -171,8 +174,10 @@ async fn test_timeout_timer_reset_on_each_emission() -> anyhow::Result<()> {
         );
     }
 
-    // Now stop sending - should timeout after 100ms
+    // Act
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_no_recv(&mut result_rx, 100).await;
 
     Ok(())

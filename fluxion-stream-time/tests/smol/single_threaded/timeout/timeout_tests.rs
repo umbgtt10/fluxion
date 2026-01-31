@@ -17,9 +17,11 @@ fn test_timeout_smol_single_threaded() {
         let mut timed = rx.timeout(Duration::from_millis(100));
         let timer = SmolTimer;
 
-        // Act & Assert
+        // Act
         tx.try_send(SmolTimestamped::new(person_alice(), timer.now()))
             .unwrap();
+
+        // Assert
         assert!(timed.next().await.is_some());
 
         // Don't send anything, should timeout

@@ -22,7 +22,7 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<TokioTimestamped<TestData>>();
     let mut delayed = stream.delay(Duration::from_secs(1));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_alice(),
         timer.now(),
@@ -31,6 +31,8 @@ async fn test_delay_errors_pass_through() -> anyhow::Result<()> {
     assert_no_element_emitted(&mut delayed, 100).await;
 
     advance(Duration::from_millis(900)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut delayed, 100).await.unwrap().value,
         person_alice()

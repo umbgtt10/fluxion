@@ -25,12 +25,14 @@ async fn test_delay_with_instant_timestamped() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<TokioTimestamped<TestData>>();
     let mut delayed = stream.delay(Duration::from_secs(1));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut delayed, 100).await;
 
     advance(Duration::from_millis(900)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut delayed, 100).await.unwrap().value,
         person_alice()

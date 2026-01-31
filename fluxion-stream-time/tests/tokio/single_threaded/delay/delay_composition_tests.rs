@@ -33,12 +33,14 @@ async fn test_delay_chaining_with_map_ordered() -> anyhow::Result<()> {
         })
         .delay(Duration::from_secs(1));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
     advance(Duration::from_millis(900)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_bob()
@@ -68,12 +70,14 @@ async fn test_delay_chaining_with_filter_ordered() -> anyhow::Result<()> {
         .filter_ordered(|data: &_| *data == person_alice() || *data == person_charlie())
         .delay(Duration::from_secs(1));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
     advance(Duration::from_millis(900)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_alice()
@@ -114,7 +118,7 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
         .into_stream()
         .delay(Duration::from_millis(200));
 
-    // Act & Assert
+    // Act
     tx1.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     assert_no_element_emitted(&mut processed, 0).await;
 
@@ -123,6 +127,8 @@ async fn test_merge_with_then_delay() -> anyhow::Result<()> {
 
     tx2.unbounded_send(TokioTimestamped::new(person_bob(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_alice()
@@ -158,12 +164,14 @@ async fn test_delay_before_map_ordered() -> anyhow::Result<()> {
                 TokioTimestamped::new(transformed, item.timestamp)
             });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
     advance(Duration::from_millis(100)).await;
     assert_no_element_emitted(&mut processed, 100).await;
 
     advance(Duration::from_millis(900)).await;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut processed, 100).await.unwrap().value,
         person_bob()
