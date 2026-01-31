@@ -1,11 +1,11 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_core::StreamItem;
 use fluxion_stream::FilterOrderedExt;
-use fluxion_test_utils::Sequenced;
+use fluxion_test_utils::sequenced::Sequenced;
 use futures::stream::{self, StreamExt};
 use std::hint::black_box;
 use tokio::runtime::Runtime;

@@ -8,7 +8,7 @@ use fluxion_core::StreamItem;
 use fluxion_core::Timestamped;
 use fluxion_stream::IntoFluxionStream;
 use fluxion_stream::OrderedStreamExt;
-use fluxion_test_utils::{assert_no_element_emitted, assert_stream_ended, helpers::unwrap_stream};
+use fluxion_test_utils::helpers::{assert_no_element_emitted, assert_stream_ended, unwrap_stream};
 use std::time::Duration;
 use tokio::{spawn, time::sleep};
 

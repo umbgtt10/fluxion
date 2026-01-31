@@ -8,7 +8,8 @@ use fluxion_test_utils::test_data::{
     plant_sunflower, TestData,
 };
 use fluxion_test_utils::{
-    assert_stream_ended, test_channel, unwrap_stream, unwrap_value, Sequenced,
+    helpers::{assert_stream_ended, test_channel, unwrap_stream, unwrap_value},
+    sequenced::Sequenced,
 };
 
 #[tokio::test]

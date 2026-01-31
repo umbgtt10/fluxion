@@ -3,9 +3,11 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-
 use fluxion_stream::StartWithExt;
-use fluxion_test_utils::{helpers::unwrap_stream, test_channel_with_errors, Sequenced};
+use fluxion_test_utils::{
+    helpers::{test_channel_with_errors, unwrap_stream},
+    sequenced::Sequenced,
+};
 
 #[tokio::test]
 async fn test_start_with_propagates_errors_from_initial_values() -> anyhow::Result<()> {

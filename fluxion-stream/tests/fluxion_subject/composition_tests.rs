@@ -8,13 +8,14 @@ use fluxion_stream::merge_with::MergedStream;
 use fluxion_stream::prelude::*;
 
 use fluxion_test_utils::animal::Animal;
+use fluxion_test_utils::helpers::{assert_no_element_emitted, test_channel, unwrap_stream};
 use fluxion_test_utils::person::Person;
 use fluxion_test_utils::plant::Plant;
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     animal_ant, animal_bird, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
     person_charlie, person_diane, plant_fern, plant_rose, plant_sunflower, TestData,
 };
-use fluxion_test_utils::{assert_no_element_emitted, test_channel, unwrap_stream, Sequenced};
 
 #[tokio::test]
 async fn subject_at_start_map_and_filter() -> anyhow::Result<()> {

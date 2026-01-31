@@ -5,14 +5,12 @@
 use fluxion_runtime::impls::tokio::TokioTimer;
 use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::{ThrottleExt, TokioTimestamped};
-use fluxion_test_utils::assert_no_element_emitted;
-use fluxion_test_utils::unwrap_stream;
+use fluxion_test_utils::helpers::{assert_no_element_emitted, test_channel, unwrap_stream};
+use fluxion_test_utils::test_data::TestData;
 use fluxion_test_utils::{
     helpers::{assert_no_recv, recv_timeout},
     person::Person,
-    test_channel,
     test_data::{person_alice, person_bob, person_charlie},
-    TestData,
 };
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;

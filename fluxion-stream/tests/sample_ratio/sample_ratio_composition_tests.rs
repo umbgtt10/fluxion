@@ -5,14 +5,15 @@
 //! Composition tests for `sample_ratio` operator.
 
 use fluxion_stream::{FilterOrderedExt, MapOrderedExt, SampleRatioExt};
+use fluxion_test_utils::helpers::{
+    assert_no_element_emitted, test_channel, unwrap_all, unwrap_stream, unwrap_value,
+};
 use fluxion_test_utils::person::Person;
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     animal_bird, animal_cat, animal_dog, person_alice, person_bob, person_charlie, person_dave,
     person_diane, plant_rose, TestData,
 };
-use fluxion_test_utils::{assert_no_element_emitted, Sequenced};
-use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value};
-use fluxion_test_utils::{test_channel, unwrap_all};
 
 #[tokio::test]
 async fn test_sample_ratio_after_filter_ordered() -> anyhow::Result<()> {

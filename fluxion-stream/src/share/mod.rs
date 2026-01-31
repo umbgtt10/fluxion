@@ -32,7 +32,7 @@
 //!
 //! ```rust
 //! use fluxion_stream::{IntoFluxionStream, ShareExt, MapOrderedExt, FilterOrderedExt};
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::sequenced::Sequenced;
 //!
 //! # async fn example() {
 //! let (tx, rx) = async_channel::unbounded();

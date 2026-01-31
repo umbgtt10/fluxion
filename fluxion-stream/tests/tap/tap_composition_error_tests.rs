@@ -5,10 +5,10 @@
 use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::{FilterOrderedExt, MapOrderedExt, TapExt};
+use fluxion_test_utils::helpers::{test_channel_with_errors, unwrap_stream, unwrap_value};
 use fluxion_test_utils::person::Person;
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{person_alice, person_bob, TestData};
-use fluxion_test_utils::Sequenced;
-use fluxion_test_utils::{helpers::unwrap_stream, test_channel_with_errors, unwrap_value};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 

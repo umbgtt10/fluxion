@@ -18,7 +18,7 @@
 //!
 //! ```
 //! use fluxion_stream::prelude::*;
-//! use fluxion_test_utils::{Sequenced, test_channel};
+//! use fluxion_test_utils::{\n    sequenced::Sequenced, test_channel};
 //! use futures::StreamExt;
 //!
 //! # #[tokio::main]
@@ -57,7 +57,7 @@
 //!
 //! ```no_run
 //! use fluxion_stream::prelude::*;
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::sequenced::Sequenced;
 //! use futures::StreamExt;
 //!
 //! # #[tokio::main]

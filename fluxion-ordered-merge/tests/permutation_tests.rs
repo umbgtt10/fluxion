@@ -3,11 +3,11 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_ordered_merge::ordered_merge::OrderedMergeExt;
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie, plant_fern,
     plant_rose, plant_sunflower, TestData,
 };
-use fluxion_test_utils::Sequenced;
 use futures::channel::mpsc;
 use futures::StreamExt;
 

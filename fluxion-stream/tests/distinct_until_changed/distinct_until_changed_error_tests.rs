@@ -7,9 +7,9 @@
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::DistinctUntilChangedExt;
 use fluxion_test_utils::{
-    assert_stream_ended, test_channel_with_errors,
+    helpers::{assert_stream_ended, test_channel_with_errors, unwrap_stream},
+    sequenced::Sequenced,
     test_data::{person_alice, person_bob, TestData},
-    unwrap_stream, Sequenced,
 };
 
 #[tokio::test]

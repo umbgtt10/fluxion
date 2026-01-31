@@ -2,16 +2,14 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Composition error propagation tests for `window_by_count` operator.
-
 use fluxion_core::{FluxionError, HasTimestamp, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{
-    test_channel_with_errors,
+    helpers::{test_channel_with_errors, unwrap_stream, unwrap_value},
+    sequenced::Sequenced,
     test_data::{
         animal_cat, animal_dog, person_alice, person_bob, person_charlie, plant_rose, TestData,
     },
-    unwrap_stream, unwrap_value, Sequenced,
 };
 
 #[tokio::test]

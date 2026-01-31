@@ -5,13 +5,12 @@
 use std::time::Duration;
 
 use fluxion_stream::PartitionExt;
+use fluxion_test_utils::helpers::{assert_stream_ended, test_channel, unwrap_stream, unwrap_value};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     animal_bird, animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
     person_dave, person_diane, plant_fern, plant_rose, plant_sunflower, TestData,
 };
-use fluxion_test_utils::Sequenced;
-use fluxion_test_utils::{assert_stream_ended, test_channel};
-use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value};
 use tokio::time::sleep;
 
 #[tokio::test]

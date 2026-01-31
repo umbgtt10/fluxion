@@ -6,10 +6,10 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::{FilterOrderedExt, MapOrderedExt, SampleRatioExt};
+use fluxion_test_utils::helpers::{test_channel_with_errors, unwrap_stream, unwrap_value};
 use fluxion_test_utils::person::Person;
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{animal_dog, person_alice, person_bob, TestData};
-use fluxion_test_utils::Sequenced;
-use fluxion_test_utils::{helpers::unwrap_stream, test_channel_with_errors, unwrap_value};
 
 #[tokio::test]
 async fn test_sample_ratio_after_filter_ordered_with_errors() -> anyhow::Result<()> {

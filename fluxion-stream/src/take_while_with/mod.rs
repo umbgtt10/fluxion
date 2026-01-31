@@ -19,7 +19,7 @@
 //!
 //! ```rust
 //! use fluxion_stream::TakeWhileExt;
-//! use fluxion_test_utils::{Sequenced, helpers::unwrap_stream, unwrap_value, test_channel};
+//! use fluxion_test_utils::{\n    sequenced::Sequenced, unwrap_stream,\n    unwrap_value, test_channel};
 //! use fluxion_core::Timestamped as TimestampedTrait;
 //!
 //! # async fn example() {

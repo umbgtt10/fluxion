@@ -6,12 +6,12 @@ use fluxion_core::{FluxionError, HasTimestamp, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
-    assert_no_element_emitted, test_channel_with_errors,
+    helpers::{assert_no_element_emitted, test_channel_with_errors, unwrap_stream},
+    sequenced::Sequenced,
     test_data::{
         animal, animal_dog, animal_spider, person, person_alice, person_bob, person_charlie,
         TestData,
     },
-    unwrap_stream, Sequenced,
 };
 
 #[tokio::test]

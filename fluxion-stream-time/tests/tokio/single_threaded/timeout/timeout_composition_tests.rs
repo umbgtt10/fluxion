@@ -8,10 +8,8 @@ use fluxion_runtime::timer::Timer;
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::{TimeoutExt, TokioTimestamped};
 use fluxion_test_utils::{
-    helpers::{assert_no_recv, recv_timeout},
-    test_channel,
-    test_data::{person_alice, person_bob},
-    TestData,
+    helpers::{assert_no_recv, recv_timeout, test_channel},
+    test_data::{person_alice, person_bob, TestData},
 };
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;

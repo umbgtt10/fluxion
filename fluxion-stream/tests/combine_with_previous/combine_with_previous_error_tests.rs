@@ -6,7 +6,10 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::CombineWithPreviousExt;
-use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, Sequenced};
+use fluxion_test_utils::{
+    helpers::{test_channel_with_errors, unwrap_stream},
+    sequenced::Sequenced,
+};
 
 #[tokio::test]
 async fn test_combine_with_previous_propagates_errors() -> anyhow::Result<()> {

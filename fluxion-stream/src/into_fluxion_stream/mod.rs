@@ -26,7 +26,7 @@
 //!
 //! ```rust
 //! use fluxion_stream::IntoFluxionStream;
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::sequenced::Sequenced;
 //! use async_channel::unbounded;
 //!
 //! # #[tokio::main]

@@ -4,12 +4,12 @@
 
 use fluxion_core::HasTimestamp;
 use fluxion_stream::WindowByCountExt;
+use fluxion_test_utils::helpers::{
+    assert_no_element_emitted, assert_stream_ended, test_channel, unwrap_stream, unwrap_value,
+};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     animal_cat, animal_dog, person_alice, person_bob, person_charlie, plant_rose, TestData,
-};
-use fluxion_test_utils::{
-    assert_no_element_emitted, assert_stream_ended, helpers::unwrap_stream, test_channel,
-    unwrap_value, Sequenced,
 };
 
 #[tokio::test]

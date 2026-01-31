@@ -7,10 +7,8 @@ use fluxion_runtime::impls::tokio::TokioTimer;
 use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::{ThrottleExt, TokioTimestamped};
 use fluxion_test_utils::{
-    helpers::{assert_no_recv, recv_timeout},
-    test_channel_with_errors,
-    test_data::{person_alice, person_bob},
-    TestData,
+    helpers::{assert_no_recv, recv_timeout, test_channel_with_errors},
+    test_data::{TestData, person_alice, person_bob},
 };
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;

@@ -6,14 +6,14 @@ use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_stream::CombinedState;
 use fluxion_test_utils::{
-    assert_no_element_emitted, assert_stream_ended,
-    helpers::unwrap_stream,
-    test_channel,
+    helpers::{
+        assert_no_element_emitted, assert_stream_ended, test_channel, unwrap_stream, unwrap_value,
+    },
+    sequenced::Sequenced,
     test_data::{
         animal_bird, animal_cat, animal_dog, animal_spider, person_alice, person_bob,
         person_charlie, person_dave, person_diane, plant_rose, TestData,
     },
-    unwrap_value, Sequenced,
 };
 
 #[tokio::test]

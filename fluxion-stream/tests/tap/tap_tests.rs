@@ -5,12 +5,14 @@
 use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::HasTimestamp;
 use fluxion_stream::TapExt;
+use fluxion_test_utils::helpers::{
+    assert_no_element_emitted, test_channel, unwrap_stream, unwrap_value,
+};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     animal_bird, animal_cat, animal_dog, person_alice, person_bob, person_charlie, plant_rose,
     TestData,
 };
-use fluxion_test_utils::{assert_no_element_emitted, test_channel};
-use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value, Sequenced};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 

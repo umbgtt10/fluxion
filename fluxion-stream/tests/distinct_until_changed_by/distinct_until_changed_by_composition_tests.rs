@@ -6,10 +6,9 @@ use fluxion_stream::{
     CombineLatestExt, DistinctUntilChangedByExt, FilterOrderedExt, MapOrderedExt,
 };
 use fluxion_test_utils::{
-    helpers::{assert_no_element_emitted, unwrap_stream},
-    test_channel,
+    helpers::{assert_no_element_emitted, test_channel, unwrap_stream, unwrap_value},
+    sequenced::Sequenced,
     test_data::{person_alice, person_bob, person_charlie, person_dave, TestData},
-    unwrap_value, Sequenced,
 };
 
 #[tokio::test]

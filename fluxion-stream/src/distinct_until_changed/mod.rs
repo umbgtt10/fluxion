@@ -23,7 +23,7 @@
 ///
 /// ```rust
 /// use fluxion_stream::{DistinctUntilChangedExt, IntoFluxionStream};
-/// use fluxion_test_utils::Sequenced;
+/// use fluxion_test_utils::sequenced::Sequenced;
 /// use futures::StreamExt;
 ///
 /// # async fn example() {
@@ -55,7 +55,7 @@
 ///
 /// ```rust
 /// use fluxion_stream::{DistinctUntilChangedExt, IntoFluxionStream};
-/// use fluxion_test_utils::Sequenced;
+/// use fluxion_test_utils::sequenced::Sequenced;
 /// use futures::StreamExt;
 ///
 /// # async fn example() {
@@ -84,7 +84,7 @@
 ///
 /// ```rust
 /// use fluxion_stream::{DistinctUntilChangedExt, IntoFluxionStream};
-/// use fluxion_test_utils::Sequenced;
+/// use fluxion_test_utils::sequenced::Sequenced;
 /// use fluxion_core::HasTimestamp;
 /// use futures::StreamExt;
 ///

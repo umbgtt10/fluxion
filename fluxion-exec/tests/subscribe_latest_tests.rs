@@ -4,11 +4,11 @@
 
 use fluxion_core::CancellationToken;
 use fluxion_exec::subscribe_latest::SubscribeLatestExt;
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     animal_ant, animal_cat, animal_dog, animal_spider, person_alice, person_bob, person_charlie,
     person_dave, person_diane, plant_rose, TestData,
 };
-use fluxion_test_utils::Sequenced;
 use futures::channel::mpsc::unbounded;
 use futures::lock::Mutex as FutureMutex;
 use std::sync::atomic::{AtomicUsize, Ordering};

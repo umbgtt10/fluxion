@@ -28,48 +28,6 @@
 //! - `runtime-async-std` - async-std runtime ⚠️ **DEPRECATED** (unmaintained, RUSTSEC-2025-0052)
 //!
 //! ⚠️ **Note**: async-std is discontinued. Use tokio or smol for new projects.
-//!
-//! # Example
-//!
-//! ```rust,no_run
-//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-//! use fluxion_stream_time::{DebounceExt, DelayExt, TokioTimestamped};
-//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-//! use fluxion_runtime::impls::tokio::TokioTimer;
-//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-//! use fluxion_runtime::timer::Timer;
-//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-//! use fluxion_core::StreamItem;
-//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-//! use futures::stream::StreamExt;
-//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-//! use std::time::Duration;
-//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-//! use futures::channel::mpsc;
-//!
-//! # #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-//! # async fn example() {
-//! let (tx, rx) = mpsc::unbounded::<TokioTimestamped<i32>>();
-//! let timer = TokioTimer;
-//!
-//! // Delay all emissions by 100ms (convenience method)
-//! let delayed = rx
-//!     .map(StreamItem::Value)
-//!     .delay(Duration::from_millis(100));
-//!
-//! tx.unbounded_send(TokioTimestamped::new(42, timer.now())).unwrap();
-//! tx.unbounded_send(TokioTimestamped::new(100, timer.now())).unwrap();
-//!
-//! // Or debounce with convenience method (no timer parameter needed)
-//! # let (tx, rx) = mpsc::unbounded::<TokioTimestamped<i32>>();
-//! let debounced = rx
-//!     .map(StreamItem::Value)
-//!     .debounce(Duration::from_millis(100));
-//! # }
-//! # #[cfg(not(all(feature = "runtime-tokio", not(target_arch = "wasm32"))))]
-//! # fn example() {}
-//! ```
-
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(not(feature = "std"))]

@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::embassy::helpers::{person_alice, person_bob, test_channel, unwrap_stream, Person};
+use crate::embassy::helpers::{person_alice, person_bob, test_channel,\n    unwrap_stream, Person};
 use fluxion_runtime::impls::embassy::EmbassyTimer;
 use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::{EmbassyTimestamped, SampleExt};

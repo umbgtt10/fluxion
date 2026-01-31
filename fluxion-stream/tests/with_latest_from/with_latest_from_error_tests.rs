@@ -7,10 +7,9 @@
 use fluxion_core::HasTimestamp;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::{CombinedState, WithLatestFromExt};
+use fluxion_test_utils::helpers::{test_channel_with_errors, unwrap_stream};
 use fluxion_test_utils::test_wrapper::TestWrapper;
-use fluxion_test_utils::{
-    assert_no_element_emitted, test_channel_with_errors, unwrap_stream, Sequenced,
-};
+use fluxion_test_utils::{helpers::assert_no_element_emitted, sequenced::Sequenced};
 
 #[tokio::test]
 async fn test_with_latest_from_propagates_primary_error() -> anyhow::Result<()> {

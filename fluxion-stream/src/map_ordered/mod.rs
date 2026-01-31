@@ -19,7 +19,7 @@
 //!
 //! ```rust
 //! use fluxion_stream::{IntoFluxionStream, MapOrderedExt};
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::sequenced::Sequenced;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {

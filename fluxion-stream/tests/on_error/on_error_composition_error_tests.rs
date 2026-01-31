@@ -12,9 +12,12 @@ use fluxion_core::{FluxionError, HasTimestamp, StreamItem};
 use fluxion_stream::prelude::*;
 use fluxion_stream::{CombineLatestExt, OrderedStreamExt, TakeLatestWhenExt};
 use fluxion_test_utils::{
-    assert_no_element_emitted, assert_stream_ended, test_channel_with_errors,
+    helpers::{
+        assert_no_element_emitted, assert_stream_ended, test_channel_with_errors, unwrap_stream,
+        unwrap_value,
+    },
+    sequenced::Sequenced,
     test_data::{animal_cat, animal_dog, person_alice, person_bob, person_charlie, TestData},
-    unwrap_stream, unwrap_value, Sequenced,
 };
 use std::sync::Arc;
 

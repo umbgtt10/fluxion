@@ -5,14 +5,15 @@
 use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_stream::CombinedState;
+use fluxion_test_utils::helpers::test_channel;
+use fluxion_test_utils::helpers::unwrap_value;
 use fluxion_test_utils::{
     helpers::{assert_no_element_emitted, unwrap_stream},
-    test_channel,
+    sequenced::Sequenced,
     test_data::{
         animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
         plant_rose, TestData,
     },
-    unwrap_value, Sequenced,
 };
 
 static LATEST_FILTER: fn(&TestData) -> bool = |_| true;
@@ -40,15 +41,15 @@ async fn test_take_latest_when_take_while_with() -> anyhow::Result<()> {
         .unbounded_send(Sequenced::new(person_alice()))
         .unwrap();
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
-        &person_alice()
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
+        person_alice()
     );
 
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
     latest_filter_tx.unbounded_send(Sequenced::new(person_bob()))?;
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
-        &person_bob()
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
+        person_bob()
     );
 
     while_filter_tx.unbounded_send(Sequenced::new(false))?;
@@ -85,7 +86,7 @@ async fn test_combine_latest_take_while_with() -> anyhow::Result<()> {
         unwrap_value(Some(unwrap_stream(&mut composed, 500).await))
             .into_inner()
             .values(),
-        &[person_alice(), animal_dog(), plant_rose()]
+        [person_alice(), animal_dog(), plant_rose()]
     );
 
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
@@ -93,7 +94,7 @@ async fn test_combine_latest_take_while_with() -> anyhow::Result<()> {
         unwrap_value(Some(unwrap_stream(&mut composed, 500).await))
             .into_inner()
             .values(),
-        &[person_bob(), animal_dog(), plant_rose()]
+        [person_bob(), animal_dog(), plant_rose()]
     );
 
     filter_tx.unbounded_send(Sequenced::new(false))?;

@@ -5,7 +5,7 @@
 use fluxion_runtime::impls::tokio::TokioTimer;
 use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::{DelayExt, TokioTimestamped};
-use fluxion_test_utils::{test_channel, test_data::person_alice, TestData};
+use fluxion_test_utils::{helpers::test_channel, test_data::{TestData, person_alice}};
 use futures::StreamExt;
 use std::time::Duration;
 

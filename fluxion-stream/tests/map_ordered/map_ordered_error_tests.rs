@@ -7,7 +7,10 @@
 use fluxion_core::{FluxionError, StreamItem};
 
 use fluxion_stream::{CombineWithPreviousExt, MapOrderedExt};
-use fluxion_test_utils::{test_channel_with_errors, unwrap_stream, Sequenced};
+use fluxion_test_utils::{
+    helpers::{test_channel_with_errors, unwrap_stream},
+    sequenced::Sequenced,
+};
 
 #[tokio::test]
 async fn test_map_ordered_propagates_errors() -> anyhow::Result<()> {

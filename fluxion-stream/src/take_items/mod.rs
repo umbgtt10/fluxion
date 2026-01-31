@@ -28,7 +28,7 @@
 //!
 //! ```rust
 //! use fluxion_stream::{TakeItemsExt, IntoFluxionStream};
-//! use fluxion_test_utils::Sequenced;
+//! use fluxion_test_utils::sequenced::Sequenced;
 //! use futures::StreamExt;
 //!
 //! # async fn example() {

@@ -8,10 +8,8 @@ use fluxion_runtime::timer::Timer;
 use fluxion_stream::prelude::*;
 use fluxion_stream_time::{DelayExt, TokioTimestamped};
 use fluxion_test_utils::{
-    helpers::{assert_no_element_emitted, unwrap_stream},
-    test_channel,
-    test_data::{person_alice, person_bob, person_charlie},
-    TestData,
+    helpers::{assert_no_element_emitted, test_channel, unwrap_stream},
+    test_data::{TestData, person_alice, person_bob, person_charlie},
 };
 use std::time::Duration;
 use tokio::time::{advance, pause};

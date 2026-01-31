@@ -40,7 +40,7 @@ macro_rules! define_merge_with_impl {
             /// # Example
             /// ```no_run
             /// # use fluxion_stream::MergedStream;
-            /// # use fluxion_test_utils::Sequenced;
+            /// # use fluxion_test_utils::sequenced::Sequenced;
             /// let stream = MergedStream::seed::<Sequenced<i32>>(0);
             /// ```
             pub fn seed<OutWrapper>(

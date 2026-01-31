@@ -6,10 +6,8 @@ use fluxion_runtime::impls::tokio::TokioTimer;
 use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::{DebounceExt, TokioTimestamped};
 use fluxion_test_utils::{
-    helpers::{assert_no_element_emitted, unwrap_stream},
-    test_channel,
-    test_data::{person_alice, person_bob},
-    TestData,
+    helpers::{assert_no_element_emitted, test_channel, unwrap_stream},
+    test_data::{person_alice, person_bob, TestData},
 };
 use futures::StreamExt;
 use std::time::Duration;
@@ -27,7 +25,6 @@ async fn test_debounce_returns_pending_while_waiting() -> anyhow::Result<()> {
     // Send a value to start the debounce timer
     tx.unbounded_send(TokioTimestamped::new(person_alice(), timer.now()))?;
 
-    // Should return Pending because timer hasn't expired yet (Poll::Pending branch line 151-152)
     assert_no_element_emitted(&mut debounced, 0).await;
 
     // Advance past debounce and verify value eventually emits

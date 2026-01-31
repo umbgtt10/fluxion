@@ -7,14 +7,12 @@ use fluxion_core::{StreamItem, Timestamped};
 use fluxion_stream::prelude::*;
 use fluxion_stream::MergedStream;
 use fluxion_test_utils::{
-    assert_no_element_emitted,
-    helpers::unwrap_stream,
-    test_channel,
+    helpers::{assert_no_element_emitted, test_channel, unwrap_stream},
+    sequenced::Sequenced,
     test_data::{
         animal_dog, person_alice, person_bob, person_charlie, person_dave, person_diane,
         plant_rose, TestData,
     },
-    Sequenced,
 };
 
 #[tokio::test]

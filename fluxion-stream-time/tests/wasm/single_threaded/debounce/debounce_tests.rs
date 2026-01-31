@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::wasm::helpers::{person_alice, test_channel, unwrap_stream, Person};
+use crate::wasm::helpers::{person_alice, test_channel,\n    unwrap_stream, Person};
 use fluxion_runtime::impls::wasm::WasmTimer;
 use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::{DebounceExt, WasmTimestamped};

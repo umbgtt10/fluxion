@@ -4,12 +4,11 @@
 
 use fluxion_stream::combine_with_previous::CombineWithPreviousExt;
 use fluxion_stream::prelude::*;
+use fluxion_test_utils::helpers::{assert_stream_ended, test_channel, unwrap_stream, unwrap_value};
+use fluxion_test_utils::sequenced::Sequenced;
 use fluxion_test_utils::test_data::{
     person_alice, person_bob, person_charlie, person_dave, TestData,
 };
-use fluxion_test_utils::Sequenced;
-use fluxion_test_utils::{assert_stream_ended, test_channel};
-use fluxion_test_utils::{helpers::unwrap_stream, unwrap_value};
 
 #[tokio::test]
 async fn test_map_ordered_basic_transformation() -> anyhow::Result<()> {

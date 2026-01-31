@@ -20,8 +20,8 @@ use futures::Stream;
 /// # Examples
 ///
 /// ```rust
-/// use fluxion_test_utils::Sequenced;
-/// use fluxion_test_utils::ErrorInjectingStream;
+/// use fluxion_test_utils::sequenced::Sequenced;
+/// use fluxion_test_utils::error_injection::ErrorInjectingStream;
 /// use fluxion_core::{StreamItem, Timestamped };
 /// use futures::{stream, StreamExt};
 ///

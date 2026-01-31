@@ -5,7 +5,10 @@
 use fluxion_runtime::impls::tokio::TokioTimer;
 use fluxion_runtime::timer::Timer;
 use fluxion_stream_time::{DebounceExt, TokioTimestamped};
-use fluxion_test_utils::{test_channel, test_data::person_alice, unwrap_stream, TestData};
+use fluxion_test_utils::{
+    helpers::{test_channel, unwrap_stream},
+    test_data::{person_alice, TestData},
+};
 use std::time::Duration;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

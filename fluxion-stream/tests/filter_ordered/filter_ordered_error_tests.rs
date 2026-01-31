@@ -4,7 +4,10 @@
 
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::{CombineWithPreviousExt, FilterOrderedExt, MapOrderedExt};
-use fluxion_test_utils::{assert_stream_ended, test_channel_with_errors, unwrap_stream, Sequenced};
+use fluxion_test_utils::{
+    helpers::{assert_stream_ended, test_channel_with_errors, unwrap_stream},
+    sequenced::Sequenced,
+};
 use futures::StreamExt;
 
 #[tokio::test]

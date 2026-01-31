@@ -6,11 +6,11 @@ use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::HasTimestamp;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{
-    assert_no_element_emitted, test_channel,
+    helpers::{assert_no_element_emitted, test_channel, unwrap_stream, unwrap_value},
+    sequenced::Sequenced,
     test_data::{
         animal_cat, animal_dog, person_alice, person_bob, person_charlie, plant_rose, TestData,
     },
-    unwrap_stream, unwrap_value, Sequenced,
 };
 use std::sync::Arc;
 

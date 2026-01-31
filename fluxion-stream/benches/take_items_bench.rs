@@ -5,7 +5,7 @@
 use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_core::StreamItem;
 use fluxion_stream::TakeItemsExt;
-use fluxion_test_utils::Sequenced;
+use fluxion_test_utils::sequenced::Sequenced;
 use futures::{
     stream::{self, StreamExt},
     Stream,

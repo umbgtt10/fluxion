@@ -6,10 +6,9 @@ use fluxion_core::fluxion_mutex::Mutex;
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::{CombineWithPreviousExt, FilterOrderedExt, MapOrderedExt, OnErrorExt};
 use fluxion_test_utils::{
-    helpers::{assert_no_element_emitted, unwrap_stream},
-    test_channel_with_errors,
+    helpers::{assert_no_element_emitted, test_channel_with_errors, unwrap_stream, unwrap_value},
+    sequenced::Sequenced,
     test_data::{person_alice, person_bob, person_charlie, person_dave, TestData},
-    unwrap_value, Sequenced,
 };
 use std::sync::Arc;
 
