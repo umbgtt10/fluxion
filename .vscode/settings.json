@@ -1,5 +1,8 @@
 {
     "chat.tools.terminal.autoApprove": {
         ".": true
+    },
+    "files.associations": {
+        "**/copilot-instructions.md": "plaintext"
     }
 }
