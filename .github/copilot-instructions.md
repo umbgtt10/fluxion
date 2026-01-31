@@ -97,6 +97,8 @@ async fn test_operator_behavior() {
 - **No error messages in assertions** - assertions are self-documenting
 - **No other comments** - test name and structure should be clear enough
 - Use descriptive test function names: `test_broadcasts_to_multiple_subscribers`
+- **Test file naming**: All test files must end with `_tests` (e.g., `stream_item_tests.rs`)
+- **Multiple Act/Assert pairs allowed**: A test can have multiple `// Act` / `// Assert` pairs, but only one `// Arrange` section
 
 **Never use `tokio::time::sleep()` in tests** - use `Sequenced<T>` for determinism.
 

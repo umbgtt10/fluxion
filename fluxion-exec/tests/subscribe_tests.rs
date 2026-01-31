@@ -50,7 +50,7 @@ async fn test_subscribe_processes_items_when_waiting_per_item() -> anyhow::Resul
             let notify_tx = notify_tx.clone();
             async move {
                 results.lock().await.push(item);
-                let _ = notify_tx.unbounded_send(()); // Signal completion
+                let _ = notify_tx.unbounded_send(());
                 Ok::<(), TestError>(())
             }
         }
@@ -71,24 +71,35 @@ async fn test_subscribe_processes_items_when_waiting_per_item() -> anyhow::Resul
         }
     });
 
-    // Act & Assert - wait for actual processing completion
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     notify_rx.next().await.unwrap();
+
+    // Assert
     assert_eq!(*results.lock().await, vec![person_alice()]);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     notify_rx.next().await.unwrap();
+
+    // Assert
     assert_eq!(*results.lock().await, vec![person_alice(), person_bob()]);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
     notify_rx.next().await.unwrap();
+
+    // Assert
     assert_eq!(
         *results.lock().await,
         vec![person_alice(), person_bob(), person_charlie()]
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_diane()))?;
     notify_rx.next().await.unwrap();
+
+    // Assert
     assert_eq!(
         *results.lock().await,
         vec![
@@ -99,8 +110,11 @@ async fn test_subscribe_processes_items_when_waiting_per_item() -> anyhow::Resul
         ]
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_dave()))?;
     notify_rx.next().await.unwrap();
+
+    // Assert
     assert_eq!(
         *results.lock().await,
         vec![

@@ -5,25 +5,23 @@
 use fluxion_stream::MergedStream;
 use fluxion_test_utils::{test_channel, unwrap_stream, Sequenced};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum Event {
+    UserCreated { id: u32, name: String },
+    OrderPlaced { user_id: u32, amount: u32 },
+    PaymentReceived { user_id: u32, amount: u32 },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+struct Repository {
+    total_users: u32,
+    total_orders: u32,
+    total_revenue: u32,
+}
+
 #[tokio::test]
 async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
-    // Define domain events
-    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-    enum Event {
-        UserCreated { id: u32, name: String },
-        OrderPlaced { user_id: u32, amount: u32 },
-        PaymentReceived { user_id: u32, amount: u32 },
-    }
-
-    // Repository state tracking users and orders
-    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
-    struct Repository {
-        total_users: u32,
-        total_orders: u32,
-        total_revenue: u32,
-    }
-
-    // Create event streams
+    // Arrange
     let (tx_users, user_stream) = test_channel::<Sequenced<Event>>();
     let (tx_orders, order_stream) = test_channel::<Sequenced<Event>>();
     let (tx_payments, payment_stream) = test_channel::<Sequenced<Event>>();
@@ -64,39 +62,34 @@ async fn test_merge_with_repository_pattern() -> anyhow::Result<()> {
         5,
     );
 
-    // Merge all event streams into a single repository state
-    let mut repository_stream = MergedStream::seed::<Sequenced<Repository>>(Repository {
-        total_users: 0,
-        total_orders: 0,
-        total_revenue: 0,
-    })
-    .merge_with(user_stream, |event: Event, repo: &mut Repository| {
-        if let Event::UserCreated { .. } = event {
-            repo.total_users += 1;
-        }
-        repo.clone()
-    })
-    .merge_with(order_stream, |event: Event, repo: &mut Repository| {
-        if let Event::OrderPlaced { .. } = event {
-            repo.total_orders += 1;
-        }
-        repo.clone()
-    })
-    .merge_with(payment_stream, |event: Event, repo: &mut Repository| {
-        if let Event::PaymentReceived { amount, .. } = event {
-            repo.total_revenue += amount;
-        }
-        repo.clone()
-    });
+    let mut repository_stream = MergedStream::seed::<Sequenced<Repository>>(Repository::default())
+        .merge_with(user_stream, |event: Event, repo: &mut Repository| {
+            if let Event::UserCreated { .. } = event {
+                repo.total_users += 1;
+            }
+            repo.clone()
+        })
+        .merge_with(order_stream, |event: Event, repo: &mut Repository| {
+            if let Event::OrderPlaced { .. } = event {
+                repo.total_orders += 1;
+            }
+            repo.clone()
+        })
+        .merge_with(payment_stream, |event: Event, repo: &mut Repository| {
+            if let Event::PaymentReceived { amount, .. } = event {
+                repo.total_revenue += amount;
+            }
+            repo.clone()
+        });
 
-    // Emit events in temporal order
+    // Act
     tx_users.unbounded_send(user_created1)?;
     tx_users.unbounded_send(user_created2)?;
     tx_orders.unbounded_send(order_placed1)?;
     tx_payments.unbounded_send(payment_received1)?;
     tx_orders.unbounded_send(order_placed2)?;
 
-    // Verify repository state updates
+    // Assert
     let state1 = unwrap_stream(&mut repository_stream, 500).await.unwrap();
     assert_eq!(state1.value.total_users, 1);
     assert_eq!(state1.value.total_orders, 0);

@@ -10,29 +10,25 @@ use std::sync::Arc;
 use tokio::spawn;
 use tokio_stream::StreamExt as _;
 
-/// Example test demonstrating subscribe usage
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Item {
+    id: u32,
+    value: String,
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("Test error: {0}")]
+struct TestError(String);
+
 #[tokio::test]
 async fn test_subscribe_example() -> anyhow::Result<()> {
-    // Define a simple data type
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    struct Item {
-        id: u32,
-        value: String,
-    }
-
-    #[derive(Debug, thiserror::Error)]
-    #[error("Test error: {0}")]
-    struct TestError(String);
-
-    // Step 1: Create a stream
+    // Arrange
     let (tx, rx) = unbounded::<Item>();
     let stream = rx;
 
-    // Step 2: Create a shared results container
     let results = Arc::new(FutureMutex::new(Vec::new()));
     let (notify_tx, mut notify_rx) = unbounded();
 
-    // Step 3: Define the async processing function
     let process_func = {
         let results = results.clone();
         let notify_tx = notify_tx.clone();
@@ -40,15 +36,13 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
             let results = results.clone();
             let notify_tx = notify_tx.clone();
             async move {
-                // Process the item (in this example, just store it)
                 results.lock().await.push(item);
-                let _ = notify_tx.unbounded_send(()); // Signal completion
+                let _ = notify_tx.unbounded_send(());
                 Ok::<(), TestError>(())
             }
         }
     };
 
-    // Step 4: Subscribe to the stream
     let task = spawn(async move {
         stream
             .subscribe(process_func, |_| {}, None)
@@ -56,7 +50,6 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
             .expect("subscribe should succeed");
     });
 
-    // Step 5: Publish items and assert results
     let item1 = Item {
         id: 1,
         value: "Alice".to_string(),
@@ -70,17 +63,25 @@ async fn test_subscribe_example() -> anyhow::Result<()> {
         value: "Charlie".to_string(),
     };
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(item1.clone())?;
     notify_rx.next().await.unwrap();
+
+    // Assert
     assert_eq!(*results.lock().await, vec![item1.clone()]);
 
+    // Act
     tx.unbounded_send(item2.clone())?;
     notify_rx.next().await.unwrap();
+
+    // Assert
     assert_eq!(*results.lock().await, vec![item1.clone(), item2.clone()]);
 
+    // Act
     tx.unbounded_send(item3.clone())?;
     notify_rx.next().await.unwrap();
+
+    // Assert
     assert_eq!(*results.lock().await, vec![item1, item2, item3]);
 
     // Clean up

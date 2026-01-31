@@ -7,37 +7,33 @@ use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_test_utils::{unwrap_stream, Sequenced};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum Value {
+    Int(i32),
+    Str(String),
+}
+
 #[tokio::test]
 async fn test_combine_latest_int_string_filter_order() -> anyhow::Result<()> {
-    // Define enum to hold both int and string types
-    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-    enum Value {
-        Int(i32),
-        Str(String),
-    }
-
-    // Create two input streams
+    // Arrange
     let (tx_int, rx_int) = unbounded::<Sequenced<Value>>();
     let (tx_str, rx_str) = unbounded::<Sequenced<Value>>();
 
     let int_stream = rx_int.into_fluxion_stream();
     let str_stream = rx_str.into_fluxion_stream();
 
-    // Chain: combine_latest -> filter
     let mut pipeline = int_stream
         .combine_latest(vec![str_stream], |_| true)
-        .filter_ordered(|combined| {
-            // Keep only if first value (int) is > 50
-            matches!(combined.values()[0], Value::Int(x) if x > 50)
-        });
+        .filter_ordered(|combined| matches!(combined.values()[0], Value::Int(x) if x > 50));
 
-    // Send initial values
+    // Act
     tx_str.try_send(Sequenced::with_timestamp(Value::Str("initial".into()), 1))?;
     tx_int.try_send(Sequenced::with_timestamp(Value::Int(30), 2))?;
-    tx_int.try_send(Sequenced::with_timestamp(Value::Int(60), 3))?; // Passes filter (60 > 50)
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(60), 3))?;
     tx_str.try_send(Sequenced::with_timestamp(Value::Str("updated".into()), 4))?;
-    tx_int.try_send(Sequenced::with_timestamp(Value::Int(75), 5))?; // Passes filter (75 > 50)
-                                                                    // Results: seq 3 (Int 60), seq 4 (Int 60 + Str updated), seq 5 (Int 75)
+    tx_int.try_send(Sequenced::with_timestamp(Value::Int(75), 5))?;
+
+    // Assert
     let result1 = unwrap_stream(&mut pipeline, 500).await.unwrap();
     let state1 = result1.into_inner();
     let combined1 = state1.values();

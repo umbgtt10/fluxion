@@ -10,13 +10,13 @@ use std::sync::Arc;
 use tokio::spawn;
 use tokio_stream::StreamExt as _;
 
-/// Example demonstrating subscribe_latest with automatic substitution
+#[derive(Debug, thiserror::Error)]
+#[error("Error")]
+struct Err;
+
 #[tokio::test]
 async fn test_subscribe_latest_example() -> anyhow::Result<()> {
-    #[derive(Debug, thiserror::Error)]
-    #[error("Error")]
-    struct Err;
-
+    // Arrange
     let (tx, rx) = unbounded::<u32>();
     let completed = Arc::new(FutureMutex::new(Vec::new()));
     let (notify_tx, mut notify_rx) = unbounded();
@@ -52,6 +52,7 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
         rx.subscribe_latest(process, |_| {}, None).await.unwrap();
     });
 
+    // Act
     tx.unbounded_send(1)?;
     start_rx.next().await.unwrap();
     for i in 2..=5 {
@@ -61,8 +62,8 @@ async fn test_subscribe_latest_example() -> anyhow::Result<()> {
     notify_rx.next().await.unwrap();
     notify_rx.next().await.unwrap();
 
-    let result = completed.lock().await;
-    assert_eq!(*result, vec![1, 5]);
+    // Assert
+    assert_eq!(*completed.lock().await, vec![1, 5]);
 
     Ok(())
 }
