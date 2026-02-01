@@ -43,7 +43,7 @@ async fn test_emit_when_propagates_error_from_scanned_source() -> anyhow::Result
             }
         });
 
-    // Act & Assert
+    // Act
     // 1. Send value to source (Alice 25) -> Sum 25
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
@@ -56,8 +56,10 @@ async fn test_emit_when_propagates_error_from_scanned_source() -> anyhow::Result
         2,
     )))?;
 
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     // 3. Send value to source (Bob 30) -> Sum 55.
     // Trigger is still Dog (4 legs) -> Threshold 40.
     // 55 > 40 is True. Should emit.
@@ -66,22 +68,25 @@ async fn test_emit_when_propagates_error_from_scanned_source() -> anyhow::Result
         3,
     )))?;
 
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Sum" && p.age == 55)
     ));
 
+    // Act
     // 4. Send error to source
     source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Source Error",
     )))?;
 
-    // Error should propagate
+    // Assert: Error should propagate
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(e) if e.to_string().contains("Source Error")
     ));
 
+    // Act
     // 5. Recovery
     // Source state preserved (55).
     // Send Charlie (35) -> Sum 90.
@@ -91,6 +96,7 @@ async fn test_emit_when_propagates_error_from_scanned_source() -> anyhow::Result
         5,
     )))?;
 
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Sum" && p.age == 90)

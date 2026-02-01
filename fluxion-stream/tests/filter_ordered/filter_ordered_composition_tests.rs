@@ -25,21 +25,26 @@ async fn test_ordered_merge_filter_ordered() -> anyhow::Result<()> {
         .ordered_merge(vec![s2_rx])
         .filter_ordered(|test_data| !matches!(test_data, TestData::Animal(_))); // Filter out animals
 
-    // Act & Assert
+    // Act
     s1_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut stream, 500).await,
         StreamItem::Value(val) if val.value == person_alice()
     ));
 
+    // Act
     s2_tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered out
     s1_tx.unbounded_send(Sequenced::new(plant_rose()))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut stream, 500).await,
         StreamItem::Value(val) if val.value == plant_rose()
     ));
 
+    // Act
     s2_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut stream, 500).await,
         StreamItem::Value(val) if val.value == person_bob()

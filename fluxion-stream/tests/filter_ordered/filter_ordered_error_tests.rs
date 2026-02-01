@@ -17,29 +17,31 @@ async fn test_filter_ordered_propagates_errors() -> anyhow::Result<()> {
 
     let mut result = stream.filter_ordered(|x| x % 2 == 0);
 
-    // Act & Assert: First item (1) filtered out
+    // Act: First item (1) filtered out
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
 
-    // Error
+    // Act: Error
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Value that passes filter
+    // Act: Value that passes filter
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
-
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value == 2
     ));
 
-    // Value filtered out
+    // Act: Value filtered out
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
 
-    // Value that passes
+    // Act: Value that passes
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 4

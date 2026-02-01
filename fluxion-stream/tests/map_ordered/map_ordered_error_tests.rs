@@ -22,21 +22,24 @@ async fn test_map_ordered_propagates_errors() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|x| Sequenced::new(format!("Current: {}", x.current.value)));
 
-    // Act & Assert: Send value
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
+    // Assert
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref v) if v.value == "Current: 1")
     );
 
-    // Send error
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Continue
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -57,28 +60,33 @@ async fn test_map_ordered_transformation_after_error() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|x| Sequenced::new(x.current.value * 2));
 
-    // Act & AssertSend values
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value == 20
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value == 40
     ));
 
-    // Send error
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Continue after error
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(40, 4)))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value == 80
@@ -98,17 +106,17 @@ async fn test_map_ordered_preserves_error_passthrough() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|x| Sequenced::new(x.current.value * 100));
 
-    // Act & Assert: Error immediately
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ),);
 
-    // Continue with value
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
-
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value == 200
@@ -128,22 +136,25 @@ async fn test_map_ordered_chain_after_error() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|x| Sequenced::new(x.current.value * 2));
 
-    // Act & Assert: Send value
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(5, 1)))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value == 10
     ));
 
-    // Act & Assert: Send error
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Continue
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(15, 3)))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value == 30

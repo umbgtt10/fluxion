@@ -24,29 +24,38 @@ async fn test_distinct_until_changed_by_multiple_errors_in_composition() -> anyh
         })
         .filter_ordered(|x| *x > 0);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?; // Odd
+                                                                            // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 5)))?; // Even
+                                                                            // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)

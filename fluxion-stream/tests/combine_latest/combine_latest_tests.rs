@@ -129,24 +129,28 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues(
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     plant_tx.unbounded_send(Sequenced::new(plant_rose()))?;
-
-    // Assert
     let state = unwrap_stream(&mut result, 500).await.unwrap();
     let actual: Vec<TestData> = state.clone().into_inner().values().clone();
+
+    // Assert
     assert_eq!(actual, vec![person_alice(), animal_dog(), plant_rose()]);
 
     drop(plant_tx);
 
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
-
     let state = unwrap_stream(&mut result, 500).await.unwrap();
     let actual: Vec<TestData> = state.clone().into_inner().values().clone();
+
+    // Assert
     assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
 
+    // Act
     animal_tx.unbounded_send(Sequenced::new(animal_spider()))?;
-
     let state = unwrap_stream(&mut result, 500).await.unwrap();
     let actual: Vec<TestData> = state.clone().into_inner().values().clone();
+
+    // Assert
     assert_eq!(actual, vec![person_bob(), animal_spider(), plant_rose()]);
 
     Ok(())
@@ -202,11 +206,15 @@ async fn combine_latest_template_test(
     send_variant(&order3, &senders)?;
 
     // Assert
-    let state = unwrap_stream(&mut result, 500).await.unwrap();
-    let actual: Vec<TestData> = state.clone().into_inner().values().clone();
-    let expected = vec![person_alice(), animal_dog(), plant_rose()];
-
-    assert_eq!(actual, expected);
+    assert_eq!(
+        unwrap_stream(&mut result, 500)
+            .await
+            .unwrap()
+            .into_inner()
+            .values()
+            .clone(),
+        vec![person_alice(), animal_dog(), plant_rose()]
+    );
 
     Ok(())
 }
@@ -364,9 +372,16 @@ async fn combine_latest_stream_order_test(
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     plant_tx.unbounded_send(Sequenced::new(plant_rose()))?;
 
-    // Assert - values should be in the order streams were registered
-    let state = unwrap_stream(&mut result, 500).await.unwrap();
-    assert_eq!(state.clone().into_inner().values().clone(), expected_order);
+    // Assert
+    assert_eq!(
+        unwrap_stream(&mut result, 500)
+            .await
+            .unwrap()
+            .into_inner()
+            .values()
+            .clone(),
+        expected_order
+    );
 
     Ok(())
 }

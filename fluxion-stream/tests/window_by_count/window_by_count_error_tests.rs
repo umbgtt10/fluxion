@@ -21,11 +21,11 @@ async fn test_window_by_count_propagates_error() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(3);
 
-    // Act: Send one value, then error
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
 
-    // Assert: Error is propagated
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -65,18 +65,23 @@ async fn test_window_by_count_error_clears_partial_window() -> anyhow::Result<()
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(3);
 
-    // Act: Send 2 values (partial window), then error, then complete window
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_cat())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![animal_dog(), animal_cat(), person_charlie()]
@@ -91,23 +96,31 @@ async fn test_window_by_count_multiple_errors() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(2);
 
-    // Act: Multiple errors interspersed with values
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 2")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_cat())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![animal_dog(), animal_cat()]
@@ -172,11 +185,11 @@ async fn test_window_by_count_stream_ends_after_error() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = Box::pin(stream.window_by_count::<Sequenced<Vec<TestData>>>(3));
 
-    // Act: Send error then close
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("final error")))?;
     drop(tx);
 
-    // Assert: Error propagated
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -194,7 +207,7 @@ async fn test_window_by_count_partial_after_error_on_close() -> anyhow::Result<(
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = Box::pin(stream.window_by_count::<Sequenced<Vec<TestData>>>(3));
 
-    // Act: Error, then partial window, then close
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,

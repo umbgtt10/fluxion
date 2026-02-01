@@ -2,10 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-/// Macro that generates the complete debounce implementation.
-///
-/// This macro eliminates duplication between multi-threaded and single-threaded
-/// implementations, which differ only in trait bounds (Send + Sync vs not).
 macro_rules! define_debounce_impl {
     ($($bounds:tt)*) => {
         use core::fmt::Debug;
@@ -24,10 +20,6 @@ macro_rules! define_debounce_impl {
         use pin_project::pin_project;
         use crate::DefaultRuntime;
 
-        /// Extension trait providing the `debounce` operator for streams.
-        ///
-        /// This trait allows any stream of `StreamItem<T>` where `T: Fluxion` to debounce emissions
-        /// by a specified duration.
         pub trait DebounceExt<T, R>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,

@@ -24,34 +24,41 @@ async fn test_on_error_consumes_all_errors() -> anyhow::Result<()> {
         true // Consume all errors
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("user error")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         2
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "stream error",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(3)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         3
     );
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())
@@ -65,32 +72,38 @@ async fn test_on_error_propagates_all_errors() -> anyhow::Result<()> {
         false // Propagate all errors
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         2
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())
@@ -105,16 +118,18 @@ async fn test_on_error_selective_by_message_content() -> anyhow::Result<()> {
         err.to_string().contains("user")
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("user error")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "network error",
     )))?;
@@ -124,13 +139,17 @@ async fn test_on_error_selective_by_message_content() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         2
     );
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())
@@ -148,22 +167,25 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
             err.to_string().contains("timeout")
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "validation failed",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "network timeout",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "timeout occurred",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
     // All errors consumed by the chain
     assert_eq!(
@@ -171,7 +193,10 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
         1
     );
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())
@@ -189,26 +214,32 @@ async fn test_on_error_with_side_effects() -> anyhow::Result<()> {
         true // Consume after logging
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         2
     );
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     let logs = error_log.lock();
@@ -230,12 +261,13 @@ async fn test_on_error_partial_chain() -> anyhow::Result<()> {
             err.to_string().contains("mutex")
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "validation failed",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "network error",
     )))?;
@@ -245,18 +277,23 @@ async fn test_on_error_partial_chain() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "mutex poisoned",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(42)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         42
     );
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())
@@ -268,7 +305,7 @@ async fn test_on_error_continues_after_consumed_error() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream.on_error(|_| true);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
     // Stream continues normally after each consumed error
     assert_eq!(
@@ -276,34 +313,43 @@ async fn test_on_error_continues_after_consumed_error() -> anyhow::Result<()> {
         1
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         2
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(3)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         3
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error3")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(4)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         4
     );
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())
@@ -315,13 +361,15 @@ async fn test_on_error_multiple_consecutive_errors() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream.on_error(|err| err.to_string().contains("user"));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("user error1")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("user error2")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "network error3",
     )))?;
@@ -331,16 +379,21 @@ async fn test_on_error_multiple_consecutive_errors() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("user error4")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(99)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         99
     );
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())
@@ -392,12 +445,13 @@ async fn test_on_error_conditional_based_on_error_content() -> anyhow::Result<()
         err.to_string().contains("transient")
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "transient network error",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "permanent failure",
     )))?;
@@ -407,13 +461,17 @@ async fn test_on_error_conditional_based_on_error_content() -> anyhow::Result<()
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
     );
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())
@@ -428,20 +486,23 @@ async fn test_on_error_three_level_chain() -> anyhow::Result<()> {
         .on_error(|err| err.to_string().contains("level2"))
         .on_error(|_| true); // Catch-all
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "level1 error",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "level2 error",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("other error")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(100)))?;
     // All errors consumed by the three-level chain
     assert_eq!(
@@ -449,7 +510,10 @@ async fn test_on_error_three_level_chain() -> anyhow::Result<()> {
         100
     );
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())
@@ -461,32 +525,39 @@ async fn test_on_error_preserves_value_order() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream.on_error(|_| true);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         2
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error")))?;
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         3
     );
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())

@@ -22,20 +22,25 @@ async fn test_map_ordered_basic_transformation() -> anyhow::Result<()> {
         ))
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Previous: None, Current: Person[name=Alice, age=25]"
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Previous: Some(\"Person[name=Alice, age=25]\"), Current: Person[name=Bob, age=30]"
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Previous: Some(\"Person[name=Bob, age=30]\"), Current: Person[name=Charlie, age=35]"
@@ -81,14 +86,17 @@ async fn test_map_ordered_to_struct() -> anyhow::Result<()> {
         Sequenced::new(AgeComparison::new(previous_age, current_age))
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25
+                                                        // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         AgeComparison::new(None, 25)
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30
+                                                      // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         AgeComparison::new(Some(25), 30)
@@ -130,26 +138,33 @@ async fn test_map_ordered_extract_age_difference() -> anyhow::Result<()> {
             Sequenced::new(current_age - previous_age.unwrap_or(current_age))
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25
+                                                        // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         0
     ); // No previous
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30
+                                                      // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         5
     ); // 30 - 25 = 5
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_dave()))?; // Age 28
+                                                       // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         -2
     ); // 28 - 30 = -2
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?; // Age 35
+                                                          // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         7
@@ -166,8 +181,9 @@ async fn test_map_ordered_single_value() -> anyhow::Result<()> {
         .combine_with_previous()
         .map_ordered(|stream_item| Sequenced::new(stream_item.current.value.to_string()));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Person[name=Alice, age=25]"
@@ -244,20 +260,25 @@ async fn test_map_ordered_multiple_transformations() -> anyhow::Result<()> {
         })
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         25
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         30
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         35
@@ -316,20 +337,25 @@ async fn test_map_ordered_with_complex_closure() -> anyhow::Result<()> {
         ))
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25
+                                                        // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         PersonSummary::new(String::from("Alice"), "young adult", true)
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30
+                                                      // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         PersonSummary::new(String::from("Bob"), "adult", true)
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?; // Same person
+                                                      // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         PersonSummary::new(String::from("Bob"), "adult", false)
@@ -357,19 +383,27 @@ async fn test_map_ordered_boolean_logic() -> anyhow::Result<()> {
         }))
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25
+                                                        // Assert
     assert!(!unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value); // No previous
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30
+                                                      // Assert
     assert!(unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value); // 30 > 25
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?; // Age 35
+                                                          // Assert
     assert!(unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value); // 35 > 30
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_dave()))?; // Age 28
+                                                       // Assert
     assert!(!unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value); // 28 < 35
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25
     assert!(!unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value); // 25 < 28
 

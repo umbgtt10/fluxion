@@ -20,10 +20,6 @@ macro_rules! define_timeout_impl {
         use futures::Stream;
         use pin_project::pin_project;
 
-        /// Extension trait providing the `timeout` operator for streams.
-        ///
-        /// This trait allows any stream of `StreamItem<T>` where `T: Fluxion` to enforce a timeout
-        /// between emissions.
         pub trait TimeoutExt<T, R>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,

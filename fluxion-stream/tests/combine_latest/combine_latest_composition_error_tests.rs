@@ -18,23 +18,24 @@ async fn test_map_ordered_then_combine_latest_propagates_error() -> anyhow::Resu
 
     let mut result = stream1
         .map_ordered(|x| {
-            // Identity map
             x
         })
         .combine_latest(vec![stream2], |_| true);
 
-    // Act: Send initial values
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx2.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
 
-    // First emission
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
-    // Send error from primary stream (which is mapped)
+    // Act
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -53,20 +54,22 @@ async fn test_filter_ordered_then_combine_latest_propagates_error() -> anyhow::R
         .filter_ordered(|_| true)
         .combine_latest(vec![stream2], |_| true);
 
-    // Act: Send initial values
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx2.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
 
-    // First emission
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
-    // Send error from primary stream (which is filtered)
+    // Act
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Filter error",
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -85,18 +88,22 @@ async fn test_combine_with_previous_then_combine_latest_propagates_error() -> an
         .combine_with_previous()
         .combine_latest(vec![stream2.combine_with_previous()], |_| true);
 
-    // Act: Send initial values
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx2.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
-    // Send error from primary stream
+    // Act
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Previous error",
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

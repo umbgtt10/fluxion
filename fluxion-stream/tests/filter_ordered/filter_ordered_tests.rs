@@ -18,16 +18,18 @@ async fn test_filter_ordered_basic_predicate() -> anyhow::Result<()> {
     let (tx, stream) = test_channel();
     let mut result = stream.filter_ordered(|data| matches!(data, TestData::Person(_)));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         person_alice()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
-
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         person_bob()

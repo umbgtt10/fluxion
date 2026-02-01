@@ -191,7 +191,7 @@ async fn test_combine_with_previous_high_volume_sequential() -> anyhow::Result<(
     let (tx, stream) = test_channel();
     let mut result = stream.combine_with_previous();
 
-    // Act: send a sequence of 200 items (mix of known fixtures cycling Alice,Bob,Charlie)
+    // Act
     for i in 0..200 {
         match i % 3 {
             0 => tx.unbounded_send(Sequenced::new(person_alice()))?,
@@ -202,7 +202,7 @@ async fn test_combine_with_previous_high_volume_sequential() -> anyhow::Result<(
     // Close input so the stream can finish
     drop(tx);
 
-    // Assert: first has no previous
+    // Assert
     let first = unwrap_stream(&mut result, 500).await.unwrap();
     assert_eq!(
         (first.previous.map(|s| s.value), first.current.value),
@@ -239,30 +239,30 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() -> anyho
     let (tx, stream) = test_channel();
     let mut result = stream.combine_with_previous();
 
-    // Act: Send empty string with zero value
+    // Act
     tx.unbounded_send(Sequenced::new(person(String::new(), 0)))?;
 
-    // Assert: First emission has no previous
+    // Assert
     let item = unwrap_stream(&mut result, 500).await.unwrap();
     assert_eq!(
         (item.previous.map(|s| s.value), item.current.value),
         (None, person(String::new(), 0))
     );
 
-    // Act: Send another boundary value
+    // Act
     tx.unbounded_send(Sequenced::new(person(String::new(), 0)))?;
 
-    // Assert: Second emission has previous with boundary value
+    // Assert
     let result2 = unwrap_stream(&mut result, 500).await.unwrap();
     assert_eq!(
         (result2.previous.map(|s| s.value), result2.current.value),
         (Some(person(String::new(), 0)), person(String::new(), 0))
     );
 
-    // Act: Transition to normal value
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
 
-    // Assert: Should track boundary as previous
+    // Assert
     let result3 = unwrap_stream(&mut result, 500).await.unwrap();
     assert_eq!(
         (result3.previous.map(|s| s.value), result3.current.value),
@@ -283,31 +283,31 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() -> any
             let (tx, stream) = test_channel();
             let mut result = stream.combine_with_previous();
 
-            // Act: Send first value
+            // Act
             tx.unbounded_send(Sequenced::new(person(format!("Person{i}"), i)))
                 .unwrap();
 
-            // Assert: No previous
+            // Assert
             let item = unwrap_stream(&mut result, 500).await.unwrap();
             assert_eq!(
                 (item.previous.map(|s| s.value), item.current.value),
                 (None, person(format!("Person{i}"), i))
             );
 
-            // Act: Send second value
+            // Act
             tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
 
-            // Assert: Has previous
+            // Assert
             let result2 = unwrap_stream(&mut result, 500).await.unwrap();
             assert_eq!(
                 (result2.previous.map(|s| s.value), result2.current.value),
                 (Some(person(format!("Person{i}"), i)), person_alice())
             );
 
-            // Act: Send third value
+            // Act
             tx.unbounded_send(Sequenced::new(person_bob())).unwrap();
 
-            // Assert: Previous is Alice
+            // Assert
             let result3 = unwrap_stream(&mut result, 500).await.unwrap();
             assert_eq!(
                 (result3.previous.map(|s| s.value), result3.current.value),
@@ -334,18 +334,18 @@ async fn test_combine_with_previous_single_value_stream() -> anyhow::Result<()> 
     let (tx, stream) = test_channel();
     let mut result = stream.combine_with_previous();
 
-    // Act: Send single value and close
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     drop(tx);
 
-    // Assert: Should emit with no previous
+    // Assert
     let item = unwrap_stream(&mut result, 500).await.unwrap();
     assert_eq!(
         (item.previous.map(|s| s.value), item.current.value),
         (None, person_alice())
     );
 
-    // Assert: Stream ends
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())
