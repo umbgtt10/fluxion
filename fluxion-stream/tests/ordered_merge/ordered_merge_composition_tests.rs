@@ -93,7 +93,7 @@ async fn test_ordered_merge_then_map() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ordered_merge_then_ordered_merge() -> anyhow::Result<()> {
-    // Arrange: Chain two ordered_merge operations
+    // Arrange Chain two ordered_merge operations
     let (tx1, s1) = test_channel::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel::<Sequenced<TestData>>();
     let (tx3, s3) = test_channel::<Sequenced<TestData>>();
@@ -133,7 +133,7 @@ async fn test_ordered_merge_then_ordered_merge() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_filter_then_ordered_merge() -> anyhow::Result<()> {
-    // Arrange: Filter before merging
+    // Arrange Filter before merging
     let (tx1, s1) = test_channel::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel::<Sequenced<TestData>>();
 
@@ -167,7 +167,7 @@ async fn test_filter_then_ordered_merge() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_map_then_ordered_merge() -> anyhow::Result<()> {
-    // Arrange: Map before merging
+    // Arrange Map before merging
     let (tx1, s1) = test_channel::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel::<Sequenced<TestData>>();
 
@@ -214,7 +214,7 @@ async fn test_map_then_ordered_merge() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ordered_merge_with_complex_pipeline() -> anyhow::Result<()> {
-    // Arrange: ordered_merge -> map -> filter
+    // Arrange ordered_merge -> map -> filter
     let (tx1, s1) = test_channel::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel::<Sequenced<TestData>>();
 
@@ -279,7 +279,7 @@ async fn test_ordered_merge_mixed_testdata_then_filter() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ordered_merge_preserves_ordering_through_map() -> anyhow::Result<()> {
-    // Arrange: Verify that timestamp ordering is preserved through transformations
+    // Arrange Verify that timestamp ordering is preserved through transformations
     let (tx1, s1) = test_channel::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel::<Sequenced<TestData>>();
 
@@ -348,7 +348,7 @@ async fn test_ordered_merge_three_streams_with_filter() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ordered_merge_empty_after_filter() -> anyhow::Result<()> {
-    // Arrange: All items filtered out
+    // Arrange All items filtered out
     let (tx1, s1) = test_channel::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel::<Sequenced<TestData>>();
 
@@ -410,7 +410,7 @@ async fn test_ordered_merge_map_preserves_timestamps() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ordered_merge_filter_map_chain() -> anyhow::Result<()> {
-    // Arrange: filter -> ordered_merge -> map
+    // Arrange filter -> ordered_merge -> map
     let (tx1, s1) = test_channel::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel::<Sequenced<TestData>>();
 

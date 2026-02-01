@@ -443,7 +443,6 @@ async fn test_take_latest_when_boundary_empty_string_zero_values() -> anyhow::Re
     // Arrange
     let filter_fn: fn(&TestData) -> bool = |_: &TestData| true;
 
-    // Arrange: Test boundary values (empty strings, zero numeric values)
     let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<TestData>>();
 
@@ -479,7 +478,6 @@ async fn test_take_latest_when_boundary_maximum_concurrent_streams() -> anyhow::
     // Arrange
     let filter_fn: fn(&TestData) -> bool = |_: &TestData| true;
 
-    // Arrange: Test concurrent handling with many parallel streams
     let num_concurrent: u32 = 50;
     let mut handles = Vec::new();
 
@@ -530,7 +528,7 @@ async fn test_take_latest_when_boundary_maximum_concurrent_streams() -> anyhow::
 #[tokio::test]
 #[should_panic(expected = "Filter panicked")]
 async fn test_take_latest_when_filter_panics() {
-    // Arrange:
+    // Arrange
     let filter_fn = |_: &TestData| -> bool {
         panic!("Filter panicked");
     };

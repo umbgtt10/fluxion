@@ -245,7 +245,7 @@ async fn each_subscriber_can_chain_independently() {
 
 #[tokio::test]
 async fn source_operators_run_once_per_emission() {
-    // Arrange - track how many times the map runs
+    // Arrange
     let call_count = Arc::new(AtomicUsize::new(0));
     let call_count_clone = call_count.clone();
 

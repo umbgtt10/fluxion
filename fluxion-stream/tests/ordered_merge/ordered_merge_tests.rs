@@ -288,7 +288,7 @@ async fn test_ordered_merge_preserves_timestamp_metadata() -> anyhow::Result<()>
 
 #[tokio::test]
 async fn test_ordered_merge_does_not_wait_for_all_streams() -> anyhow::Result<()> {
-    // Arrange: This tests that ordered_merge emits as soon as items are available,
+    // Arrange This tests that ordered_merge emits as soon as items are available,
     // not waiting for all streams to have items (unlike combine_latest)
     let (tx1, s1) = test_channel::<Sequenced<TestData>>();
     let (_tx2, s2) = test_channel::<Sequenced<TestData>>();

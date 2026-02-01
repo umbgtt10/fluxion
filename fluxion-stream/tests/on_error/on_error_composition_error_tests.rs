@@ -186,7 +186,7 @@ async fn test_on_error_handles_errors_from_take_latest_when() -> anyhow::Result<
 
 #[tokio::test]
 async fn test_on_error_selective_handling_in_composed_pipeline() -> anyhow::Result<()> {
-    // Arrange: Complex pipeline with selective error handling
+    // Arrange Complex pipeline with selective error handling
     // source -> map_ordered -> on_error(handles "transient") -> filter_ordered -> on_error(handles "validation")
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
@@ -271,7 +271,7 @@ async fn test_on_error_selective_handling_in_composed_pipeline() -> anyhow::Resu
 #[tokio::test]
 async fn test_on_error_before_ordered_merge_handles_individual_stream_errors() -> anyhow::Result<()>
 {
-    // Arrange: Each stream has its own error handler before merging
+    // Arrange Each stream has its own error handler before merging
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<TestData>>();
 
@@ -323,7 +323,7 @@ async fn test_on_error_before_ordered_merge_handles_individual_stream_errors() -
 
 #[tokio::test]
 async fn test_on_error_with_scan_ordered_preserves_accumulator_state() -> anyhow::Result<()> {
-    // Arrange: scan_ordered accumulates state, on_error handles errors without affecting state
+    // Arrange scan_ordered accumulates state, on_error handles errors without affecting state
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let errors_handled = Arc::new(Mutex::new(0));
@@ -375,7 +375,7 @@ async fn test_on_error_with_scan_ordered_preserves_accumulator_state() -> anyhow
 
 #[tokio::test]
 async fn test_on_error_with_combine_with_previous_maintains_previous_value() -> anyhow::Result<()> {
-    // Arrange: combine_with_previous tracks previous value, on_error handles errors
+    // Arrange combine_with_previous tracks previous value, on_error handles errors
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
     let errors_handled = Arc::new(Mutex::new(0));
@@ -413,7 +413,7 @@ async fn test_on_error_with_combine_with_previous_maintains_previous_value() -> 
 
 #[tokio::test]
 async fn test_on_error_propagation_stops_at_first_handler() -> anyhow::Result<()> {
-    // Arrange: Multiple on_error handlers - error stops at first matching handler
+    // Arrange Multiple on_error handlers - error stops at first matching handler
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let handler1_count = Arc::new(Mutex::new(0));
@@ -472,7 +472,7 @@ async fn test_on_error_propagation_stops_at_first_handler() -> anyhow::Result<()
 
 #[tokio::test]
 async fn test_on_error_handles_rapid_consecutive_errors_in_pipeline() -> anyhow::Result<()> {
-    // Arrange: Test that rapid consecutive errors are all handled correctly
+    // Arrange Test that rapid consecutive errors are all handled correctly
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let errors_handled = Arc::new(Mutex::new(0));
@@ -504,7 +504,7 @@ async fn test_on_error_handles_rapid_consecutive_errors_in_pipeline() -> anyhow:
 
 #[tokio::test]
 async fn test_on_error_empty_pipeline_with_errors() -> anyhow::Result<()> {
-    // Arrange: Pipeline that only receives errors, no values
+    // Arrange Pipeline that only receives errors, no values
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let errors_count = Arc::new(Mutex::new(0));

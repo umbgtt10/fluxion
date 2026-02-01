@@ -22,29 +22,26 @@ async fn test_scan_ordered_count_people() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     let result = unwrap_stream::<Sequenced<i32>, _>(&mut counts, 500)
         .await
         .unwrap();
-
-    // Assert
     assert_eq!(result.into_inner(), 1);
 
     // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     let result = unwrap_stream::<Sequenced<i32>, _>(&mut counts, 500)
         .await
         .unwrap();
-
-    // Assert
     assert_eq!(result.into_inner(), 2);
 
     // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    // Assert
     let result = unwrap_stream::<Sequenced<i32>, _>(&mut counts, 500)
         .await
         .unwrap();
-
-    // Assert
     assert_eq!(result.into_inner(), 3);
 
     // Act
@@ -69,29 +66,26 @@ async fn test_scan_ordered_collect_names() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     let result = unwrap_value(Some(
         unwrap_stream::<Sequenced<Vec<String>>, _>(&mut names, 500).await,
     ));
-
-    // Assert
     assert_eq!(result.into_inner(), vec!["Alice"]);
 
     // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     let result = unwrap_stream::<Sequenced<Vec<String>>, _>(&mut names, 500)
         .await
         .unwrap();
-
-    // Assert
     assert_eq!(result.into_inner(), vec!["Alice", "Bob"]);
 
     // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    // Assert
     let result = unwrap_stream::<Sequenced<Vec<String>>, _>(&mut names, 500)
         .await
         .unwrap();
-
-    // Assert
     assert_eq!(result.into_inner(), vec!["Alice", "Bob", "Charlie"]);
 
     // Act

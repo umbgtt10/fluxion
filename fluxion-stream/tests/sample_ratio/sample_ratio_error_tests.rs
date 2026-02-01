@@ -50,14 +50,12 @@ async fn test_sample_ratio_passes_through_errors_with_ratio_one() -> anyhow::Res
 
 #[tokio::test]
 async fn test_sample_ratio_passes_through_errors_with_ratio_zero() -> anyhow::Result<()> {
-    // Arrange - even with ratio 0, errors must pass through
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.sample_ratio(0.0, 42);
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
-
-    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
 
     // Assert
@@ -68,8 +66,6 @@ async fn test_sample_ratio_passes_through_errors_with_ratio_zero() -> anyhow::Re
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
-
-    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "another error",
     )))?;
@@ -90,13 +86,9 @@ async fn test_sample_ratio_multiple_errors_pass_through() -> anyhow::Result<()> 
     let mut result = stream.sample_ratio(0.5, 42);
 
     // Act
-    let error1 = FluxionError::stream_error("error 1");
-    let error2 = FluxionError::stream_error("error 2");
-    let error3 = FluxionError::stream_error("error 3");
-
-    tx.unbounded_send(StreamItem::Error(error1))?;
-    tx.unbounded_send(StreamItem::Error(error2))?;
-    tx.unbounded_send(StreamItem::Error(error3))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 2")))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 3")))?;
 
     // Assert
     assert!(matches!(
@@ -125,8 +117,7 @@ async fn test_sample_ratio_error_preserves_message() -> anyhow::Result<()> {
 
     // Act
     let error_message = "specific error message";
-    let error = FluxionError::stream_error(error_message);
-    tx.unbounded_send(StreamItem::Error(error))?;
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(error_message)))?;
 
     // Assert
     let item = unwrap_stream(&mut result, 500).await;
@@ -207,7 +198,6 @@ async fn test_sample_ratio_error_on_empty_stream() -> anyhow::Result<()> {
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(e) if e.to_string().contains("lone error")
     ));
-
     assert_no_element_emitted(&mut result, 500).await;
 
     Ok(())

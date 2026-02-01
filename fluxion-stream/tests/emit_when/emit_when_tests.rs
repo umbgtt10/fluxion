@@ -36,7 +36,7 @@ async fn test_emit_when_empty_streams() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()> {
-    // Arrange: Emit only when source age > filter legs
+    // Arrange
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel();
 
@@ -94,7 +94,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
 
 #[tokio::test]
 async fn test_emit_when_threshold_comparison() -> anyhow::Result<()> {
-    // Arrange: Emit when source value differs from filter by more than threshold
+    // Arrange
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel();
 
@@ -136,7 +136,7 @@ async fn test_emit_when_threshold_comparison() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_emit_when_name_length_comparison() -> anyhow::Result<()> {
-    // Arrange: Emit when source name is longer than filter name
+    // Arrange
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel();
 
@@ -184,7 +184,7 @@ async fn test_emit_when_name_length_comparison() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Result<()> {
-    // Arrange: Emit when person age is even AND greater than animal legs
+    // Arrange Emit when person age is even AND greater than animal legs
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel();
 
@@ -245,7 +245,7 @@ async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Res
 
 #[tokio::test]
 async fn test_emit_when_stateful_comparison() -> anyhow::Result<()> {
-    // Arrange: Emit when source value is strictly greater than filter value
+    // Arrange Emit when source value is strictly greater than filter value
     // This test shows emit_when is useful for "greater than threshold" patterns
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel();
@@ -351,7 +351,7 @@ async fn test_emit_when_filter_stream_closes() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_emit_when_both_values_required() -> anyhow::Result<()> {
-    // Arrange: This test highlights that emit_when needs BOTH values
+    // Arrange This test highlights that emit_when needs BOTH values
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel();
 
@@ -384,7 +384,7 @@ async fn test_emit_when_both_values_required() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_emit_when_filter_stream_updates_trigger_reevaluation() -> anyhow::Result<()> {
-    // Arrange: Emit when source age >= filter legs * 10
+    // Arrange Emit when source age >= filter legs * 10
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel();
 
@@ -429,7 +429,7 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() -> anyhow::
 
 #[tokio::test]
 async fn test_emit_when_delta_based_filtering() -> anyhow::Result<()> {
-    // Arrange: Emit when absolute difference between ages > 10
+    // Arrange Emit when absolute difference between ages > 10
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel();
 
@@ -477,7 +477,7 @@ async fn test_emit_when_delta_based_filtering() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_emit_when_cross_type_comparison() -> anyhow::Result<()> {
-    // Arrange: Emit when person age equals animal legs (silly but valid comparison)
+    // Arrange Emit when person age equals animal legs (silly but valid comparison)
     let (source_tx, source_stream) = test_channel();
     let (filter_tx, filter_stream) = test_channel();
 
@@ -586,7 +586,7 @@ async fn test_emit_when_filter_panics() {
 
 #[tokio::test]
 async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
-    // Arrange: Complex business logic - emit when:
+    // Arrange Complex business logic - emit when:
     // - Source is a Person with even age
     // - Filter is an Animal with legs > 2
     // - Person age is divisible by animal legs

@@ -502,7 +502,7 @@ async fn test_partition_with_subject_and_filter() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_share_then_combine_latest() -> anyhow::Result<()> {
-    //
+    // Arrange
     let (tx, rx) = test_channel();
     let shared = rx.share();
 

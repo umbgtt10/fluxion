@@ -84,7 +84,7 @@ async fn test_sample_ratio_zero_still_passes_errors_in_composition() -> anyhow::
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream
         .sample_ratio(0.0, 42)
-        .filter_ordered(|_: &TestData| true); // Pass-through filter
+        .filter_ordered(|_: &TestData| true);
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;

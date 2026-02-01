@@ -20,7 +20,7 @@ static FILTER: fn(&TestData) -> bool = |_| true;
 
 #[tokio::test]
 async fn test_combine_latest_take_latest_when() -> anyhow::Result<()> {
-    // Arrange: Chain combine_latest with take_latest_when
+    // Arrange
     let (person_tx, person_rx) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_rx) = test_channel::<Sequenced<TestData>>();
     let (trigger_person_tx, trigger_person_rx) = test_channel::<Sequenced<TestData>>();
@@ -126,7 +126,7 @@ async fn test_ordered_merge_take_latest_when() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_filter_ordered_take_latest_when() -> anyhow::Result<()> {
-    // Arrange - filter source stream, then apply take_latest_when
+    // Arrange
     let (source_tx, source_rx) = test_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_rx) = test_channel::<Sequenced<TestData>>();
 

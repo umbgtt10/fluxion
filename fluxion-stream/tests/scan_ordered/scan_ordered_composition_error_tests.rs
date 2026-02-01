@@ -26,32 +26,38 @@ async fn test_map_ordered_error_propagation_into_scan_ordered() -> anyhow::Resul
             *sum
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Alice".to_string(), 10),
         1,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream::<Sequenced<u32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 20
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Bob".to_string(), 5),
         3,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 30
     ));
-
-    drop(tx);
 
     Ok(())
 }
@@ -69,38 +75,47 @@ async fn test_filter_ordered_error_propagation_into_scan_ordered() -> anyhow::Re
                 *count
             });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Alice".to_string(), 5),
         1,
     )))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Bob".to_string(), 15),
         2,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 1
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Charlie".to_string(), 20),
         4,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 2
     ));
-
-    drop(tx);
 
     Ok(())
 }
@@ -120,41 +135,50 @@ async fn test_chained_scan_ordered_error_propagation() -> anyhow::Result<()> {
             *count
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Alice".to_string(), 10),
         1,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 1
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Bob".to_string(), 20),
         3,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 2
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Charlie".to_string(), 30),
         4,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 3
     ));
-
-    drop(tx);
 
     Ok(())
 }

@@ -122,7 +122,7 @@ async fn test_ordered_merge_then_map_with_errors() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_filter_then_ordered_merge_with_errors() -> anyhow::Result<()> {
-    // Arrange: Filter before merging, with errors
+    // Arrange Filter before merging, with errors
     let (tx1, s1) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel_with_errors::<Sequenced<TestData>>();
 
@@ -185,7 +185,7 @@ async fn test_filter_then_ordered_merge_with_errors() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ordered_merge_map_filter_chain_with_errors() -> anyhow::Result<()> {
-    // Arrange: ordered_merge -> map -> filter with errors
+    // Arrange ordered_merge -> map -> filter with errors
     let (tx1, s1) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel_with_errors::<Sequenced<TestData>>();
 
@@ -244,7 +244,7 @@ async fn test_ordered_merge_map_filter_chain_with_errors() -> anyhow::Result<()>
 
 #[tokio::test]
 async fn test_ordered_merge_chained_with_errors() -> anyhow::Result<()> {
-    // Arrange: Chain two ordered_merge operations with errors
+    // Arrange Chain two ordered_merge operations with errors
     let (tx1, s1) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx3, s3) = test_channel_with_errors::<Sequenced<TestData>>();
@@ -295,7 +295,7 @@ async fn test_ordered_merge_chained_with_errors() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ordered_merge_error_after_filter() -> anyhow::Result<()> {
-    // Arrange: Test error behavior when filter removes some items
+    // Arrange Test error behavior when filter removes some items
     let (tx1, s1) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel_with_errors::<Sequenced<TestData>>();
 
@@ -416,7 +416,7 @@ async fn test_ordered_merge_multiple_errors_through_map() -> anyhow::Result<()> 
 
 #[tokio::test]
 async fn test_ordered_merge_errors_only_through_filter() -> anyhow::Result<()> {
-    // Arrange: Stream with only errors going through filter
+    // Arrange Stream with only errors going through filter
     let (tx1, s1) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel_with_errors::<Sequenced<TestData>>();
 
@@ -449,7 +449,7 @@ async fn test_ordered_merge_errors_only_through_filter() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ordered_merge_three_streams_filter_map_errors() -> anyhow::Result<()> {
-    // Arrange: Complex pipeline with three streams
+    // Arrange Complex pipeline with three streams
     let (tx1, s1) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx3, s3) = test_channel_with_errors::<Sequenced<TestData>>();
@@ -514,7 +514,7 @@ async fn test_ordered_merge_three_streams_filter_map_errors() -> anyhow::Result<
 
 #[tokio::test]
 async fn test_ordered_merge_error_preserves_timestamp_through_pipeline() -> anyhow::Result<()> {
-    // Arrange: Verify that value timestamps are preserved through pipeline even with errors
+    // Arrange Verify that value timestamps are preserved through pipeline even with errors
     let (tx1, s1) = test_channel_with_errors::<Sequenced<TestData>>();
     let (tx2, s2) = test_channel_with_errors::<Sequenced<TestData>>();
 

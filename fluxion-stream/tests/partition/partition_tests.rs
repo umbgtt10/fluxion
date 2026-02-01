@@ -49,7 +49,7 @@ async fn test_partition_basic_predicate() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_by_animal_legs() -> anyhow::Result<()> {
-    // Arrange - partition animals by number of legs (4 vs not 4)
+    // Arrange
     let (tx, stream) = test_channel();
     let (mut four_legged, mut other_legged) = stream.partition(|data| match data {
         TestData::Animal(a) => a.legs == 4,
@@ -85,7 +85,7 @@ async fn test_partition_by_animal_legs() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_age_threshold() -> anyhow::Result<()> {
-    // Arrange - partition people by age > 30
+    // Arrange
     let (tx, stream) = test_channel();
     let (mut over_30, mut under_or_equal_30) = stream.partition(|data| match data {
         TestData::Person(p) => p.age > 30,
@@ -199,7 +199,7 @@ async fn test_partition_all_to_false() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_preserves_temporal_order() -> anyhow::Result<()> {
-    // Arrange - partition with custom timestamps
+    // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let (mut adults, mut young) = stream.partition(|data| match data {
         TestData::Person(p) => p.age >= 30,
@@ -235,7 +235,7 @@ async fn test_partition_preserves_temporal_order() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_by_type() -> anyhow::Result<()> {
-    // Arrange - partition by type (Person vs Animal vs Plant)
+    // Arrange
     let (tx, stream) = test_channel();
     let (mut animals, mut non_animals) =
         stream.partition(|data| matches!(data, TestData::Animal(_)));
@@ -277,7 +277,7 @@ async fn test_partition_by_type() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_plant_height_threshold() -> anyhow::Result<()> {
-    // Arrange - partition plants by height threshold (100cm)
+    // Arrange
     let (tx, stream) = test_channel();
     let height_threshold = 100;
     let (mut tall_plants, mut short_plants) = stream.partition(move |data| match data {
@@ -332,7 +332,7 @@ async fn test_partition_completes_both_on_close() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_multiple_types_complex() -> anyhow::Result<()> {
-    // Arrange - complex predicate involving multiple checks
+    // Arrange
     let (tx, stream) = test_channel();
     let (mut valid, mut _invalid) = stream.partition(|data| match data {
         TestData::Person(p) => p.age >= 18 && !p.name.is_empty(),
@@ -369,7 +369,7 @@ async fn test_partition_multiple_types_complex() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_drop_one_stream_early() -> anyhow::Result<()> {
-    // Arrange - partition by type, then drop one stream and continue reading the other
+    // Arrange
     let (tx, stream) = test_channel();
     let (mut persons, non_persons) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -404,7 +404,7 @@ async fn test_partition_drop_one_stream_early() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_drop_both_streams_gracefully() -> anyhow::Result<()> {
-    // Arrange - create partition and drop both streams
+    // Arrange
     // This tests that dropping both streams doesn't panic or leak resources
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let (persons, non_persons) = stream.partition(|data| matches!(data, TestData::Person(_)));

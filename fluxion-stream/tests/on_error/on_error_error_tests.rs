@@ -70,7 +70,7 @@ async fn test_on_error_handler_receives_correct_error_type() -> anyhow::Result<(
 
 #[tokio::test]
 async fn test_on_error_handler_with_counter_state() -> anyhow::Result<()> {
-    // Arrange: Handler that counts errors and only consumes the first 2
+    // Arrange Handler that counts errors and only consumes the first 2
     let error_count = Arc::new(AtomicUsize::new(0));
     let error_count_clone = Arc::clone(&error_count);
 
@@ -120,7 +120,7 @@ async fn test_on_error_handler_with_counter_state() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_handler_alternating_decision() -> anyhow::Result<()> {
-    // Arrange: Handler that alternates between consuming and propagating
+    // Arrange Handler that alternates between consuming and propagating
     let toggle = Arc::new(AtomicUsize::new(0));
     let toggle_clone = Arc::clone(&toggle);
 
@@ -161,7 +161,7 @@ async fn test_on_error_handler_alternating_decision() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_handler_decision_based_on_error_content() -> anyhow::Result<()> {
-    // Arrange: Handler that makes different decisions based on error content
+    // Arrange Handler that makes different decisions based on error content
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream.on_error(|err| {
         let msg = err.to_string();
@@ -236,7 +236,7 @@ async fn test_on_error_handler_decision_based_on_error_content() -> anyhow::Resu
 
 #[tokio::test]
 async fn test_on_error_handler_tracks_error_history() -> anyhow::Result<()> {
-    // Arrange: Handler that tracks history and makes decisions based on patterns
+    // Arrange Handler that tracks history and makes decisions based on patterns
     let history = Arc::new(Mutex::new(Vec::<String>::new()));
     let history_clone = Arc::clone(&history);
 
@@ -285,7 +285,7 @@ async fn test_on_error_handler_tracks_error_history() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_handler_with_rate_limiting_behavior() -> anyhow::Result<()> {
-    // Arrange: Handler that consumes up to N errors per "window" (simulated)
+    // Arrange Handler that consumes up to N errors per "window" (simulated)
     // In this test, we consume up to 2 consecutive errors, then propagate until a value comes
     let consecutive_errors = Arc::new(AtomicUsize::new(0));
     let consecutive_errors_clone = Arc::clone(&consecutive_errors);
@@ -337,7 +337,7 @@ async fn test_on_error_handler_with_rate_limiting_behavior() -> anyhow::Result<(
 
 #[tokio::test]
 async fn test_on_error_handler_never_consumes() -> anyhow::Result<()> {
-    // Arrange: Handler that always returns false (never consumes)
+    // Arrange Handler that always returns false (never consumes)
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream.on_error(|_| false);
 
@@ -374,7 +374,7 @@ async fn test_on_error_handler_never_consumes() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_handler_always_consumes() -> anyhow::Result<()> {
-    // Arrange: Handler that always returns true (always consumes)
+    // Arrange Handler that always returns true (always consumes)
     let error_count = Arc::new(AtomicUsize::new(0));
     let error_count_clone = Arc::clone(&error_count);
 
@@ -416,7 +416,7 @@ async fn test_on_error_handler_always_consumes() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_handler_with_external_flag() -> anyhow::Result<()> {
-    // Arrange: Handler behavior controlled by external flag
+    // Arrange Handler behavior controlled by external flag
     let should_consume = Arc::new(AtomicUsize::new(1)); // 1 = consume, 0 = propagate
     let should_consume_clone = Arc::clone(&should_consume);
 
@@ -460,7 +460,7 @@ async fn test_on_error_handler_with_external_flag() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_multiple_errors_same_message() -> anyhow::Result<()> {
-    // Arrange: Multiple errors with identical messages
+    // Arrange Multiple errors with identical messages
     let seen_messages = Arc::new(Mutex::new(Vec::<String>::new()));
     let seen_messages_clone = Arc::clone(&seen_messages);
 
@@ -523,7 +523,7 @@ async fn test_on_error_multiple_errors_same_message() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_handler_preserves_error_details_on_propagate() -> anyhow::Result<()> {
-    // Arrange: Verify that propagated errors retain their original content
+    // Arrange Verify that propagated errors retain their original content
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream.on_error(|err| {
         // Propagate errors containing "propagate"
@@ -557,7 +557,7 @@ async fn test_on_error_handler_preserves_error_details_on_propagate() -> anyhow:
 
 #[tokio::test]
 async fn test_on_error_rapid_error_sequence() -> anyhow::Result<()> {
-    // Arrange: Many errors in rapid succession
+    // Arrange Many errors in rapid succession
     let error_count = Arc::new(AtomicUsize::new(0));
     let error_count_clone = Arc::clone(&error_count);
 

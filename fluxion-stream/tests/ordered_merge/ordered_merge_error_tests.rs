@@ -252,7 +252,7 @@ async fn test_ordered_merge_consecutive_errors_same_stream() -> anyhow::Result<(
 
 #[tokio::test]
 async fn test_ordered_merge_error_ordering_by_timestamp() -> anyhow::Result<()> {
-    // Arrange: Test that errors are emitted in timestamp order
+    // Arrange Test that errors are emitted in timestamp order
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
