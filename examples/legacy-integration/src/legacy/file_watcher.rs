@@ -18,7 +18,7 @@ impl LegacyFileWatcher {
     }
 
     pub async fn watch_inventory(self, tx: UnboundedSender<Inventory>, cancel: CancellationToken) {
-        println!("  ?? Legacy File Watcher: Watching for CSV inventory files (every 4s)");
+        println!("  Legacy File Watcher: Watching for CSV inventory files (every 4s)");
 
         let products = [
             (100, "Widget A"),
@@ -37,7 +37,7 @@ impl LegacyFileWatcher {
         loop {
             futures::select! {
                 _ = cancel.cancelled().fuse() => {
-                    println!("  ?? Legacy File Watcher: Shutting down");
+                    println!("  Legacy File Watcher: Shutting down");
                     break;
                 }
                 _ = sleep(Duration::from_secs(4)).fuse() => {

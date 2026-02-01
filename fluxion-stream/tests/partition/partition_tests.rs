@@ -128,7 +128,7 @@ async fn test_partition_empty_stream() -> anyhow::Result<()> {
     // Act
     drop(tx); // Close the channel
 
-    // Assert - both streams should end
+    // Assert
     assert_stream_ended(&mut true_stream, 500).await;
     assert_stream_ended(&mut false_stream, 500).await;
 
@@ -147,7 +147,7 @@ async fn test_partition_all_to_true() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
     drop(tx);
 
-    // Assert - all go to true stream
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut true_stream, 500).await)).value,
         &person_alice()
@@ -178,7 +178,7 @@ async fn test_partition_all_to_false() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
     drop(tx);
 
-    // Assert - all go to false stream
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut false_stream, 500).await)).value,
         &person_alice()
@@ -206,13 +206,13 @@ async fn test_partition_preserves_temporal_order() -> anyhow::Result<()> {
         _ => false,
     });
 
-    // Act - send with specific sequence numbers
+    // Act
     tx.unbounded_send((person_bob(), 1).into())?; // age 30, adult, seq 1
     tx.unbounded_send((person_alice(), 2).into())?; // age 25, young, seq 2
     tx.unbounded_send((person_charlie(), 3).into())?; // age 35, adult, seq 3
     tx.unbounded_send((person_dave(), 4).into())?; // age 28, young, seq 4
 
-    // Assert - values arrive in original order within each partition
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut adults, 500).await)).value,
         person_bob()
@@ -319,7 +319,7 @@ async fn test_partition_completes_both_on_close() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
     drop(tx); // Close the source
 
-    // Assert - drain values first
+    // Assert
     let _ = unwrap_stream(&mut persons, 500).await;
     let _ = unwrap_stream(&mut non_persons, 500).await;
 
@@ -346,7 +346,7 @@ async fn test_partition_multiple_types_complex() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(plant_rose()))?; // valid (height > 0)
     tx.unbounded_send(Sequenced::new(person_dave()))?; // valid (age 28)
 
-    // Assert - all should be valid in this test
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut valid, 500).await)).value,
         &person_alice()
@@ -376,7 +376,7 @@ async fn test_partition_drop_one_stream_early() -> anyhow::Result<()> {
     // Drop the non_persons stream immediately
     drop(non_persons);
 
-    // Act - send items of both types
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(animal_dog()))?; // Goes to dropped stream - should be discarded
     tx.unbounded_send(Sequenced::new(person_bob()))?;
@@ -384,7 +384,7 @@ async fn test_partition_drop_one_stream_early() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
     drop(tx);
 
-    // Assert - persons stream should still work correctly
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut persons, 500).await)).value,
         &person_alice()

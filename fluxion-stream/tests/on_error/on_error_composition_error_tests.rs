@@ -485,13 +485,13 @@ async fn test_on_error_handles_rapid_consecutive_errors_in_pipeline() -> anyhow:
             true
         });
 
-    // Act - send errors one at a time, polling after each
+    // Act
     for _i in 0..5 {
         tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error")))?;
         assert_no_element_emitted(&mut result, 50).await;
     }
 
-    // Assert all errors were handled
+    // Assert
     assert_eq!(*errors_handled.lock(), 5);
 
     // Verify stream still works after rapid errors
@@ -515,7 +515,7 @@ async fn test_on_error_empty_pipeline_with_errors() -> anyhow::Result<()> {
         true
     });
 
-    // Act - send errors one at a time, polling after each
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
     assert_no_element_emitted(&mut result, 50).await;
 

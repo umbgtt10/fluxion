@@ -21,7 +21,7 @@ impl LegacyDatabase {
     }
 
     pub async fn poll_users(self, tx: UnboundedSender<User>, cancel: CancellationToken) {
-        println!("  ???  Legacy Database: Polling for new users (every 3s)");
+        println!("  Legacy Database: Polling for new users (every 3s)");
 
         let names = [
             "Alice Smith",
@@ -34,7 +34,7 @@ impl LegacyDatabase {
         loop {
             futures::select! {
                 _ = cancel.cancelled().fuse() => {
-                    println!("  ???  Legacy Database: Shutting down");
+                    println!("  Legacy Database: Shutting down");
                     break;
                 }
                 _ = sleep(Duration::from_secs(3)).fuse() => {

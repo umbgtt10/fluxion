@@ -180,7 +180,7 @@ async fn test_merge_with_parallel_processing() -> anyhow::Result<()> {
         tx2.unbounded_send(Sequenced::new(animal_spider())).unwrap();
     });
 
-    // Assert - Wait for all 5 emissions (3 person + 2 animal)
+    // Assert
     let mut last = None;
     for _ in 0..5 {
         let item = unwrap_stream(&mut result, 500).await;
@@ -260,7 +260,7 @@ async fn test_merge_with_user_closure_panics() {
         },
     );
 
-    // Act: First emission should succeed
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
     assert_eq!(
         unwrap_stream(&mut result, 100).await.into_inner(),
@@ -268,7 +268,7 @@ async fn test_merge_with_user_closure_panics() {
         "First emission should increment state to 1"
     );
 
-    // Act: Second emission triggers panic
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob())).unwrap();
     let _second = unwrap_stream(&mut result, 100).await; // This will panic
 }
@@ -323,13 +323,13 @@ async fn test_merge_with_into_fluxion_stream_empty() -> anyhow::Result<()> {
             state.clone()
         });
 
-    // Act: Convert empty stream to FluxionStream
+    // Act
     let mut fluxion_stream = merged.into_stream();
 
     // Drop sender immediately to end stream
     drop(tx);
 
-    // Assert: Stream should end without errors
+    // Assert
     assert_stream_ended(&mut fluxion_stream, 500).await;
 
     Ok(())
@@ -462,7 +462,7 @@ async fn test_merge_with_timestamp_ordering_preserved() -> anyhow::Result<()> {
             state.clone()
         });
 
-    // Act: Send with specific timestamps
+    // Act
     tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
     tx2.unbounded_send(Sequenced::with_timestamp(person("Bob".to_string(), 20), 2))?;
     tx1.unbounded_send(Sequenced::with_timestamp(
@@ -471,7 +471,7 @@ async fn test_merge_with_timestamp_ordering_preserved() -> anyhow::Result<()> {
     ))?;
     tx2.unbounded_send(Sequenced::with_timestamp(person("Dave".to_string(), 40), 4))?;
 
-    // Assert: Items should be processed in timestamp order
+    // Assert
     let r1 = unwrap_stream(&mut merged, 100).await;
     assert_eq!(r1.clone().into_inner(), vec![("Alice".to_string(), 1)]);
     assert_eq!(r1.timestamp(), 1);

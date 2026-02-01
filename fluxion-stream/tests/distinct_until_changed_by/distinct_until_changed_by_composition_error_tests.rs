@@ -3,7 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-
 use fluxion_stream::{DistinctUntilChangedByExt, MapOrderedExt};
 use fluxion_test_utils::{
     helpers::{test_channel_with_errors, unwrap_stream},
@@ -16,7 +15,6 @@ async fn test_map_ordered_then_distinct_until_changed_by_propagates_error() -> a
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Map to same value (identity) then distinct by age equality
     let mut result = stream
         .map_ordered(|x| x)
         .distinct_until_changed_by(|a, b| match (a, b) {
@@ -26,12 +24,17 @@ async fn test_map_ordered_then_distinct_until_changed_by_propagates_error() -> a
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

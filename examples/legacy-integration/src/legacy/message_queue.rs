@@ -21,12 +21,12 @@ impl LegacyMessageQueue {
     }
 
     pub async fn consume_orders(self, tx: UnboundedSender<Order>, cancel: CancellationToken) {
-        println!("  📨 Legacy Message Queue: Consuming order events (every 2s)");
+        println!("  Legacy Message Queue: Consuming order events (every 2s)");
 
         loop {
             futures::select! {
                 _ = cancel.cancelled().fuse() => {
-                    println!("  📨 Legacy Message Queue: Shutting down");
+                    println!("  Legacy Message Queue: Shutting down");
                     break;
                 }
                 _ = sleep(Duration::from_secs(2)).fuse() => {

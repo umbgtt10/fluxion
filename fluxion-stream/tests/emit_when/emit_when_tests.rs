@@ -55,7 +55,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act Alice age=25, Dog legs=4 => 25 > 4 = true
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
@@ -67,7 +67,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
         "Expected Alice to be emitted when age > legs"
     );
 
-    // Act Update filter to spider (8 legs), still alice age=25 => 25 > 8 = true
+    // Act
     filter_tx.unbounded_send(Sequenced::new(animal_spider()))?;
 
     // Assert
@@ -78,7 +78,7 @@ async fn test_emit_when_filter_compares_source_and_filter() -> anyhow::Result<()
         "Expected Alice to be emitted when age > legs (spider)"
     );
 
-    // Act Update filter to ant (6 legs), still alice => 25 > 6 = true
+    // Act
     filter_tx.unbounded_send(Sequenced::new(animal_ant()))?;
 
     // Assert
@@ -113,7 +113,7 @@ async fn test_emit_when_threshold_comparison() -> anyhow::Result<()> {
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act Rose height=15, Sunflower height=180 => diff=165 > 50 = true
+    // Act
     source_tx.unbounded_send(Sequenced::new(plant_rose()))?;
     filter_tx.unbounded_send(Sequenced::new(plant_sunflower()))?;
 
@@ -125,7 +125,7 @@ async fn test_emit_when_threshold_comparison() -> anyhow::Result<()> {
         "Expected Rose to be emitted when height difference > 50"
     );
 
-    // Act Update source to Sunflower => diff=0 < 50 = false
+    // Act
     source_tx.unbounded_send(Sequenced::new(plant_sunflower()))?;
 
     // Assert
@@ -155,7 +155,7 @@ async fn test_emit_when_name_length_comparison() -> anyhow::Result<()> {
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act Charlie (7) > Dog (3) = true
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?;
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
@@ -167,13 +167,13 @@ async fn test_emit_when_name_length_comparison() -> anyhow::Result<()> {
         "Expected Charlie to be emitted when name longer than Dog"
     );
 
-    // Act Bob (3) > Dog (3) = false
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act Update filter to Cat (3), Bob (3) > Cat (3) = false
+    // Act
     filter_tx.unbounded_send(Sequenced::new(animal_cat()))?;
 
     // Assert
@@ -203,16 +203,16 @@ async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Res
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act Setup filter first - Dog with 4 legs
+    // Act
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
-    // Act Alice age=25 (odd) > 4 but not even => false
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act Bob age=30 (even) > 4 => true
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
@@ -223,7 +223,7 @@ async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Res
         "Expected Bob (30, even) to be emitted"
     );
 
-    // Act Dave age=28 (even) > 4 => true
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_dave()))?;
 
     // Assert
@@ -234,7 +234,7 @@ async fn test_emit_when_multiple_source_updates_with_comparison() -> anyhow::Res
         "Expected Dave (28, even) to be emitted"
     );
 
-    // Act Charlie age=35 (odd) => false
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
@@ -265,16 +265,16 @@ async fn test_emit_when_stateful_comparison() -> anyhow::Result<()> {
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act Set threshold to Bob age=30
+    // Act
     filter_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
-    // Act Alice age=25 <= 30 = false
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act Charlie age=35 > 30 = true
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
@@ -285,7 +285,7 @@ async fn test_emit_when_stateful_comparison() -> anyhow::Result<()> {
         "Expected Charlie to be emitted when age > threshold"
     );
 
-    // Act Diane age=40 > 30 = true
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_diane()))?;
 
     // Assert
@@ -296,13 +296,13 @@ async fn test_emit_when_stateful_comparison() -> anyhow::Result<()> {
         "Expected Diane to be emitted when age > threshold"
     );
 
-    // Act Raise threshold to Diane age=40
+    // Act
     filter_tx.unbounded_send(Sequenced::new(person_diane()))?;
 
     // Assert: Diane (40) > 40 = false, so no new emission
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act Send Bob age=30 as new source => 30 > 40 = false
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
@@ -324,21 +324,21 @@ async fn test_emit_when_filter_stream_closes() -> anyhow::Result<()> {
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act Establish both values
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
-    // Assert: Should emit
+    // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(&emitted_item.value, &person_alice());
 
-    // Act Close filter stream
+    // Act
     drop(filter_tx);
 
-    // Act Update source
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
-    // Assert: Should still emit using last known filter value
+    // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(
         &emitted_item.value,
@@ -363,16 +363,16 @@ async fn test_emit_when_both_values_required() -> anyhow::Result<()> {
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act Send only source, no filter yet
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert: Nothing emitted yet (no filter value)
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act Now send filter
+    // Act
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
-    // Assert: Now it should emit
+    // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(
         &emitted_item.value,
@@ -403,7 +403,7 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() -> anyhow::
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act Alice age=25, Bird legs=2 => 25 >= 20 = true
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
     filter_tx.unbounded_send(Sequenced::new(animal_bird()))?;
 
@@ -411,16 +411,16 @@ async fn test_emit_when_filter_stream_updates_trigger_reevaluation() -> anyhow::
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(&emitted_item.value, &person_alice());
 
-    // Act Update filter to Dog legs=4 => 25 >= 40 = false
+    // Act
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
-    // Assert: No emission because condition now false
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act Update filter back to Bird => 25 >= 20 = true
+    // Act
     filter_tx.unbounded_send(Sequenced::new(animal_bird()))?;
 
-    // Assert: Should emit again
+    // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(&emitted_item.value, &person_alice());
 
@@ -448,20 +448,20 @@ async fn test_emit_when_delta_based_filtering() -> anyhow::Result<()> {
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act Alice age=25, Bob age=30 => diff=5 <= 10 = false
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
     filter_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act Update source to Diane age=40 => diff=10 (not > 10) = false
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_diane()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act Update filter to Alice age=25 => diff=15 > 10 = true
+    // Act
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
@@ -496,20 +496,20 @@ async fn test_emit_when_cross_type_comparison() -> anyhow::Result<()> {
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act Dog legs=4, Alice age=25 => 4 != 25 = false
+    // Act
     source_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act Update source to Spider legs=8, still Alice => 8 != 25 = false
+    // Act
     source_tx.unbounded_send(Sequenced::new(animal_spider()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act Update source to Ant legs=6, still Alice => 6 != 25 = false
+    // Act
     source_tx.unbounded_send(Sequenced::new(animal_ant()))?;
 
     // Assert
@@ -528,7 +528,7 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act Establish both values
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
@@ -536,13 +536,13 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(&emitted_item.value, &person_alice());
 
-    // Act Close source stream
+    // Act
     drop(source_tx);
 
-    // Act Update filter
+    // Act
     filter_tx.unbounded_send(Sequenced::new(animal_cat()))?;
 
-    // Assert: Should emit latest source value
+    // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(
         &emitted_item.value,
@@ -550,7 +550,7 @@ async fn test_emit_when_source_stream_closes_after_filter() -> anyhow::Result<()
         "Expected filter updates to re-emit latest source after source closes"
     );
 
-    // Act Update filter again
+    // Act
     filter_tx.unbounded_send(Sequenced::new(animal_spider()))?;
 
     // Assert
@@ -610,7 +610,7 @@ async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
 
     let mut result = source_stream.emit_when(filter_stream, filter_fn);
 
-    // Act Diane age=40 (even), Dog legs=4 => 40 % 4 = 0 ?
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_diane()))?;
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
@@ -618,20 +618,20 @@ async fn test_emit_when_complex_multi_condition() -> anyhow::Result<()> {
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(&emitted_item.value, &person_diane());
 
-    // Act Bob age=30 (even), Dog legs=4 => 30 % 4 = 2 ?
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act Update filter to Ant legs=6 => 30 % 6 = 0 ?
+    // Act
     filter_tx.unbounded_send(Sequenced::new(animal_ant()))?;
 
     // Assert
     let emitted_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(&emitted_item.value, &person_bob());
 
-    // Act Alice age=25 (odd) => fails even check ?
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert

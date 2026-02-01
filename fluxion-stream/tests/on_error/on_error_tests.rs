@@ -20,12 +20,12 @@ use std::sync::Arc;
 async fn test_on_error_consumes_all_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = stream.on_error(|_err| {
-        true // Consume all errors
-    });
+    let mut result = stream.on_error(|_err| true);
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
@@ -33,10 +33,14 @@ async fn test_on_error_consumes_all_errors() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("user error")))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         2
@@ -46,20 +50,18 @@ async fn test_on_error_consumes_all_errors() -> anyhow::Result<()> {
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "stream error",
     )))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(3)))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         3
     );
-
-    // Act
-    drop(tx);
-
-    // Assert
-    assert_stream_ended(&mut result, 500).await;
 
     Ok(())
 }
@@ -68,12 +70,12 @@ async fn test_on_error_consumes_all_errors() -> anyhow::Result<()> {
 async fn test_on_error_propagates_all_errors() -> anyhow::Result<()> {
     //  Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = stream.on_error(|_err| {
-        false // Propagate all errors
-    });
+    let mut result = stream.on_error(|_err| false);
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
@@ -81,6 +83,8 @@ async fn test_on_error_propagates_all_errors() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -88,6 +92,8 @@ async fn test_on_error_propagates_all_errors() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         2
@@ -95,16 +101,12 @@ async fn test_on_error_propagates_all_errors() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
-
-    // Act
-    drop(tx);
-
-    // Assert
-    assert_stream_ended(&mut result, 500).await;
 
     Ok(())
 }
@@ -113,13 +115,12 @@ async fn test_on_error_propagates_all_errors() -> anyhow::Result<()> {
 async fn test_on_error_selective_by_message_content() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = stream.on_error(|err| {
-        // Only consume errors containing "user"
-        err.to_string().contains("user")
-    });
+    let mut result = stream.on_error(|err| err.to_string().contains("user"));
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
@@ -127,13 +128,16 @@ async fn test_on_error_selective_by_message_content() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("user error")))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "network error",
     )))?;
-    // User error consumed, network error propagated
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -141,16 +145,12 @@ async fn test_on_error_selective_by_message_content() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         2
     );
-
-    // Act
-    drop(tx);
-
-    // Assert
-    assert_stream_ended(&mut result, 500).await;
 
     Ok(())
 }

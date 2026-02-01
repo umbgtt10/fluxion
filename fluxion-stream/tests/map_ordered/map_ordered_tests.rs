@@ -227,7 +227,7 @@ async fn test_map_ordered_preserves_ordering() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
     tx.unbounded_send(Sequenced::new(person_dave()))?;
 
-    // Assert - order should be preserved
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         "Alice"

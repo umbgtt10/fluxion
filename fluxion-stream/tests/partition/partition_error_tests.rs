@@ -19,7 +19,7 @@ async fn test_partition_propagates_error_to_both_streams() -> anyhow::Result<()>
     let (mut persons, mut non_persons) =
         stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // Act - send an error
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
 
     // Assert - both streams receive the error

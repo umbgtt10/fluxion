@@ -136,7 +136,7 @@ async fn test_filter_ordered_preserves_ordering() -> anyhow::Result<()> {
         _ => false,
     });
 
-    // Act - send in sequence order
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?; // 25 - odd, filtered
     tx.unbounded_send(Sequenced::new(person_bob()))?; // 30 - even, kept
     tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - odd, filtered

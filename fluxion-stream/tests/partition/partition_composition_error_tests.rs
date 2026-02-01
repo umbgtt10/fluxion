@@ -26,7 +26,7 @@ async fn test_partition_then_filter_ordered_error_propagation() -> anyhow::Resul
         _ => false,
     });
 
-    // Act - send values then error
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // 4 legs
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;

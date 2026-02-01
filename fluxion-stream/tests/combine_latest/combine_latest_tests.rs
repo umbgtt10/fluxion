@@ -435,17 +435,17 @@ async fn test_combine_latest_filter_rejects_initial_state() -> anyhow::Result<()
 
     let mut result = person_stream.combine_latest(vec![animal_stream], filter);
 
-    // Act: Publish Alice and Dog (should be rejected)
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
-    // Assert: No emission due to filter rejection
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act: Update to Bob (should pass filter)
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
-    // Assert: Now we get an emission
+    // Assert
     expect_next_combined_equals(&mut result, &[person_bob(), animal_dog()]).await;
 
     Ok(())

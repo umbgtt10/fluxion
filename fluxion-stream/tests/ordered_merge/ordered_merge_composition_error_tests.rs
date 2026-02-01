@@ -48,7 +48,7 @@ async fn test_ordered_merge_then_filter_with_errors() -> anyhow::Result<()> {
         4,
     )))?; // age 40 even, passes
 
-    // Assert: Error should propagate, odd numbers filtered
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -95,7 +95,7 @@ async fn test_ordered_merge_then_map_with_errors() -> anyhow::Result<()> {
         2,
     )))?;
 
-    // Assert: Error propagated immediately, then ages doubled
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -158,7 +158,7 @@ async fn test_filter_then_ordered_merge_with_errors() -> anyhow::Result<()> {
         4,
     )))?; // legs 8, passes
 
-    // Assert: Error propagates, only values > 5 emitted
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -252,7 +252,7 @@ async fn test_ordered_merge_chained_with_errors() -> anyhow::Result<()> {
     let merged_12 = s1.ordered_merge(vec![s2]);
     let mut result = merged_12.ordered_merge(vec![s3]);
 
-    // Act: Send values and errors from all three streams
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P1".to_string(), 10),
         1,
@@ -268,7 +268,7 @@ async fn test_ordered_merge_chained_with_errors() -> anyhow::Result<()> {
         3,
     )))?;
 
-    // Assert: Errors emitted immediately, then values in timestamp order
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -308,7 +308,7 @@ async fn test_ordered_merge_error_after_filter() -> anyhow::Result<()> {
             _ => false,
         });
 
-    // Act: Mix values (some filtered) and errors
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person("P1".to_string(), 1),
         1,
@@ -327,7 +327,7 @@ async fn test_ordered_merge_error_after_filter() -> anyhow::Result<()> {
         4,
     )))?; // even, passes
 
-    // Assert: Error emitted immediately, then even values
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -368,7 +368,7 @@ async fn test_ordered_merge_multiple_errors_through_map() -> anyhow::Result<()> 
         Sequenced::with_timestamp(name, ts)
     });
 
-    // Act: Multiple errors from both streams
+    // Act
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
@@ -381,7 +381,7 @@ async fn test_ordered_merge_multiple_errors_through_map() -> anyhow::Result<()> 
     )))?; // Send value with ts > 1 so ordered_merge can emit value at ts=1
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 3")))?;
 
-    // Assert: Errors emitted immediately, values in timestamp order
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -426,11 +426,11 @@ async fn test_ordered_merge_errors_only_through_filter() -> anyhow::Result<()> {
         _ => false,
     });
 
-    // Act: Send only errors (no values pass filter)
+    // Act
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
 
-    // Assert: Errors should still propagate even though no values pass
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -487,7 +487,7 @@ async fn test_ordered_merge_three_streams_filter_map_errors() -> anyhow::Result<
         3,
     )))?; // legs 4 -> 2
 
-    // Assert: Error emitted immediately, then filtered/mapped values
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -539,7 +539,7 @@ async fn test_ordered_merge_error_preserves_timestamp_through_pipeline() -> anyh
         10,
     )))?;
 
-    // Assert: Error emitted immediately, then timestamps preserved through map
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

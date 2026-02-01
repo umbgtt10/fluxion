@@ -180,7 +180,7 @@ async fn test_partition_then_ordered_merge() -> anyhow::Result<()> {
     tx.unbounded_send((animal_cat(), 4).into())?;
     drop(tx);
 
-    // Assert - items arrive in original order
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut merged, 500).await)).into_inner(),
         person_alice()
@@ -382,7 +382,7 @@ async fn test_share_then_partition() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_alice()))?; // age 25 - young, person
     tx.unbounded_send(Sequenced::new(person_charlie()))?; // age 35 - adult, person
 
-    // Assert - both partitions receive from shared source
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut young1, 500).await)).value,
         &person_alice()
@@ -407,11 +407,11 @@ async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
     // combine_latest requires all streams to have emitted before producing output
     let mut combined = persons.combine_latest(vec![animals], |_| true);
 
-    // Act - send one of each to satisfy combine_latest requirements
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
-    // Assert - should have both values combined
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
             .into_inner()
@@ -419,7 +419,7 @@ async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
         &[person_alice(), animal_dog()]
     );
 
-    // Act - update person, combined should emit with latest animal
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
@@ -428,7 +428,7 @@ async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
         &[person_bob(), animal_dog()]
     );
 
-    // Act - update animal, combined should emit with latest person
+    // Act
     tx.unbounded_send(Sequenced::new(animal_cat()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
@@ -459,7 +459,7 @@ async fn test_partition_with_subject_and_filter() -> anyhow::Result<()> {
         _ => false,
     });
 
-    // Act - send through subject
+    // Act
     subject.send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25 - filtered
     subject.send(StreamItem::Value(Sequenced::new(animal_bird())))?; // 2 legs - filtered
     subject.send(StreamItem::Value(Sequenced::new(person_charlie())))?; // age 35 - kept
@@ -517,7 +517,7 @@ async fn test_partition_share_then_combine_latest() -> anyhow::Result<()> {
         [person_alice(), animal_dog()]
     );
 
-    // Act - update both
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
@@ -549,7 +549,7 @@ async fn test_partition_then_with_latest_from() -> anyhow::Result<()> {
             state.clone()
         });
 
-    // Act - need animal first (secondary), then person (primary) triggers
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
     tx.unbounded_send(Sequenced::new(person_alice()))?;
 
@@ -562,11 +562,11 @@ async fn test_partition_then_with_latest_from() -> anyhow::Result<()> {
         [person_alice(), animal_dog()]
     );
 
-    // Act - animal update alone shouldn't emit (only primary triggers)
+    // Act
     tx.unbounded_send(Sequenced::new(animal_cat()))?;
     assert_no_element_emitted(&mut person_with_animal, 100).await;
 
-    // Act - person update triggers with latest animal
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut person_with_animal, 500).await))

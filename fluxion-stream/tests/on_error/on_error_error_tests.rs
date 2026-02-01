@@ -587,7 +587,7 @@ async fn test_on_error_rapid_error_sequence() -> anyhow::Result<()> {
     drop(tx);
     assert_stream_ended(&mut result, 500).await;
 
-    // Assert all errors were processed
+    // Assert
     assert_eq!(error_count.load(Ordering::SeqCst), 100);
 
     Ok(())
