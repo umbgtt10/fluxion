@@ -34,6 +34,8 @@ async fn test_map_ordered_then_window_by_count_propagates_error() -> anyhow::Res
 
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_cat())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_alice(), person_alice()]

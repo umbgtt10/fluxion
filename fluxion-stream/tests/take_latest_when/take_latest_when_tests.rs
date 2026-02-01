@@ -80,8 +80,10 @@ async fn test_take_latest_when_filter_satisfied_emits() -> anyhow::Result<()> {
     filter_tx.unbounded_send(Sequenced::new(animal_ant()))?;
 
     // Assert
-    let emitted_item = unwrap_stream(&mut result, 500).await.unwrap();
-    assert_eq!(emitted_item.value, person_alice());
+    assert_eq!(
+        unwrap_stream(&mut result, 500).await.unwrap().value,
+        person_alice()
+    );
 
     Ok(())
 }
@@ -116,8 +118,10 @@ async fn test_take_latest_when_multiple_emissions_filter_satisfied() -> anyhow::
     filter_tx.unbounded_send(Sequenced::new(animal_ant()))?;
 
     // Assert
-    let second_item = unwrap_stream(&mut result, 500).await.unwrap();
-    assert_eq!(second_item.value, person_bob());
+    assert_eq!(
+        unwrap_stream(&mut result, 500).await.unwrap().value,
+        person_bob()
+    );
 
     Ok(())
 }

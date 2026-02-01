@@ -50,24 +50,24 @@ async fn test_combine_latest_take_latest_when() -> anyhow::Result<()> {
     trigger_animal_tx.unbounded_send(Sequenced::new(plant_rose()))?;
 
     // Assert
-    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    let inner = result.clone().into_inner();
-    let values = inner.values();
-    assert_eq!(values.len(), 2);
-    assert_eq!(&values[0], &person_alice());
-    assert_eq!(&values[1], &animal_dog());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await))
+            .into_inner()
+            .values(),
+        [person_alice(), animal_dog()]
+    );
 
     // Act
     person_tx.unbounded_send(Sequenced::new(person_charlie()))?;
     trigger_person_tx.unbounded_send(Sequenced::new(person_dave()))?;
 
     // Assert
-    let result = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-    let inner = result.clone().into_inner();
-    let values = inner.values();
-    assert_eq!(values.len(), 2);
-    assert_eq!(&values[0], &person_charlie());
-    assert_eq!(&values[1], &animal_dog());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await))
+            .into_inner()
+            .values(),
+        [person_charlie(), animal_dog()]
+    );
 
     Ok(())
 }
@@ -89,30 +89,41 @@ async fn test_ordered_merge_take_latest_when() -> anyhow::Result<()> {
         .ordered_merge(vec![animal_stream])
         .take_latest_when(filter_stream, LATEST_FILTER);
 
-    // Act & Assert
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    {
-        let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-        assert_eq!(&val.value, &person_alice());
-    }
 
+    // Assert
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
+        person_alice()
+    );
+
+    // Act
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    {
-        let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-        assert_eq!(&val.value, &animal_dog());
-    }
 
+    // Assert
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
+        animal_dog()
+    );
+
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
-    {
-        let val = unwrap_value(Some(unwrap_stream(&mut composed, 500).await));
-        assert_eq!(&val.value, &person_bob());
-    }
 
+    // Assert
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
+        person_bob()
+    );
+
+    // Act
     drop(filter_tx);
     person_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_no_element_emitted(&mut composed, 100).await;
 
     Ok(())
@@ -128,27 +139,28 @@ async fn test_filter_ordered_take_latest_when() -> anyhow::Result<()> {
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
         .take_latest_when(filter_rx, FILTER);
 
-    // Act & Assert
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
     source_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
-
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
-    {
-        let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
+    // Assert
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        person_bob()
+    );
 
-        assert_eq!(&val.value, &person_bob());
-    }
-
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?;
     source_tx.unbounded_send(Sequenced::new(plant_rose()))?;
-
     filter_tx.unbounded_send(Sequenced::new(person_bob()))?;
-    {
-        let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-        assert_eq!(&val.value, &person_charlie());
-    }
+
+    // Assert
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
+        person_charlie()
+    );
 
     Ok(())
 }

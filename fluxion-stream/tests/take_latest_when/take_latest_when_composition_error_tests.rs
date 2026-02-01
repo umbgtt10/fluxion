@@ -78,6 +78,7 @@ async fn test_take_latest_when_propagates_error_from_mapped_source() -> anyhow::
         4,
     )))?;
 
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Bob Jr.")
@@ -102,36 +103,43 @@ async fn test_take_latest_when_propagates_error_from_filtered_trigger() -> anyho
 
     let mut result = source_stream.take_latest_when(filtered_trigger, |_| true);
 
-    // Act & Assert
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
-
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
         2,
     )))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_ant(),
         3,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Alice")
     ));
 
+    // Act
     trigger_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Trigger Error",
     )))?;
 
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(e) if e.to_string().contains("Trigger Error")
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         4,
@@ -140,6 +148,8 @@ async fn test_take_latest_when_propagates_error_from_filtered_trigger() -> anyho
         animal_spider(),
         5,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Bob")
@@ -177,7 +187,7 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
         }
     });
 
-    // Act & Assert
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
@@ -186,35 +196,50 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
         person_bob(),
         2,
     )))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
         3,
     )))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_ant(),
         4,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Sum" && p.age == 55)
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Scan Error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(e) if e.to_string().contains("Scan Error")
     ));
 
+    // Act
     trigger_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map Error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(e) if e.to_string().contains("Map Error")
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_charlie(),
         5,
@@ -224,6 +249,7 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
         6,
     )))?;
 
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Sum" && p.age == 90)

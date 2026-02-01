@@ -166,10 +166,8 @@ async fn test_chained_taps_with_errors() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error")))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     unwrap_stream(&mut result, 500).await;
 
@@ -242,7 +240,6 @@ async fn test_complex_pipeline_with_multiple_errors() -> anyhow::Result<()> {
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         TestData::Person(p) if p.name.starts_with("Pipeline: ")
     ));
-
     assert_eq!(counter_before_filter.load(Ordering::SeqCst), 2);
     assert_eq!(counter_after_map.load(Ordering::SeqCst), 2);
 

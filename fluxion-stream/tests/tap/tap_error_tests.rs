@@ -60,10 +60,8 @@ async fn test_tap_not_called_for_errors() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     unwrap_stream(&mut result, 500).await;
 
@@ -123,16 +121,12 @@ async fn test_tap_interleaved_values_and_errors() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 2")))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
     unwrap_stream(&mut result, 500).await;
 
@@ -175,7 +169,6 @@ async fn test_tap_only_errors() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 2")))?;
     unwrap_stream(&mut result, 500).await;
 
