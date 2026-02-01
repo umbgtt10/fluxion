@@ -297,7 +297,6 @@ async fn test_emit_when_source_none_on_source_update() -> anyhow::Result<()> {
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 
-    // Send source first (filter is None) - no emission
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
 
     // Now send filter

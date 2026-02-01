@@ -83,7 +83,7 @@ async fn test_filter_ordered_empty_stream() -> anyhow::Result<()> {
 async fn test_filter_ordered_all_filtered_out() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
-    let mut result = stream.filter_ordered(|_| false); // Filter everything
+    let mut result = stream.filter_ordered(|_| false);
 
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;

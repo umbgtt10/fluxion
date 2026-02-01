@@ -131,7 +131,6 @@ async fn test_take_latest_when_both_streams_have_errors() -> anyhow::Result<()> 
 
     let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |_| true);
 
-    // Send initial values
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     assert_no_element_emitted(&mut triggered_stream, 500).await;
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 2)))?;

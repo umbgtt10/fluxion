@@ -30,30 +30,35 @@ async fn test_distinct_until_changed_propagates_errors() -> anyhow::Result<()> {
         StreamItem::Value(v) if v.value == person_alice()
     ));
 
-    // Error should be propagated
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Test error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Duplicate value after error - should be filtered
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         2,
     )))?;
-
-    // Different value - should be emitted
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         3,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value == person_bob()
     ));
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut result, 100).await;
 
     Ok(())
@@ -76,7 +81,7 @@ async fn test_distinct_until_changed_error_at_start() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
-    // First value should still be emitted (no previous to compare)
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,

@@ -61,6 +61,7 @@ async fn test_combine_with_previous_propagates_errors() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_combine_with_previous_error_at_first_item() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut result = stream.combine_with_previous();
@@ -152,26 +153,37 @@ async fn test_combine_with_previous_preserves_pairing_after_error() -> anyhow::R
 
     let mut result = stream.combine_with_previous();
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(30, 3)))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(40, 4)))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -189,8 +201,10 @@ async fn test_combine_with_previous_single_item_stream_with_error() -> anyhow::R
 
     let mut result = stream.combine_with_previous();
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

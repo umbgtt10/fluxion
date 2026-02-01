@@ -273,7 +273,7 @@ async fn test_map_ordered_identity_then_window_by_count_propagates_error() -> an
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream
-        .map_ordered(|x: Sequenced<TestData>| x) // identity map
+        .map_ordered(|x: Sequenced<TestData>| x)
         .window_by_count::<Sequenced<Vec<TestData>>>(2);
 
     // Act

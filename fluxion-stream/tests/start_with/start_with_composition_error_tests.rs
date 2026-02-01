@@ -16,7 +16,6 @@ async fn test_map_ordered_then_start_with_propagates_error() -> anyhow::Result<(
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Map then start with Bob
     let mut result = stream
         .map_ordered(|x| x)
         .start_with(vec![StreamItem::Value(Sequenced::new(person_bob()))]);

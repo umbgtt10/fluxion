@@ -73,7 +73,7 @@ async fn test_distinct_until_changed_with_map_composition() -> anyhow::Result<()
         .distinct_until_changed();
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert_eq!(
@@ -82,8 +82,8 @@ async fn test_distinct_until_changed_with_map_composition() -> anyhow::Result<()
     );
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25 - same
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30 - different
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     assert_eq!(
@@ -92,9 +92,9 @@ async fn test_distinct_until_changed_with_map_composition() -> anyhow::Result<()
     );
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30 - same
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30 - same
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // Age 35 - different
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     assert_eq!(
@@ -173,7 +173,6 @@ async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow
         .distinct_until_changed();
 
     // Act
-    // Initial values: Alice (25) + Bob (30) = 55
     stream1_tx.unbounded_send(Sequenced::new(person_alice()))?;
     stream2_tx.unbounded_send(Sequenced::new(person_bob()))?;
 

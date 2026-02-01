@@ -199,7 +199,6 @@ async fn test_combine_with_previous_high_volume_sequential() -> anyhow::Result<(
             _ => tx.unbounded_send(Sequenced::new(person_charlie()))?,
         }
     }
-    // Close input so the stream can finish
     drop(tx);
 
     // Assert
@@ -208,15 +207,13 @@ async fn test_combine_with_previous_high_volume_sequential() -> anyhow::Result<(
         (first.previous.map(|s| s.value), first.current.value),
         (None, person_alice())
     );
-
-    // Then verify a few samples and the last pair to ensure previous tracking holds
     let second = unwrap_stream(&mut result, 500).await.unwrap();
     assert_eq!(
         (second.previous.map(|s| s.value), second.current.value),
         (Some(person_alice()), person_bob())
     );
 
-    // Drain remaining 198 pairs (we already consumed 2 above)
+    // Act
     let mut last_prev = None;
     let mut last_curr = None;
     for _ in 0..198 {
@@ -224,9 +221,9 @@ async fn test_combine_with_previous_high_volume_sequential() -> anyhow::Result<(
         last_prev = item.previous.map(|s| s.value);
         last_curr = Some(item.current.value);
     }
-    // Stream should now be ended
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
-    // Last pair should have a previous
     assert!(last_prev.is_some());
     assert!(last_curr.is_some());
 
@@ -235,7 +232,7 @@ async fn test_combine_with_previous_high_volume_sequential() -> anyhow::Result<(
 
 #[tokio::test]
 async fn test_combine_with_previous_boundary_empty_string_zero_values() -> anyhow::Result<()> {
-    // Arrange: Test with boundary values (empty strings, zero numeric values)
+    // Arrange
     let (tx, stream) = test_channel();
     let mut result = stream.combine_with_previous();
 
@@ -274,7 +271,7 @@ async fn test_combine_with_previous_boundary_empty_string_zero_values() -> anyho
 
 #[tokio::test]
 async fn test_combine_with_previous_boundary_maximum_concurrent_streams() -> anyhow::Result<()> {
-    // Arrange: Test concurrent handling with many parallel streams
+    // Arrange
     let num_concurrent = 50;
     let mut handles = Vec::new();
 
@@ -318,11 +315,8 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() -> any
         handles.push(handle);
     }
 
-    // Wait for all concurrent streams to complete
     for handle in handles {
-        handle
-            .await
-            .expect("Concurrent stream task should complete successfully");
+        handle.await?;
     }
 
     Ok(())
@@ -330,7 +324,7 @@ async fn test_combine_with_previous_boundary_maximum_concurrent_streams() -> any
 
 #[tokio::test]
 async fn test_combine_with_previous_single_value_stream() -> anyhow::Result<()> {
-    // Arrange: Stream that emits only one value
+    // Arrange
     let (tx, stream) = test_channel();
     let mut result = stream.combine_with_previous();
 

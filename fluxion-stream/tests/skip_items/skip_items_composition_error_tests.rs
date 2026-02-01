@@ -16,7 +16,6 @@ async fn test_map_ordered_then_skip_items_propagates_error() -> anyhow::Result<(
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Map then skip 1
     let mut result = stream.map_ordered(|x| x).skip_items(1);
 
     // Act

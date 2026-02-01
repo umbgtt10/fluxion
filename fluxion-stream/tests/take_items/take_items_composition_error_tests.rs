@@ -16,7 +16,6 @@ async fn test_map_ordered_then_take_items_propagates_error() -> anyhow::Result<(
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Map then take 2 items
     let mut result = stream.map_ordered(|x| x).take_items(2);
 
     // Act
@@ -29,7 +28,6 @@ async fn test_map_ordered_then_take_items_propagates_error() -> anyhow::Result<(
     ));
 
     // Act
-    // Note: Errors count as items in take_items
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
 
     // Assert

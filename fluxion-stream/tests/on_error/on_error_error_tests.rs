@@ -578,7 +578,6 @@ async fn test_on_error_rapid_error_sequence() -> anyhow::Result<()> {
     // Give time for processing
     tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-    // Send a value to verify stream is still working
     tx.unbounded_send(StreamItem::Value(Sequenced::new(42)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,

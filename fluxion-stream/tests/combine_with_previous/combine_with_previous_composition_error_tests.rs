@@ -55,10 +55,13 @@ async fn test_distinct_until_changed_error_propagation_in_composition() -> anyho
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         4,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(val) if val.current.value == person_bob() && val.previous.as_ref().map(|p| &p.value) == Some(&person_alice())
@@ -74,18 +77,21 @@ async fn test_map_ordered_then_combine_with_previous_propagates_error() -> anyho
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut result = stream
-        .map_ordered(|x| x) // Identity map
-        .combine_with_previous();
+    let mut result = stream.map_ordered(|x| x).combine_with_previous();
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -99,24 +105,23 @@ async fn test_filter_ordered_then_combine_with_previous_propagates_error() -> an
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut result = stream
-        .filter_ordered(|_| true) // Pass everything
-        .combine_with_previous();
+    let mut result = stream.filter_ordered(|_| true).combine_with_previous();
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
 
-    // First emission
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Filter error",
     )))?;
 
-    // Should propagate error
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

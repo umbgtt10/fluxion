@@ -127,6 +127,7 @@ async fn test_combine_latest_combine_with_previous() -> anyhow::Result<()> {
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut composed, 500).await,
         StreamItem::Value(val) if val.previous.is_none() && {
@@ -136,7 +137,10 @@ async fn test_combine_latest_combine_with_previous() -> anyhow::Result<()> {
         }
     ));
 
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut composed, 500).await,
         StreamItem::Value(val) if {
@@ -155,7 +159,7 @@ async fn test_combine_latest_combine_with_previous() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_complex_composition_ordered_merge_and_combine_with_previous() -> anyhow::Result<()> {
-    // Arrange: ordered_merge -> combine_with_previous
+    // Arrang
     let (person1_tx, person1_rx) = test_channel::<Sequenced<TestData>>();
     let (person2_tx, person2_rx) = test_channel::<Sequenced<TestData>>();
 
@@ -167,7 +171,7 @@ async fn test_complex_composition_ordered_merge_and_combine_with_previous() -> a
         .combine_with_previous();
 
     // Act
-    person1_tx.unbounded_send(Sequenced::new(person_alice()))?; // 25
+    person1_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert!(matches!(
@@ -176,7 +180,7 @@ async fn test_complex_composition_ordered_merge_and_combine_with_previous() -> a
     ));
 
     // Act
-    person2_tx.unbounded_send(Sequenced::new(person_bob()))?; // 30
+    person2_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     assert!(matches!(
@@ -198,7 +202,7 @@ async fn test_complex_composition_ordered_merge_and_combine_with_previous() -> a
 
 #[tokio::test]
 async fn test_filter_ordered_combine_with_previous() -> anyhow::Result<()> {
-    // Arrange - filter for adults (age > 25), then track changes
+    // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     let mut stream = stream
@@ -209,13 +213,13 @@ async fn test_filter_ordered_combine_with_previous() -> anyhow::Result<()> {
         .combine_with_previous();
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // 25 - filtered
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert_no_element_emitted(&mut stream, 500).await;
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // 30 - kept
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     assert!(matches!(
@@ -224,7 +228,7 @@ async fn test_filter_ordered_combine_with_previous() -> anyhow::Result<()> {
     ));
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - kept
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     assert!(matches!(
@@ -233,7 +237,7 @@ async fn test_filter_ordered_combine_with_previous() -> anyhow::Result<()> {
     ));
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // 28 - kept
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
 
     // Assert
     assert!(matches!(

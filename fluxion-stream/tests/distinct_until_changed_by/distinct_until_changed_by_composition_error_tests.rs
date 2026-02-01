@@ -31,7 +31,6 @@ async fn test_map_ordered_then_distinct_until_changed_by_propagates_error() -> a
         StreamItem::Value(_)
     ));
 
-    // Send error
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,

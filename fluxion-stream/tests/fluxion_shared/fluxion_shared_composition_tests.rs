@@ -308,7 +308,6 @@ async fn shared_with_transient_combine_latest_combines_subscribers() -> anyhow::
         vec![person_alice(), person_alice()]
     );
 
-    // Send Bob
     tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // After Bob is sent, we get a combination with Bob on one side
@@ -372,7 +371,6 @@ async fn shared_with_transient_filtered_combine_latest_combines_subscribers() ->
         vec![person_alice(), person_alice()]
     );
 
-    // Send Bob
     tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // After Bob is sent, both subscribers receive it with the same timestamp, so we get (Bob, Bob)

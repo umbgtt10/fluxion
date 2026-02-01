@@ -192,9 +192,8 @@ async fn test_combine_latest_filter_predicate_continues_after_error() -> anyhow:
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
-    // Filter predicate should still be evaluated after error
     let mut result = stream1.combine_latest(vec![stream2], |state| {
-        state.values()[0] > 1 // Only pass values > 1
+        state.values()[0] > 1
     });
 
     // Act
@@ -223,8 +222,6 @@ async fn test_combine_latest_filter_predicate_continues_after_error() -> anyhow:
 
     // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(0, 3)))?;
-
-    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 5)))?;
 
     // Assert

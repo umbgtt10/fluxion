@@ -48,7 +48,6 @@ async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_alice());
 
-    // Send early error - should be consumed by first handler
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "early error 1",
     )))?;
@@ -60,7 +59,6 @@ async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_bob());
 
-    // Send late error - should be propagated and consumed by second handler
     tx.unbounded_send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
         "late error 1",
     )))?;
@@ -68,7 +66,6 @@ async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
     assert_eq!(*early_errors.lock(), 1);
     assert_eq!(*late_errors.lock(), 1);
 
-    // Send another early error - should be consumed by first handler
     tx.unbounded_send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
         "early error 2",
     )))?;
@@ -80,7 +77,6 @@ async fn test_on_error_in_middle_of_chain() -> anyhow::Result<()> {
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_charlie());
 
-    // Send another late error - should be propagated and consumed by second handler
     tx.unbounded_send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
         "late error 2",
     )))?;
@@ -139,7 +135,6 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_alice());
 
-    // Send network error - consumed by first handler
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "network timeout",
     )))?;
@@ -152,7 +147,6 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_bob());
 
-    // Send validation error - propagated past first, consumed by second handler
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "validation failed",
     )))?;
@@ -165,7 +159,6 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_charlie());
 
-    // Send unknown error - propagated past first two, consumed by catch-all
     tx.unbounded_send(StreamItem::Error(fluxion_core::FluxionError::stream_error(
         "unknown error",
     )))?;
@@ -178,7 +171,6 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
     let val = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
     assert_eq!(&val.value, &person_dave());
 
-    // Send another network error - consumed by first handler
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "network connection lost",
     )))?;
