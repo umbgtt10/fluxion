@@ -4,8 +4,4 @@
 
 pub mod humidity;
 pub mod pressure;
-pub mod tmperature;
-
-pub use humidity::Humidity;
-pub use pressure::Pressure;
-pub use tmperature::Temperature;
+pub mod temperature;

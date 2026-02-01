@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::types::{Humidity, Pressure, Temperature};
+use crate::types::{humidity::Humidity, pressure::Pressure, temperature::Temperature};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SensorAggregate {

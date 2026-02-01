@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::aggregate::SensorAggregate;
-use crate::types::{Humidity, Pressure, Temperature};
+use crate::aggregate::sensor_aggregate::SensorAggregate;
+use crate::types::{humidity::Humidity, pressure::Pressure, temperature::Temperature};
 use crate::{info, warn};
 use core::time::Duration;
 use fluxion_core::{CancellationToken, StreamItem};

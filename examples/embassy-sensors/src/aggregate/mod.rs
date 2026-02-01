@@ -3,5 +3,3 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 pub mod sensor_aggregate;
-
-pub use sensor_aggregate::SensorAggregate;

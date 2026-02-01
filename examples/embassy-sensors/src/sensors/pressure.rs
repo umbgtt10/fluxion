@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::info;
-use crate::types::Pressure;
+use crate::types::pressure::Pressure;
 use embassy_time::Duration;
 use fluxion_core::CancellationToken;
 use fluxion_runtime::impls::embassy::EmbassyTimer;

@@ -3,7 +3,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::info;
-use crate::types::Humidity;
+use crate::types::humidity::Humidity;
 use embassy_time::Duration;
 use fluxion_core::CancellationToken;
 use fluxion_runtime::impls::embassy::EmbassyTimer;

@@ -48,7 +48,7 @@ use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use fluxion_core::CancellationToken;
 use fusion::fusion_task;
-use sensors::{humidity_sensor, pressure_sensor, temperature_sensor};
+use sensors::{humidity::humidity_sensor, pressure::pressure_sensor, temperature::temperature_sensor};
 
 use panic_semihosting as _;
 
