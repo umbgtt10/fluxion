@@ -25,7 +25,6 @@ pub fn bench_timeout(c: &mut Criterion) {
             &duration,
             |bencher, &duration| {
                 bencher.iter(|| {
-                    // 1. Setup a lightweight, paused runtime
                     let rt = Builder::new_current_thread()
                         .enable_time()
                         .start_paused(true)
@@ -33,20 +32,16 @@ pub fn bench_timeout(c: &mut Criterion) {
                         .unwrap();
 
                     rt.block_on(async {
-                        // 2. Create stream and operator
                         let (tx, rx) = async_channel::unbounded();
                         let stream = rx.into_fluxion_stream().timeout(duration);
                         let mut stream = Box::pin(stream);
 
-                        // 3. Emit value BEFORE timeout
                         tx.try_send(TokioTimestamped::new(1, TokioTimer.now()))
                             .unwrap();
 
-                        // 4. Assert result (should be immediate)
                         let item = stream.next().await;
                         black_box(item);
 
-                        // 5. Advance time to ensure timer cleanup doesn't crash
                         advance(duration).await;
                     });
                 });

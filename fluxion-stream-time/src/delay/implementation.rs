@@ -17,10 +17,6 @@ macro_rules! define_delay_impl {
         use futures::{Stream, StreamExt};
         use pin_project::pin_project;
 
-        /// Extension trait providing the `delay` operator for streams.
-        ///
-        /// This trait allows any stream of `StreamItem<T>` where `T: Fluxion` to delay emissions
-        /// by a specified duration.
         pub trait DelayExt<T, R>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,
@@ -82,7 +78,6 @@ macro_rules! define_delay_impl {
                         if let Some(value) = this.value.take() {
                             Poll::Ready(StreamItem::Value(value))
                         } else {
-                            // Future contract violation: poll called after completion
                             unreachable!("DelayFuture polled after completion")
                         }
                     }
@@ -118,7 +113,6 @@ macro_rules! define_delay_impl {
             fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
                 let mut this = self.project();
 
-                // 1. Poll upstream for new items if not done
                 if !*this.upstream_done {
                     loop {
                         match this.stream.as_mut().poll_next(cx) {
@@ -130,7 +124,6 @@ macro_rules! define_delay_impl {
                                 this.in_flight.push_back(future);
                             }
                             Poll::Ready(Some(StreamItem::Error(err))) => {
-                                // Errors pass through immediately without delay
                                 return Poll::Ready(Some(StreamItem::Error(err)));
                             }
                             Poll::Ready(None) => {
@@ -144,7 +137,6 @@ macro_rules! define_delay_impl {
                     }
                 }
 
-                // 2. Poll in_flight for completed delays
                 match this.in_flight.poll_next_unpin(cx) {
                     Poll::Ready(Some(item)) => Poll::Ready(Some(item)),
                     Poll::Ready(None) => {

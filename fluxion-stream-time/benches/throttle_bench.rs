@@ -25,7 +25,6 @@ pub fn bench_throttle(c: &mut Criterion) {
             &duration,
             |bencher, &duration| {
                 bencher.iter(|| {
-                    // 1. Setup a lightweight, paused runtime
                     let rt = Builder::new_current_thread()
                         .enable_time()
                         .start_paused(true)
@@ -33,19 +32,15 @@ pub fn bench_throttle(c: &mut Criterion) {
                         .unwrap();
 
                     rt.block_on(async {
-                        // 2. Create stream and operator
                         let (tx, rx) = async_channel::unbounded();
                         let mut stream = Box::pin(rx.into_fluxion_stream().throttle(duration));
 
-                        // 3. Emit value (Throttle emits immediately)
                         tx.try_send(TokioTimestamped::new(1, TokioTimer.now()))
                             .unwrap();
 
-                        // 4. Assert result (should be immediate)
                         let item = stream.next().await;
                         black_box(item);
 
-                        // 5. Advance time to clear the throttle window
                         advance(duration).await;
                     });
                 });

@@ -103,7 +103,6 @@ macro_rules! define_debounce_impl {
                 let mut this = self.project();
 
                 loop {
-                    // If stream ended and we have a pending value, emit it immediately
                     if *this.stream_ended {
                         if let Some(item) = this.pending_value.take() {
                             return Poll::Ready(Some(item));
@@ -111,51 +110,38 @@ macro_rules! define_debounce_impl {
                         return Poll::Ready(None);
                     }
 
-                    // Check if we have a pending debounced value and its timer
                     if this.pending_value.is_some() {
                         if let Some(sleep) = this.sleep.as_mut().as_pin_mut() {
                             match sleep.poll(cx) {
                                 Poll::Ready(_) => {
-                                    // Timer expired, emit the pending value
                                     this.sleep.set(None);
                                     let item = this.pending_value.take();
                                     return Poll::Ready(item);
                                 }
-                                Poll::Pending => {
-                                    // Timer still running, check for new values
-                                }
+                                Poll::Pending => {}
                             }
                         }
                     }
 
-                    // Poll the source stream for the next item
                     match this.stream.as_mut().poll_next(cx) {
                         Poll::Ready(Some(StreamItem::Value(value))) => {
-                            // New value arrived - reset the debounce timer by creating a new sleep future
                             let timer = R::Timer::default();
                             this.sleep.set(Some(timer.sleep_future(*this.duration)));
 
-                            // Replace any pending value with this new one
                             *this.pending_value = Some(StreamItem::Value(value));
 
-                            // Continue polling to check the timer (it might be 0 duration)
                             continue;
                         }
                         Poll::Ready(Some(StreamItem::Error(err))) => {
-                            // Errors pass through immediately, discarding any pending value
                             *this.pending_value = None;
                             this.sleep.set(None);
                             return Poll::Ready(Some(StreamItem::Error(err)));
                         }
                         Poll::Ready(None) => {
-                            // Stream ended - mark it and loop to emit pending value if any
                             *this.stream_ended = true;
                             continue;
                         }
                         Poll::Pending => {
-                            // No new values from source
-                            // If we have a pending value, we're waiting for its timer
-                            // Otherwise, we're waiting for the next source value
                             return Poll::Pending;
                         }
                     }

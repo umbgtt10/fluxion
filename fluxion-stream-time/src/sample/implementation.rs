@@ -20,10 +20,6 @@ macro_rules! define_sample_impl {
         use futures::Stream;
         use pin_project::pin_project;
 
-        /// Extension trait providing the `sample` operator for streams.
-        ///
-        /// This trait allows any stream of `StreamItem<T>` where `T: Fluxion` to sample emissions
-        /// at periodic intervals.
         pub trait SampleExt<T, R>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,
@@ -94,17 +90,14 @@ macro_rules! define_sample_impl {
                     return Poll::Ready(None);
                 }
 
-                // 1. Poll the stream to collect the latest value
                 loop {
                     match this.stream.as_mut().poll_next(cx) {
                         Poll::Ready(Some(item)) => {
                             match item {
                                 StreamItem::Value(_) => {
-                                    // Update pending value with the latest one
                                     *this.pending_value = Some(item);
                                 }
                                 StreamItem::Error(_) => {
-                                    // Errors pass through immediately
                                     return Poll::Ready(Some(item));
                                 }
                             }
@@ -119,11 +112,9 @@ macro_rules! define_sample_impl {
                     }
                 }
 
-                // 2. Check the timer
                 if let Some(sleep) = this.sleep.as_mut().as_pin_mut() {
                     match sleep.poll(cx) {
                         Poll::Ready(_) => {
-                            // Timer fired.
                             this.sleep
                                 .set(Some(R::Timer::default().sleep_future(*this.duration)));
 

@@ -2,10 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-/// Macro that generates the complete throttle implementation.
-///
-/// This macro eliminates duplication between multi-threaded and single-threaded
-/// implementations, which differ only in trait bounds (Send + Sync vs not).
 macro_rules! define_throttle_impl {
     ($($bounds:tt)*) => {
         use crate::DefaultRuntime;
@@ -24,10 +20,6 @@ macro_rules! define_throttle_impl {
         use futures::Stream;
         use pin_project::pin_project;
 
-        /// Extension trait providing the `throttle` operator for streams.
-        ///
-        /// This trait allows any stream of `StreamItem<T>` where `T: Fluxion` to throttle emissions
-        /// by a specified duration.
         pub trait ThrottleExt<T, R>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,
@@ -101,45 +93,35 @@ macro_rules! define_throttle_impl {
                 let mut this = self.project();
 
                 loop {
-                    // 1. Check timer if throttling
                     if *this.throttling {
                         if let Some(sleep) = this.sleep.as_mut().as_pin_mut() {
                             match sleep.poll(cx) {
                                 Poll::Ready(_) => {
                                     *this.throttling = false;
                                 }
-                                Poll::Pending => {
-                                    // Timer still running
-                                }
+                                Poll::Pending => {}
                             }
                         }
                     }
 
-                    // 2. Poll source stream
                     match this.stream.as_mut().poll_next(cx) {
                         Poll::Ready(Some(StreamItem::Value(value))) => {
                             if !*this.throttling {
-                                // Not throttling: Emit value, start timer
                                 this.sleep
                                     .set(Some(R::Timer::default().sleep_future(*this.duration)));
                                 *this.throttling = true;
                                 return Poll::Ready(Some(StreamItem::Value(value)));
                             } else {
-                                // Throttling: Drop value, continue polling stream
                                 continue;
                             }
                         }
                         Poll::Ready(Some(StreamItem::Error(err))) => {
-                            // Errors pass through immediately
                             return Poll::Ready(Some(StreamItem::Error(err)));
                         }
                         Poll::Ready(None) => {
                             return Poll::Ready(None);
                         }
                         Poll::Pending => {
-                            // If we are throttling, we need to ensure we are woken up by the timer.
-                            // this.sleep.poll(cx) above already registered the waker if it was Pending.
-                            // this.stream.poll_next(cx) registered the waker if it was Pending.
                             return Poll::Pending;
                         }
                     }

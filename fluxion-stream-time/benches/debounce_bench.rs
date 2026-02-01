@@ -24,7 +24,6 @@ pub fn bench_debounce(c: &mut Criterion) {
             &duration,
             |bencher, &duration| {
                 bencher.iter(|| {
-                    // 1. Setup a lightweight, paused runtime
                     let rt = Builder::new_current_thread()
                         .enable_time()
                         .start_paused(true)
@@ -32,19 +31,15 @@ pub fn bench_debounce(c: &mut Criterion) {
                         .unwrap();
 
                     rt.block_on(async {
-                        // 2. Create stream and operator
                         let (tx, rx) = async_channel::unbounded();
                         let stream = rx.into_fluxion_stream().debounce(duration);
                         let mut stream = Box::pin(stream);
 
-                        // 3. Emit value
                         tx.try_send(TokioTimestamped::new(1, TokioTimer.now()))
                             .unwrap();
 
-                        // 4. Advance time instantly (0 wall-clock time, pure CPU cost)
                         advance(duration).await;
 
-                        // 5. Assert result
                         let item = stream.next().await;
                         black_box(item);
                     });

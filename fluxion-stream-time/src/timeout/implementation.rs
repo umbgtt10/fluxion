@@ -93,10 +93,8 @@ macro_rules! define_timeout_impl {
                     return Poll::Ready(None);
                 }
 
-                // 1. Poll the stream
                 match this.stream.poll_next(cx) {
                     Poll::Ready(Some(item)) => {
-                        // Reset the timer for the next timeout period
                         this.sleep
                             .set(Some(R::Timer::default().sleep_future(*this.duration)));
                         return Poll::Ready(Some(item));
@@ -105,16 +103,12 @@ macro_rules! define_timeout_impl {
                         *this.is_done = true;
                         return Poll::Ready(None);
                     }
-                    Poll::Pending => {
-                        // Stream is pending, check the timer
-                    }
+                    Poll::Pending => {}
                 }
 
-                // 2. Poll the timer
                 if let Some(sleep) = this.sleep.as_mut().as_pin_mut() {
                     match sleep.poll(cx) {
                         Poll::Ready(_) => {
-                            // Timer fired, emit error and terminate
                             *this.is_done = true;
                             Poll::Ready(Some(StreamItem::Error(FluxionError::timeout_error(
                                 "Timeout",
