@@ -33,7 +33,7 @@ async fn test_sample_ratio_after_filter_ordered() -> anyhow::Result<()> {
     );
 
     // Act
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered out
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
@@ -63,7 +63,7 @@ async fn test_sample_ratio_before_filter_ordered() -> anyhow::Result<()> {
     );
 
     // Act
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // Sampled but then filtered
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
@@ -160,7 +160,6 @@ async fn test_chained_sample_ratios() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_chained_sample_ratios_zero_in_chain() -> anyhow::Result<()> {
-    // Arrange - second sample_ratio has ratio 0, so nothing passes
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.sample_ratio(1.0, 42).sample_ratio(0.0, 99);
 
@@ -176,7 +175,6 @@ async fn test_chained_sample_ratios_zero_in_chain() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_sample_ratio_complex_pipeline() -> anyhow::Result<()> {
-    // Arrange - filter -> sample -> map
     let (tx, stream) = test_channel();
     let mut result = stream
         .filter_ordered(|item| matches!(item, TestData::Person(_)))
@@ -206,7 +204,6 @@ async fn test_sample_ratio_complex_pipeline() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_sample_ratio_maintains_determinism_in_composition() -> anyhow::Result<()> {
-    // Arrange - verify that composed pipeline produces deterministic results
     let items = vec![
         person_alice(),
         person_bob(),

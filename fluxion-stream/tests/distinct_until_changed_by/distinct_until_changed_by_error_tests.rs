@@ -34,7 +34,6 @@ async fn test_distinct_until_changed_by_propagates_errors() -> anyhow::Result<()
         panic!("Expected Person");
     }
 
-    // Send error - should be propagated
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Test error")))?;
     assert!(matches!(
         unwrap_stream(&mut distinct, 500).await,
@@ -84,7 +83,6 @@ async fn test_distinct_until_changed_by_error_at_start() -> anyhow::Result<()> {
         panic!("Expected Person");
     }
 
-    // Duplicate - filtered
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("Alice Updated".to_string(), 25),
     ))))?;
@@ -163,7 +161,6 @@ async fn test_distinct_until_changed_by_error_between_duplicates() -> anyhow::Re
         panic!("Expected Person");
     }
 
-    // Duplicate - filtered
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("Alice Updated".to_string(), 25),
     ))))?;

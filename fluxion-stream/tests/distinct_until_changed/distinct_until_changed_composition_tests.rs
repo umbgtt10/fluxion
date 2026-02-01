@@ -19,7 +19,6 @@ async fn test_filter_ordered_distinct_until_changed() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    // Composition: filter -> distinct_until_changed
     let mut result = stream
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
         .distinct_until_changed();
@@ -34,7 +33,7 @@ async fn test_filter_ordered_distinct_until_changed() -> anyhow::Result<()> {
     );
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Duplicate, filtered by distinct
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
@@ -44,7 +43,7 @@ async fn test_filter_ordered_distinct_until_changed() -> anyhow::Result<()> {
     );
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Duplicate, filtered by distinct
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
@@ -63,7 +62,6 @@ async fn test_distinct_until_changed_with_map_composition() -> anyhow::Result<()
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    // Composition: map -> distinct_until_changed
     let mut result = stream
         .map_ordered(|s| {
             let age = match &s.value {
@@ -115,7 +113,6 @@ async fn test_distinct_until_changed_with_combine_with_previous_composition() ->
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    // Composition: combine_with_previous -> distinct_until_changed
     let mut result = stream.combine_with_previous().distinct_until_changed();
 
     // Act
@@ -128,7 +125,7 @@ async fn test_distinct_until_changed_with_combine_with_previous_composition() ->
     ));
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Duplicate, filtered by distinct
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
@@ -138,8 +135,8 @@ async fn test_distinct_until_changed_with_combine_with_previous_composition() ->
     ));
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Duplicate, filtered by distinct
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Duplicate, filtered by distinct
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
@@ -159,7 +156,6 @@ async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow
     let (stream1_tx, stream1) = test_channel::<Sequenced<TestData>>();
     let (stream2_tx, stream2) = test_channel::<Sequenced<TestData>>();
 
-    // Composition: combine_latest -> map to combined age -> distinct_until_changed
     let mut result = stream1
         .combine_latest(vec![stream2], |_| true)
         .map_ordered(|state| {
@@ -188,7 +184,6 @@ async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow
     );
 
     // Act
-    // Update stream1: Bob (30) + Bob (30) = 60 (different, should emit)
     stream1_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
@@ -198,7 +193,6 @@ async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow
     );
 
     // Act
-    // Update stream2: Bob (30) + Charlie (35) = 65 (different, should emit)
     stream2_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
@@ -208,7 +202,6 @@ async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow
     );
 
     // Act
-    // Update stream1: Charlie (35) + Charlie (35) = 70 (different, should emit)
     stream1_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
@@ -218,10 +211,7 @@ async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow
     );
 
     // Act
-    // Update stream1: Charlie (35) + Charlie (35) = 70 (same! should NOT emit)
     stream1_tx.unbounded_send(Sequenced::new(person_charlie()))?;
-
-    // Update stream1: Alice (25) + Charlie (35) = 60 (different, should emit)
     stream1_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert

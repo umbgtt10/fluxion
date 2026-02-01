@@ -21,7 +21,6 @@ async fn test_window_by_count_then_map_ordered() -> anyhow::Result<()> {
     let mut result = stream
         .window_by_count::<Sequenced<Vec<TestData>>>(2)
         .map_ordered(|window: Sequenced<Vec<TestData>>| {
-            // Extract first item from window
             let first = window.value.first().cloned().unwrap_or(person_alice());
             Sequenced::with_timestamp(first, window.timestamp())
         });
@@ -51,24 +50,23 @@ async fn test_window_by_count_then_filter_ordered() -> anyhow::Result<()> {
     let mut result = stream
         .window_by_count::<Sequenced<Vec<TestData>>>(2)
         .filter_ordered(|window: &Vec<TestData>| {
-            // Keep windows that contain at least one person
             window.iter().any(|d| matches!(d, TestData::Person(_)))
         });
 
     // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    tx.unbounded_send(Sequenced::new(animal_cat()))?; // window [dog, cat] - no person, filtered
+    tx.unbounded_send(Sequenced::new(animal_cat()))?;
     assert_no_element_emitted(&mut result, 100).await;
 
     tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // window [alice, dog] - has person, passes
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_alice(), animal_dog()]
     );
 
     tx.unbounded_send(Sequenced::new(person_bob()))?;
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // window [bob, charlie] - has person, passes
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_bob(), person_charlie()]
@@ -83,7 +81,6 @@ async fn test_map_ordered_then_window_by_count() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream
         .map_ordered(|x: Sequenced<TestData>| {
-            // Map all items to person_alice for simplicity
             Sequenced::with_timestamp(person_alice(), x.timestamp())
         })
         .window_by_count::<Sequenced<Vec<TestData>>>(2);
@@ -113,14 +110,14 @@ async fn test_filter_ordered_then_window_by_count() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream
-        .filter_ordered(|x: &TestData| matches!(x, TestData::Person(_))) // Only persons
+        .filter_ordered(|x: &TestData| matches!(x, TestData::Person(_)))
         .window_by_count::<Sequenced<Vec<TestData>>>(2);
 
     // Act
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // filtered
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // kept
-    tx.unbounded_send(Sequenced::new(plant_rose()))?; // filtered
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // kept -> window [alice, bob]
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(plant_rose()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     assert_eq!(
@@ -128,9 +125,9 @@ async fn test_filter_ordered_then_window_by_count() -> anyhow::Result<()> {
         vec![person_alice(), person_bob()]
     );
 
-    tx.unbounded_send(Sequenced::new(animal_cat()))?; // filtered
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // kept
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // kept -> window [charlie, alice]
+    tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_charlie(), person_alice()]
@@ -141,7 +138,7 @@ async fn test_filter_ordered_then_window_by_count() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_window_by_count_chain_different_sizes() -> anyhow::Result<()> {
-    // Arrange: Window of 2, then window of 2 (creates windows of windows)
+    // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream
         .window_by_count::<Sequenced<Vec<TestData>>>(2)
@@ -226,7 +223,7 @@ async fn test_window_by_count_preserves_timestamp_ordering() -> anyhow::Result<(
 
 #[tokio::test]
 async fn test_window_by_count_with_map_extracts_first() -> anyhow::Result<()> {
-    // Arrange: Use map to extract first item of each window
+    // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream
         .window_by_count::<Sequenced<Vec<TestData>>>(2)
@@ -274,11 +271,10 @@ async fn test_window_by_count_with_tap() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
     tx.unbounded_send(Sequenced::new(animal_cat()))?;
 
-    // Consume results
     let _ = unwrap_stream(&mut result, 100).await;
     let _ = unwrap_stream(&mut result, 100).await;
 
-    // Assert: tap saw the windows
+    // Assert
     assert_eq!(
         *tapped_values.lock(),
         vec![

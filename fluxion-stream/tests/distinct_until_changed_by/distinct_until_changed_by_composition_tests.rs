@@ -16,7 +16,6 @@ async fn test_distinct_until_changed_by_with_filter_composition() -> anyhow::Res
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    // Composition: filter -> distinct_until_changed_by (age parity check)
     let mut result = stream
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
         .distinct_until_changed_by(|a, b| {
@@ -60,7 +59,6 @@ async fn test_distinct_until_changed_by_with_map_composition() -> anyhow::Result
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    // Composition: map to age -> distinct_until_changed_by (age difference threshold)
     let mut result = stream
         .map_ordered(|s| {
             let age = match &s.value {
@@ -107,7 +105,6 @@ async fn test_distinct_until_changed_by_with_combine_latest_composition() -> any
     let (stream1_tx, stream1) = test_channel::<Sequenced<TestData>>();
     let (stream2_tx, stream2) = test_channel::<Sequenced<TestData>>();
 
-    // Composition: combine_latest -> map to max age -> distinct_until_changed_by (threshold)
     let mut result = stream1
         .combine_latest(vec![stream2], |_| true)
         .map_ordered(|state| {

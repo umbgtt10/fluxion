@@ -17,8 +17,6 @@ async fn test_take_while_with_error_propagation_at_end_of_chain() -> anyhow::Res
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<Person>>();
     let (condition_tx, condition_stream) = test_channel_with_errors::<Sequenced<bool>>();
 
-    // Chain: map_ordered -> take_while_with
-    // We map the source stream (increment age), then take while condition is true
     let mut result = source_stream
         .map_ordered(|seq| {
             let ts = HasTimestamp::timestamp(&seq);
@@ -31,8 +29,6 @@ async fn test_take_while_with_error_propagation_at_end_of_chain() -> anyhow::Res
     // Act
     condition_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(true, 0)))?;
     condition_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(false, 3)))?;
-
-    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Alice".to_string(), 10),
         1,

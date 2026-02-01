@@ -409,7 +409,6 @@ async fn test_partition_drop_both_streams_gracefully() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let (persons, non_persons) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // Send some items before dropping
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
 

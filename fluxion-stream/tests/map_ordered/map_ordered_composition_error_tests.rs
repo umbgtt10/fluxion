@@ -15,7 +15,6 @@ async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<(
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    // Chain multiple operators
     let mut result = stream
         .filter_ordered(|x| *x > 1) // Filter out first item
         .combine_with_previous()
@@ -78,14 +77,12 @@ async fn test_multiple_errors_through_composition() -> anyhow::Result<()> {
             Sequenced::new(format!("Combined: {:?}", state.values()))
         });
 
-    // Send initial values
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 4)))?;
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref s) if s.value.contains("Combined"))
     );
 
-    // Send error
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,

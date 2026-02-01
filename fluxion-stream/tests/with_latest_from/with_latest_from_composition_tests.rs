@@ -20,12 +20,11 @@ static FILTER: fn(&TestData) -> bool = |_| true;
 
 #[tokio::test]
 async fn test_take_latest_when_with_latest_from_custom_selector() -> anyhow::Result<()> {
-    // Arrange - take_latest_when -> with_latest_from composition
+    // Arrange
     let (source_tx, source_rx) = test_channel::<Sequenced<TestData>>();
     let (trigger_tx, trigger_rx) = test_channel::<Sequenced<TestData>>();
     let (secondary_tx, secondary_rx) = test_channel::<Sequenced<TestData>>();
 
-    // Custom selector: compute age difference between two people
     let age_difference_selector = |state: &CombinedState<TestData, u64>| -> TestWrapper<String> {
         let primary_age = match &state.values()[0] {
             TestData::Person(p) => p.age as i32,
@@ -44,42 +43,40 @@ async fn test_take_latest_when_with_latest_from_custom_selector() -> anyhow::Res
         .with_latest_from(secondary_rx, age_difference_selector);
 
     // Act
-    secondary_tx.unbounded_send(Sequenced::new(person_alice()))?; // 25
-    source_tx.unbounded_send(Sequenced::new(person_bob()))?; // 30
-    trigger_tx.unbounded_send(Sequenced::new(person_alice()))?; // trigger emission
+    secondary_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    source_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    trigger_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.clone().into_inner(), "Age difference: 5"); // 30 - 25
+    assert_eq!(result.clone().into_inner(), "Age difference: 5");
 
     // Act
-    source_tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35
-    trigger_tx.unbounded_send(Sequenced::new(person_bob()))?; // trigger emission
+    source_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    trigger_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.clone().into_inner(), "Age difference: 10"); // 35 - 25
+    assert_eq!(result.clone().into_inner(), "Age difference: 10");
 
     // Act
-    // Update secondary
-    secondary_tx.unbounded_send(Sequenced::new(person_diane()))?; // 40
-    source_tx.unbounded_send(Sequenced::new(person_dave()))?; // 28
-    trigger_tx.unbounded_send(Sequenced::new(person_charlie()))?; // trigger emission
+    secondary_tx.unbounded_send(Sequenced::new(person_diane()))?;
+    source_tx.unbounded_send(Sequenced::new(person_dave()))?;
+    trigger_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.clone().into_inner(), "Age difference: -12"); // 28 - 40
+    assert_eq!(result.clone().into_inner(), "Age difference: -12");
 
     Ok(())
 }
 
 #[tokio::test]
 async fn test_filter_ordered_with_latest_from() -> anyhow::Result<()> {
-    // Arrange - filter primary stream, then combine with custom selector
+    // Arrange
     let (primary_tx, primary_rx) = test_channel::<Sequenced<TestData>>();
     let (secondary_tx, secondary_rx) = test_channel::<Sequenced<TestData>>();
 
-    // Custom selector: extract name from person and combine with secondary info
     let name_combiner = |state: &CombinedState<TestData, u64>| -> TestWrapper<String> {
         let person_name = match &state.values()[0] {
             TestData::Person(p) => p.name.clone(),
@@ -102,8 +99,8 @@ async fn test_filter_ordered_with_latest_from() -> anyhow::Result<()> {
 
     // Act
     secondary_tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    primary_tx.unbounded_send(Sequenced::new(plant_rose()))?; // Filtered
-    primary_tx.unbounded_send(Sequenced::new(person_alice()))?; // Kept
+    primary_tx.unbounded_send(Sequenced::new(plant_rose()))?;
+    primary_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
@@ -111,7 +108,6 @@ async fn test_filter_ordered_with_latest_from() -> anyhow::Result<()> {
     assert_eq!(combined_name, "Alice with animal Dog (4 legs)");
 
     // Act
-    // Update secondary to a person
     secondary_tx.unbounded_send(Sequenced::new(person_bob()))?;
     primary_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
@@ -121,11 +117,8 @@ async fn test_filter_ordered_with_latest_from() -> anyhow::Result<()> {
     assert_eq!(combined_name, "Charlie with person Bob (age 30)");
 
     // Act
-    // Send animal (filtered) and plant (filtered)
-    primary_tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered
-    primary_tx.unbounded_send(Sequenced::new(plant_rose()))?; // Filtered
-
-    // Verify no emission yet by checking with a timeout
+    primary_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    primary_tx.unbounded_send(Sequenced::new(plant_rose()))?;
     assert_no_element_emitted(&mut stream, 100).await;
 
     Ok(())
@@ -136,7 +129,6 @@ async fn test_with_latest_from_composition_end_of_chain() -> anyhow::Result<()> 
     let (primary_tx, primary_rx) = test_channel::<Sequenced<TestData>>();
     let (secondary_tx, secondary_rx) = test_channel::<Sequenced<TestData>>();
 
-    // Custom selector: combine ages
     let age_combiner = |state: &CombinedState<TestData, u64>| -> Sequenced<String> {
         let primary_age = match &state.values()[0] {
             TestData::Person(p) => p.age,
@@ -154,35 +146,34 @@ async fn test_with_latest_from_composition_end_of_chain() -> anyhow::Result<()> 
         .with_latest_from(secondary_rx, age_combiner);
 
     // Act
-    secondary_tx.unbounded_send(Sequenced::new(person_alice()))?; // 25
-    primary_tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered
-    primary_tx.unbounded_send(Sequenced::new(person_bob()))?; // 30
+    secondary_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    primary_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    primary_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Combined age: 55"
-    ); // 30 + 25
+    );
 
     // Act
-    primary_tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35
+    primary_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Combined age: 60"
-    ); // 35 + 25
+    );
 
     // Act
-    // Update secondary
-    secondary_tx.unbounded_send(Sequenced::new(person_diane()))?; // 40
-    primary_tx.unbounded_send(Sequenced::new(person_dave()))?; // 28
+    secondary_tx.unbounded_send(Sequenced::new(person_diane()))?;
+    primary_tx.unbounded_send(Sequenced::new(person_dave()))?;
 
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Combined age: 68"
-    ); // 28 + 40
+    );
 
     Ok(())
 }
@@ -213,10 +204,8 @@ async fn test_ordered_merge_into_with_latest_from() -> anyhow::Result<()> {
     );
 
     // Act
-    // 1. Set secondary value
     s3_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
-    // 2. Send to Stream 1 (Primary)
     s1_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
@@ -226,7 +215,6 @@ async fn test_ordered_merge_into_with_latest_from() -> anyhow::Result<()> {
     );
 
     // Act
-    // 3. Send to Stream 2 (Primary)
     s2_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
     // Assert
@@ -236,10 +224,8 @@ async fn test_ordered_merge_into_with_latest_from() -> anyhow::Result<()> {
     );
 
     // Act
-    // 4. Update secondary
     s3_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
-    // 5. Send to Stream 1
     s1_tx.unbounded_send(Sequenced::new(person_dave()))?;
 
     // Assert

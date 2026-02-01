@@ -119,7 +119,6 @@ async fn test_take_while_complex_predicate() -> anyhow::Result<()> {
     });
 
     // Act
-    // 1. Filter = Alice (True)
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
@@ -141,7 +140,6 @@ async fn test_take_while_complex_predicate() -> anyhow::Result<()> {
     );
 
     // Act
-    // 2. Filter = Bob (False)
     filter_tx.unbounded_send(Sequenced::new(person_bob()))?;
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
@@ -161,7 +159,6 @@ async fn test_take_while_interleaved_updates() -> anyhow::Result<()> {
         source_stream.take_while_with(filter_stream, |f| matches!(f, TestData::Person(_)));
 
     // Act
-    // 1. Filter True
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
@@ -175,7 +172,6 @@ async fn test_take_while_interleaved_updates() -> anyhow::Result<()> {
     );
 
     // Act
-    // 2. Filter True (update)
     filter_tx.unbounded_send(Sequenced::new(person_bob()))?;
     source_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     // Assert
@@ -185,7 +181,6 @@ async fn test_take_while_interleaved_updates() -> anyhow::Result<()> {
     );
 
     // Act
-    // 3. Filter True (update)
     filter_tx.unbounded_send(Sequenced::new(person_charlie()))?;
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
     // Assert
@@ -195,7 +190,6 @@ async fn test_take_while_interleaved_updates() -> anyhow::Result<()> {
     );
 
     // Act
-    // 4. Filter False
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?;

@@ -42,7 +42,6 @@ async fn test_ordered_merge_combine_with_previous_emit_when() -> anyhow::Result<
     let threshold_mapped =
         threshold_stream.map(|seq| StreamItem::Value(WithPrevious::new(None, seq.unwrap())));
 
-    // Chained composition: merge -> combine_with_previous -> emit_when
     let mut output_stream = person1_stream
         .ordered_merge(vec![person2_stream])
         .combine_with_previous()
@@ -132,7 +131,6 @@ async fn test_combine_with_previous_emit_when_map_ordered() -> anyhow::Result<()
         current_age >= threshold_age
     };
 
-    // Chain: combine_with_previous -> map_ordered (extract current) -> emit_when
     let mut stream = source_stream
         .combine_with_previous()
         .map_ordered(|wp| wp.current)

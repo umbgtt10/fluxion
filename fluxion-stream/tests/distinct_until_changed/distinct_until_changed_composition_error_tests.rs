@@ -15,7 +15,6 @@ async fn test_distinct_until_changed_multiple_errors_in_composition() -> anyhow:
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    // Composition: map -> distinct_until_changed
     let mut result = stream
         .map_ordered(|s| {
             let doubled = s.value * 2;

@@ -86,8 +86,8 @@ async fn test_combine_with_previous_map_ordered_to_struct() -> anyhow::Result<()
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25
-                                                        // Assert
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         AgeComparison {
@@ -98,8 +98,8 @@ async fn test_combine_with_previous_map_ordered_to_struct() -> anyhow::Result<()
     );
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30
-                                                      // Assert
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         AgeComparison {
@@ -110,8 +110,8 @@ async fn test_combine_with_previous_map_ordered_to_struct() -> anyhow::Result<()
     );
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25 again
-                                                        // Assert
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         AgeComparison {
@@ -122,8 +122,8 @@ async fn test_combine_with_previous_map_ordered_to_struct() -> anyhow::Result<()
     );
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // Age 35
-                                                          // Assert
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         AgeComparison {
@@ -241,24 +241,24 @@ async fn test_combine_with_previous_map_ordered_filter_age_change() -> anyhow::R
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25
-                                                        // Assert
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         None
     ); // No previous
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30
-                                                      // Assert
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         Some(String::from("Age changed from 25 to 30"))
     );
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // Age 35
-                                                          // Assert
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         Some(String::from("Age changed from 30 to 35"))
@@ -311,7 +311,6 @@ async fn test_triple_ordered_merge_combine_with_previous_map_ordered() -> anyhow
 
 #[tokio::test]
 async fn test_filter_ordered_map_ordered() -> anyhow::Result<()> {
-    // Arrange - filter for people only, then map to names
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     let mut stream = stream

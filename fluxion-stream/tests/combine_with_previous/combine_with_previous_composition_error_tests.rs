@@ -26,7 +26,6 @@ async fn test_distinct_until_changed_error_propagation_in_composition() -> anyho
         .combine_with_previous();
 
     // Act
-    // 1. Send Alice (Age 25) -> Should be emitted
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
@@ -39,7 +38,6 @@ async fn test_distinct_until_changed_error_propagation_in_composition() -> anyho
     ));
 
     // Act
-    // 2. Send Alice again -> Should be filtered by distinct_until_changed
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         2,
@@ -49,7 +47,6 @@ async fn test_distinct_until_changed_error_propagation_in_composition() -> anyho
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
-    // 3. Send Error -> Should be propagated
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
 
     // Assert
@@ -58,7 +55,6 @@ async fn test_distinct_until_changed_error_propagation_in_composition() -> anyho
         StreamItem::Error(_)
     ));
 
-    // 4. Send Bob (Age 30) -> Should be emitted
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         4,
@@ -89,7 +85,6 @@ async fn test_map_ordered_then_combine_with_previous_propagates_error() -> anyho
         StreamItem::Value(_)
     ));
 
-    // Send error
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -117,7 +112,6 @@ async fn test_filter_ordered_then_combine_with_previous_propagates_error() -> an
         StreamItem::Value(_)
     ));
 
-    // Send error
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Filter error",
     )))?;

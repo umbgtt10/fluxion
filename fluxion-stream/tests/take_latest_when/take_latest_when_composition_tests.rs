@@ -62,7 +62,6 @@ async fn test_combine_latest_take_latest_when() -> anyhow::Result<()> {
     assert_eq!(&values[0], &person_alice());
     assert_eq!(&values[1], &animal_dog());
 
-    // Update source stream
     person_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Trigger another emission

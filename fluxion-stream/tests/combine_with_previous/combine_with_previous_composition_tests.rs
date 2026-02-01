@@ -35,7 +35,6 @@ async fn test_take_latest_when_combine_with_previous() -> anyhow::Result<()> {
     ));
 
     // Act
-    // Update source, then trigger with filter
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
     filter_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
@@ -46,7 +45,6 @@ async fn test_take_latest_when_combine_with_previous() -> anyhow::Result<()> {
     ));
 
     // Act
-    // Update source, then trigger with filter
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?;
     filter_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
@@ -57,7 +55,6 @@ async fn test_take_latest_when_combine_with_previous() -> anyhow::Result<()> {
     ));
 
     // Act
-    // Update source, then trigger with filter
     source_tx.unbounded_send(Sequenced::new(person_dave()))?;
     filter_tx.unbounded_send(Sequenced::new(person_dave()))?;
 
@@ -253,7 +250,6 @@ async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow
     let (stream1_tx, stream1) = test_channel::<Sequenced<TestData>>();
     let (stream2_tx, stream2) = test_channel::<Sequenced<TestData>>();
 
-    // Composition: combine_latest -> map to combined age -> distinct_until_changed -> combine_with_previous
     let mut result = stream1
         .combine_latest(vec![stream2], |_| true)
         .map_ordered(|state| {
@@ -306,7 +302,6 @@ async fn test_combine_latest_with_distinct_until_changed_composition() -> anyhow
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
-    // Update stream2: Bob (30) + Dave (28) = 58 (different, should emit)
     stream2_tx.unbounded_send(Sequenced::new(person_dave()))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,

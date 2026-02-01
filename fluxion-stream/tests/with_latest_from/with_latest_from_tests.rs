@@ -99,7 +99,6 @@ async fn test_with_latest_from_custom_selector() -> anyhow::Result<()> {
     let (animal_tx, animal_stream) = test_channel();
     let (person_tx, person_stream) = test_channel();
 
-    // Custom selector that extracts just one field (e.g., the primary value as a String)
     let custom_selector = |state: &CombinedState<TestData, u64>| {
         let description = format!("{:?}", state.values()[0]);
         TestWrapper::new(description, state.timestamp())
@@ -212,7 +211,6 @@ async fn test_with_latest_from_large_number_of_emissions() -> anyhow::Result<()>
     // Act - send secondary first
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
-    // Send many primary emissions
     for i in 0..100 {
         animal_tx.unbounded_send(Sequenced::new(animal(format!("Animal{}", i), 4)))?;
     }

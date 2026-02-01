@@ -15,15 +15,15 @@ async fn test_map_ordered_skip_items() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     let mut result = stream
-        .map_ordered(|item| Sequenced::new(item.into_inner())) // Preserve Sequenced wrapper
+        .map_ordered(|item| Sequenced::new(item.into_inner()))
         .skip_items(2);
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // age=25, Skipped
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // age=28, Skipped
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // age=30, Emitted
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // age=35, Emitted
-    tx.unbounded_send(Sequenced::new(person_diane()))?; // age=40, Emitted
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_diane()))?;
 
     // Assert - All items after skip
     assert_eq!(
@@ -48,20 +48,12 @@ async fn test_ordered_merge_then_skip_items() -> anyhow::Result<()> {
     let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
     let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
 
-    // Merge streams then skip 3 items
     let mut stream = s1_rx.ordered_merge(vec![s2_rx]).skip_items(3);
 
     // Act
-    // 1. Stream 1 emits (Skipped #1)
     s1_tx.unbounded_send(Sequenced::new(person_alice()))?;
-
-    // 2. Stream 2 emits (Skipped #2)
     s2_tx.unbounded_send(Sequenced::new(person_bob()))?;
-
-    // 3. Stream 1 emits (Skipped #3)
     s1_tx.unbounded_send(Sequenced::new(person_charlie()))?;
-
-    // 4. Stream 2 emits (Should be emitted)
     s2_tx.unbounded_send(Sequenced::new(person_dave()))?;
     // Assert
     assert_eq!(
@@ -70,7 +62,6 @@ async fn test_ordered_merge_then_skip_items() -> anyhow::Result<()> {
     );
 
     // Act
-    // 5. Stream 1 emits (Should be emitted)
     s1_tx.unbounded_send(Sequenced::new(person_diane()))?;
     // Assert
     assert_eq!(

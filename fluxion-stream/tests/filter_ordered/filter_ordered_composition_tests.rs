@@ -17,7 +17,6 @@ use fluxion_test_utils::{
 
 #[tokio::test]
 async fn test_ordered_merge_filter_ordered() -> anyhow::Result<()> {
-    // Arrange - merge two streams, then filter for specific types
     let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
     let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
 
@@ -55,7 +54,6 @@ async fn test_ordered_merge_filter_ordered() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_combine_latest_filter_ordered() -> anyhow::Result<()> {
-    // Arrange - combine latest from multiple streams, then filter
     let (p_tx, p_rx) = test_channel::<Sequenced<TestData>>();
     let (a_tx, a_rx) = test_channel::<Sequenced<TestData>>();
 
@@ -103,7 +101,6 @@ async fn test_merge_with_chaining_filter_ordered() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    // Act: Chain merge_with with filter_ordered (only values > 2)
     let mut result = MergedStream::seed::<Sequenced<usize>>(0)
         .merge_with(stream, |_item: TestData, state| {
             *state += 1;
@@ -112,22 +109,18 @@ async fn test_merge_with_chaining_filter_ordered() -> anyhow::Result<()> {
         .into_stream()
         .filter_ordered(|&value| value > 2);
 
-    // Send first value - state will be 1 (filtered out)
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     assert_no_element_emitted(&mut result, 500).await;
 
-    // Send second value - state will be 2 (filtered out)
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     assert_no_element_emitted(&mut result, 500).await;
 
-    // Send third value - state will be 3 (kept)
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Value(val) if val.value == 3
     ));
 
-    // Send fourth value - state will be 4 (kept)
     tx.unbounded_send(Sequenced::new(person_dave()))?;
 
     // Assert: fourth emission also passes
@@ -154,21 +147,21 @@ async fn test_scan_ordered_composed_with_filter() -> anyhow::Result<()> {
         .filter_ordered(|count| count % 2 == 0); // Only even counts
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // count=1, filtered out
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert_no_element_emitted(&mut result, 500).await;
 
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // count=2, emitted
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
         StreamItem::Value(val) if val.value == 2
     ));
 
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // count=3, filtered out
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
     assert_no_element_emitted(&mut result, 500).await;
 
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // count=4, emitted
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
         StreamItem::Value(val) if val.value == 4

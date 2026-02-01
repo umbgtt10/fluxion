@@ -36,7 +36,6 @@ async fn test_on_error_handles_errors_from_ordered_merge() -> anyhow::Result<()>
     });
 
     // Act & Assert
-    // 1. Send values from both streams
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
@@ -51,19 +50,17 @@ async fn test_on_error_handles_errors_from_ordered_merge() -> anyhow::Result<()>
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(&val.value, &person_bob());
 
-    // 2. Send error from stream1
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "stream1 error",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    // 3. Send error from stream2
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "stream2 error",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    // 4. Verify both errors were handled
+    // Verify both errors were handled
     {
         let errors = handled_errors.lock();
         assert_eq!(errors.len(), 2);
@@ -71,7 +68,6 @@ async fn test_on_error_handles_errors_from_ordered_merge() -> anyhow::Result<()>
         assert!(errors[1].contains("stream2 error"));
     }
 
-    // 5. Continue after errors
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_charlie(),
         3,
@@ -99,22 +95,20 @@ async fn test_on_error_handles_errors_from_combine_latest() -> anyhow::Result<()
         });
 
     // Act & Assert
-    // 1. Initialize both streams
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
     tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(val.values(), &[10, 20]);
 
-    // 2. Send error from stream1
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "combine error 1",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    // 3. Verify error was handled
+    // Verify error was handled
     assert_eq!(handled_errors.lock().len(), 1);
 
-    // 4. Continue after error - stream still works
+    // Continue after error - stream still works
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(30, 3)))?;
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(val.values(), &[30, 20]);
@@ -149,14 +143,12 @@ async fn test_on_error_handles_errors_from_take_latest_when() -> anyhow::Result<
         });
 
     // Act & Assert
-    // 1. Buffer source value
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    // 2. Trigger emission
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
         2,
@@ -164,20 +156,19 @@ async fn test_on_error_handles_errors_from_take_latest_when() -> anyhow::Result<
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert!(matches!(&val.value, TestData::Person(p) if p.name == "Alice"));
 
-    // 3. Send source error
     source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "source error",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
     assert_eq!(*source_errors.lock(), 1);
 
-    // 4. Send trigger error
     trigger_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "trigger error",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
     assert_eq!(*trigger_errors.lock(), 1);
 
+    // 5. Continue after errors
     // 5. Continue after errors
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
@@ -243,12 +234,10 @@ async fn test_on_error_selective_handling_in_composed_pipeline() -> anyhow::Resu
         });
 
     // Act & Assert
-    // 1. Send valid value
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert!(matches!(&val.value, TestData::Person(p) if p.name == "Alice mapped"));
 
-    // 2. Send transient error - handled by first on_error
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "transient network issue",
     )))?;
@@ -256,7 +245,6 @@ async fn test_on_error_selective_handling_in_composed_pipeline() -> anyhow::Resu
     assert_eq!(*transient_errors.lock(), 1);
     assert_eq!(*validation_errors.lock(), 0);
 
-    // 3. Send validation error - propagates past first, handled by second
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "validation failed",
     )))?;
@@ -264,7 +252,6 @@ async fn test_on_error_selective_handling_in_composed_pipeline() -> anyhow::Resu
     assert_eq!(*transient_errors.lock(), 1);
     assert_eq!(*validation_errors.lock(), 1);
 
-    // 4. Send unhandled error - propagates through both handlers
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "critical system failure",
     )))?;
@@ -274,7 +261,6 @@ async fn test_on_error_selective_handling_in_composed_pipeline() -> anyhow::Resu
         StreamItem::Error(e) if e.to_string().contains("critical")
     ));
 
-    // 5. Continue after propagated error
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert!(matches!(&val.value, TestData::Person(p) if p.name == "Bob mapped"));
@@ -308,7 +294,6 @@ async fn test_on_error_before_ordered_merge_handles_individual_stream_errors() -
     let mut result = handled_stream1.ordered_merge(vec![handled_stream2]);
 
     // Act & Assert
-    // 1. Send values
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
@@ -316,19 +301,16 @@ async fn test_on_error_before_ordered_merge_handles_individual_stream_errors() -
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(&val.value, &person_alice());
 
-    // 2. Send error to stream1 - handled by stream1's on_error
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("s1 error")))?;
     assert_no_element_emitted(&mut result, 100).await;
     assert_eq!(*stream1_errors.lock(), 1);
     assert_eq!(*stream2_errors.lock(), 0);
 
-    // 3. Send error to stream2 - handled by stream2's on_error
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("s2 error")))?;
     assert_no_element_emitted(&mut result, 100).await;
     assert_eq!(*stream1_errors.lock(), 1);
     assert_eq!(*stream2_errors.lock(), 1);
 
-    // 4. Continue normally
     tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         2,
@@ -358,26 +340,23 @@ async fn test_on_error_with_scan_ordered_preserves_accumulator_state() -> anyhow
         });
 
     // Act & Assert
-    // 1. Accumulate: 0 + 10 = 10
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
     let val: Sequenced<i32> = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(val.value, 10);
 
-    // 2. Accumulate: 10 + 20 = 30
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(val.value, 30);
 
-    // 3. Error - should be consumed, state preserved
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("scan error")))?;
     assert_no_element_emitted(&mut result, 100).await;
     assert_eq!(*errors_handled.lock(), 1);
 
-    // 4. Continue accumulating: 30 + 5 = 35 (state was preserved!)
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(val.value, 35);
 
+    // 5. Another error
     // 5. Another error
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "another error",
@@ -385,6 +364,7 @@ async fn test_on_error_with_scan_ordered_preserves_accumulator_state() -> anyhow
     assert_no_element_emitted(&mut result, 100).await;
     assert_eq!(*errors_handled.lock(), 2);
 
+    // 6. Continue: 35 + 15 = 50
     // 6. Continue: 35 + 15 = 50
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(15, 4)))?;
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
@@ -407,26 +387,22 @@ async fn test_on_error_with_combine_with_previous_maintains_previous_value() -> 
     });
 
     // Act & Assert
-    // 1. First value - no previous
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert!(val.previous.is_none());
     assert!(matches!(&val.current.value, TestData::Person(p) if p.name == "Alice"));
 
-    // 2. Second value - has previous (Alice)
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert!(matches!(&val.previous.unwrap().value, TestData::Person(p) if p.name == "Alice"));
     assert!(matches!(&val.current.value, TestData::Person(p) if p.name == "Bob"));
 
-    // 3. Error - consumed, previous value should be preserved
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "combine error",
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
     assert_eq!(*errors_handled.lock(), 1);
 
-    // 4. Third value - previous should still be Bob (preserved through error)
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
     let val = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert!(matches!(&val.previous.unwrap().value, TestData::Person(p) if p.name == "Bob"));
@@ -467,28 +443,24 @@ async fn test_on_error_propagation_stops_at_first_handler() -> anyhow::Result<()
         });
 
     // Act & Assert
-    // 1. type1 error - handled by first handler only
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("type1 error")))?;
     assert_no_element_emitted(&mut result, 100).await;
     assert_eq!(*handler1_count.lock(), 1);
     assert_eq!(*handler2_count.lock(), 0);
     assert_eq!(*handler3_count.lock(), 0);
 
-    // 2. type2 error - passes through first, handled by second
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("type2 error")))?;
     assert_no_element_emitted(&mut result, 100).await;
     assert_eq!(*handler1_count.lock(), 2); // Saw it but didn't handle
     assert_eq!(*handler2_count.lock(), 1); // Handled it
     assert_eq!(*handler3_count.lock(), 0);
 
-    // 3. type3 error - passes through first two, handled by catch-all
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("type3 error")))?;
     assert_no_element_emitted(&mut result, 100).await;
     assert_eq!(*handler1_count.lock(), 3); // Saw it
     assert_eq!(*handler2_count.lock(), 2); // Saw it
     assert_eq!(*handler3_count.lock(), 1); // Handled it
 
-    // 4. Verify stream still works
     tx.unbounded_send(StreamItem::Value(Sequenced::new(42)))?;
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,

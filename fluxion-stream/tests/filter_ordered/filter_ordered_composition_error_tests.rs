@@ -15,7 +15,6 @@ async fn test_distinct_until_changed_by_multiple_errors_in_composition() -> anyh
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    // Composition: distinct_until_changed_by (parity) -> map -> filter
     let mut result = stream
         .distinct_until_changed_by(|a, b| a % 2 == b % 2)
         .map_ordered(|s| {

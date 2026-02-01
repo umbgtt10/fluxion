@@ -86,7 +86,6 @@ async fn test_distinct_until_changed_error_at_start() -> anyhow::Result<()> {
         StreamItem::Value(v) if v.value == person_alice()
     ));
 
-    // Duplicate - filtered
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         2,
@@ -140,7 +139,6 @@ async fn test_distinct_until_changed_multiple_errors() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
-    // Duplicate value - filtered
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         2,
@@ -187,7 +185,6 @@ async fn test_distinct_until_changed_error_between_duplicates() -> anyhow::Resul
         StreamItem::Value(v) if v.value == person_alice()
     ));
 
-    // Duplicate - filtered
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         2,
@@ -318,7 +315,7 @@ async fn test_distinct_until_changed_alternating_errors_and_values() -> anyhow::
         StreamItem::Error(_)
     ));
 
-    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(false, 3)))?; // Duplicate - filtered
+    tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(false, 3)))?;
 
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("E3")))?;
     assert!(matches!(

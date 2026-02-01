@@ -61,8 +61,6 @@ async fn test_scan_ordered_composed_with_map_ordered() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
     // Act: Chain map_ordered before scan_ordered
-    // 1. Map each item to value 10
-    // 2. Scan (accumulate) the values
     let mut result = stream.map_ordered(|_item| Sequenced::new(10)).scan_ordered(
         0,
         |sum: &mut i32, value: &i32| {

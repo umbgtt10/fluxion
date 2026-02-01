@@ -24,11 +24,11 @@ async fn test_start_with_then_take_items() -> anyhow::Result<()> {
         StreamItem::Value(Sequenced::new(person_bob())),
     ];
 
-    let mut result = stream.start_with(initial).take_items(3); // Take 2 initial + 1 from stream
+    let mut result = stream.start_with(initial).take_items(3);
 
     // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // Should not be emitted
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
     assert_eq!(
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
         person_alice()
@@ -51,16 +51,14 @@ async fn test_skip_items_then_take_items() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<_>>();
 
-    let mut result = stream
-        .skip_items(2) // Skip first 2
-        .take_items(2); // Then take next 2
+    let mut result = stream.skip_items(2).take_items(2);
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Skipped
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Skipped
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // Taken
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // Taken
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Not emitted (take limit reached)
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert - Only charlie and dave
     assert_eq!(
@@ -86,11 +84,7 @@ async fn test_start_with_skip_items_take_items() -> anyhow::Result<()> {
         StreamItem::Value(Sequenced::new(person_dave())),  // age=28
     ];
 
-    // Start with 2 initial values, skip 1, take 4
-    let mut result = stream
-        .start_with(initial)
-        .skip_items(1) // Skip alice
-        .take_items(4); // Take next 4: [dave, bob, charlie, diane]
+    let mut result = stream.start_with(initial).skip_items(1).take_items(4);
 
     // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?; // age=30
@@ -141,7 +135,7 @@ async fn test_map_ordered_then_take_items() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // Should not be emitted
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
 
     // Assert
     assert_eq!(
@@ -167,7 +161,6 @@ async fn test_with_latest_from_then_take_items() -> anyhow::Result<()> {
     let (primary_tx, primary_rx) = test_channel::<Sequenced<TestData>>();
     let (secondary_tx, secondary_rx) = test_channel::<Sequenced<TestData>>();
 
-    // Combine then take 2 items
     let mut stream = primary_rx
         .with_latest_from(
             secondary_rx,
@@ -189,8 +182,6 @@ async fn test_with_latest_from_then_take_items() -> anyhow::Result<()> {
     // Act
     secondary_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
-    // 1. First emission
-    // Act
     primary_tx.unbounded_send(Sequenced::new(person_alice()))?;
     // Assert
     assert_eq!(
@@ -198,7 +189,6 @@ async fn test_with_latest_from_then_take_items() -> anyhow::Result<()> {
         "Alice with Dog"
     );
 
-    // 2. Second emission
     // Act
     primary_tx.unbounded_send(Sequenced::new(person_bob()))?;
     // Assert
@@ -207,7 +197,6 @@ async fn test_with_latest_from_then_take_items() -> anyhow::Result<()> {
         "Bob with Dog"
     );
 
-    // 3. Third emission (Should be ignored/stream ended)
     // Act
     primary_tx.unbounded_send(Sequenced::new(person_charlie()))?;
     // Assert

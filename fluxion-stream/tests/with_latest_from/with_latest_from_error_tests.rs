@@ -141,7 +141,6 @@ async fn test_with_latest_from_selector_continues_after_error() -> anyhow::Resul
     let (primary_tx, primary_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (secondary_tx, secondary_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    // Custom selector - pass through combined state
     let mut result = primary_stream.with_latest_from(secondary_stream, |combined| combined.clone());
 
     // Act

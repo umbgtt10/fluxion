@@ -20,7 +20,6 @@ async fn test_map_ordered_then_take_items_propagates_error() -> anyhow::Result<(
     let mut result = stream.map_ordered(|x| x).take_items(2);
 
     // Act
-    // 1. Send Alice -> Emitted (1/2)
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
 
     // Assert
@@ -30,7 +29,6 @@ async fn test_map_ordered_then_take_items_propagates_error() -> anyhow::Result<(
     ));
 
     // Act
-    // 2. Send Error -> Should be propagated (2/2)
     // Note: Errors count as items in take_items
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
 
@@ -41,7 +39,6 @@ async fn test_map_ordered_then_take_items_propagates_error() -> anyhow::Result<(
     ));
 
     // Act
-    // 3. Send another value -> Should NOT be emitted (limit reached)
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
 
     // Assert

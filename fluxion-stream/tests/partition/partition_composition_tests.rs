@@ -18,17 +18,14 @@ use fluxion_test_utils::{
 
 #[tokio::test]
 async fn test_partition_then_filter_ordered() -> anyhow::Result<()> {
-    // Arrange - partition by type, then filter each partition further
     let (tx, stream) = test_channel();
     let (persons, non_persons) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // Filter persons for age > 25
     let mut older_persons = persons.filter_ordered(|data| match data {
         TestData::Person(p) => p.age > 25,
         _ => false,
     });
 
-    // Filter non-persons for animals only
     let mut animals = non_persons.filter_ordered(|data| matches!(data, TestData::Animal(_)));
 
     // Act
@@ -57,17 +54,14 @@ async fn test_partition_then_filter_ordered() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_map_ordered() -> anyhow::Result<()> {
-    // Arrange - partition by type, then extract names from each
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // Map persons to their names
     let mut person_names = persons.map_ordered(|s: Sequenced<TestData>| match s.into_inner() {
         TestData::Person(p) => Sequenced::new(p.name),
         _ => Sequenced::new(String::new()),
     });
 
-    // Map animals to their species
     let mut animal_species = animals.map_ordered(|s: Sequenced<TestData>| match s.into_inner() {
         TestData::Animal(a) => Sequenced::new(a.species),
         _ => Sequenced::new(String::new()),
@@ -102,10 +96,8 @@ async fn test_partition_then_map_ordered() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_filter_ordered_then_partition() -> anyhow::Result<()> {
-    // Arrange - filter for adults only, then partition by age threshold
     let (tx, stream) = test_channel();
 
-    // Filter for adults (age >= 18), then partition into young adults vs seniors
     let adults = stream.filter_ordered(|data| match data {
         TestData::Person(p) => p.age >= 18,
         _ => false,
@@ -121,7 +113,7 @@ async fn test_filter_ordered_then_partition() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_dave()))?; // 28 - young adult
     tx.unbounded_send(Sequenced::new(person_diane()))?; // 40 - senior
 
-    // Assert - all are adults, partitioned by age threshold
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut young_adults, 500).await)).value,
         &person_alice()
@@ -144,10 +136,8 @@ async fn test_filter_ordered_then_partition() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_map_ordered_then_partition() -> anyhow::Result<()> {
-    // Arrange - extract leg count from animals, then partition by leg count
     let (tx, stream) = test_channel();
 
-    // Extract leg count from animals, then partition by threshold (>= 4 legs)
     let leg_counts = stream.map_ordered(|s: Sequenced<TestData>| match s.into_inner() {
         TestData::Animal(a) => Sequenced::new(a.legs),
         _ => Sequenced::new(0),
@@ -178,11 +168,9 @@ async fn test_map_ordered_then_partition() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_ordered_merge() -> anyhow::Result<()> {
-    // Arrange - partition by type, then merge back together
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let (persons, non_persons) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // Merge them back - will maintain temporal order
     let mut merged = persons.ordered_merge(vec![non_persons]);
 
     // Act
@@ -215,7 +203,6 @@ async fn test_partition_then_ordered_merge() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_skip_items() -> anyhow::Result<()> {
-    // Arrange - partition by type, then skip first N items in each partition
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -248,7 +235,6 @@ async fn test_partition_then_skip_items() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_take_items() -> anyhow::Result<()> {
-    // Arrange - partition by type, then take first N items from each
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -284,11 +270,9 @@ async fn test_partition_then_take_items() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_scan_ordered() -> anyhow::Result<()> {
-    // Arrange - partition by type, then accumulate ages/legs in each partition
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // Sum person ages
     let mut age_sum = persons.scan_ordered(0u32, |acc: &mut u32, data: &TestData| {
         if let TestData::Person(p) = data {
             *acc += p.age;
@@ -296,7 +280,6 @@ async fn test_partition_then_scan_ordered() -> anyhow::Result<()> {
         *acc
     });
 
-    // Sum animal legs
     let mut legs_sum = animals.scan_ordered(0u32, |acc: &mut u32, data: &TestData| {
         if let TestData::Animal(a) = data {
             *acc += a.legs;
@@ -345,7 +328,6 @@ async fn test_partition_then_scan_ordered() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_distinct_until_changed() -> anyhow::Result<()> {
-    // Arrange - partition by type, then deduplicate consecutive values
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -355,10 +337,10 @@ async fn test_partition_then_distinct_until_changed() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // duplicate person - suppressed
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // duplicate animal - suppressed
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // new person
-    tx.unbounded_send(Sequenced::new(animal_cat()))?; // new animal
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(animal_cat()))?;
 
     // Assert
     assert_eq!(
@@ -369,7 +351,6 @@ async fn test_partition_then_distinct_until_changed() -> anyhow::Result<()> {
         &unwrap_value(Some(unwrap_stream(&mut animals_distinct, 500).await)).value,
         &animal_dog()
     );
-    // Duplicates are skipped
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut persons_distinct, 500).await)).value,
         &person_bob()
@@ -384,7 +365,6 @@ async fn test_partition_then_distinct_until_changed() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_share_then_partition() -> anyhow::Result<()> {
-    // Arrange - share a stream, then partition from the shared source
     let (tx, rx) = test_channel();
     let shared = rx.share();
 
@@ -421,7 +401,6 @@ async fn test_share_then_partition() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
-    // Arrange - partition persons and animals, then combine_latest between them
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -465,19 +444,16 @@ async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
 async fn test_partition_with_subject_and_filter() -> anyhow::Result<()> {
     use fluxion_core::{FluxionSubject, StreamItem};
 
-    // Arrange - use a subject as the source, partition, then filter
     let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
     let stream = subject.subscribe().unwrap();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // Filter persons for age > 30
     let mut older_persons = persons.filter_ordered(|data| match data {
         TestData::Person(p) => p.age > 30,
         _ => false,
     });
 
-    // Filter animals for legs >= 4
     let mut four_legged = animals.filter_ordered(|data| match data {
         TestData::Animal(a) => a.legs >= 4,
         _ => false,
@@ -514,7 +490,6 @@ async fn test_partition_with_subject_and_filter() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_share_then_combine_latest() -> anyhow::Result<()> {
-    // Arrange - share a stream, partition from one sub, use another sub with combine_latest
     let (tx, rx) = test_channel();
     let shared = rx.share();
 
@@ -566,11 +541,9 @@ async fn test_partition_share_then_combine_latest() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_with_latest_from() -> anyhow::Result<()> {
-    // Arrange - partition by type, use with_latest_from to sample animals when persons emit
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // When a person emits, sample the latest animal
     let mut person_with_animal = persons
         .with_latest_from(animals, |state: &CombinedState<TestData, u64>| {
             state.clone()
@@ -608,7 +581,6 @@ async fn test_partition_then_with_latest_from() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_combine_with_previous() -> anyhow::Result<()> {
-    // Arrange - partition by type, then track previous values in each partition
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
