@@ -98,10 +98,8 @@ async fn test_ordered_merge_then_ordered_merge() -> anyhow::Result<()> {
     let (tx2, s2) = test_channel::<Sequenced<TestData>>();
     let (tx3, s3) = test_channel::<Sequenced<TestData>>();
 
-    // First merge s1 and s2
     let merged_12 = s1.ordered_merge(vec![s2]);
 
-    // Then merge result with s3
     let mut result = merged_12.ordered_merge(vec![s3]);
 
     // Act: Send interleaved timestamps

@@ -56,14 +56,13 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
     let (empty_tx, empty_stream) = test_channel::<Sequenced<TestData>>();
     drop(empty_tx);
 
-    // Use a simple counter state to verify emissions from the non-empty stream
     let mut result = MergedStream::seed::<Sequenced<usize>>(0usize)
         .merge_with(non_empty_stream, |_item: TestData, state: &mut usize| {
             *state += 1;
             *state
         })
         .merge_with(empty_stream, |_item: TestData, state: &mut usize| {
-            *state += 1; // will never run in this test
+            *state += 1;
             *state
         });
 
@@ -248,7 +247,6 @@ async fn test_merge_with_user_closure_panics() {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    // Create a merge_with stream where the closure panics on the second emission
     let mut result = MergedStream::seed::<Sequenced<usize>>(0usize).merge_with(
         stream,
         |_item: TestData, state: &mut usize| {
@@ -262,15 +260,15 @@ async fn test_merge_with_user_closure_panics() {
 
     // Act
     tx.unbounded_send(Sequenced::new(person_alice())).unwrap();
-    assert_eq!(
-        unwrap_stream(&mut result, 100).await.into_inner(),
-        1,
-        "First emission should increment state to 1"
-    );
+
+    // Assert
+    assert_eq!(unwrap_stream(&mut result, 100).await.into_inner(), 1);
 
     // Act
     tx.unbounded_send(Sequenced::new(person_bob())).unwrap();
-    let _second = unwrap_stream(&mut result, 100).await; // This will panic
+
+    // Assert
+    let _ = unwrap_stream(&mut result, 100).await;
 }
 
 #[tokio::test]
@@ -286,10 +284,12 @@ async fn test_merge_with_into_fluxion_stream_standalone() -> anyhow::Result<()> 
             state.clone()
         });
 
-    // Act
     let mut fluxion_stream = merged.into_stream();
-    // Assert
+
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut fluxion_stream, 100)
             .await
@@ -298,7 +298,10 @@ async fn test_merge_with_into_fluxion_stream_standalone() -> anyhow::Result<()> 
         25
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut fluxion_stream, 100)
             .await
@@ -323,10 +326,9 @@ async fn test_merge_with_into_fluxion_stream_empty() -> anyhow::Result<()> {
             state.clone()
         });
 
-    // Act
     let mut fluxion_stream = merged.into_stream();
 
-    // Drop sender immediately to end stream
+    // Act
     drop(tx);
 
     // Assert
@@ -350,19 +352,21 @@ async fn test_merge_with_single_stream_interleaved_emissions() -> anyhow::Result
 
     // Act
     tx.unbounded_send(Sequenced::new(person("A".to_string(), 5)))?;
+
     // Assert
     assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 5);
 
     // Act
     tx.unbounded_send(Sequenced::new(person("B".to_string(), 10)))?;
+
     // Assert
     assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 15);
 
     // Act
     tx.unbounded_send(Sequenced::new(person("C".to_string(), 7)))?;
+
     // Assert
     assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 22);
-    drop(tx);
 
     Ok(())
 }
@@ -403,6 +407,7 @@ async fn test_merge_with_state_mutation_complex() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(Sequenced::new(person("Alice".to_string(), 10)))?;
+
     // Assert
     assert_eq!(
         unwrap_stream(&mut merged, 100).await.into_inner(),
@@ -415,6 +420,7 @@ async fn test_merge_with_state_mutation_complex() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(Sequenced::new(person("Bob".to_string(), 20)))?;
+
     // Assert
     assert_eq!(
         unwrap_stream(&mut merged, 100).await.into_inner(),
@@ -427,6 +433,7 @@ async fn test_merge_with_state_mutation_complex() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(Sequenced::new(person("Charlie".to_string(), 5)))?;
+
     // Assert
     assert_eq!(
         unwrap_stream(&mut merged, 100).await.into_inner(),
@@ -436,8 +443,6 @@ async fn test_merge_with_state_mutation_complex() -> anyhow::Result<()> {
             last_person: Some(Person::new("Charlie".to_string(), 5)),
         }
     );
-
-    drop(tx);
 
     Ok(())
 }
@@ -506,9 +511,6 @@ async fn test_merge_with_timestamp_ordering_preserved() -> anyhow::Result<()> {
     );
     assert_eq!(r4.timestamp(), 4);
 
-    drop(tx1);
-    drop(tx2);
-
     Ok(())
 }
 
@@ -535,16 +537,15 @@ async fn test_merge_with_clone_closure() -> anyhow::Result<()> {
 
     // Act
     tx1.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
-    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 50); // 25 * 2
+    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 50);
 
     // Act
     tx2.unbounded_send(Sequenced::new(person_bob()))?;
-    // Assert
-    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 110); // 50 + (30 * 2)
 
-    drop(tx1);
-    drop(tx2);
+    // Assert
+    assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 110);
 
     Ok(())
 }
@@ -792,9 +793,6 @@ impl Repository {
         }
     }
 
-    /// Accept a Timestamped TestData and return a Timestamped Repository where
-    /// the output preserves the incoming sequence. This centralizes sequence
-    /// handling inside the repository helper instead of in every caller.
     pub fn from_testdata_timestamped(&mut self, ts: Sequenced<TestData>) -> Sequenced<Self> {
         let seq = ts.timestamp();
         let out = self.from_testdata(ts.into_inner());

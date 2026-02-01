@@ -191,7 +191,7 @@ async fn test_complex_pipeline_with_multiple_errors() -> anyhow::Result<()> {
         });
 
     // Act
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // Filtered out
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
 
     // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;

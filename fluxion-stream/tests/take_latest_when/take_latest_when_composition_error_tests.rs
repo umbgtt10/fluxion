@@ -20,8 +20,6 @@ async fn test_take_latest_when_propagates_error_from_mapped_source() -> anyhow::
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Source chain: map_ordered -> take_latest_when
-    // Map: Append " Jr." to person name
     let mapped_source = source_stream.map_ordered(|x| {
         if let TestData::Person(p) = &x.value {
             Sequenced::with_timestamp(person(format!("{} Jr.", p.name), p.age), x.timestamp())
@@ -30,7 +28,6 @@ async fn test_take_latest_when_propagates_error_from_mapped_source() -> anyhow::
         }
     });
 
-    // Trigger when Animal has > 2 legs
     let mut result = mapped_source.take_latest_when(trigger_stream, |t| {
         if let TestData::Animal(a) = t {
             a.legs > 2
@@ -39,33 +36,39 @@ async fn test_take_latest_when_propagates_error_from_mapped_source() -> anyhow::
         }
     });
 
-    // Act & Assert
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
         2,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Alice Jr.")
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Source Error",
     )))?;
 
-    // Error should be propagated immediately
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(e) if e.to_string().contains("Source Error")
     ));
 
-    // Ensure source update (ts=3) is processed BEFORE trigger (ts=4)
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         3,
@@ -74,6 +77,7 @@ async fn test_take_latest_when_propagates_error_from_mapped_source() -> anyhow::
         animal_cat(),
         4,
     )))?;
+
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Bob Jr.")
@@ -88,8 +92,6 @@ async fn test_take_latest_when_propagates_error_from_filtered_trigger() -> anyho
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Trigger chain: filter_ordered -> take_latest_when (as trigger)
-    // We filter trigger values (Animals) with legs > 4.
     let filtered_trigger = trigger_stream.filter_ordered(|x| {
         if let TestData::Animal(a) = x {
             a.legs > 4
@@ -98,7 +100,6 @@ async fn test_take_latest_when_propagates_error_from_filtered_trigger() -> anyho
         }
     });
 
-    // Predicate always true, but trigger stream itself is filtered
     let mut result = source_stream.take_latest_when(filtered_trigger, |_| true);
 
     // Act & Assert
@@ -126,7 +127,6 @@ async fn test_take_latest_when_propagates_error_from_filtered_trigger() -> anyho
         "Trigger Error",
     )))?;
 
-    // Error from trigger should propagate
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(e) if e.to_string().contains("Trigger Error")
@@ -154,9 +154,6 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Source: scan (sum of ages)
-    // Input: Sequenced<TestData>
-    // Output: Sequenced<TestData> (Person with name "Sum" and age = sum)
     let scanned_source = source_stream.scan_ordered(0u32, |acc, x| {
         if let TestData::Person(p) = x {
             *acc += p.age;
@@ -164,9 +161,6 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
         person("Sum".to_string(), *acc)
     });
 
-    // Trigger: map (double legs)
-    // Input: Sequenced<TestData>
-    // Output: Sequenced<TestData>
     let mapped_trigger = trigger_stream.map_ordered(|x| {
         if let TestData::Animal(a) = &x.value {
             Sequenced::with_timestamp(animal(a.species.clone(), a.legs * 2), x.timestamp())
@@ -175,7 +169,6 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
         }
     });
 
-    // Predicate: trigger value (Animal) legs > 10
     let mut result = scanned_source.take_latest_when(mapped_trigger, |t| {
         if let TestData::Animal(a) = t {
             a.legs > 10
@@ -210,31 +203,22 @@ async fn test_take_latest_when_complex_chain_with_scan_and_map() -> anyhow::Resu
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Sum" && p.age == 55)
     ));
 
-    // 4. Error in source (scan)
-    // 4. Error in source (scan)
     source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Scan Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(e) if e.to_string().contains("Scan Error")
     ));
 
-    // 5. Error in trigger (map)
-    // 5. Error in trigger (map)
     trigger_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(e) if e.to_string().contains("Map Error")
     ));
 
-    // 6. Recovery
-    // 6. Recovery
-    // Source state should be preserved (55)
-    // Add Charlie(35) -> 90
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_charlie(),
         5,
     )))?;
-    // Trigger with Spider(8 legs) -> mapped to 16 legs -> true
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_spider(),
         6,

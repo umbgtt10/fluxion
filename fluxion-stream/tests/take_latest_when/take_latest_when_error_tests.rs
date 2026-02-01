@@ -17,11 +17,12 @@ async fn test_take_latest_when_propagates_source_error() -> anyhow::Result<()> {
 
     let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |_| true);
 
-    // Act & Assert: Send source values
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
-
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 4)))?;
+
+    //
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
         StreamItem::Value(_)
@@ -35,7 +36,6 @@ async fn test_take_latest_when_propagates_source_error() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
-    // Continue with values
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(20, 5)))?;
     assert!(matches!(
@@ -76,7 +76,6 @@ async fn test_take_latest_when_propagates_trigger_error() -> anyhow::Result<()> 
         StreamItem::Error(_)
     ));
 
-    // Continue
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(30, 5)))?;
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
@@ -95,7 +94,6 @@ async fn test_take_latest_when_filter_predicate_after_error() -> anyhow::Result<
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    // Only emit when trigger is > 50
     let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |t| *t > 50);
 
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
@@ -139,7 +137,6 @@ async fn test_take_latest_when_both_streams_have_errors() -> anyhow::Result<()> 
         StreamItem::Value(_)
     ));
 
-    // Error from source
     source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Source error",
     )))?;
@@ -148,7 +145,6 @@ async fn test_take_latest_when_both_streams_have_errors() -> anyhow::Result<()> 
         StreamItem::Error(_)
     ));
 
-    // Error from trigger
     trigger_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Trigger error",
     )))?;
@@ -165,7 +161,6 @@ async fn test_take_latest_when_both_streams_have_errors() -> anyhow::Result<()> 
 
 #[tokio::test]
 async fn test_take_latest_when_trigger_before_source() -> anyhow::Result<()> {
-    // This tests the branch where filter updates but source is None
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -177,7 +172,6 @@ async fn test_take_latest_when_trigger_before_source() -> anyhow::Result<()> {
 
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(42, 2)))?;
 
-    // Still no emission (just cached)
     assert_no_element_emitted(&mut triggered_stream, 100).await;
 
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(20, 3)))?;
@@ -195,23 +189,19 @@ async fn test_take_latest_when_trigger_before_source() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_take_latest_when_filter_returns_false() -> anyhow::Result<()> {
-    // This tests the branch where filter predicate returns false
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |val| *val > 50);
 
-    // Setup source
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(100, 1)))?;
 
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 2)))?;
 
-    // Should NOT emit
     assert_no_element_emitted(&mut triggered_stream, 100).await;
 
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(100, 3)))?;
 
-    // Should emit now
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
         StreamItem::Value(_)
@@ -225,7 +215,6 @@ async fn test_take_latest_when_filter_returns_false() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_take_latest_when_multiple_triggers_no_source() -> anyhow::Result<()> {
-    // Test multiple filter emissions before source has value
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -235,17 +224,14 @@ async fn test_take_latest_when_multiple_triggers_no_source() -> anyhow::Result<(
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(30, 3)))?;
 
-    // No emissions should occur
     assert_no_element_emitted(&mut triggered_stream, 100).await;
 
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(999, 4)))?;
 
-    // Still no emission (waiting for trigger)
     assert_no_element_emitted(&mut triggered_stream, 100).await;
 
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(40, 5)))?;
 
-    // Now should emit
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
         StreamItem::Value(_)
@@ -259,34 +245,28 @@ async fn test_take_latest_when_multiple_triggers_no_source() -> anyhow::Result<(
 
 #[tokio::test]
 async fn test_take_latest_when_alternating_filter_conditions() -> anyhow::Result<()> {
-    // Test alternating between passing and failing filter conditions
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |val| *val > 10);
 
-    // Setup source
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(100, 1)))?;
 
-    // Trigger that passes (20 > 10)
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(20, 2)))?;
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
         StreamItem::Value(_)
     ));
 
-    // Trigger that fails (5 <= 10)
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
     assert_no_element_emitted(&mut triggered_stream, 100).await;
 
-    // Trigger that passes (50 > 10)
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(50, 4)))?;
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
         StreamItem::Value(_)
     ));
 
-    // Trigger that fails (0 <= 10)
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(0, 5)))?;
     assert_no_element_emitted(&mut triggered_stream, 100).await;
 
@@ -298,7 +278,6 @@ async fn test_take_latest_when_alternating_filter_conditions() -> anyhow::Result
 
 #[tokio::test]
 async fn test_take_latest_when_source_updates_dont_emit() -> anyhow::Result<()> {
-    // Verify that source updates are cached but don't trigger emissions
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -309,7 +288,6 @@ async fn test_take_latest_when_source_updates_dont_emit() -> anyhow::Result<()> 
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
 
-    // None should emit
     assert_no_element_emitted(&mut triggered_stream, 100).await;
 
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 5)))?;
@@ -329,7 +307,6 @@ async fn test_take_latest_when_source_updates_dont_emit() -> anyhow::Result<()> 
 
 #[tokio::test]
 async fn test_take_latest_when_error_before_any_trigger() -> anyhow::Result<()> {
-    // Test error propagation before filter stream has emitted
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
@@ -342,7 +319,6 @@ async fn test_take_latest_when_error_before_any_trigger() -> anyhow::Result<()> 
         StreamItem::Error(_)
     ));
 
-    // Continue normally
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(42, 1)))?;
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 2)))?;
 
@@ -359,13 +335,11 @@ async fn test_take_latest_when_error_before_any_trigger() -> anyhow::Result<()> 
 
 #[tokio::test]
 async fn test_take_latest_when_source_overwritten_between_triggers() -> anyhow::Result<()> {
-    // Verify that only the latest source value is emitted
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut triggered_stream = source_stream.take_latest_when(trigger_stream, |_| true);
 
-    // First cycle
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(100, 1)))?;
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 2)))?;
 
@@ -378,7 +352,6 @@ async fn test_take_latest_when_source_overwritten_between_triggers() -> anyhow::
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(300, 4)))?;
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(400, 5)))?;
 
-    // Trigger - should get latest (400)
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 6)))?;
 
     let result = unwrap_stream(&mut triggered_stream, 500).await;

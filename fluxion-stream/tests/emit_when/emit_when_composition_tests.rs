@@ -38,7 +38,6 @@ async fn test_ordered_merge_combine_with_previous_emit_when() -> anyhow::Result<
         current_age >= threshold_age
     };
 
-    // Map the threshold stream to match the WithPrevious type
     let threshold_mapped =
         threshold_stream.map(|seq| StreamItem::Value(WithPrevious::new(None, seq.unwrap())));
 
@@ -146,7 +145,6 @@ async fn test_combine_with_previous_emit_when_map_ordered() -> anyhow::Result<()
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - above threshold
     let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
 
-    // Result is TestData (Charlie)
     assert_eq!(result.value, person_charlie());
 
     Ok(())

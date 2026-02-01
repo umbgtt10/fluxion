@@ -36,7 +36,6 @@ async fn test_emit_when_propagates_source_error() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
-    // Continue with value
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(30, 3)))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -98,7 +97,6 @@ async fn test_emit_when_predicate_continues_after_error() -> anyhow::Result<()> 
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<i32>>();
     let (filter_tx, filter_stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    // Only emit when source > filter
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 

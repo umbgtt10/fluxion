@@ -273,7 +273,6 @@ fn test_with_previous_combined_state_timestamp() {
     let state = CombinedState::new(vec![(10, 333u64)], 333u64);
     let wp = WithPrevious::new(None, state);
 
-    // Timestamp comes from current CombinedState
     assert_eq!(wp.timestamp(), 333u64);
 }
 

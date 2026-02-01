@@ -19,7 +19,7 @@ async fn test_take_propagates_errors() -> anyhow::Result<()> {
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error")))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(3)))?; // This should not be emitted
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(3)))?;
 
     // Assert
     let item1 = unwrap_stream(&mut result, 100).await;
@@ -31,7 +31,6 @@ async fn test_take_propagates_errors() -> anyhow::Result<()> {
     let item3 = unwrap_stream(&mut result, 100).await;
     assert!(matches!(item3, StreamItem::Value(_)));
 
-    // Stream should end after 3 items (including error)
     assert_stream_ended(&mut result, 100).await;
 
     Ok(())

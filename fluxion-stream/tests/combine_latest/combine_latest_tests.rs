@@ -422,11 +422,9 @@ async fn test_combine_latest_filter_rejects_initial_state() -> anyhow::Result<()
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
 
-    // Filter that rejects the initial state (when both Alice and Dog are present)
     let filter = |state: &CombinedState<TestData>| {
         let values = state.values();
         if values.len() == 2 {
-            // Reject if we have Alice and Dog
             !(values[0] == person_alice() && values[1] == animal_dog())
         } else {
             true
@@ -515,7 +513,6 @@ async fn test_combine_latest_filter_function_panics() {
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
 
-    // Filter that panics on the second evaluation
     let call_count = Arc::new(AtomicUsize::new(0));
     let filter = move |_state: &CombinedState<TestData>| {
         let count = call_count.fetch_add(1, Ordering::SeqCst);

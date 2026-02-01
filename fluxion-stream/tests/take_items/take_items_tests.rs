@@ -18,7 +18,7 @@ async fn test_take_limits_items() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // This won't be emitted
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     assert_eq!(
@@ -31,7 +31,6 @@ async fn test_take_limits_items() -> anyhow::Result<()> {
         person_bob()
     );
 
-    // Stream should end after 2 items
     assert_stream_ended(&mut result, 100).await;
 
     Ok(())

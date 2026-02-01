@@ -73,8 +73,5 @@ async fn test_take_while_with_error_propagation_at_end_of_chain() -> anyhow::Res
         StreamItem::Value(ref v) if v.value.age == 31
     ));
 
-    drop(source_tx);
-    drop(condition_tx);
-
     Ok(())
 }

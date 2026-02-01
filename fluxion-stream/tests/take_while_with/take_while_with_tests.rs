@@ -45,6 +45,7 @@ async fn test_take_while_basic() -> anyhow::Result<()> {
 
     // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -53,12 +54,14 @@ async fn test_take_while_basic() -> anyhow::Result<()> {
 
     // Act
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
@@ -76,11 +79,13 @@ async fn test_take_while_always_true() -> anyhow::Result<()> {
 
     // Act
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     source_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -89,6 +94,7 @@ async fn test_take_while_always_true() -> anyhow::Result<()> {
 
     // Act
     source_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -97,6 +103,7 @@ async fn test_take_while_always_true() -> anyhow::Result<()> {
 
     // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -112,7 +119,6 @@ async fn test_take_while_complex_predicate() -> anyhow::Result<()> {
     let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<TestData>>();
 
-    // Predicate: Allow only if Person name is "Alice"
     let mut result = source_stream.take_while_with(filter_stream, |f| match f {
         TestData::Person(p) => p.name == "Alice",
         _ => false,
@@ -120,11 +126,13 @@ async fn test_take_while_complex_predicate() -> anyhow::Result<()> {
 
     // Act
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     source_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -133,6 +141,7 @@ async fn test_take_while_complex_predicate() -> anyhow::Result<()> {
 
     // Act
     source_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -143,6 +152,7 @@ async fn test_take_while_complex_predicate() -> anyhow::Result<()> {
     filter_tx.unbounded_send(Sequenced::new(person_bob()))?;
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
@@ -160,11 +170,13 @@ async fn test_take_while_interleaved_updates() -> anyhow::Result<()> {
 
     // Act
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     source_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -174,6 +186,7 @@ async fn test_take_while_interleaved_updates() -> anyhow::Result<()> {
     // Act
     filter_tx.unbounded_send(Sequenced::new(person_bob()))?;
     source_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -183,6 +196,7 @@ async fn test_take_while_interleaved_updates() -> anyhow::Result<()> {
     // Act
     filter_tx.unbounded_send(Sequenced::new(person_charlie()))?;
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -193,6 +207,7 @@ async fn test_take_while_interleaved_updates() -> anyhow::Result<()> {
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
@@ -249,11 +264,13 @@ async fn test_take_while_filter_changes_back_to_true() -> anyhow::Result<()> {
 
     // Act
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     source_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -263,12 +280,14 @@ async fn test_take_while_filter_changes_back_to_true() -> anyhow::Result<()> {
     // Act
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     source_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 500).await;
 
     // Act
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
@@ -287,6 +306,7 @@ async fn test_take_while_multiple_source_items_same_filter() -> anyhow::Result<(
     // Act
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
     source_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -295,6 +315,7 @@ async fn test_take_while_multiple_source_items_same_filter() -> anyhow::Result<(
 
     // Act
     source_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -303,6 +324,7 @@ async fn test_take_while_multiple_source_items_same_filter() -> anyhow::Result<(
 
     // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -311,6 +333,7 @@ async fn test_take_while_multiple_source_items_same_filter() -> anyhow::Result<(
 
     // Act
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -320,6 +343,7 @@ async fn test_take_while_multiple_source_items_same_filter() -> anyhow::Result<(
     // Act
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
@@ -336,14 +360,16 @@ async fn test_take_while_filter_updates_without_source() -> anyhow::Result<()> {
         source_stream.take_while_with(filter_stream, |f| matches!(f, TestData::Person(_)));
 
     // Act
-    filter_tx.unbounded_send(Sequenced::new(animal_dog()))?; // False
-    filter_tx.unbounded_send(Sequenced::new(person_alice()))?; // True
-    filter_tx.unbounded_send(Sequenced::new(person_bob()))?; // True
-                                                             // Assert
+    filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    filter_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     source_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -352,6 +378,7 @@ async fn test_take_while_filter_updates_without_source() -> anyhow::Result<()> {
 
     // Act
     source_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -371,16 +398,19 @@ async fn test_take_while_with_source_before_filter() -> anyhow::Result<()> {
 
     // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert!(matches!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -403,11 +433,13 @@ async fn test_take_while_with_filter_updates_then_source() -> anyhow::Result<()>
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert!(matches!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -429,6 +461,7 @@ async fn test_take_while_with_already_terminated() -> anyhow::Result<()> {
     // Act
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert!(matches!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -438,12 +471,14 @@ async fn test_take_while_with_already_terminated() -> anyhow::Result<()> {
     // Act
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 500).await;
 
     // Act
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
     filter_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 500).await;
 
@@ -462,12 +497,14 @@ async fn test_take_while_with_filter_false_on_first_source() -> anyhow::Result<(
     // Act
     filter_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     // Act
     drop(source_tx);
     drop(filter_tx);
+
     // Assert
     assert_stream_ended(&mut result, 500).await;
 
@@ -486,6 +523,7 @@ async fn test_take_while_with_alternating_filter_values() -> anyhow::Result<()> 
     // Act
     filter_tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
     source_tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 2))?;
+
     // Assert
     assert!(matches!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -495,6 +533,7 @@ async fn test_take_while_with_alternating_filter_values() -> anyhow::Result<()> 
     // Act
     filter_tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 3))?;
     source_tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 4))?;
+
     // Assert
     assert!(matches!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
@@ -504,6 +543,7 @@ async fn test_take_while_with_alternating_filter_values() -> anyhow::Result<()> 
     // Act
     filter_tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 5))?;
     source_tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 6))?;
+
     // Assert
     assert!(matches!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,

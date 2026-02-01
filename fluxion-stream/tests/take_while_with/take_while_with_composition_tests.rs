@@ -57,6 +57,7 @@ async fn test_take_latest_when_take_while_with() -> anyhow::Result<()> {
     while_filter_tx.unbounded_send(Sequenced::new(false))?;
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?;
     latest_filter_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
     // Assert
     assert_no_element_emitted(&mut composed, 100).await;
 
@@ -91,6 +92,7 @@ async fn test_combine_latest_take_while_with() -> anyhow::Result<()> {
 
     // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut composed, 500).await))
@@ -221,7 +223,6 @@ async fn test_filter_ordered_map_ordered_combine_with_previous_take_while_with(
 
     // Act
     predicate_tx.unbounded_send(Sequenced::new(true))?;
-
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
 

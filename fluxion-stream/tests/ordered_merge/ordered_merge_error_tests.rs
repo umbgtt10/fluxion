@@ -44,13 +44,11 @@ async fn test_ordered_merge_propagates_error_from_first_stream() -> anyhow::Resu
         assert_eq!(v.into_inner(), person_alice());
     }
 
-    // Error should be propagated
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Second value should still be emitted
     let item2 = unwrap_stream(&mut merged, 100).await;
     assert!(matches!(item2, StreamItem::Value(_)));
     if let StreamItem::Value(v) = item2 {
@@ -90,7 +88,6 @@ async fn test_ordered_merge_propagates_error_from_second_stream() -> anyhow::Res
         StreamItem::Error(_)
     ));
 
-    // Then values in timestamp order
     let item1 = unwrap_stream(&mut merged, 100).await;
     assert!(matches!(item1, StreamItem::Value(_)));
     if let StreamItem::Value(v) = item1 {
@@ -126,8 +123,6 @@ async fn test_ordered_merge_multiple_errors_from_different_streams() -> anyhow::
         4,
     )))?;
 
-    // Assert: Error1 (from stream2) has priority over Value(rose,1), then Value(rose,1),
-    // then Error2 has priority over Value(spider,4), then Value(spider,4)
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
@@ -174,7 +169,6 @@ async fn test_ordered_merge_error_at_start() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
-    // Stream should continue with values
     let item = unwrap_stream(&mut merged, 100).await;
     assert!(matches!(item, StreamItem::Value(_)));
     if let StreamItem::Value(v) = item {

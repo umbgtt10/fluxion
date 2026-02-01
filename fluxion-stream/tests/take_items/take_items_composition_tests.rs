@@ -29,6 +29,8 @@ async fn test_start_with_then_take_items() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
     tx.unbounded_send(Sequenced::new(person_dave()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
         person_alice()
@@ -80,17 +82,17 @@ async fn test_start_with_skip_items_take_items() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<_>>();
 
     let initial = vec![
-        StreamItem::Value(Sequenced::new(person_alice())), // age=25
-        StreamItem::Value(Sequenced::new(person_dave())),  // age=28
+        StreamItem::Value(Sequenced::new(person_alice())),
+        StreamItem::Value(Sequenced::new(person_dave())),
     ];
 
     let mut result = stream.start_with(initial).skip_items(1).take_items(4);
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // age=30
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // age=35
-    tx.unbounded_send(Sequenced::new(person_diane()))?; // age=40
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Should not be emitted (take limit)
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_diane()))?;
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
     assert_eq!(
@@ -109,7 +111,6 @@ async fn test_start_with_skip_items_take_items() -> anyhow::Result<()> {
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
         person_diane()
     );
-
     assert_stream_ended(&mut result, 100).await;
 
     Ok(())
@@ -181,8 +182,8 @@ async fn test_with_latest_from_then_take_items() -> anyhow::Result<()> {
 
     // Act
     secondary_tx.unbounded_send(Sequenced::new(animal_dog()))?;
-
     primary_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
@@ -191,6 +192,7 @@ async fn test_with_latest_from_then_take_items() -> anyhow::Result<()> {
 
     // Act
     primary_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
     // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
@@ -199,6 +201,7 @@ async fn test_with_latest_from_then_take_items() -> anyhow::Result<()> {
 
     // Act
     primary_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
     // Assert
     assert_stream_ended(&mut stream, 100).await;
 

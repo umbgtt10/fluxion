@@ -68,7 +68,7 @@ async fn test_on_error_consumes_all_errors() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_on_error_propagates_all_errors() -> anyhow::Result<()> {
-    //  Arrange
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream.on_error(|_err| false);
 
@@ -162,10 +162,7 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
     let mut result = stream
         .on_error(|err| err.to_string().contains("validation"))
         .on_error(|err| err.to_string().contains("network"))
-        .on_error(|err| {
-            // Catch-all handler
-            err.to_string().contains("timeout")
-        });
+        .on_error(|err| err.to_string().contains("timeout"));
 
     // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
@@ -187,7 +184,8 @@ async fn test_on_error_chain_of_responsibility() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
-    // All errors consumed by the chain
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
@@ -256,10 +254,7 @@ async fn test_on_error_partial_chain() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream
         .on_error(|err| err.to_string().contains("validation"))
-        .on_error(|err| {
-            // Don't handle network errors - let them propagate
-            err.to_string().contains("mutex")
-        });
+        .on_error(|err| err.to_string().contains("mutex"));
 
     // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
@@ -271,7 +266,8 @@ async fn test_on_error_partial_chain() -> anyhow::Result<()> {
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "network error",
     )))?;
-    // Validation and mutex errors consumed, network error propagated
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -307,7 +303,8 @@ async fn test_on_error_continues_after_consumed_error() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
-    // Stream continues normally after each consumed error
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         1
@@ -373,7 +370,8 @@ async fn test_on_error_multiple_consecutive_errors() -> anyhow::Result<()> {
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "network error3",
     )))?;
-    // First two user errors consumed, network error propagated
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -430,7 +428,8 @@ async fn test_on_error_only_errors_stream() -> anyhow::Result<()> {
     assert_no_element_emitted(&mut result, 100).await;
 
     drop(tx);
-    // All errors consumed, stream ends
+
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())
@@ -440,10 +439,7 @@ async fn test_on_error_only_errors_stream() -> anyhow::Result<()> {
 async fn test_on_error_conditional_based_on_error_content() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
-    let mut result = stream.on_error(|err| {
-        // Consume errors containing "transient"
-        err.to_string().contains("transient")
-    });
+    let mut result = stream.on_error(|err| err.to_string().contains("transient"));
 
     // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
@@ -455,7 +451,8 @@ async fn test_on_error_conditional_based_on_error_content() -> anyhow::Result<()
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "permanent failure",
     )))?;
-    // Transient error consumed, permanent error propagated
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -504,7 +501,8 @@ async fn test_on_error_three_level_chain() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(100)))?;
-    // All errors consumed by the three-level chain
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         100

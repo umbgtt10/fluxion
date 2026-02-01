@@ -374,7 +374,6 @@ async fn test_distinct_until_changed_by_error_only_stream() -> anyhow::Result<()
 async fn test_distinct_until_changed_by_custom_comparer_with_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
-    // Case-insensitive name comparison
     let mut distinct = stream.distinct_until_changed_by(|a, b| match (a, b) {
         (TestData::Person(p1), TestData::Person(p2)) => {
             p1.name.to_lowercase() == p2.name.to_lowercase()
@@ -396,26 +395,22 @@ async fn test_distinct_until_changed_by_custom_comparer_with_errors() -> anyhow:
         panic!("Expected Person");
     }
 
-    // Same (case-insensitive) - filtered
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("HELLO".to_string(), 25),
     ))))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    // Error
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut distinct, 500).await,
         StreamItem::Error(_)
     ));
 
-    // Still same (case-insensitive) - filtered
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("HeLLo".to_string(), 25),
     ))))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    // Different value
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("world".to_string(), 30),
     ))))?;

@@ -301,7 +301,7 @@ async fn drop_closes_subject_and_cancels_task() {
 
 #[tokio::test]
 async fn empty_source_stream_completes_subscribers_immediately() {
-    // Arrange - create a channel and immediately drop the sender
+    // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
     drop(tx); // Source completes immediately with no items
 

@@ -117,7 +117,6 @@ async fn test_ordered_merge_ends_when_all_closed() -> anyhow::Result<()> {
     tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
     tx2.unbounded_send(Sequenced::with_timestamp(person_bob(), 2))?;
 
-    // Consume both
     let _ = unwrap_stream(&mut merged, 200).await;
     let _ = unwrap_stream(&mut merged, 200).await;
 
@@ -143,7 +142,6 @@ async fn test_ordered_merge_one_stream_closes_early() -> anyhow::Result<()> {
     tx1.unbounded_send(Sequenced::with_timestamp(person_bob(), 2))?;
     drop(tx1);
 
-    // Stream 2 continues
     tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 3))?;
     tx2.unbounded_send(Sequenced::with_timestamp(animal_spider(), 4))?;
 
@@ -191,12 +189,10 @@ async fn test_ordered_merge_duplicate_timestamps() -> anyhow::Result<()> {
     let third = unwrap_stream(&mut merged, 200).await.into_inner();
     let fourth = unwrap_stream(&mut merged, 200).await.into_inner();
 
-    // Items with timestamp 1
     assert!(first == person_alice() || first == animal_dog());
     assert!(second == person_alice() || second == animal_dog());
     assert_ne!(first, second);
 
-    // Items with timestamp 2
     assert!(third == person_bob() || third == animal_spider());
     assert!(fourth == person_bob() || fourth == animal_spider());
     assert_ne!(third, fourth);
@@ -288,8 +284,7 @@ async fn test_ordered_merge_preserves_timestamp_metadata() -> anyhow::Result<()>
 
 #[tokio::test]
 async fn test_ordered_merge_does_not_wait_for_all_streams() -> anyhow::Result<()> {
-    // Arrange This tests that ordered_merge emits as soon as items are available,
-    // not waiting for all streams to have items (unlike combine_latest)
+    // Arrange
     let (tx1, s1) = test_channel::<Sequenced<TestData>>();
     let (_tx2, s2) = test_channel::<Sequenced<TestData>>();
 
