@@ -129,24 +129,28 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues(
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     plant_tx.unbounded_send(Sequenced::new(plant_rose()))?;
-
-    // Assert
     let state = unwrap_stream(&mut result, 500).await.unwrap();
     let actual: Vec<TestData> = state.clone().into_inner().values().clone();
+
+    // Assert
     assert_eq!(actual, vec![person_alice(), animal_dog(), plant_rose()]);
 
     drop(plant_tx);
 
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
-
     let state = unwrap_stream(&mut result, 500).await.unwrap();
     let actual: Vec<TestData> = state.clone().into_inner().values().clone();
+
+    // Assert
     assert_eq!(actual, vec![person_bob(), animal_dog(), plant_rose()]);
 
+    // Act
     animal_tx.unbounded_send(Sequenced::new(animal_spider()))?;
-
     let state = unwrap_stream(&mut result, 500).await.unwrap();
     let actual: Vec<TestData> = state.clone().into_inner().values().clone();
+
+    // Assert
     assert_eq!(actual, vec![person_bob(), animal_spider(), plant_rose()]);
 
     Ok(())
@@ -155,6 +159,7 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues(
 #[tokio::test]
 async fn test_combine_latest_all_streams_have_published_different_order_emits_updates(
 ) -> anyhow::Result<()> {
+    // Arrange
     let _ =
         combine_latest_template_test(DataVariant::Plant, DataVariant::Animal, DataVariant::Person)
             .await;
@@ -173,6 +178,8 @@ async fn test_combine_latest_all_streams_have_published_different_order_emits_up
     let _ =
         combine_latest_template_test(DataVariant::Person, DataVariant::Plant, DataVariant::Animal)
             .await;
+
+    // Act & Assert - covered by combine_latest_template_test calls above
 
     Ok(())
 }
@@ -202,11 +209,15 @@ async fn combine_latest_template_test(
     send_variant(&order3, &senders)?;
 
     // Assert
-    let state = unwrap_stream(&mut result, 500).await.unwrap();
-    let actual: Vec<TestData> = state.clone().into_inner().values().clone();
-    let expected = vec![person_alice(), animal_dog(), plant_rose()];
-
-    assert_eq!(actual, expected);
+    assert_eq!(
+        unwrap_stream(&mut result, 500)
+            .await
+            .unwrap()
+            .into_inner()
+            .values()
+            .clone(),
+        vec![person_alice(), animal_dog(), plant_rose()]
+    );
 
     Ok(())
 }
@@ -256,6 +267,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() -> anyho
 #[tokio::test]
 async fn test_combine_latest_different_stream_order_emits_consistent_results() -> anyhow::Result<()>
 {
+    // Arrange & Act & Assert - covered by combine_latest_stream_order_test calls below
     let _ = combine_latest_stream_order_test(
         DataVariant::Person,
         DataVariant::Animal,
@@ -364,9 +376,16 @@ async fn combine_latest_stream_order_test(
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     plant_tx.unbounded_send(Sequenced::new(plant_rose()))?;
 
-    // Assert - values should be in the order streams were registered
-    let state = unwrap_stream(&mut result, 500).await.unwrap();
-    assert_eq!(state.clone().into_inner().values().clone(), expected_order);
+    // Assert
+    assert_eq!(
+        unwrap_stream(&mut result, 500)
+            .await
+            .unwrap()
+            .into_inner()
+            .values()
+            .clone(),
+        expected_order
+    );
 
     Ok(())
 }
@@ -407,11 +426,9 @@ async fn test_combine_latest_filter_rejects_initial_state() -> anyhow::Result<()
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
 
-    // Filter that rejects the initial state (when both Alice and Dog are present)
     let filter = |state: &CombinedState<TestData>| {
         let values = state.values();
         if values.len() == 2 {
-            // Reject if we have Alice and Dog
             !(values[0] == person_alice() && values[1] == animal_dog())
         } else {
             true
@@ -420,17 +437,17 @@ async fn test_combine_latest_filter_rejects_initial_state() -> anyhow::Result<()
 
     let mut result = person_stream.combine_latest(vec![animal_stream], filter);
 
-    // Act: Publish Alice and Dog (should be rejected)
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
-    // Assert: No emission due to filter rejection
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act: Update to Bob (should pass filter)
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
-    // Assert: Now we get an emission
+    // Assert
     expect_next_combined_equals(&mut result, &[person_bob(), animal_dog()]).await;
 
     Ok(())
@@ -442,7 +459,6 @@ async fn test_combine_latest_filter_alternates_between_true_false() -> anyhow::R
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
 
-    // Filter that only allows emissions when person is Alice or Charlie (rejects Bob and Diane)
     let filter = |state: &CombinedState<TestData>| {
         let values = state.values();
         if values.is_empty() {
@@ -454,41 +470,41 @@ async fn test_combine_latest_filter_alternates_between_true_false() -> anyhow::R
 
     let mut result = person_stream.combine_latest(vec![animal_stream], filter);
 
-    // Act: Alice + Dog (passes filter)
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
-    // Assert: Emission occurs
+    // Assert
     expect_next_combined_equals(&mut result, &[person_alice(), animal_dog()]).await;
 
-    // Act: Bob + Dog (rejected by filter)
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
-    // Assert: No emission
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act: Charlie + Dog (passes filter)
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
-    // Assert: Emission occurs
+    // Assert
     expect_next_combined_equals(&mut result, &[person_charlie(), animal_dog()]).await;
 
-    // Act: Diane + Dog (rejected by filter)
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_diane()))?;
 
-    // Assert: No emission
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act: Update animal to Spider while Diane is still latest (still rejected)
+    // Act
     animal_tx.unbounded_send(Sequenced::new(animal_spider()))?;
 
-    // Assert: Still no emission
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act: Alice + Spider (passes filter)
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
-    // Assert: Emission occurs
+    // Assert
     expect_next_combined_equals(&mut result, &[person_alice(), animal_spider()]).await;
 
     Ok(())
@@ -501,7 +517,6 @@ async fn test_combine_latest_filter_function_panics() {
     let (person_tx, person_stream) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_stream) = test_channel::<Sequenced<TestData>>();
 
-    // Filter that panics on the second evaluation
     let call_count = Arc::new(AtomicUsize::new(0));
     let filter = move |_state: &CombinedState<TestData>| {
         let count = call_count.fetch_add(1, Ordering::SeqCst);
@@ -513,7 +528,7 @@ async fn test_combine_latest_filter_function_panics() {
 
     let mut result = person_stream.combine_latest(vec![animal_stream], filter);
 
-    // Act: First emission should succeed
+    // Act
     person_tx
         .unbounded_send(Sequenced::new(person_alice()))
         .unwrap();
@@ -521,12 +536,12 @@ async fn test_combine_latest_filter_function_panics() {
         .unbounded_send(Sequenced::new(animal_dog()))
         .unwrap();
 
-    let _first = unwrap_stream(&mut result, 100).await;
+    let _ = unwrap_stream(&mut result, 100).await;
 
     person_tx
         .unbounded_send(Sequenced::new(person_bob()))
         .unwrap();
 
-    // Assert: This will panic
-    let _second = unwrap_stream(&mut result, 100).await;
+    // Assert
+    let _ = unwrap_stream(&mut result, 100).await;
 }

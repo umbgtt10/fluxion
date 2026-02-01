@@ -12,11 +12,10 @@ use fluxion_test_utils::{
 
 #[tokio::test]
 async fn test_partition_then_filter_ordered_error_propagation() -> anyhow::Result<()> {
-    // Arrange - partition by type, then filter each partition
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // Filter persons for age > 20, filter animals for legs > 2
     let mut filtered_persons = persons.filter_ordered(|data| match data {
         TestData::Person(p) => p.age > 20,
         _ => false,
@@ -26,12 +25,12 @@ async fn test_partition_then_filter_ordered_error_propagation() -> anyhow::Resul
         _ => false,
     });
 
-    // Act - send values then error
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // 4 legs
+    // Act
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
 
-    // Assert - values arrive before error
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut filtered_persons, 500).await)).value,
         &person_alice()
@@ -40,8 +39,6 @@ async fn test_partition_then_filter_ordered_error_propagation() -> anyhow::Resul
         &unwrap_value(Some(unwrap_stream(&mut filtered_animals, 500).await)).value,
         &animal_dog()
     );
-
-    // Error propagates to both filtered streams
     assert!(matches!(
         unwrap_stream(&mut filtered_persons, 500).await,
         StreamItem::Error(_)
@@ -56,7 +53,7 @@ async fn test_partition_then_filter_ordered_error_propagation() -> anyhow::Resul
 
 #[tokio::test]
 async fn test_partition_then_map_ordered_error_propagation() -> anyhow::Result<()> {
-    // Arrange - partition by type, then extract names/species
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -83,8 +80,6 @@ async fn test_partition_then_map_ordered_error_propagation() -> anyhow::Result<(
         unwrap_value(Some(unwrap_stream(&mut animal_species, 500).await)).into_inner(),
         "Dog"
     );
-
-    // Error propagates through map
     assert!(matches!(
         unwrap_stream(&mut person_names, 500).await,
         StreamItem::Error(_)
@@ -99,7 +94,7 @@ async fn test_partition_then_map_ordered_error_propagation() -> anyhow::Result<(
 
 #[tokio::test]
 async fn test_filter_then_partition_error_propagation() -> anyhow::Result<()> {
-    // Arrange - filter for persons only, then partition by age
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let persons_only = stream.filter_ordered(|data| matches!(data, TestData::Person(_)));
     let (mut adults, mut young) = persons_only.partition(|data| match data {
@@ -113,8 +108,7 @@ async fn test_filter_then_partition_error_propagation() -> anyhow::Result<()> {
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "filter chain error",
     )))?;
-
-    // Assert - values arrive
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut young, 500).await)).value,
         &person_alice()
@@ -123,8 +117,6 @@ async fn test_filter_then_partition_error_propagation() -> anyhow::Result<()> {
         &unwrap_value(Some(unwrap_stream(&mut adults, 500).await)).value,
         &person_bob()
     );
-
-    // Error propagates from filter through partition to both outputs
     assert!(matches!(
         unwrap_stream(&mut adults, 500).await,
         StreamItem::Error(_)
@@ -139,7 +131,7 @@ async fn test_filter_then_partition_error_propagation() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_map_then_partition_error_propagation() -> anyhow::Result<()> {
-    // Arrange - extract ages from persons, then partition by threshold
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let ages = stream.map_ordered(|s: Sequenced<TestData>| match s.into_inner() {
         TestData::Person(p) => Sequenced::new(p.age),
@@ -148,8 +140,8 @@ async fn test_map_then_partition_error_propagation() -> anyhow::Result<()> {
     let (mut adults, mut young) = ages.partition(|&age| age >= 30);
 
     // Act
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25 - young
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?; // age 30 - adult
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "map chain error",
     )))?;
@@ -163,8 +155,6 @@ async fn test_map_then_partition_error_propagation() -> anyhow::Result<()> {
         unwrap_value(Some(unwrap_stream(&mut adults, 500).await)).into_inner(),
         30
     );
-
-    // Error propagates
     assert!(matches!(
         unwrap_stream(&mut young, 500).await,
         StreamItem::Error(_)
@@ -179,7 +169,7 @@ async fn test_map_then_partition_error_propagation() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_scan_ordered_error_propagation() -> anyhow::Result<()> {
-    // Arrange - partition by type, then accumulate
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -216,8 +206,6 @@ async fn test_partition_then_scan_ordered_error_propagation() -> anyhow::Result<
         .into_inner(),
         4
     );
-
-    // Error propagates through scan
     assert!(matches!(
         unwrap_stream(&mut age_sum, 500).await,
         StreamItem::Error(_)
@@ -232,11 +220,10 @@ async fn test_partition_then_scan_ordered_error_propagation() -> anyhow::Result<
 
 #[tokio::test]
 async fn test_partition_error_terminates_downstream_chains() -> anyhow::Result<()> {
-    // Arrange - complex chain: partition -> map -> filter
+    // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // Extract person ages, filter for adults
     let mut persons_chain = persons
         .map_ordered(|s: Sequenced<TestData>| match s.into_inner() {
             TestData::Person(p) => Sequenced::new(p.age),
@@ -244,7 +231,6 @@ async fn test_partition_error_terminates_downstream_chains() -> anyhow::Result<(
         })
         .filter_ordered(|&age| age >= 25);
 
-    // Extract animal legs, filter for > 2 legs
     let mut animals_chain = animals
         .map_ordered(|s: Sequenced<TestData>| match s.into_inner() {
             TestData::Animal(a) => Sequenced::new(a.legs),
@@ -259,7 +245,7 @@ async fn test_partition_error_terminates_downstream_chains() -> anyhow::Result<(
         "chain termination",
     )))?;
 
-    // Assert - values flow through chains
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut persons_chain, 500).await)).into_inner(),
         25
@@ -268,8 +254,6 @@ async fn test_partition_error_terminates_downstream_chains() -> anyhow::Result<(
         unwrap_value(Some(unwrap_stream(&mut animals_chain, 500).await)).into_inner(),
         4
     );
-
-    // Error terminates both chains
     assert!(matches!(
         unwrap_stream(&mut persons_chain, 500).await,
         StreamItem::Error(_)
@@ -278,8 +262,6 @@ async fn test_partition_error_terminates_downstream_chains() -> anyhow::Result<(
         unwrap_stream(&mut animals_chain, 500).await,
         StreamItem::Error(_)
     ));
-
-    // Both chains are ended
     assert_stream_ended(&mut persons_chain, 500).await;
     assert_stream_ended(&mut animals_chain, 500).await;
 

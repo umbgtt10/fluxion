@@ -14,35 +14,29 @@ use tokio::task::JoinHandle;
 use crate::domain::{events::UnifiedEvent, TimestampedEvent};
 use crate::legacy::database::LegacyDatabase;
 
-/// User adapter that manages the legacy database polling and timestamp wrapping
 pub struct UserAdapter {
     task_handle: Option<JoinHandle<()>>,
 }
 
 impl UserAdapter {
-    /// Create a new UserAdapter
     pub fn new() -> Self {
         Self { task_handle: None }
     }
 
-    /// Start polling the legacy database and return a stream of timestamped events
     pub fn start(
         &mut self,
         cancel_token: CancellationToken,
     ) -> impl Stream<Item = TimestampedEvent> + Send + Unpin {
         let (user_tx, user_rx) = unbounded();
 
-        // Spawn legacy database poller
         let db = LegacyDatabase::new();
         let task_handle = spawn(db.poll_users(user_tx, cancel_token));
 
         self.task_handle = Some(task_handle);
 
-        // Create stream that wraps with timestamps
         user_rx.map(|user| TimestampedEvent::new(UnifiedEvent::UserAdded(user)))
     }
 
-    /// Shutdown and wait for task completion
     pub async fn shutdown(mut self) {
         if let Some(handle) = self.task_handle.take() {
             let _ = handle.await;

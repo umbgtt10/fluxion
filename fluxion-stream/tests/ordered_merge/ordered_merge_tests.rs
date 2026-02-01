@@ -37,13 +37,13 @@ async fn test_ordered_merge_timestamp_ordering() -> anyhow::Result<()> {
 
     let mut merged = s1.ordered_merge(vec![s2]);
 
-    // Act: Send out-of-order timestamps on different streams
+    // Act
     tx1.unbounded_send(Sequenced::with_timestamp(person_charlie(), 3))?;
     tx2.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
     tx1.unbounded_send(Sequenced::with_timestamp(person_dave(), 4))?;
     tx2.unbounded_send(Sequenced::with_timestamp(person_bob(), 2))?;
 
-    // Assert: Items must be emitted in timestamp order
+    // Assert
     assert_eq!(
         unwrap_stream(&mut merged, 200).await.into_inner(),
         person_alice()
@@ -52,13 +52,11 @@ async fn test_ordered_merge_timestamp_ordering() -> anyhow::Result<()> {
         unwrap_stream(&mut merged, 200).await.into_inner(),
         person_bob()
     );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_charlie()
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_charlie())
     );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_dave()
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_dave())
     );
 
     Ok(())
@@ -73,18 +71,15 @@ async fn test_ordered_merge_multiple_streams() -> anyhow::Result<()> {
 
     let mut merged = person_stream.ordered_merge(vec![animal_stream, plant_stream]);
 
-    // Act: Interleave timestamps across three streams
+    // Act
     person_tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 5))?;
     animal_tx.unbounded_send(Sequenced::with_timestamp(animal_dog(), 1))?;
     plant_tx.unbounded_send(Sequenced::with_timestamp(plant_rose(), 3))?;
     animal_tx.unbounded_send(Sequenced::with_timestamp(animal_spider(), 2))?;
     plant_tx.unbounded_send(Sequenced::with_timestamp(plant_oak(), 4))?;
 
-    // Assert: Expect sequence in timestamp order (1,2,3,4,5)
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        animal_dog()
-    );
+    // Assert
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &animal_dog()));
     assert_eq!(
         unwrap_stream(&mut merged, 200).await.into_inner(),
         animal_spider()
@@ -93,10 +88,7 @@ async fn test_ordered_merge_multiple_streams() -> anyhow::Result<()> {
         unwrap_stream(&mut merged, 200).await.into_inner(),
         plant_rose()
     );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        plant_oak()
-    );
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &plant_oak()));
     assert_eq!(
         unwrap_stream(&mut merged, 200).await.into_inner(),
         person_alice()
@@ -117,7 +109,6 @@ async fn test_ordered_merge_ends_when_all_closed() -> anyhow::Result<()> {
     tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
     tx2.unbounded_send(Sequenced::with_timestamp(person_bob(), 2))?;
 
-    // Consume both
     let _ = unwrap_stream(&mut merged, 200).await;
     let _ = unwrap_stream(&mut merged, 200).await;
 
@@ -138,31 +129,22 @@ async fn test_ordered_merge_one_stream_closes_early() -> anyhow::Result<()> {
 
     let mut merged = s1.ordered_merge(vec![s2]);
 
-    // Act: Stream 1 sends and closes
+    // Act
     tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
     tx1.unbounded_send(Sequenced::with_timestamp(person_bob(), 2))?;
     drop(tx1);
 
-    // Stream 2 continues
     tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 3))?;
     tx2.unbounded_send(Sequenced::with_timestamp(animal_spider(), 4))?;
 
-    // Assert: All values should be emitted in order
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_alice()
+    // Assert
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_alice())
     );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_bob()
-    );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        animal_dog()
-    );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        animal_spider()
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_bob()));
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &animal_dog()));
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &animal_spider())
     );
 
     drop(tx2);
@@ -179,25 +161,22 @@ async fn test_ordered_merge_duplicate_timestamps() -> anyhow::Result<()> {
 
     let mut merged = s1.ordered_merge(vec![s2]);
 
-    // Act: Send items with same timestamp from different streams
+    // Act
     tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
     tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 1))?;
     tx1.unbounded_send(Sequenced::with_timestamp(person_bob(), 2))?;
     tx2.unbounded_send(Sequenced::with_timestamp(animal_spider(), 2))?;
 
-    // Assert: Both items with timestamp 1 should be emitted, then both with timestamp 2
-    // Order between items with same timestamp is implementation-defined but stable
+    // Assert
     let first = unwrap_stream(&mut merged, 200).await.into_inner();
     let second = unwrap_stream(&mut merged, 200).await.into_inner();
     let third = unwrap_stream(&mut merged, 200).await.into_inner();
     let fourth = unwrap_stream(&mut merged, 200).await.into_inner();
 
-    // Items with timestamp 1
     assert!(first == person_alice() || first == animal_dog());
     assert!(second == person_alice() || second == animal_dog());
     assert_ne!(first, second);
 
-    // Items with timestamp 2
     assert!(third == person_bob() || third == animal_spider());
     assert!(fourth == person_bob() || fourth == animal_spider());
     assert_ne!(third, fourth);
@@ -213,13 +192,13 @@ async fn test_ordered_merge_large_volume() -> anyhow::Result<()> {
 
     let mut merged = s1.ordered_merge(vec![s2]);
 
-    // Act: Send 1000 items from each stream
+    // Act
     for i in 0..1000 {
         tx1.unbounded_send(Sequenced::with_timestamp(i * 2, (i * 2) as u64))?;
         tx2.unbounded_send(Sequenced::with_timestamp(i * 2 + 1, (i * 2 + 1) as u64))?;
     }
 
-    // Assert: All 2000 items should be emitted in order
+    // Assert
     for expected in 0..2000 {
         let item = unwrap_stream(&mut merged, 200).await;
         assert_eq!(item.into_inner(), expected);
@@ -236,7 +215,7 @@ async fn test_ordered_merge_parallel_sends() -> anyhow::Result<()> {
 
     let mut merged = s1.ordered_merge(vec![s2]);
 
-    // Act: Spawn tasks that send concurrently
+    // Act
     spawn(async move {
         for i in 0..100 {
             tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), (i * 2) as u64))
@@ -251,7 +230,7 @@ async fn test_ordered_merge_parallel_sends() -> anyhow::Result<()> {
         }
     });
 
-    // Assert: All 200 items should be emitted in timestamp order
+    // Assert
     let mut last_ts = 0;
     for _ in 0..200 {
         let item = unwrap_stream(&mut merged, 500).await;
@@ -275,7 +254,7 @@ async fn test_ordered_merge_preserves_timestamp_metadata() -> anyhow::Result<()>
     tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 10))?;
     tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 20))?;
 
-    // Assert: Timestamps should be preserved
+    // Assert
     let first = unwrap_stream(&mut merged, 200).await;
     assert_eq!(first.timestamp(), 10);
     assert_eq!(first.into_inner(), person_alice());
@@ -289,20 +268,18 @@ async fn test_ordered_merge_preserves_timestamp_metadata() -> anyhow::Result<()>
 
 #[tokio::test]
 async fn test_ordered_merge_does_not_wait_for_all_streams() -> anyhow::Result<()> {
-    // Arrange: This tests that ordered_merge emits as soon as items are available,
-    // not waiting for all streams to have items (unlike combine_latest)
+    // Arrange
     let (tx1, s1) = test_channel::<Sequenced<TestData>>();
     let (_tx2, s2) = test_channel::<Sequenced<TestData>>();
 
     let mut merged = s1.ordered_merge(vec![s2]);
 
-    // Act: Only send on stream 1
+    // Act
     tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
 
-    // Assert: Should emit immediately without waiting for stream 2
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_alice()
+    // Assert
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_alice())
     );
 
     Ok(())
@@ -317,7 +294,7 @@ async fn test_ordered_merge_mixed_types_in_enum() -> anyhow::Result<()> {
 
     let mut merged = person_stream.ordered_merge(vec![animal_stream, plant_stream]);
 
-    // Act: Send mixed types interleaved
+    // Act
     person_tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
     animal_tx.unbounded_send(Sequenced::with_timestamp(animal_dog(), 2))?;
     plant_tx.unbounded_send(Sequenced::with_timestamp(plant_rose(), 3))?;
@@ -325,30 +302,18 @@ async fn test_ordered_merge_mixed_types_in_enum() -> anyhow::Result<()> {
     animal_tx.unbounded_send(Sequenced::with_timestamp(animal_bird(), 5))?;
     plant_tx.unbounded_send(Sequenced::with_timestamp(plant_sunflower(), 6))?;
 
-    // Assert: All types should be emitted in timestamp order
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_alice()
+    // Assert
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_alice())
     );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        animal_dog()
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &animal_dog()));
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &plant_rose()));
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_bob()));
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &animal_bird())
     );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        plant_rose()
-    );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_bob()
-    );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        animal_bird()
-    );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        plant_sunflower()
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &plant_sunflower())
     );
 
     Ok(())

@@ -16,7 +16,6 @@ async fn test_distinct_until_changed_by_with_filter_composition() -> anyhow::Res
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    // Composition: filter -> distinct_until_changed_by (age parity check)
     let mut result = stream
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
         .distinct_until_changed_by(|a, b| {
@@ -28,26 +27,37 @@ async fn test_distinct_until_changed_by_with_filter_composition() -> anyhow::Res
                 TestData::Person(p) => p.age,
                 _ => 0,
             };
-            age_a % 2 == age_b % 2 // Same parity
+            age_a % 2 == age_b % 2
         });
 
-    // Act & Assert
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25 (odd) - emitted
+    // Act
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         person_alice()
     );
 
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // Age 35 (odd) - filtered by distinct_by
+    // Act
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30 (even) - emitted (parity changed)
+    // Act
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         person_bob()
     );
 
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // Age 28 (even) - filtered by distinct_by
+    // Act
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     drop(tx);
@@ -60,7 +70,6 @@ async fn test_distinct_until_changed_by_with_map_composition() -> anyhow::Result
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    // Composition: map to age -> distinct_until_changed_by (age difference threshold)
     let mut result = stream
         .map_ordered(|s| {
             let age = match &s.value {
@@ -69,34 +78,40 @@ async fn test_distinct_until_changed_by_with_map_composition() -> anyhow::Result
             };
             Sequenced::new(age)
         })
-        .distinct_until_changed_by(|a, b| {
-            // Consider ages "same" if difference < 3
-            (*a as i32 - *b as i32).abs() < 3
-        });
+        .distinct_until_changed_by(|a, b| (*a as i32 - *b as i32).abs() < 3);
 
-    // Act & Assert
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25 - emitted (first)
+    // Act
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         25
     );
 
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // Age 28, diff=3 >= 3 - emitted
+    // Act
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         28
     );
 
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30, diff=2 (from 28) < 3 - filtered
+    // Act
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // Age 35, diff=5 (from 28) >= 3 - emitted
+    // Act
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         35
     );
-
-    drop(tx);
 
     Ok(())
 }
@@ -107,7 +122,6 @@ async fn test_distinct_until_changed_by_with_combine_latest_composition() -> any
     let (stream1_tx, stream1) = test_channel::<Sequenced<TestData>>();
     let (stream2_tx, stream2) = test_channel::<Sequenced<TestData>>();
 
-    // Composition: combine_latest -> map to max age -> distinct_until_changed_by (threshold)
     let mut result = stream1
         .combine_latest(vec![stream2], |_| true)
         .map_ordered(|state| {
@@ -122,25 +136,23 @@ async fn test_distinct_until_changed_by_with_combine_latest_composition() -> any
             let max = *ages.iter().max().unwrap();
             Sequenced::new(max)
         })
-        .distinct_until_changed_by(|a, b| {
-            // Only emit if max age changes by at least 10
-            (*a as i32 - *b as i32).abs() < 10
-        });
+        .distinct_until_changed_by(|a, b| (*a as i32 - *b as i32).abs() < 10);
 
-    // Act & Assert
-    stream1_tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30
-    stream2_tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25
+    // Act
+    stream1_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    stream2_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         30
-    ); // max(30, 25) = 30
+    );
 
-    // Small changes - filtered
-    stream1_tx.unbounded_send(Sequenced::new(person_charlie()))?; // Age 35, max=35, diff=5 < 10
+    // Act
+    stream1_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
-
-    drop(stream1_tx);
-    drop(stream2_tx);
 
     Ok(())
 }

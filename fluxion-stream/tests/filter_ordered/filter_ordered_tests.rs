@@ -18,16 +18,20 @@ async fn test_filter_ordered_basic_predicate() -> anyhow::Result<()> {
     let (tx, stream) = test_channel();
     let mut result = stream.filter_ordered(|data| matches!(data, TestData::Person(_)));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         person_alice()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
 
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         person_bob()
@@ -38,7 +42,7 @@ async fn test_filter_ordered_basic_predicate() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_filter_ordered_age_threshold() -> anyhow::Result<()> {
-    // Arrange - filter people by age > 30
+    // Arrange
     let (tx, stream) = test_channel();
     let mut result = stream.filter_ordered(|data| match data {
         TestData::Person(p) => p.age > 30,
@@ -46,8 +50,8 @@ async fn test_filter_ordered_age_threshold() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - kept
-    tx.unbounded_send(Sequenced::new(person_diane()))?; // 40 - kept
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_diane()))?;
 
     // Assert
     assert_eq!(
@@ -69,7 +73,7 @@ async fn test_filter_ordered_empty_stream() -> anyhow::Result<()> {
     let mut result = stream.filter_ordered(|_| true);
 
     // Act
-    drop(tx); // Close the channel
+    drop(tx);
 
     // Assert
     assert_stream_ended(&mut result, 500).await;
@@ -81,7 +85,7 @@ async fn test_filter_ordered_empty_stream() -> anyhow::Result<()> {
 async fn test_filter_ordered_all_filtered_out() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
-    let mut result = stream.filter_ordered(|_| false); // Filter everything
+    let mut result = stream.filter_ordered(|_| false);
 
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
@@ -99,7 +103,7 @@ async fn test_filter_ordered_all_filtered_out() -> anyhow::Result<()> {
 async fn test_filter_ordered_none_filtered() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
-    let mut result = stream.filter_ordered(|_| true); // Keep everything
+    let mut result = stream.filter_ordered(|_| true);
 
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
@@ -128,20 +132,19 @@ async fn test_filter_ordered_preserves_ordering() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel();
 
-    // Keep only people with even ages
     let mut result = stream.filter_ordered(|data| match data {
         TestData::Person(p) => p.age % 2 == 0,
         _ => false,
     });
 
-    // Act - send in sequence order
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // 25 - odd, filtered
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // 30 - even, kept
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - odd, filtered
-    tx.unbounded_send(Sequenced::new(person_diane()))?; // 40 - even, kept
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // 28 - even, kept
+    // Act
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_diane()))?;
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
 
-    // Assert - ordering preserved for kept items
+    // Assert
     let r1 = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     let r2 = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     let r3 = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
@@ -149,8 +152,6 @@ async fn test_filter_ordered_preserves_ordering() -> anyhow::Result<()> {
     assert_eq!(r1.value, person_bob());
     assert_eq!(r2.value, person_diane());
     assert_eq!(r3.value, person_dave());
-
-    // Verify sequence numbers are in order
     assert!(r1.timestamp() < r2.timestamp());
     assert!(r2.timestamp() < r3.timestamp());
 
@@ -159,7 +160,7 @@ async fn test_filter_ordered_preserves_ordering() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_filter_ordered_multiple_types() -> anyhow::Result<()> {
-    // Arrange - keep only animals
+    // Arrange
     let (tx, stream) = test_channel();
     let mut result = stream.filter_ordered(|data| matches!(data, TestData::Animal(_)));
 
@@ -185,7 +186,7 @@ async fn test_filter_ordered_multiple_types() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_filter_ordered_complex_predicate() -> anyhow::Result<()> {
-    // Arrange - complex predicate: people with age between 30-40 OR animals
+    // Arrange
     let (tx, stream) = test_channel();
     let mut result = stream.filter_ordered(|data| match data {
         TestData::Person(p) => p.age >= 30 && p.age <= 40,
@@ -194,11 +195,11 @@ async fn test_filter_ordered_complex_predicate() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // 25 - filtered
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // 30 - kept
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // kept
-    tx.unbounded_send(Sequenced::new(plant_rose()))?; // filtered
-    tx.unbounded_send(Sequenced::new(person_diane()))?; // 40 - kept
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(plant_rose()))?;
+    tx.unbounded_send(Sequenced::new(person_diane()))?;
 
     // Assert
     assert_eq!(
@@ -239,7 +240,7 @@ async fn test_filter_ordered_single_item() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_filter_ordered_with_pattern_matching() -> anyhow::Result<()> {
-    // Arrange - filter by name pattern
+    // Arrange
     let (tx, stream) = test_channel();
     let mut result = stream.filter_ordered(|data| match data {
         TestData::Person(p) => p.name.starts_with('A') || p.name.starts_with('D'),
@@ -247,11 +248,11 @@ async fn test_filter_ordered_with_pattern_matching() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Alice - kept
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Bob - filtered
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // Charlie - filtered
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // Dave - kept
-    tx.unbounded_send(Sequenced::new(person_diane()))?; // Diane - kept
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
+    tx.unbounded_send(Sequenced::new(person_diane()))?;
 
     // Assert
     assert_eq!(
@@ -272,25 +273,25 @@ async fn test_filter_ordered_with_pattern_matching() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_filter_ordered_alternating_pattern() -> anyhow::Result<()> {
-    // Arrange - Keep every other person by creating a stateful filter
+    // Arrange
     let (tx, stream) = test_channel();
 
     let mut count = 0;
     let mut result = stream.filter_ordered(move |data| {
         if matches!(data, TestData::Person(_)) {
             count += 1;
-            count % 2 == 1 // Keep odd-numbered people
+            count % 2 == 1
         } else {
             false
         }
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // 1st person - kept
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // 2nd person - filtered
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // not a person - filtered
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // 3rd person - kept
-    tx.unbounded_send(Sequenced::new(person_diane()))?; // 4th person - filtered
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_diane()))?;
 
     // Assert
     assert_eq!(

@@ -30,9 +30,7 @@ async fn test_tap_after_filter_ordered() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
-
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered out - tap not called
-
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     unwrap_stream(&mut result, 500).await;
 
@@ -58,7 +56,6 @@ async fn test_tap_before_filter_ordered() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     unwrap_stream(&mut result, 500).await;
@@ -95,9 +92,8 @@ async fn test_tap_after_map_ordered() -> anyhow::Result<()> {
     unwrap_stream(&mut result, 500).await;
 
     // Assert
-    let values = observed.lock();
     assert!(matches!(
-        &values[0],
+        &observed.lock()[0],
         TestData::Person(p) if p.name.starts_with("Dr. ")
     ));
 
@@ -129,13 +125,11 @@ async fn test_tap_before_map_ordered() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_alice()))?;
 
     // Assert
-    let result_item = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    let values = observed.lock();
-    assert_eq!(values[0], person_alice()); // Original
     assert!(matches!(
-        &result_item.value,
+        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         TestData::Person(p) if p.name.starts_with("Dr. ")
-    )); // Transformed
+    ));
+    assert_eq!(observed.lock()[0], person_alice());
 
     Ok(())
 }
@@ -167,23 +161,21 @@ async fn test_multiple_taps_in_pipeline() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
-
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered after first tap
-
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     unwrap_stream(&mut result, 500).await;
 
     // Assert
-    assert_eq!(counter1.load(Ordering::SeqCst), 3); // All items
-    assert_eq!(counter2.load(Ordering::SeqCst), 2); // After filter
-    assert_eq!(counter3.load(Ordering::SeqCst), 2); // After map
+    assert_eq!(counter1.load(Ordering::SeqCst), 3);
+    assert_eq!(counter2.load(Ordering::SeqCst), 2);
+    assert_eq!(counter3.load(Ordering::SeqCst), 2);
 
     Ok(())
 }
 
 #[tokio::test]
 async fn test_tap_chained_taps() -> anyhow::Result<()> {
-    // Arrange - multiple consecutive taps
+    // Arrange
     let counter1 = Arc::new(AtomicUsize::new(0));
     let counter1_clone = counter1.clone();
     let counter2 = Arc::new(AtomicUsize::new(0));
@@ -201,11 +193,10 @@ async fn test_tap_chained_taps() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     unwrap_stream(&mut result, 500).await;
 
-    // Assert - both taps called for each item
+    // Assert
     assert_eq!(counter1.load(Ordering::SeqCst), 2);
     assert_eq!(counter2.load(Ordering::SeqCst), 2);
 
@@ -219,11 +210,9 @@ async fn test_tap_with_filter_that_blocks_all() -> anyhow::Result<()> {
     let counter_clone = counter.clone();
 
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
-    let mut result = stream
-        .filter_ordered(|_| false) // Block everything
-        .tap(move |_| {
-            counter_clone.fetch_add(1, Ordering::SeqCst);
-        });
+    let mut result = stream.filter_ordered(|_| false).tap(move |_| {
+        counter_clone.fetch_add(1, Ordering::SeqCst);
+    });
 
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
@@ -264,28 +253,23 @@ async fn test_tap_complex_pipeline() -> anyhow::Result<()> {
             observed_after_transform_clone.lock().push(value.clone());
         });
 
-    // Act - send items and consume results
-    // Only Person items pass through filter, others are dropped
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // passes filter
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // passes filter
-    drop(tx); // Close to end stream
-
-    // Consume all items that pass the filter
-    unwrap_stream(&mut result, 500).await; // alice
-    unwrap_stream(&mut result, 500).await; // bob
+    // Act
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    drop(tx);
+    unwrap_stream(&mut result, 500).await;
+    unwrap_stream(&mut result, 500).await;
 
     // Assert
-    // Before filter tap sees only the items that were polled through
-    // (filter drops non-matching items synchronously, tap still fires)
-    let before = observed_before_filter.lock();
-    assert_eq!(*before, [person_alice(), person_bob()]); // Only persons consumed
+    assert_eq!(
+        *observed_before_filter.lock(),
+        [person_alice(), person_bob()]
+    );
 
-    let after = observed_after_transform.lock();
-    assert_eq!(after.len(), 2); // Only persons after filter
+    assert_eq!(observed_after_transform.lock().len(), 2);
 
-    // Verify transformation was applied
     assert!(matches!(
-        &after[0],
+        &observed_after_transform.lock()[0],
         TestData::Person(p) if p.name == p.name.to_uppercase()
     ));
 

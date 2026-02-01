@@ -14,31 +14,17 @@ use futures::StreamExt;
 use std::pin::Pin;
 use std::time::Duration;
 
-/// WASM-compatible stream type (without Send+Sync bounds required for threading)
 pub type WasmStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>>>>;
 
-/// Factory for creating time-operator streams from the combined stream.
-///
-/// In WASM, timer-based streams cannot be shared (multi-subscribed) because
-/// they contain !Send JavaScript callbacks. This struct creates fresh streams
-/// on-demand instead of storing shared instances.
 pub struct ResultStreams<'a> {
     combined_stream: &'a CombinedStream,
 }
 
 impl<'a> ResultStreams<'a> {
-    /// Creates a new factory for time-operator streams.
-    ///
-    /// # Arguments
-    ///
-    /// * `combined_stream` - The combined stream to apply operators to
     pub fn new(combined_stream: &'a CombinedStream) -> Self {
         Self { combined_stream }
     }
 
-    /// Creates a new debounced stream (700ms).
-    ///
-    /// Note: Each call creates a new stream subscription. Not shareable in WASM.
     pub fn subscribe_debounce(&self) -> WasmStream<u32> {
         Box::pin(
             self.combined_stream
@@ -48,9 +34,6 @@ impl<'a> ResultStreams<'a> {
         )
     }
 
-    /// Creates a new delayed stream (1000ms).
-    ///
-    /// Note: Each call creates a new stream subscription. Not shareable in WASM.
     pub fn subscribe_delay(&self) -> WasmStream<u32> {
         Box::pin(
             self.combined_stream
@@ -60,9 +43,6 @@ impl<'a> ResultStreams<'a> {
         )
     }
 
-    /// Creates a new sampled stream (1000ms).
-    ///
-    /// Note: Each call creates a new stream subscription. Not shareable in WASM.
     pub fn subscribe_sample(&self) -> WasmStream<u32> {
         Box::pin(
             self.combined_stream
@@ -72,9 +52,6 @@ impl<'a> ResultStreams<'a> {
         )
     }
 
-    /// Creates a new throttled stream (800ms).
-    ///
-    /// Note: Each call creates a new stream subscription. Not shareable in WASM.
     pub fn subscribe_throttle(&self) -> WasmStream<u32> {
         Box::pin(
             self.combined_stream
@@ -84,9 +61,6 @@ impl<'a> ResultStreams<'a> {
         )
     }
 
-    /// Creates a new stream with timeout (2000ms).
-    ///
-    /// Note: Each call creates a new stream subscription. Not shareable in WASM.
     pub fn subscribe_timeout(&self) -> WasmStream<u32> {
         Box::pin(
             self.combined_stream

@@ -18,20 +18,31 @@ async fn test_window_emits_complete_windows() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(2);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         vec![person_alice(), person_bob()]
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         vec![person_charlie(), animal_dog()]
@@ -46,12 +57,17 @@ async fn test_window_emits_partial_on_completion() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(3);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     drop(tx);
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         vec![person_alice(), person_bob()]
@@ -68,20 +84,28 @@ async fn test_window_size_one() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = Box::pin(stream.window_by_count::<Sequenced<Vec<TestData>>>(1));
 
-    // Act & Assert - each item becomes its own window
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         vec![person_alice()]
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         vec![person_bob()]
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         vec![person_charlie()]
@@ -96,20 +120,34 @@ async fn test_window_large_size() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(5);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_cat()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         vec![
@@ -130,14 +168,22 @@ async fn test_window_no_emission_until_complete() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(3);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         vec![person_alice(), person_bob(), person_charlie()]
@@ -152,15 +198,23 @@ async fn test_window_timestamp_from_last_item() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(3);
 
-    // Act - send items with explicit timestamps
+    // Act
     tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 100))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(Sequenced::with_timestamp(person_bob(), 200))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(Sequenced::with_timestamp(person_charlie(), 300))?; // last in window
     let window = unwrap_stream(&mut result, 500).await.unwrap();
+
+    // Assert
     assert_eq!(window.timestamp(), 300);
     assert_eq!(
         window.into_inner(),
@@ -176,12 +230,12 @@ async fn test_window_partial_timestamp_from_last() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(5);
 
-    // Act - send only 2 items then complete
+    // Act
     tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 100))?;
     tx.unbounded_send(Sequenced::with_timestamp(person_bob(), 200))?;
     drop(tx);
 
-    // Assert - partial window has timestamp from last item (200)
+    // Assert
     let window = unwrap_stream(&mut result, 500).await.unwrap();
     assert_eq!(window.timestamp(), 200);
     assert_eq!(window.into_inner(), vec![person_alice(), person_bob()]);
@@ -195,10 +249,10 @@ async fn test_window_empty_stream_no_output() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(3);
 
-    // Act - close stream without sending anything
+    // Act
     drop(tx);
 
-    // Assert - no windows emitted
+    // Assert
     assert_stream_ended(&mut result, 100).await;
 
     Ok(())
@@ -210,7 +264,7 @@ async fn test_window_multiple_complete_windows() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = Box::pin(stream.window_by_count::<Sequenced<Vec<TestData>>>(2));
 
-    // Act - send 6 items
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
@@ -218,7 +272,7 @@ async fn test_window_multiple_complete_windows() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(plant_rose()))?;
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
-    // Assert - 3 complete windows
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         vec![person_alice(), person_bob()]
@@ -248,7 +302,7 @@ async fn test_window_mixed_types() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
     tx.unbounded_send(Sequenced::new(plant_rose()))?;
 
-    // Assert - window contains mixed types
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         vec![person_alice(), animal_dog(), plant_rose()]
@@ -260,6 +314,9 @@ async fn test_window_mixed_types() -> anyhow::Result<()> {
 #[tokio::test]
 #[should_panic(expected = "window size must be at least 1")]
 async fn test_window_zero_panics() {
+    // Arrange
     let (_, stream) = test_channel::<Sequenced<TestData>>();
+
+    // Act & Assert
     let _ = stream.window_by_count::<Sequenced<Vec<TestData>>>(0);
 }

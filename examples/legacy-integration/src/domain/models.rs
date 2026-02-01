@@ -4,7 +4,6 @@
 
 use serde::{Deserialize, Serialize};
 
-/// User record from legacy database (JSON format)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq)]
 pub struct User {
     pub id: u64,
@@ -12,7 +11,6 @@ pub struct User {
     pub email: String,
 }
 
-/// Order event from legacy message queue (XML format)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Order {
     pub id: u64,
@@ -31,7 +29,6 @@ pub enum OrderStatus {
     Failed,
 }
 
-/// Inventory update from legacy file watcher (CSV format)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Inventory {
     pub product_id: u64,

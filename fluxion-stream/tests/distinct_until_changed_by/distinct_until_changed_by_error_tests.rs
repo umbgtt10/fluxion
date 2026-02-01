@@ -20,10 +20,12 @@ async fn test_distinct_until_changed_by_propagates_errors() -> anyhow::Result<()
         _ => false,
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("Alice".to_string(), 25),
     ))))?;
+
+    // Assert
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -34,15 +36,19 @@ async fn test_distinct_until_changed_by_propagates_errors() -> anyhow::Result<()
         panic!("Expected Person");
     }
 
-    // Send error - should be propagated
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Test error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut distinct, 500).await,
         StreamItem::Error(_)
     ));
 
-    // Continue after error
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -65,15 +71,19 @@ async fn test_distinct_until_changed_by_error_at_start() -> anyhow::Result<()> {
         _ => false,
     });
 
-    // Act & Assert: Error before any value
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut distinct, 500).await,
         StreamItem::Error(_)
     ));
 
-    // First value after error
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -84,10 +94,12 @@ async fn test_distinct_until_changed_by_error_at_start() -> anyhow::Result<()> {
         panic!("Expected Person");
     }
 
-    // Duplicate - filtered
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("Alice Updated".to_string(), 25),
     ))))?;
+
+    // Assert
     assert_no_element_emitted(&mut distinct, 100).await;
 
     Ok(())
@@ -102,8 +114,10 @@ async fn test_distinct_until_changed_by_multiple_errors() -> anyhow::Result<()> 
         _ => false,
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -114,21 +128,28 @@ async fn test_distinct_until_changed_by_multiple_errors() -> anyhow::Result<()> 
         panic!("Expected Person");
     }
 
-    // Multiple errors in a row
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut distinct, 500).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut distinct, 500).await,
         StreamItem::Error(_)
     ));
 
-    // Continue with values
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -151,8 +172,10 @@ async fn test_distinct_until_changed_by_error_between_duplicates() -> anyhow::Re
         _ => false,
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -163,27 +186,35 @@ async fn test_distinct_until_changed_by_error_between_duplicates() -> anyhow::Re
         panic!("Expected Person");
     }
 
-    // Duplicate - filtered
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("Alice Updated".to_string(), 25),
     ))))?;
+
+    // Assert
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    // Error
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut distinct, 500).await,
         StreamItem::Error(_)
     ));
 
-    // Another duplicate after error - should still be filtered
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("Alice v3".to_string(), 25),
     ))))?;
+
+    // Assert
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    // Different value
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -206,33 +237,41 @@ async fn test_distinct_until_changed_by_preserves_state_after_error() -> anyhow:
         _ => false,
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
         .into_inner();
+
+    // Assert
     if let TestData::Person(p) = person {
         assert_eq!(p.age, 25);
     } else {
         panic!("Expected Person");
     }
 
-    // Error should not reset state
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut distinct, 500).await,
         StreamItem::Error(_)
     ));
 
-    // Same value as before error - should be filtered
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("Alice Updated".to_string(), 25),
     ))))?;
+
+    // Assert
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    // Different value - emitted
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -255,8 +294,9 @@ async fn test_distinct_until_changed_by_alternating_errors_and_values() -> anyho
         _ => false,
     });
 
-    // Act & Assert: Interleave values and errors
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
     let person = unwrap_stream(&mut distinct, 500)
         .await
         .unwrap()
@@ -334,7 +374,6 @@ async fn test_distinct_until_changed_by_error_only_stream() -> anyhow::Result<()
 async fn test_distinct_until_changed_by_custom_comparer_with_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
-    // Case-insensitive name comparison
     let mut distinct = stream.distinct_until_changed_by(|a, b| match (a, b) {
         (TestData::Person(p1), TestData::Person(p2)) => {
             p1.name.to_lowercase() == p2.name.to_lowercase()
@@ -356,26 +395,22 @@ async fn test_distinct_until_changed_by_custom_comparer_with_errors() -> anyhow:
         panic!("Expected Person");
     }
 
-    // Same (case-insensitive) - filtered
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("HELLO".to_string(), 25),
     ))))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    // Error
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut distinct, 500).await,
         StreamItem::Error(_)
     ));
 
-    // Still same (case-insensitive) - filtered
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("HeLLo".to_string(), 25),
     ))))?;
     assert_no_element_emitted(&mut distinct, 100).await;
 
-    // Different value
     tx.unbounded_send(StreamItem::Value(Sequenced::new(TestData::Person(
         Person::new("world".to_string(), 30),
     ))))?;

@@ -247,7 +247,6 @@ async fn shared_with_mixed_combine_latest_combines_subscribers() -> anyhow::Resu
         vec![person_charlie(), person_alice()]
     );
 
-    // Send Bob
     tx2.unbounded_send(Sequenced::new(person_bob()))?;
 
     // After Bob is sent, we get a combination with Bob on one side
@@ -262,7 +261,6 @@ async fn shared_with_mixed_combine_latest_combines_subscribers() -> anyhow::Resu
         vec![person_charlie(), person_bob()]
     );
 
-    // Send Bob
     tx1.unbounded_send(Sequenced::new(person_diane()))?;
 
     // After Bob is sent, we get a combination with Bob on one side
@@ -310,7 +308,6 @@ async fn shared_with_transient_combine_latest_combines_subscribers() -> anyhow::
         vec![person_alice(), person_alice()]
     );
 
-    // Send Bob
     tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // After Bob is sent, we get a combination with Bob on one side
@@ -374,7 +371,6 @@ async fn shared_with_transient_filtered_combine_latest_combines_subscribers() ->
         vec![person_alice(), person_alice()]
     );
 
-    // Send Bob
     tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // After Bob is sent, both subscribers receive it with the same timestamp, so we get (Bob, Bob)
@@ -406,9 +402,9 @@ async fn shared_with_distinct_until_changed_tracks_state_per_subscriber() -> any
 
     // Act - send sequence with duplicates: Alice, Alice, Bob, Bob, Alice
     tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // duplicate - should be filtered
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // duplicate - should be filtered
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
     tx.unbounded_send(Sequenced::new(person_alice()))?; // back to Alice - should emit
 
     // Assert sub1 - receives Alice, Bob, Alice (duplicates filtered)

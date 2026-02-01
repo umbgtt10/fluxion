@@ -17,10 +17,8 @@ impl LegacyFileWatcher {
         Self
     }
 
-    /// Simulates watching a directory for new CSV inventory files
-    /// In production: notify::Watcher on /var/legacy/inventory/*.csv
     pub async fn watch_inventory(self, tx: UnboundedSender<Inventory>, cancel: CancellationToken) {
-        println!("  ?? Legacy File Watcher: Watching for CSV inventory files (every 4s)");
+        println!("  Legacy File Watcher: Watching for CSV inventory files (every 4s)");
 
         let products = [
             (100, "Widget A"),
@@ -39,7 +37,7 @@ impl LegacyFileWatcher {
         loop {
             futures::select! {
                 _ = cancel.cancelled().fuse() => {
-                    println!("  ?? Legacy File Watcher: Shutting down");
+                    println!("  Legacy File Watcher: Shutting down");
                     break;
                 }
                 _ = sleep(Duration::from_secs(4)).fuse() => {
@@ -51,7 +49,6 @@ impl LegacyFileWatcher {
                         quantity: fastrand::u32(10..100),
                     };
 
-                    // Simulate CSV parsing (legacy file contains CSV data)
                     let _csv = format!("{},{},{}", inventory.product_id, inventory.product_name, inventory.quantity);
 
                     if tx.unbounded_send(inventory).is_err() {

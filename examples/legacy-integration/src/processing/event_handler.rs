@@ -2,11 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Event handling and display logic
-
 use crate::domain::{events::UnifiedEvent, repository::OrderAnalytics};
 
-/// Process a single event and print appropriate output
 pub fn process_event(event: &UnifiedEvent, event_count: u32, analytics: &OrderAnalytics) {
     match event {
         UnifiedEvent::UserAdded(user) => {
@@ -21,13 +18,11 @@ pub fn process_event(event: &UnifiedEvent, event_count: u32, analytics: &OrderAn
                 event_count, order.id, order.user_id, order.quantity, order.product_id
             );
 
-            // Display aggregated analytics after each order
             println!(
                 "   ?? Analytics: {} total orders, {} total units ordered",
                 analytics.total_orders, analytics.total_quantity
             );
 
-            // Show top ordered product
             if let Some((product_id, count)) = analytics
                 .orders_by_product
                 .iter()
@@ -45,7 +40,6 @@ pub fn process_event(event: &UnifiedEvent, event_count: u32, analytics: &OrderAn
                 event_count, inventory.product_name, inventory.quantity
             );
 
-            // Alert if inventory is low
             if inventory.quantity < 20 {
                 println!(
                     "??  [{:04}]   LOW INVENTORY ALERT for {}!",
@@ -56,7 +50,6 @@ pub fn process_event(event: &UnifiedEvent, event_count: u32, analytics: &OrderAn
     }
 }
 
-/// Print final analytics summary
 pub fn print_final_analytics(analytics: &OrderAnalytics, event_count: u32, shutdown: bool) {
     if shutdown {
         println!("\n?? SHUTDOWN - FINAL ANALYTICS:");

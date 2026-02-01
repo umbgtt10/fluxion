@@ -32,7 +32,7 @@ async fn test_combine_with_previous_start_with() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
     tx.unbounded_send(Sequenced::new(person_dave()))?;
 
-    // Assert - First two from start_with (prepended)
+    // Assert
     let item1 = unwrap_stream(&mut result, 100).await.unwrap();
     assert!(item1.previous.is_none() && item1.current.into_inner() == person_alice());
 
@@ -42,11 +42,9 @@ async fn test_combine_with_previous_start_with() -> anyhow::Result<()> {
             && item2.current.into_inner() == person_bob()
     );
 
-    // Third from stream - charlie (first emission has previous = None since it''s first from actual stream)
     let item3 = unwrap_stream(&mut result, 100).await.unwrap();
     assert!(item3.previous.is_none() && item3.current.into_inner() == person_charlie());
 
-    // Fourth from stream - dave (has previous = charlie)
     let item4 = unwrap_stream(&mut result, 100).await.unwrap();
     assert!(
         item4.previous.clone().map(|p| p.into_inner()) == Some(person_charlie())
@@ -58,7 +56,7 @@ async fn test_combine_with_previous_start_with() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ordered_merge_then_start_with() -> anyhow::Result<()> {
-    // Arrange
+    // Arrange & Act
     let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
     let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
 
@@ -67,11 +65,9 @@ async fn test_ordered_merge_then_start_with() -> anyhow::Result<()> {
         StreamItem::Value(Sequenced::new(person_bob())),
     ];
 
-    // Merge streams then prepend values
     let mut stream = s1_rx.ordered_merge(vec![s2_rx]).start_with(initial_values);
 
-    // Act & Assert
-    // 1. Should receive initial values immediately
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         person_alice()
@@ -81,15 +77,19 @@ async fn test_ordered_merge_then_start_with() -> anyhow::Result<()> {
         person_bob()
     );
 
-    // 2. Send to stream 1
+    // Act
     s1_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         person_charlie()
     );
 
-    // 3. Send to stream 2
+    // Act
     s2_tx.unbounded_send(Sequenced::new(person_dave()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         person_dave()

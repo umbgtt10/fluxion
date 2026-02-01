@@ -16,15 +16,12 @@ async fn test_map_ordered_then_skip_items_propagates_error() -> anyhow::Result<(
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Map then skip 1
     let mut result = stream.map_ordered(|x| x).skip_items(1);
 
     // Act
-    // 1. Send Alice -> Skipped
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    // 2. Send Error -> Should be propagated (not skipped, as it's the 2nd item)
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
 
     // Assert
@@ -33,7 +30,6 @@ async fn test_map_ordered_then_skip_items_propagates_error() -> anyhow::Result<(
         StreamItem::Error(_)
     ));
 
-    // 3. Send Bob -> Emitted
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,

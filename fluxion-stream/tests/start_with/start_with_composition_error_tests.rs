@@ -13,30 +13,32 @@ use fluxion_test_utils::{
 
 #[tokio::test]
 async fn test_map_ordered_then_start_with_propagates_error() -> anyhow::Result<()> {
-    // Arrange
+    // Arrange & Act
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Map then start with Bob
     let mut result = stream
         .map_ordered(|x| x)
         .start_with(vec![StreamItem::Value(Sequenced::new(person_bob()))]);
 
-    // Act & Assert
-    // 1. Should emit Bob first (from start_with)
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(val) if val.clone().into_inner() == person_bob()
     ));
 
-    // 2. Send Alice -> Should be emitted
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(val) if val.clone().into_inner() == person_alice()
     ));
 
-    // 3. Send Error -> Should be propagated
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

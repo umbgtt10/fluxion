@@ -245,7 +245,7 @@ async fn each_subscriber_can_chain_independently() {
 
 #[tokio::test]
 async fn source_operators_run_once_per_emission() {
-    // Arrange - track how many times the map runs
+    // Arrange
     let call_count = Arc::new(AtomicUsize::new(0));
     let call_count_clone = call_count.clone();
 
@@ -301,7 +301,7 @@ async fn drop_closes_subject_and_cancels_task() {
 
 #[tokio::test]
 async fn empty_source_stream_completes_subscribers_immediately() {
-    // Arrange - create a channel and immediately drop the sender
+    // Arrange
     let (tx, rx) = test_channel::<Sequenced<TestData>>();
     drop(tx); // Source completes immediately with no items
 

@@ -399,7 +399,6 @@ async fn test_two_heterogeneous_streams_packed_into_enum() -> anyhow::Result<()>
     let (tx1, rx1) = unbounded::<SensorReading>();
     let (tx2, rx2) = unbounded::<StatusUpdate>();
 
-    // Map each channel into a fluxion stream producing the shared enum
     let stream1 = rx1.into_fluxion_stream_map(|s| CombinedEvent::Sensor(s.clone()));
     let stream2 = rx2.into_fluxion_stream_map(|s| CombinedEvent::Status(s.clone()));
 
@@ -422,12 +421,12 @@ async fn test_two_heterogeneous_streams_packed_into_enum() -> anyhow::Result<()>
     let expected2 = CombinedEvent::Sensor(expected_reading2.clone());
     let expected3 = CombinedEvent::Status(expected_status1.clone());
 
-    // Act: send one item on each channel in interleaved order
+    // Act
     tx1.try_send(expected_reading1.clone())?;
     tx2.try_send(expected_status1.clone())?;
     tx1.try_send(expected_reading2.clone())?;
 
-    // Assert: collect the three emitted items and verify ordering and variants
+    // Assert
     assert_eq!(
         unwrap_stream(&mut merged, 500).await,
         StreamItem::Value(expected1)

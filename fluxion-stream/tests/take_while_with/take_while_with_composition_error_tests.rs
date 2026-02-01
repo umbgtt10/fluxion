@@ -17,8 +17,6 @@ async fn test_take_while_with_error_propagation_at_end_of_chain() -> anyhow::Res
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<Person>>();
     let (condition_tx, condition_stream) = test_channel_with_errors::<Sequenced<bool>>();
 
-    // Chain: map_ordered -> take_while_with
-    // We map the source stream (increment age), then take while condition is true
     let mut result = source_stream
         .map_ordered(|seq| {
             let ts = HasTimestamp::timestamp(&seq);
@@ -28,46 +26,52 @@ async fn test_take_while_with_error_propagation_at_end_of_chain() -> anyhow::Res
         })
         .take_while_with(condition_stream, |cond| *cond);
 
-    // Act & Assert
+    // Act
     condition_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(true, 0)))?;
     condition_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(false, 3)))?;
-
-    // Act & Assert
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Alice".to_string(), 10),
         1,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value.age == 11
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error1")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Bob".to_string(), 20),
         2,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value.age == 21
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         Person::new("Charlie".to_string(), 30),
         3,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value.age == 31
     ));
-
-    drop(source_tx);
-    drop(condition_tx);
 
     Ok(())
 }

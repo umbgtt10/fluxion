@@ -16,22 +16,28 @@ async fn test_tap_passes_through_errors() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.tap(|_| {});
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         person_alice()
     );
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(_)
     ));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         person_bob()
@@ -54,10 +60,8 @@ async fn test_tap_not_called_for_errors() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     unwrap_stream(&mut result, 500).await;
 
@@ -73,20 +77,28 @@ async fn test_tap_multiple_errors_pass_through() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.tap(|_| {});
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(e) if e.to_string().contains("error 1")
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 2")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(e) if e.to_string().contains("error 2")
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 3")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(e) if e.to_string().contains("error 3")
@@ -109,16 +121,12 @@ async fn test_tap_interleaved_values_and_errors() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 2")))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
     unwrap_stream(&mut result, 500).await;
 
@@ -161,7 +169,6 @@ async fn test_tap_only_errors() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 2")))?;
     unwrap_stream(&mut result, 500).await;
 

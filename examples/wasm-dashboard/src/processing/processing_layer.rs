@@ -7,22 +7,12 @@ use crate::source::{SensorValue, SourceLayer};
 use fluxion_stream::share::SharedBoxStream;
 use fluxion_stream_time::WasmTimestamped;
 
-/// Processing layer - Stream transformation and composition
-///
-/// This layer sits between the source layer (raw sensors) and the orchestration
-/// layer (DashboardUpdater). It combines, filters, and applies time-based operators
-/// to create the 9 output streams needed by the dashboard.
 pub struct ProcessingLayer<'a> {
     source: &'a SourceLayer,
     combined_stream: CombinedStream,
 }
 
 impl<'a> ProcessingLayer<'a> {
-    /// Creates a new processing layer from a source layer
-    ///
-    /// # Arguments
-    ///
-    /// * `source` - The source layer containing sensor streams
     pub fn new(source: &'a SourceLayer) -> Self {
         let combined_stream = CombinedStream::new(source.sensor_streams());
 

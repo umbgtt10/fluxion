@@ -2,9 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Simulates a legacy database that produces JSON user records
-//! In production, this would poll a real database table
-
 use crate::domain::models::User;
 use fluxion_core::CancellationToken;
 use futures::channel::mpsc::UnboundedSender;
@@ -23,10 +20,8 @@ impl LegacyDatabase {
         }
     }
 
-    /// Simulates polling a database for new user records
-    /// In production: SELECT * FROM users WHERE processed = 0
     pub async fn poll_users(self, tx: UnboundedSender<User>, cancel: CancellationToken) {
-        println!("  ???  Legacy Database: Polling for new users (every 3s)");
+        println!("  Legacy Database: Polling for new users (every 3s)");
 
         let names = [
             "Alice Smith",
@@ -39,7 +34,7 @@ impl LegacyDatabase {
         loop {
             futures::select! {
                 _ = cancel.cancelled().fuse() => {
-                    println!("  ???  Legacy Database: Shutting down");
+                    println!("  Legacy Database: Shutting down");
                     break;
                 }
                 _ = sleep(Duration::from_secs(3)).fuse() => {
@@ -52,7 +47,6 @@ impl LegacyDatabase {
                         email: format!("{}@legacy.com", name.to_lowercase().replace(' ', ".")),
                     };
 
-                    // Simulate JSON serialization (legacy DB returns JSON strings)
                     let _json = serde_json::to_string(&user).unwrap();
 
                     if tx.unbounded_send(user).is_err() {

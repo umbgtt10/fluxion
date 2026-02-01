@@ -2,11 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Processing layer - Stream orchestration and business logic.
-//!
-//! This module provides stream processing, coordination, and wiring logic
-//! for the dashboard. It is independent of UI implementation details.
-
 mod combined_stream;
 mod dashboard_orchestrator;
 mod processing_layer;

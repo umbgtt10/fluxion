@@ -2,10 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-/// Macro that generates the complete ordered merge implementation.
-///
-/// This macro eliminates duplication between multi-threaded and single-threaded
-/// implementations, which differ only in trait bounds (Send + Sync vs not).
 macro_rules! define_ordered_merge_impl {
     ($($bounds:tt)*) => {
         use alloc::boxed::Box;

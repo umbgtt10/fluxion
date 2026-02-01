@@ -8,7 +8,6 @@ use web_sys::{Document, Window};
 use crate::sensors::SensorSimulator;
 use crate::ui::UI;
 
-/// Main dashboard application
 pub struct Dashboard {
     _window: Window,
     _document: Document,
@@ -34,7 +33,6 @@ impl Dashboard {
     pub async fn run(&mut self) -> Result<(), JsValue> {
         web_sys::console::log_1(&"▶️ Dashboard starting...".into());
 
-        // Set up event listeners
         self.ui.setup_controls(&mut self.simulator)?;
 
         web_sys::console::log_1(&"✅ Dashboard running".into());

@@ -15,38 +15,43 @@ async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<(
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    // Chain multiple operators
     let mut result = stream
         .filter_ordered(|x| *x > 1) // Filter out first item
         .combine_with_previous()
         .map_ordered(|x| Sequenced::new(x.current.value * 10));
 
-    // Act & Assert Send value (filtered out)
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Send value (passes)
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 20
     ));
 
-    // Send error
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Continue
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 40
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(5, 5)))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 50
@@ -59,11 +64,10 @@ async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<(
 
 #[tokio::test]
 async fn test_multiple_errors_through_composition() -> anyhow::Result<()> {
-    // ASrrange
+    // Arrange
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
-    // Combine then transform
     let mut result = stream1
         .combine_latest(vec![stream2], |_| true)
         .combine_with_previous()
@@ -72,21 +76,18 @@ async fn test_multiple_errors_through_composition() -> anyhow::Result<()> {
             Sequenced::new(format!("Combined: {:?}", state.values()))
         });
 
-    // Send initial values
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 4)))?;
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref s) if s.value.contains("Combined"))
     );
 
-    // Send error
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Continue
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref s) if s.value.contains("Combined"))
@@ -112,22 +113,25 @@ async fn test_scan_ordered_error_propagation_with_map() -> anyhow::Result<()> {
         .scan_ordered(0, accumulator)
         .map_ordered(|sum: Sequenced<i32>| Sequenced::new(sum.into_inner() * 2));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 20 // sum=10, doubled=20
     ));
 
-    // Error doesn't affect accumulator state
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Accumulator continues from previous state
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(5, 3)))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(ref v) if v.value == 30 // sum=15, doubled=30

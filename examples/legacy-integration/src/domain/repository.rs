@@ -15,7 +15,6 @@ use super::{
     TimestampedEvent,
 };
 
-/// Aggregated order analytics
 #[derive(Debug, Clone, Default)]
 pub struct OrderAnalytics {
     pub total_orders: u64,
@@ -38,7 +37,6 @@ impl OrderAnalytics {
     }
 }
 
-/// Aggregated state repository built from multiple legacy sources
 pub struct Repository {
     pub users: HashMap<u64, User>,
     pub orders: HashMap<u64, Order>,
@@ -52,7 +50,6 @@ pub struct Repository {
 }
 
 impl Repository {
-    /// Create a new Repository with the given streams
     pub fn new(
         user_stream: impl Stream<Item = TimestampedEvent> + Send + Sync + Unpin + 'static,
         order_stream: impl Stream<Item = TimestampedEvent> + Send + Sync + Unpin + 'static,
@@ -68,7 +65,6 @@ impl Repository {
         }
     }
 
-    /// Create the aggregated FluxionStream from the stored streams
     pub fn create_stream(mut self) -> impl Stream<Item = StreamItem<TimestampedEvent>> {
         let user_stream = self
             .user_stream

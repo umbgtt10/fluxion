@@ -19,7 +19,6 @@ async fn shared_error_propagates_through_chained_operators() -> anyhow::Result<(
     // Arrange - source with operators, then share, then more operators per subscriber
     let (tx, rx) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Apply map before sharing
     let source = rx.map_ordered(|data| {
         let updated = match data.into_inner() {
             TestData::Person(p) => TestData::Person(Person::new(p.name, p.age + 1)),
@@ -30,7 +29,6 @@ async fn shared_error_propagates_through_chained_operators() -> anyhow::Result<(
 
     let shared = source.share();
 
-    // Each subscriber chains further
     let mut sub1 = shared
         .subscribe()
         .unwrap()
@@ -88,13 +86,11 @@ async fn shared_with_on_error_allows_selective_handling() -> anyhow::Result<()> 
 
     let shared = source.share();
 
-    // Subscriber 1: consumes "transient" errors, propagates others
     let mut tolerant = shared
         .subscribe()
         .unwrap()
         .on_error(|err| err.to_string().contains("transient"));
 
-    // Subscriber 2: no error handling, receives all errors
     let mut strict = shared.subscribe().unwrap();
 
     // Act - send value, transient error, value, fatal error

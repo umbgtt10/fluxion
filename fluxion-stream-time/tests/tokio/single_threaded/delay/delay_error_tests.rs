@@ -83,7 +83,6 @@ async fn test_delay_multiple_errors_with_values_in_flight() -> anyhow::Result<()
         timer.now(),
     )))?;
 
-    // Send error while Alice is in flight
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
 
     // Assert - error passes through immediately
@@ -92,7 +91,6 @@ async fn test_delay_multiple_errors_with_values_in_flight() -> anyhow::Result<()
         StreamItem::Error(_)
     ));
 
-    // Send another value and error
     tx.unbounded_send(StreamItem::Value(TokioTimestamped::new(
         person_bob(),
         timer.now(),

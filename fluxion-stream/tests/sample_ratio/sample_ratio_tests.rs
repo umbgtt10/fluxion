@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Basic tests for `sample_ratio` operator.
-
 use fluxion_stream::SampleRatioExt;
 use fluxion_test_utils::helpers::{
     assert_no_element_emitted, assert_stream_ended, test_channel, unwrap_all, unwrap_stream,
@@ -17,24 +15,32 @@ use fluxion_test_utils::test_data::{
 
 #[tokio::test]
 async fn test_sample_ratio_one_emits_all() -> anyhow::Result<()> {
-    // Arrange - ratio 1.0 should emit all items
+    // Arrange
     let (tx, stream) = test_channel();
     let mut result = stream.sample_ratio(1.0, 42);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &animal_dog()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(plant_rose()))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &plant_rose()
@@ -67,7 +73,7 @@ async fn test_sample_ratio_send_dropped_empty_stream() -> anyhow::Result<()> {
     let mut result = stream.sample_ratio(0.5, 42);
 
     // Act
-    drop(tx); // Close the channel
+    drop(tx);
 
     // Assert
     assert_stream_ended(&mut result, 500).await;
@@ -117,8 +123,7 @@ async fn test_sample_ratio_deterministic_with_same_seed() -> anyhow::Result<()> 
             .await
             .into_iter()
             .map(|s| s.value)
-            .collect::<Vec<_>>(),
-        "Same seeds should usually produce the same results"
+            .collect::<Vec<_>>()
     );
 
     Ok(())
@@ -165,8 +170,7 @@ async fn test_sample_ratio_different_seeds_produce_different_results() -> anyhow
             .await
             .into_iter()
             .map(|s| s.value)
-            .collect::<Vec<_>>(),
-        "Different seeds should usually produce different results"
+            .collect::<Vec<_>>()
     );
 
     Ok(())
@@ -185,16 +189,16 @@ async fn test_sample_ratio_preserves_item_order() -> anyhow::Result<()> {
 
     // Assert
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_alice()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_alice()
     );
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_bob()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_bob()
     );
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_charlie()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_charlie()
     );
 
     Ok(())
@@ -215,8 +219,8 @@ async fn test_sample_ratio_boundary_values() -> anyhow::Result<()> {
     // Assert
     assert_no_element_emitted(&mut result1, 500).await;
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result2, 500).await)).value,
-        &person_alice()
+        unwrap_value(Some(unwrap_stream(&mut result2, 500).await)).value,
+        person_alice()
     );
 
     Ok(())
@@ -225,13 +229,19 @@ async fn test_sample_ratio_boundary_values() -> anyhow::Result<()> {
 #[tokio::test]
 #[should_panic(expected = "ratio must be between 0.0 and 1.0")]
 async fn test_sample_ratio_panics_on_negative() {
+    // Arrange
     let (_, stream) = test_channel::<Sequenced<TestData>>();
+
+    // Act & Assert
     let _ = stream.sample_ratio(-0.1, 42);
 }
 
 #[tokio::test]
 #[should_panic(expected = "ratio must be between 0.0 and 1.0")]
 async fn test_sample_ratio_panics_on_greater_than_one() {
+    // Arrange
     let (_, stream) = test_channel::<Sequenced<TestData>>();
+
+    // Act & Assert
     let _ = stream.sample_ratio(1.1, 42);
 }

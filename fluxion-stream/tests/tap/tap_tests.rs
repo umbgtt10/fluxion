@@ -22,23 +22,31 @@ async fn test_tap_values_pass_through_unchanged() -> anyhow::Result<()> {
     let (tx, stream) = test_channel();
     let mut result = stream.tap(|_| {});
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &person_alice()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        person_alice()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
+    // Assert
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &animal_dog()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        animal_dog()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(plant_rose()))?;
+
+    // Assert
     assert_eq!(
-        &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
-        &plant_rose()
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
+        plant_rose()
     );
 
     Ok(())
@@ -58,14 +66,12 @@ async fn test_tap_side_effect_called_for_each_value() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
     unwrap_stream(&mut result, 500).await;
 
-    // Assert - side effect called 3 times
+    // Assert
     assert_eq!(counter.load(Ordering::SeqCst), 3);
 
     Ok(())
@@ -92,7 +98,7 @@ async fn test_tap_receives_correct_values() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(plant_rose()))?;
     unwrap_stream(&mut result, 500).await;
 
-    // Assert - correct values observed
+    // Assert
     assert_eq!(
         *observed.lock(),
         [person_alice(), animal_dog(), plant_rose()]
@@ -112,7 +118,7 @@ async fn test_tap_empty_stream() -> anyhow::Result<()> {
         counter_clone.fetch_add(1, Ordering::SeqCst);
     });
 
-    // Act & Assert - stream stays open but no items sent
+    // Act & Assert
     assert_no_element_emitted(&mut result, 500).await;
     assert_eq!(counter.load(Ordering::SeqCst), 0);
 
@@ -125,20 +131,23 @@ async fn test_tap_preserves_timestamps() -> anyhow::Result<()> {
     let (tx, stream) = test_channel();
     let mut result = stream.tap(|_| {});
 
-    // Act & Assert
+    // Act
     let item1 = Sequenced::new(person_alice());
     let timestamp1 = item1.timestamp();
     tx.unbounded_send(item1)?;
 
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).timestamp(),
         timestamp1
     );
 
+    // Act
     let item2 = Sequenced::new(person_bob());
     let timestamp2 = item2.timestamp();
     tx.unbounded_send(item2)?;
 
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).timestamp(),
         timestamp2
@@ -161,10 +170,8 @@ async fn test_tap_multiple_types() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(Sequenced::new(animal_cat()))?;
     unwrap_stream(&mut result, 500).await;
-
     tx.unbounded_send(Sequenced::new(animal_bird()))?;
     unwrap_stream(&mut result, 500).await;
 
@@ -197,7 +204,6 @@ async fn test_tap_maintains_order() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
-    // Consume all
     unwrap_stream(&mut result, 500).await;
     unwrap_stream(&mut result, 500).await;
     unwrap_stream(&mut result, 500).await;

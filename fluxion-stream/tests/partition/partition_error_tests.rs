@@ -19,10 +19,10 @@ async fn test_partition_propagates_error_to_both_streams() -> anyhow::Result<()>
     let (mut persons, mut non_persons) =
         stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // Act - send an error
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
 
-    // Assert - both streams receive the error
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut persons, 500).await,
         StreamItem::Error(_)
@@ -33,7 +33,6 @@ async fn test_partition_propagates_error_to_both_streams() -> anyhow::Result<()>
         StreamItem::Error(_)
     ));
 
-    // Both streams should complete after error
     assert_stream_ended(&mut persons, 500).await;
     assert_stream_ended(&mut non_persons, 500).await;
 
@@ -54,7 +53,7 @@ async fn test_partition_error_after_values() -> anyhow::Result<()> {
         "error after values",
     )))?;
 
-    // Assert - values arrive before error
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut persons, 500).await)).value,
         &person_alice()
@@ -89,7 +88,7 @@ async fn test_partition_error_message_preserved() -> anyhow::Result<()> {
     let error_msg = "custom partition error";
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(error_msg)))?;
 
-    // Assert - error message is preserved in both streams
+    // Assert
     let result1 = unwrap_stream(&mut persons, 500).await;
     if let StreamItem::Error(e) = result1 {
         assert!(e.to_string().contains(error_msg));
@@ -124,7 +123,7 @@ async fn test_partition_mixed_values_and_error() -> anyhow::Result<()> {
     // These won't be received due to error termination
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_spider())))?;
 
-    // Assert - values arrive in correct streams
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut persons, 500).await)).value,
         &person_alice()
@@ -172,7 +171,7 @@ async fn test_partition_error_terminates_routing() -> anyhow::Result<()> {
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
 
-    // Assert - only error is received
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut persons, 500).await,
         StreamItem::Error(_)

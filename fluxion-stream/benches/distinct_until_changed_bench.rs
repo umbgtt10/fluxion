@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -6,14 +6,17 @@ use criterion::{BenchmarkId, Criterion, Throughput};
 use fluxion_core::StreamItem;
 use fluxion_stream::DistinctUntilChangedExt;
 use fluxion_test_utils::sequenced::Sequenced;
-use futures::stream::{self, StreamExt};
+use futures::{
+    stream::{self, StreamExt},
+    Stream,
+};
 use std::hint::black_box;
 use tokio::runtime::Runtime;
 
 fn make_stream_with_duplicates(
     size: usize,
     duplicate_factor: usize,
-) -> impl futures::Stream<Item = StreamItem<Sequenced<i32>>> {
+) -> impl Stream<Item = StreamItem<Sequenced<i32>>> {
     let items: Vec<Sequenced<i32>> = (0..size)
         .flat_map(|i| {
             std::iter::repeat_n(
@@ -26,7 +29,7 @@ fn make_stream_with_duplicates(
     stream::iter(items).map(StreamItem::Value)
 }
 
-fn make_stream_alternating(size: usize) -> impl futures::Stream<Item = StreamItem<Sequenced<i32>>> {
+fn make_stream_alternating(size: usize) -> impl Stream<Item = StreamItem<Sequenced<i32>>> {
     let items: Vec<Sequenced<i32>> = (0..size).map(|i| Sequenced::new((i % 2) as i32)).collect();
     stream::iter(items).map(StreamItem::Value)
 }

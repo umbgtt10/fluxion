@@ -2,9 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Simulates a legacy message queue producing XML order events
-//! In production, this would consume from RabbitMQ, ActiveMQ, etc.
-
 use fluxion_core::CancellationToken;
 use futures::{channel::mpsc::UnboundedSender, FutureExt};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -23,15 +20,13 @@ impl LegacyMessageQueue {
         }
     }
 
-    /// Simulates consuming XML messages from a legacy message queue
-    /// In production: channel.basic_consume(...) from RabbitMQ
     pub async fn consume_orders(self, tx: UnboundedSender<Order>, cancel: CancellationToken) {
-        println!("  📨 Legacy Message Queue: Consuming order events (every 2s)");
+        println!("  Legacy Message Queue: Consuming order events (every 2s)");
 
         loop {
             futures::select! {
                 _ = cancel.cancelled().fuse() => {
-                    println!("  📨 Legacy Message Queue: Shutting down");
+                    println!("  Legacy Message Queue: Shutting down");
                     break;
                 }
                 _ = sleep(Duration::from_secs(2)).fuse() => {
@@ -45,7 +40,6 @@ impl LegacyMessageQueue {
                         status: Default::default(),
                     };
 
-                    // Simulate XML deserialization (legacy MQ sends XML)
                     let _xml = quick_xml::se::to_string(&order).unwrap();
 
                     if tx.unbounded_send(order).is_err() {

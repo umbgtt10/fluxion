@@ -14,8 +14,6 @@ async fn test_scan_ordered_chained() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    // First scan: running sum of ages
-    // Second scan: count of emissions
     let mut result = stream
         .scan_ordered::<Sequenced<i32>, _, _>(0, |sum: &mut i32, value: &TestData| {
             if let TestData::Person(p) = value {
@@ -28,8 +26,10 @@ async fn test_scan_ordered_chained() -> anyhow::Result<()> {
             *count
         });
 
-    // Act & Assert
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // age=25, sum=25, count=1
+    // Act
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(
             unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
@@ -38,19 +38,23 @@ async fn test_scan_ordered_chained() -> anyhow::Result<()> {
         1
     );
 
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // age=28, sum=53, count=2
+    // Act
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         2
     );
 
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // age=35, sum=88, count=3
+    // Act
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         3
     );
-
-    drop(tx);
 
     Ok(())
 }
@@ -60,9 +64,6 @@ async fn test_scan_ordered_composed_with_map_ordered() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    // Act: Chain map_ordered before scan_ordered
-    // 1. Map each item to value 10
-    // 2. Scan (accumulate) the values
     let mut result = stream.map_ordered(|_item| Sequenced::new(10)).scan_ordered(
         0,
         |sum: &mut i32, value: &i32| {
@@ -71,8 +72,10 @@ async fn test_scan_ordered_composed_with_map_ordered() -> anyhow::Result<()> {
         },
     );
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(
             unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await
@@ -81,26 +84,30 @@ async fn test_scan_ordered_composed_with_map_ordered() -> anyhow::Result<()> {
         10
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         20
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         30
     );
-
-    drop(tx);
 
     Ok(())
 }
 
 #[tokio::test]
 async fn test_ordered_merge_scan_ordered_name_change() -> anyhow::Result<()> {
-    // Arrange - track when name changes between consecutive items using scan_ordered
+    // Arrange
     let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
     let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
 
@@ -123,20 +130,28 @@ async fn test_ordered_merge_scan_ordered_name_change() -> anyhow::Result<()> {
         },
     );
 
-    // Act & Assert
+    // Act
     s1_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value::<Sequenced<String>>(Some(unwrap_stream(&mut stream, 500).await)).value,
         "First entry: Alice"
     );
 
+    // Act
     s2_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value::<Sequenced<String>>(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Same name: Alice"
     );
 
+    // Act
     s1_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value::<Sequenced<String>>(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Name changed from Alice to Bob"
@@ -147,7 +162,7 @@ async fn test_ordered_merge_scan_ordered_name_change() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_combine_latest_scan_ordered_total_age() -> anyhow::Result<()> {
-    // Arrange - maintain a running total of ages from combined streams
+    // Arrange
     let (person_tx, person_rx) = test_channel::<Sequenced<TestData>>();
     let (animal_tx, animal_rx) = test_channel::<Sequenced<TestData>>();
 
@@ -174,21 +189,29 @@ async fn test_combine_latest_scan_ordered_total_age() -> anyhow::Result<()> {
             },
         );
 
-    // Act & Assert
-    person_tx.unbounded_send(Sequenced::new(person_alice()))?; // 25
-    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?; // 0 (animal)
+    // Act
+    person_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value::<Sequenced<u32>>(Some(unwrap_stream(&mut stream, 500).await)).value,
         25
     );
 
-    person_tx.unbounded_send(Sequenced::new(person_bob()))?; // 30
+    // Act
+    person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value::<Sequenced<u32>>(Some(unwrap_stream(&mut stream, 500).await)).value,
         55
     );
 
-    person_tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35
+    // Act
+    person_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value::<Sequenced<u32>>(Some(unwrap_stream(&mut stream, 500).await)).value,
         90

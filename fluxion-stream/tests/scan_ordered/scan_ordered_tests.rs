@@ -20,26 +20,34 @@ async fn test_scan_ordered_count_people() -> anyhow::Result<()> {
         *count
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     let result = unwrap_stream::<Sequenced<i32>, _>(&mut counts, 500)
         .await
         .unwrap();
     assert_eq!(result.into_inner(), 1);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     let result = unwrap_stream::<Sequenced<i32>, _>(&mut counts, 500)
         .await
         .unwrap();
     assert_eq!(result.into_inner(), 2);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    // Assert
     let result = unwrap_stream::<Sequenced<i32>, _>(&mut counts, 500)
         .await
         .unwrap();
     assert_eq!(result.into_inner(), 3);
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut counts, 100).await;
 
     Ok(())
@@ -56,26 +64,34 @@ async fn test_scan_ordered_collect_names() -> anyhow::Result<()> {
         list.clone()
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     let result = unwrap_value(Some(
         unwrap_stream::<Sequenced<Vec<String>>, _>(&mut names, 500).await,
     ));
     assert_eq!(result.into_inner(), vec!["Alice"]);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     let result = unwrap_stream::<Sequenced<Vec<String>>, _>(&mut names, 500)
         .await
         .unwrap();
     assert_eq!(result.into_inner(), vec!["Alice", "Bob"]);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    // Assert
     let result = unwrap_stream::<Sequenced<Vec<String>>, _>(&mut names, 500)
         .await
         .unwrap();
     assert_eq!(result.into_inner(), vec!["Alice", "Bob", "Charlie"]);
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut names, 100).await;
 
     Ok(())
@@ -92,26 +108,37 @@ async fn test_scan_ordered_total_age() -> anyhow::Result<()> {
         *total
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?; // age 25
     let result = unwrap_value(Some(
         unwrap_stream::<Sequenced<u32>, _>(&mut total_ages, 500).await,
     ));
+
+    // Assert
     assert_eq!(result.into_inner(), 25);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?; // age 30
     let result = unwrap_stream::<Sequenced<u32>, _>(&mut total_ages, 500)
         .await
         .unwrap();
+
+    // Assert
     assert_eq!(result.into_inner(), 55);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?; // age 35
     let result = unwrap_stream::<Sequenced<u32>, _>(&mut total_ages, 500)
         .await
         .unwrap();
+
+    // Assert
     assert_eq!(result.into_inner(), 90);
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut total_ages, 100).await;
 
     Ok(())
@@ -126,18 +153,26 @@ async fn test_scan_ordered_format_summary() -> anyhow::Result<()> {
         format!("Item #{}: {}", count, data)
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     let result = unwrap_value(Some(
         unwrap_stream::<Sequenced<String>, _>(&mut summaries, 500).await,
     ));
+
+    // Assert
     assert_eq!(result.into_inner(), "Item #1: Person[name=Alice, age=25]");
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     let result = unwrap_stream(&mut summaries, 500).await.unwrap();
+
+    // Assert
     assert_eq!(result.into_inner(), "Item #2: Person[name=Bob, age=30]");
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut summaries, 100).await;
 
     Ok(())
@@ -155,22 +190,33 @@ async fn test_scan_ordered_min_max_age() -> anyhow::Result<()> {
         *state
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?; // age 30
     let result = unwrap_value(Some(
         unwrap_stream::<Sequenced<(u32, u32)>, _>(&mut age_range, 500).await,
     ));
+
+    // Assert
     assert_eq!(result.into_inner(), (30, 30));
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?; // age 25
     let result = unwrap_stream(&mut age_range, 500).await.unwrap();
+
+    // Assert
     assert_eq!(result.into_inner(), (25, 30));
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?; // age 35
     let result = unwrap_stream(&mut age_range, 500).await.unwrap();
+
+    // Assert
     assert_eq!(result.into_inner(), (25, 35));
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut age_range, 100).await;
 
     Ok(())
@@ -185,10 +231,10 @@ async fn test_scan_ordered_empty_stream() -> anyhow::Result<()> {
         *count
     });
 
-    // Act: Drop sender immediately
+    // Act
     drop(tx);
 
-    // Assert: Stream should end without emitting
+    // Assert
     assert_stream_ended::<_, StreamItem<Sequenced<i32>>>(&mut counts, 100).await;
 
     Ok(())
@@ -268,21 +314,29 @@ async fn test_scan_ordered_build_roster() -> anyhow::Result<()> {
         acc.clone()
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     let result = unwrap_value(Some(
         unwrap_stream::<Sequenced<String>, _>(&mut roster, 500).await,
     ));
+
+    // Assert
     assert_eq!(result.into_inner(), "Person[name=Alice, age=25]");
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     let result = unwrap_stream(&mut roster, 500).await.unwrap();
+
+    // Assert
     assert_eq!(
         result.into_inner(),
         "Person[name=Alice, age=25], Person[name=Bob, age=30]"
     );
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut roster, 100).await;
 
     Ok(())
@@ -305,22 +359,33 @@ async fn test_scan_ordered_average_age() -> anyhow::Result<()> {
             }
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?; // age 25
     let result = unwrap_value(Some(
         unwrap_stream::<Sequenced<u32>, _>(&mut averages, 500).await,
     ));
+
+    // Assert
     assert_eq!(result.into_inner(), 25);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?; // age 30
     let result = unwrap_stream(&mut averages, 500).await.unwrap();
+
+    // Assert
     assert_eq!(result.into_inner(), 27); // (25+30)/2
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?; // age 35
     let result = unwrap_stream(&mut averages, 500).await.unwrap();
+
+    // Assert
     assert_eq!(result.into_inner(), 30); // (25+30+35)/3
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut averages, 100).await;
 
     Ok(())
@@ -335,26 +400,37 @@ async fn test_scan_ordered_multiple_people() -> anyhow::Result<()> {
         list.clone()
     });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     let result = unwrap_value(Some(
         unwrap_stream::<Sequenced<Vec<TestData>>, _>(&mut history, 500).await,
     ));
+
+    // Assert
     assert_eq!(result.into_inner(), vec![person_alice()]);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     let result = unwrap_stream(&mut history, 500).await.unwrap();
+
+    // Assert
     assert_eq!(result.into_inner(), vec![person_alice(), person_bob()]);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
     let result = unwrap_stream(&mut history, 500).await.unwrap();
+
+    // Assert
     assert_eq!(
         result.into_inner(),
         vec![person_alice(), person_bob(), person_charlie()]
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_dave()))?;
     let result = unwrap_stream(&mut history, 500).await.unwrap();
+
+    // Assert
     assert_eq!(
         result.into_inner(),
         vec![
@@ -365,7 +441,10 @@ async fn test_scan_ordered_multiple_people() -> anyhow::Result<()> {
         ]
     );
 
+    // Act
     drop(tx);
+
+    // Assert
     assert_stream_ended(&mut history, 100).await;
 
     Ok(())

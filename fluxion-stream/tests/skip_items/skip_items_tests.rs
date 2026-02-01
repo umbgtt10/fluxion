@@ -16,12 +16,12 @@ async fn test_skip_skips_initial_items() -> anyhow::Result<()> {
     let mut result = stream.skip_items(2);
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // Skipped
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // Skipped
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // Emitted
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
     drop(tx);
 
-    // Assert - Only third item emitted
+    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
         person_charlie()
@@ -43,7 +43,7 @@ async fn test_skip_more_than_available() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     drop(tx);
 
-    // Assert - No items emitted (all skipped)
+    // Assert
     assert_stream_ended(&mut result, 100).await;
 
     Ok(())

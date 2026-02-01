@@ -3,7 +3,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use fluxion_core::{FluxionError, StreamItem};
-
 use fluxion_stream::{
     CombineWithPreviousExt, DistinctUntilChangedExt, FilterOrderedExt, MapOrderedExt,
 };
@@ -26,36 +25,43 @@ async fn test_distinct_until_changed_error_propagation_in_composition() -> anyho
         })
         .combine_with_previous();
 
-    // Act & Assert
-    // 1. Send Alice (Age 25) -> Should be emitted
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(val) if val.current.value == person_alice() && val.previous.is_none()
     ));
 
-    // 2. Send Alice again -> Should be filtered by distinct_until_changed
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         2,
     )))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // 3. Send Error -> Should be propagated
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
-    // 4. Send Bob (Age 30) -> Should be emitted
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         4,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(val) if val.current.value == person_bob() && val.previous.as_ref().map(|p| &p.value) == Some(&person_alice())
@@ -71,19 +77,21 @@ async fn test_map_ordered_then_combine_with_previous_propagates_error() -> anyho
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut result = stream
-        .map_ordered(|x| x) // Identity map
-        .combine_with_previous();
+    let mut result = stream.map_ordered(|x| x).combine_with_previous();
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
-    // Send error
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -97,25 +105,23 @@ async fn test_filter_ordered_then_combine_with_previous_propagates_error() -> an
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    let mut result = stream
-        .filter_ordered(|_| true) // Pass everything
-        .combine_with_previous();
+    let mut result = stream.filter_ordered(|_| true).combine_with_previous();
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
 
-    // First emission
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
-    // Send error
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Filter error",
     )))?;
 
-    // Should propagate error
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

@@ -17,29 +17,36 @@ use fluxion_test_utils::{
 
 #[tokio::test]
 async fn test_ordered_merge_filter_ordered() -> anyhow::Result<()> {
-    // Arrange - merge two streams, then filter for specific types
     let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
     let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
 
     let mut stream = s1_rx
         .ordered_merge(vec![s2_rx])
-        .filter_ordered(|test_data| !matches!(test_data, TestData::Animal(_))); // Filter out animals
+        .filter_ordered(|test_data| !matches!(test_data, TestData::Animal(_)));
 
-    // Act & Assert
+    // Act
     s1_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut stream, 500).await,
         StreamItem::Value(val) if val.value == person_alice()
     ));
 
-    s2_tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered out
+    // Act
+    s2_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     s1_tx.unbounded_send(Sequenced::new(plant_rose()))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut stream, 500).await,
         StreamItem::Value(val) if val.value == plant_rose()
     ));
 
+    // Act
     s2_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut stream, 500).await,
         StreamItem::Value(val) if val.value == person_bob()
@@ -50,14 +57,13 @@ async fn test_ordered_merge_filter_ordered() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_combine_latest_filter_ordered() -> anyhow::Result<()> {
-    // Arrange - combine latest from multiple streams, then filter
+    // Arrange
     let (p_tx, p_rx) = test_channel::<Sequenced<TestData>>();
     let (a_tx, a_rx) = test_channel::<Sequenced<TestData>>();
 
     let mut stream = p_rx
         .combine_latest(vec![a_rx], |_| true)
         .filter_ordered(|wrapper| {
-            // Filter: only emit when first item is a person with age > 30
             let state = &wrapper.clone().into_inner();
             match &state.values()[0] {
                 TestData::Person(p) => p.age > 30,
@@ -65,12 +71,12 @@ async fn test_combine_latest_filter_ordered() -> anyhow::Result<()> {
             }
         });
 
-    // Act & Assert
-    p_tx.unbounded_send(Sequenced::new(person_alice()))?; // 25
+    // Act
+    p_tx.unbounded_send(Sequenced::new(person_alice()))?;
     a_tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    // Combined but filtered out (age <= 30)
+    p_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
-    p_tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut stream, 500).await,
         StreamItem::Value(val) if {
@@ -79,7 +85,10 @@ async fn test_combine_latest_filter_ordered() -> anyhow::Result<()> {
         }
     ));
 
-    p_tx.unbounded_send(Sequenced::new(person_diane()))?; // 40
+    // Act
+    p_tx.unbounded_send(Sequenced::new(person_diane()))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut stream, 500).await,
         StreamItem::Value(val) if {
@@ -96,7 +105,6 @@ async fn test_merge_with_chaining_filter_ordered() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
 
-    // Act: Chain merge_with with filter_ordered (only values > 2)
     let mut result = MergedStream::seed::<Sequenced<usize>>(0)
         .merge_with(stream, |_item: TestData, state| {
             *state += 1;
@@ -105,25 +113,31 @@ async fn test_merge_with_chaining_filter_ordered() -> anyhow::Result<()> {
         .into_stream()
         .filter_ordered(|&value| value > 2);
 
-    // Send first value - state will be 1 (filtered out)
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 500).await;
 
-    // Send second value - state will be 2 (filtered out)
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 500).await;
 
-    // Send third value - state will be 3 (kept)
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Value(val) if val.value == 3
     ));
 
-    // Send fourth value - state will be 4 (kept)
+    // Act
     tx.unbounded_send(Sequenced::new(person_dave()))?;
 
-    // Assert: fourth emission also passes
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Value(val) if val.value == 4
@@ -144,28 +158,37 @@ async fn test_scan_ordered_composed_with_filter() -> anyhow::Result<()> {
 
     let mut result = stream
         .scan_ordered(0, accumulator)
-        .filter_ordered(|count| count % 2 == 0); // Only even counts
+        .filter_ordered(|count| count % 2 == 0);
 
-    // Act & Assert
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // count=1, filtered out
+    // Act
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 500).await;
 
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // count=2, emitted
+    // Act
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
         StreamItem::Value(val) if val.value == 2
     ));
 
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // count=3, filtered out
+    // Act
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 500).await;
 
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // count=4, emitted
+    // Act
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 500).await,
         StreamItem::Value(val) if val.value == 4
     ));
-
-    drop(tx);
 
     Ok(())
 }

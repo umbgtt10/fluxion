@@ -20,8 +20,6 @@ async fn test_emit_when_propagates_error_from_scanned_source() -> anyhow::Result
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Source chain: scan_ordered -> emit_when
-    // Scan: Sum ages of persons
     let scanned_source = source_stream.scan_ordered(0u32, |acc, x| {
         if let TestData::Person(p) = x {
             *acc += p.age;
@@ -29,13 +27,11 @@ async fn test_emit_when_propagates_error_from_scanned_source() -> anyhow::Result
         person("Sum".to_string(), *acc)
     });
 
-    // Trigger: Animal stream
-    // Filter: Emit if Sum of ages > Animal legs * 10
     let mut result =
         scanned_source.emit_when(trigger_stream, |state: &CombinedState<TestData, u64>| {
             let values = state.values();
-            let source_val = &values[0]; // Scanned Person
-            let trigger_val = &values[1]; // Animal
+            let source_val = &values[0];
+            let trigger_val = &values[1];
 
             match (source_val, trigger_val) {
                 (TestData::Person(p), TestData::Animal(a)) => p.age > (a.legs * 10),
@@ -43,54 +39,49 @@ async fn test_emit_when_propagates_error_from_scanned_source() -> anyhow::Result
             }
         });
 
-    // Act & Assert
-    // 1. Send value to source (Alice 25) -> Sum 25
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
-
-    // 2. Send value to trigger (Dog 4 legs) -> Threshold 40. 25 > 40 is False.
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
         2,
     )))?;
 
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // 3. Send value to source (Bob 30) -> Sum 55.
-    // Trigger is still Dog (4 legs) -> Threshold 40.
-    // 55 > 40 is True. Should emit.
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         3,
     )))?;
 
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Sum" && p.age == 55)
     ));
 
-    // 4. Send error to source
+    // Act
     source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Source Error",
     )))?;
 
-    // Error should propagate
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(e) if e.to_string().contains("Source Error")
     ));
 
-    // 5. Recovery
-    // Source state preserved (55).
-    // Send Charlie (35) -> Sum 90.
-    // Trigger still Dog (40). 90 > 40 is True.
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_charlie(),
         5,
     )))?;
 
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Sum" && p.age == 90)
@@ -105,8 +96,6 @@ async fn test_emit_when_propagates_error_from_mapped_trigger() -> anyhow::Result
     let (source_tx, source_stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let (trigger_tx, trigger_stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
-    // Trigger chain: map_ordered -> emit_when (as filter stream)
-    // Map: Double the legs of the animal
     let mapped_trigger = trigger_stream.map_ordered(|x| {
         if let TestData::Animal(a) = &x.value {
             Sequenced::with_timestamp(animal(a.species.clone(), a.legs * 2), x.timestamp())
@@ -115,13 +104,11 @@ async fn test_emit_when_propagates_error_from_mapped_trigger() -> anyhow::Result
         }
     });
 
-    // Source: Person stream
-    // Filter: Person age > Mapped Animal legs
     let mut result =
         source_stream.emit_when(mapped_trigger, |state: &CombinedState<TestData, u64>| {
             let values = state.values();
-            let source_val = &values[0]; // Person
-            let trigger_val = &values[1]; // Mapped Animal
+            let source_val = &values[0];
+            let trigger_val = &values[1];
 
             match (source_val, trigger_val) {
                 (TestData::Person(p), TestData::Animal(a)) => p.age > a.legs,
@@ -129,57 +116,54 @@ async fn test_emit_when_propagates_error_from_mapped_trigger() -> anyhow::Result
             }
         });
 
-    // Act & Assert
-    // 1. Setup trigger (Dog 4 legs -> Mapped to 8 legs)
+    // Act
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
         1,
     )))?;
-
-    // 2. Send source value (Alice 25). 25 > 8 is True.
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         2,
     )))?;
 
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Alice")
     ));
 
-    // 3. Send error to trigger
+    // Act
     trigger_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Trigger Error",
     )))?;
 
-    // Error from trigger should propagate
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(e) if e.to_string().contains("Trigger Error")
     ));
 
-    // 4. Continue
-    // Update trigger to Spider (8 legs -> 16 legs)
+    // Act
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_spider(),
         4,
     )))?;
 
-    // Re-emission of Alice because she satisfies the new condition
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Alice")
     ));
 
-    // Send source value (Bob 30). 30 > 16 is True.
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_bob(),
         5,
     )))?;
 
-    let item = unwrap_stream(&mut result, 100).await;
+    // Assert
     assert!(matches!(
-        item,
+        unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Bob")
     ));
 

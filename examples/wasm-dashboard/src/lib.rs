@@ -18,19 +18,15 @@ use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use web_sys::{console, window};
 
-/// Entry point called from JavaScript
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
-    // Set panic hook for better error messages
     console_error_panic_hook::set_once();
 
-    // Log initialization
     console::log_1(&"🚀 Fluxion WASM Dashboard initializing...".into());
 
     Ok(())
 }
 
-/// Initialize and start the dashboard
 #[wasm_bindgen]
 pub async fn start_dashboard() -> Result<(), JsValue> {
     let window = window().ok_or("No window")?;
@@ -62,8 +58,6 @@ pub async fn start_dashboard() -> Result<(), JsValue> {
             }
         })));
 
-    console::log_1(&"✅ Dashboard UI created with 12 hooking points (close button wired)".into());
-
     console::log_1(&"✅ Dashboard running".into());
 
     close_token.cancelled().await;
@@ -79,15 +73,12 @@ async fn start(ui: Rc<RefCell<DashboardUI>>, stop_token: CancellationToken) {
 
     console::log_1(&"✅ Started".into());
 
-    // Create source layer
     let sensors = Sensors::new(stop_token.clone());
     let sensor_streams = SensorStreams::new(sensors);
     let source_layer = SourceLayer::new(sensor_streams);
 
-    // Create processing layer
     let processing_layer = ProcessingLayer::new(&source_layer);
 
-    // Create orchestrator with both traits
     let orchestrator = DashboardOrchestrator::new(processing_layer, ui_clone, stop_token);
 
     console::log_1(&"✅ Running".into());

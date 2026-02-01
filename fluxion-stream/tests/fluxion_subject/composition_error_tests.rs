@@ -16,7 +16,6 @@ use fluxion_test_utils::test_data::{
 
 #[tokio::test]
 async fn subject_at_start_complex_chain_propagates_error() -> anyhow::Result<()> {
-    // subject feeds a map -> filter -> combine_with_previous -> map chain
     let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
     let mut stream = subject
@@ -98,13 +97,11 @@ async fn subject_in_middle_gate_error_terminates_stream() -> anyhow::Result<()> 
 
 #[tokio::test]
 async fn subject_at_end_forwarding_chain_propagates_error() -> anyhow::Result<()> {
-    // simple combine_latest: one stream + one subject; subject injects error after first successful pair
     let (tx, rx) = test_channel_with_errors::<Sequenced<TestData>>();
     let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
 
     let mut combined = rx.combine_latest(vec![subject.subscribe().unwrap()], |_| true);
 
-    // First, provide both sides so combine_latest can emit a value
     tx.unbounded_send(StreamItem::Value(Sequenced::new(plant_rose())))?;
     subject.send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
@@ -117,7 +114,6 @@ async fn subject_at_end_forwarding_chain_propagates_error() -> anyhow::Result<()
         }
     ));
 
-    // Then inject an error from the subject side
     subject.send(StreamItem::Error(FluxionError::stream_error("sink fail")))?;
     assert!(matches!(
         unwrap_stream(&mut combined, 200).await,
