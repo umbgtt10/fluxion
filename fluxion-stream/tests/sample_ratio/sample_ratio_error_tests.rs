@@ -54,7 +54,7 @@ async fn test_sample_ratio_passes_through_errors_with_ratio_zero() -> anyhow::Re
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.sample_ratio(0.0, 42);
 
-    // Act - value should be dropped (ratio 0)
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
 
     // Act
@@ -66,7 +66,7 @@ async fn test_sample_ratio_passes_through_errors_with_ratio_zero() -> anyhow::Re
         StreamItem::Error(_)
     ),);
 
-    // Act - another value should be dropped
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
 
     // Act
@@ -199,7 +199,7 @@ async fn test_sample_ratio_error_on_empty_stream() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.sample_ratio(0.5, 42);
 
-    // Act - only send an error
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("lone error")))?;
 
     // Assert

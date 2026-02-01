@@ -21,7 +21,7 @@ async fn test_scan_ordered_propagates_errors() -> anyhow::Result<()> {
         *count
     });
 
-    // Act & Assert: First value
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
@@ -57,7 +57,7 @@ async fn test_scan_ordered_error_at_start() -> anyhow::Result<()> {
         *count
     });
 
-    // Act & Assert: Error before any values
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Initial error",
     )))?;
@@ -97,7 +97,7 @@ async fn test_scan_ordered_multiple_consecutive_errors() -> anyhow::Result<()> {
         names.clone()
     });
 
-    // Act & Assert: Value
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<Vec<String>>, _>(&mut result, 100).await,
@@ -147,7 +147,7 @@ async fn test_scan_ordered_error_between_values() -> anyhow::Result<()> {
         list.clone()
     });
 
-    // Act & Assert: First value
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<Vec<TestData>>, _>(&mut result, 100).await,
@@ -203,7 +203,7 @@ async fn test_scan_ordered_error_doesnt_reset_complex_state() -> anyhow::Result<
         },
     );
 
-    // Act & Assert: First value (age 25)
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<(u32, u32)>, _>(&mut result, 100).await,
@@ -246,7 +246,7 @@ async fn test_scan_ordered_only_errors() -> anyhow::Result<()> {
         *count
     });
 
-    // Act & Assert: Only send errors
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     assert!(matches!(
         unwrap_stream::<Sequenced<i32>, _>(&mut result, 100).await,
@@ -318,7 +318,7 @@ async fn test_scan_ordered_alternating_values_and_errors() -> anyhow::Result<()>
         *total
     });
 
-    // Act & Assert: Alternate between values and errors
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25
     assert!(matches!(
         unwrap_stream::<Sequenced<u32>, _>(&mut result, 100).await,

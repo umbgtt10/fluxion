@@ -25,7 +25,7 @@ async fn test_map_ordered_skip_items() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
     tx.unbounded_send(Sequenced::new(person_diane()))?;
 
-    // Assert - All items after skip
+    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
         person_bob()

@@ -237,10 +237,10 @@ async fn test_scan_ordered_empty_stream() -> anyhow::Result<()> {
         *count
     });
 
-    // Act: Drop sender immediately
+    // Act
     drop(tx);
 
-    // Assert: Stream should end without emitting
+    // Assert
     assert_stream_ended::<_, StreamItem<Sequenced<i32>>>(&mut counts, 100).await;
 
     Ok(())

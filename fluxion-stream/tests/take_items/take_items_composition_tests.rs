@@ -60,7 +60,7 @@ async fn test_skip_items_then_take_items() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_dave()))?;
     tx.unbounded_send(Sequenced::new(person_alice()))?;
 
-    // Assert - Only charlie and dave
+    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
         person_charlie()
@@ -92,7 +92,7 @@ async fn test_start_with_skip_items_take_items() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_diane()))?; // age=40
     tx.unbounded_send(Sequenced::new(person_alice()))?; // Should not be emitted (take limit)
 
-    // Assert - [dave, bob, charlie, diane]
+    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
         person_dave()

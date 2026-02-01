@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use fluxion_core::FluxionSubject;
+use fluxion_core::StreamItem;
 use fluxion_core::Timestamped;
 use fluxion_stream::prelude::*;
 use fluxion_stream::CombinedState;
@@ -18,6 +20,7 @@ use fluxion_test_utils::{
 
 #[tokio::test]
 async fn test_partition_then_filter_ordered() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel();
     let (persons, non_persons) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -29,11 +32,11 @@ async fn test_partition_then_filter_ordered() -> anyhow::Result<()> {
     let mut animals = non_persons.filter_ordered(|data| matches!(data, TestData::Animal(_)));
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // age 25 - filtered out
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // age 30 - kept
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // animal - kept
-    tx.unbounded_send(Sequenced::new(plant_rose()))?; // plant - filtered out
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // age 35 - kept
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(plant_rose()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     assert_eq!(
@@ -54,6 +57,7 @@ async fn test_partition_then_filter_ordered() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_map_ordered() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -96,6 +100,7 @@ async fn test_partition_then_map_ordered() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_filter_ordered_then_partition() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel();
 
     let adults = stream.filter_ordered(|data| match data {
@@ -108,10 +113,10 @@ async fn test_filter_ordered_then_partition() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // 25 - young adult
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - senior
-    tx.unbounded_send(Sequenced::new(person_dave()))?; // 28 - young adult
-    tx.unbounded_send(Sequenced::new(person_diane()))?; // 40 - senior
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    tx.unbounded_send(Sequenced::new(person_dave()))?;
+    tx.unbounded_send(Sequenced::new(person_diane()))?;
 
     // Assert
     assert_eq!(
@@ -136,6 +141,7 @@ async fn test_filter_ordered_then_partition() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_map_ordered_then_partition() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel();
 
     let leg_counts = stream.map_ordered(|s: Sequenced<TestData>| match s.into_inner() {
@@ -145,9 +151,9 @@ async fn test_map_ordered_then_partition() -> anyhow::Result<()> {
     let (mut many_legs, mut few_legs) = leg_counts.partition(|&legs| legs >= 4);
 
     // Act
-    tx.unbounded_send(Sequenced::new(animal_bird()))?; // 2 legs - few
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // 4 legs - many
-    tx.unbounded_send(Sequenced::new(animal_spider()))?; // 8 legs - many
+    tx.unbounded_send(Sequenced::new(animal_bird()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(animal_spider()))?;
 
     // Assert
     assert_eq!(
@@ -168,6 +174,7 @@ async fn test_map_ordered_then_partition() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_ordered_merge() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let (persons, non_persons) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -203,6 +210,7 @@ async fn test_partition_then_ordered_merge() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_skip_items() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -210,11 +218,11 @@ async fn test_partition_then_skip_items() -> anyhow::Result<()> {
     let mut animals_skip1 = animals.skip_items(1);
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // skipped
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // skipped
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // kept
-    tx.unbounded_send(Sequenced::new(animal_cat()))?; // kept
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // kept
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(animal_cat()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     assert_eq!(
@@ -235,6 +243,7 @@ async fn test_partition_then_skip_items() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_take_items() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -254,7 +263,6 @@ async fn test_partition_then_take_items() -> anyhow::Result<()> {
         &animal_dog()
     );
     assert_stream_ended(&mut animals_take1, 500).await;
-
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut persons_take2, 500).await)).value,
         &person_alice()
@@ -270,6 +278,7 @@ async fn test_partition_then_take_items() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_scan_ordered() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -288,10 +297,10 @@ async fn test_partition_then_scan_ordered() -> anyhow::Result<()> {
     });
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // age 25, sum: 25
-    tx.unbounded_send(Sequenced::new(animal_dog()))?; // 4 legs, sum: 4
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // age 30, sum: 55
-    tx.unbounded_send(Sequenced::new(animal_bird()))?; // 2 legs, sum: 6
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
+    tx.unbounded_send(Sequenced::new(animal_bird()))?;
 
     // Assert
     assert_eq!(
@@ -328,6 +337,7 @@ async fn test_partition_then_scan_ordered() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_distinct_until_changed() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -365,10 +375,10 @@ async fn test_partition_then_distinct_until_changed() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_share_then_partition() -> anyhow::Result<()> {
+    // Arrange
     let (tx, rx) = test_channel();
     let shared = rx.share();
 
-    // Two independent partitions from shared source
     let sub1 = shared.subscribe().unwrap();
     let (mut adults1, mut young1) = sub1.partition(|data| match data {
         TestData::Person(p) => p.age >= 30,
@@ -379,8 +389,8 @@ async fn test_share_then_partition() -> anyhow::Result<()> {
     let (mut persons2, _non_persons2) = sub2.partition(|data| matches!(data, TestData::Person(_)));
 
     // Act
-    tx.unbounded_send(Sequenced::new(person_alice()))?; // age 25 - young, person
-    tx.unbounded_send(Sequenced::new(person_charlie()))?; // age 35 - adult, person
+    tx.unbounded_send(Sequenced::new(person_alice()))?;
+    tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
     assert_eq!(
@@ -401,10 +411,10 @@ async fn test_share_then_partition() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
+    // Arrange
     let (tx, stream) = test_channel();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // combine_latest requires all streams to have emitted before producing output
     let mut combined = persons.combine_latest(vec![animals], |_| true);
 
     // Act
@@ -421,6 +431,8 @@ async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
             .into_inner()
@@ -430,6 +442,8 @@ async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(Sequenced::new(animal_cat()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
             .into_inner()
@@ -442,10 +456,8 @@ async fn test_partition_then_combine_latest() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_with_subject_and_filter() -> anyhow::Result<()> {
-    use fluxion_core::{FluxionSubject, StreamItem};
-
+    // Arrange
     let subject: FluxionSubject<Sequenced<TestData>> = FluxionSubject::new();
-
     let stream = subject.subscribe().unwrap();
     let (persons, animals) = stream.partition(|data| matches!(data, TestData::Person(_)));
 
@@ -460,12 +472,12 @@ async fn test_partition_with_subject_and_filter() -> anyhow::Result<()> {
     });
 
     // Act
-    subject.send(StreamItem::Value(Sequenced::new(person_alice())))?; // age 25 - filtered
-    subject.send(StreamItem::Value(Sequenced::new(animal_bird())))?; // 2 legs - filtered
-    subject.send(StreamItem::Value(Sequenced::new(person_charlie())))?; // age 35 - kept
-    subject.send(StreamItem::Value(Sequenced::new(animal_dog())))?; // 4 legs - kept
-    subject.send(StreamItem::Value(Sequenced::new(person_diane())))?; // age 40 - kept
-    subject.send(StreamItem::Value(Sequenced::new(animal_spider())))?; // 8 legs - kept
+    subject.send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    subject.send(StreamItem::Value(Sequenced::new(animal_bird())))?;
+    subject.send(StreamItem::Value(Sequenced::new(person_charlie())))?;
+    subject.send(StreamItem::Value(Sequenced::new(animal_dog())))?;
+    subject.send(StreamItem::Value(Sequenced::new(person_diane())))?;
+    subject.send(StreamItem::Value(Sequenced::new(animal_spider())))?;
 
     // Assert
     assert_eq!(
@@ -490,6 +502,7 @@ async fn test_partition_with_subject_and_filter() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_partition_share_then_combine_latest() -> anyhow::Result<()> {
+    //
     let (tx, rx) = test_channel();
     let shared = rx.share();
 
@@ -508,7 +521,7 @@ async fn test_partition_share_then_combine_latest() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
-    // Assert - both streams need to emit before combine_latest produces
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut combined, 500).await))
             .clone()
@@ -593,7 +606,7 @@ async fn test_partition_then_combine_with_previous() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     tx.unbounded_send(Sequenced::new(animal_cat()))?;
 
-    // Assert - first emissions have no previous
+    // Assert
     let item1 = unwrap_value(Some(unwrap_stream(&mut persons_with_prev, 500).await));
     assert!(item1.current.value == person_alice() && item1.previous.is_none());
 

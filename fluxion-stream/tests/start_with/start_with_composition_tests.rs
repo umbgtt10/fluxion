@@ -32,7 +32,7 @@ async fn test_combine_with_previous_start_with() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
     tx.unbounded_send(Sequenced::new(person_dave()))?;
 
-    // Assert - First two from start_with (prepended)
+    // Assert
     let item1 = unwrap_stream(&mut result, 100).await.unwrap();
     assert!(item1.previous.is_none() && item1.current.into_inner() == person_alice());
 

@@ -21,7 +21,7 @@ async fn test_take_propagates_errors() -> anyhow::Result<()> {
     tx.unbounded_send(StreamItem::Value(Sequenced::new(2)))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(3)))?; // This should not be emitted
 
-    // Assert - take counts errors as items
+    // Assert
     let item1 = unwrap_stream(&mut result, 100).await;
     assert!(matches!(item1, StreamItem::Value(_)));
 
@@ -48,7 +48,7 @@ async fn test_take_counts_errors_as_items() -> anyhow::Result<()> {
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?; // Should not be emitted
 
-    // Assert - both errors emitted, then stream ends
+    // Assert
     let item1 = unwrap_stream(&mut result, 100).await;
     assert!(matches!(item1, StreamItem::Error(_)));
 
