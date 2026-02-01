@@ -40,23 +40,20 @@ macro_rules! define_distinct_until_changed_impl {
 
                                 let mut last = last_value.lock();
 
-                                // Check if this value is different from the last emitted value
                                 let should_emit = match last.as_ref() {
-                                    None => true, // First value, always emit
+                                    None => true,
                                     Some(prev) => current_inner != *prev,
                                 };
 
                                 if should_emit {
-                                    // Update last value
                                     *last = Some(current_inner);
 
-                                    // Preserve original timestamp
                                     Some(StreamItem::Value(value))
                                 } else {
-                                    None // Filter out duplicate
+                                    None
                                 }
                             }
-                            StreamItem::Error(e) => Some(StreamItem::Error(e)), // Propagate errors
+                            StreamItem::Error(e) => Some(StreamItem::Error(e)),
                         }
                     }
                 });

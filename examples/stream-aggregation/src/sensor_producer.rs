@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Sensor reading producer - simulates Queue 1
-
 use crate::domain::SensorReading;
 use async_channel::Sender;
 use fluxion_core::CancellationToken;
@@ -43,7 +41,7 @@ impl SensorProducer {
         let mut ticker = interval(Duration::from_millis(300));
         let mut timestamp = 0u64;
 
-        println!("???  Sensor producer started");
+        println!("Sensor producer started");
 
         loop {
             select! {
@@ -68,6 +66,6 @@ impl SensorProducer {
             }
         }
 
-        println!("???  Sensor producer stopped");
+        println!("Sensor producer stopped");
     }
 }

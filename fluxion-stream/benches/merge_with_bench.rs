@@ -47,7 +47,6 @@ pub fn bench_merge_with(c: &mut Criterion) {
                     bencher.iter_with_setup(setup, |(stream1, stream2, stream3)| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            // Repository pattern: merge streams with state counter
                             let merged = MergedStream::seed::<Sequenced<usize>>(0)
                                 .merge_with(stream1, |_item: Vec<u8>, state: &mut usize| {
                                     *state += 1;

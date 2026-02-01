@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Sensor fusion task - combines all three sensor streams.
-
 use crate::aggregate::SensorAggregate;
 use crate::types::{Humidity, Pressure, Temperature};
 use crate::{info, warn};
@@ -30,7 +28,6 @@ pub async fn fusion_task(
     info!("Fusion task started - demonstrating operators and merge_with");
     info!("Building reactive pipeline with multiple operators...\n");
 
-    // Temperature stream: tap -> distinct_until_changed -> debounce
     let temp_stream = temp_rx
         .into_fluxion_stream()
         .tap(|t| info!("Raw temperature: {:?} C", t.value_kelvin))
@@ -38,7 +35,6 @@ pub async fn fusion_task(
         .debounce(Duration::from_millis(500));
     info!("Temperature: tap -> distinct_until_changed -> debounce(500ms)");
 
-    // Pressure stream: distinct_until_changed_by -> filter_ordered -> throttle
     let pressure_stream = pressure_rx
         .into_fluxion_stream()
         .distinct_until_changed_by(|p1, p2| {
@@ -49,21 +45,19 @@ pub async fn fusion_task(
             );
             difference.abs() < 10
         })
-        .filter_ordered(|p: &Pressure| p.value_hpa > 1000) // Filter by pressure value
+        .filter_ordered(|p: &Pressure| p.value_hpa > 1000)
         .throttle(Duration::from_millis(750));
     info!("Pressure: distinct_until_changed_by -> filter_ordered(>1000hPa) -> throttle(750ms)");
 
-    // Humidity stream: window_by_count -> skip_items -> sample
     let humidity_stream = humidity_rx
         .into_fluxion_stream()
-        .window_by_count::<EmbassyTimestamped<Vec<Humidity>>>(2) // Batch into pairs
-        .skip_items(1) // Skip first window (only 1 item)
+        .window_by_count::<EmbassyTimestamped<Vec<Humidity>>>(2)
+        .skip_items(1)
         .sample(Duration::from_millis(100));
     info!("Humidity: window_by_count(2) -> skip_items(1) -> sample(100ms)");
 
     info!("\nMerging streams with stateful aggregation...\n");
 
-    // Merge streams with shared state accumulation
     let merged = MergedStream::seed::<EmbassyTimestamped<SensorAggregate>>(SensorAggregate::new())
         .merge_with(temp_stream, |temp: Temperature, state| {
             state.latest_temp = Some(temp);
@@ -92,16 +86,13 @@ pub async fn fusion_task(
             },
         );
 
-    // Process merged stream with manual loop
     let mut merged = merged;
     loop {
-        // Check cancellation
         if _cancel.is_cancelled() {
             info!("\nFusion task cancelled");
             break;
         }
 
-        // Poll with timeout for cancellation responsiveness
         match embassy_time::with_timeout(embassy_time::Duration::from_millis(500), merged.next())
             .await
         {
@@ -117,7 +108,7 @@ pub async fn fusion_task(
                 info!("\nStream ended");
                 break;
             }
-            Err(_) => continue, // Timeout, check cancellation
+            Err(_) => continue,
         }
     }
 }

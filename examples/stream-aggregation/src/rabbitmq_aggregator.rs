@@ -15,11 +15,11 @@
 //! ```text
 //! Producer Tasks (3)        Aggregator Task           Consumer Task
 //! +-------------+          +--------------+          +----------+
-//!   Queue 1      ----------?
-//!  (sensors)                FluxionStream  --------?   Queue 4
-//!   Queue 2      ----------? combine &                 (output)
+//!   Queue 1      ---------->
+//!  (sensors)                FluxionStream  -------->   Queue 4
+//!   Queue 2      ----------> combine &                 (output)
 //!  (metrics)                 transform
-//!   Queue 3      ----------?
+//!   Queue 3      ---------->
 //!  (events)              +--------------+          +----------+
 //! +-------------+
 //! ```

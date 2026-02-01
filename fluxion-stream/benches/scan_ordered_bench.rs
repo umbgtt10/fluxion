@@ -41,7 +41,6 @@ pub fn bench_scan_ordered_sum(c: &mut Criterion) {
             bencher.iter_with_setup(setup, |stream| {
                 let rt = Runtime::new().unwrap();
                 rt.block_on(async move {
-                    // Running sum accumulator
                     let scanned = stream.scan_ordered::<Sequenced<i32>, _, _>(
                         0,
                         |sum: &mut i32, value: &i32| {
@@ -77,12 +76,11 @@ pub fn bench_scan_ordered_vec_accumulator(c: &mut Criterion) {
                     let setup = || {
                         let stream = make_stream_with_payload(size, payload_size);
 
-                        // Accumulate lengths into a vector
                         stream.scan_ordered::<Sequenced<Vec<usize>>, _, _>(
                             Vec::new(),
                             |lengths: &mut Vec<usize>, payload: &Vec<u8>| {
                                 lengths.push(payload.len());
-                                lengths.clone() // Return snapshot
+                                lengths.clone()
                             },
                         )
                     };
@@ -120,7 +118,6 @@ pub fn bench_scan_ordered_count(c: &mut Criterion) {
                     let setup = || {
                         let stream = make_stream_with_payload(size, payload_size);
 
-                        // Simple counter
                         stream.scan_ordered::<Sequenced<i32>, _, _>(
                             0,
                             |count: &mut i32, _: &Vec<u8>| {

@@ -13,10 +13,8 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Launching QEMU..." -ForegroundColor Green
 
-# Use full path to QEMU (scoop installation)
 $qemuPath = "$env:USERPROFILE\scoop\apps\qemu\current\qemu-system-arm.exe"
 if (-not (Test-Path $qemuPath)) {
-    # Try system PATH
     $qemuPath = "qemu-system-arm"
 }
 

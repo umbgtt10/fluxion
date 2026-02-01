@@ -5,7 +5,6 @@
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_runtime::impls::embassy::EmbassyInstant;
 
-/// Temperature reading in degrees Celsius
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Temperature {
     pub value_kelvin: u32,

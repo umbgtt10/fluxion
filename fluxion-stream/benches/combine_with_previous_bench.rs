@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -33,11 +33,9 @@ pub fn bench_combine_with_previous(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    // Setup: create stream (not timed)
                     let setup = || make_stream(size, payload_size);
 
                     bencher.iter_with_setup(setup, |stream| {
-                        // Only measure execution time
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let combined = stream.combine_with_previous();

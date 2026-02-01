@@ -250,30 +250,6 @@ Required for:
 - `Vec` in stream operators (e.g., `window_by_count`)
 - Dynamic stream state
 
-### Panic Handler
-
-Uses `panic-semihosting` to print panic messages to QEMU console before halting.
-
-## Troubleshooting
-
-### Build Fails: "can't find crate for `std`"
-✅ **Solution**: Ensure `#![no_std]` is at the top of `main.rs` and all dependencies have `default-features = false`.
-
-### QEMU Hangs After Launch
-✅ **Solution**: Check that semihosting is enabled: `-semihosting-config enable=on,target=native`
-
-### No Console Output
-✅ **Solution**: Ensure `cortex-m-semihosting` is in `Cargo.toml` and the `info!` macro uses `hprintln!`.
-
-### Linker Error: "undefined symbol: _embassy_time_now"
-✅ **Solution**: The custom time driver must implement `embassy_time_driver::time_driver_impl!` macro.
-
-### Tasks Don't Run After First Sensor Reading
-✅ **Solution**: `schedule_wake()` must call `waker.wake_by_ref()` to ensure executor polling.
-
-### QEMU Doesn't Exit (Ctrl+C Doesn't Work)
-✅ **Solution**: Call `cortex_m_semihosting::debug::exit(EXIT_SUCCESS)` at the end of `main()`.
-
 ## Features Demonstrated
 
 ### Core Features
@@ -343,7 +319,7 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](../../LICENSE) for
 ## References
 
 - [Embassy Async Framework](https://embassy.dev/)
-- [Fluxion Reactive Streams](https://github.com/yourusername/fluxion)
+- [Fluxion Reactive Streams](https://github.com/umbgtt10/fluxion)
 - [QEMU ARM Emulation](https://www.qemu.org/docs/master/system/arm/mps2.html)
 - [ARM Cortex-M4 Technical Reference](https://developer.arm.com/documentation/100166/0001)
 

@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -14,8 +14,6 @@ fn make_stream_with_duplicates(
     size: usize,
     duplicate_factor: usize,
 ) -> impl futures::Stream<Item = StreamItem<Sequenced<i32>>> {
-    // Create stream with consecutive duplicates
-    // Each unique value repeated duplicate_factor times
     let items: Vec<Sequenced<i32>> = (0..size)
         .flat_map(|i| {
             std::iter::repeat_n(
@@ -29,7 +27,6 @@ fn make_stream_with_duplicates(
 }
 
 fn make_stream_alternating(size: usize) -> impl futures::Stream<Item = StreamItem<Sequenced<i32>>> {
-    // Create stream with no consecutive duplicates (worst case - no filtering)
     let items: Vec<Sequenced<i32>> = (0..size).map(|i| Sequenced::new((i % 2) as i32)).collect();
     stream::iter(items).map(StreamItem::Value)
 }
@@ -37,18 +34,16 @@ fn make_stream_alternating(size: usize) -> impl futures::Stream<Item = StreamIte
 pub fn bench_distinct_until_changed(c: &mut Criterion) {
     let mut group = c.benchmark_group("distinct_until_changed");
     let sizes = [100usize, 1000usize, 10000];
-    let duplicate_factors = [1usize, 2usize, 5usize, 10usize]; // 1 = no duplicates, 10 = 90% filtered
+    let duplicate_factors = [1usize, 2usize, 5usize, 10usize];
 
     for &size in &sizes {
         for &dup_factor in &duplicate_factors {
             let id = BenchmarkId::from_parameter(format!("m{size}_dup{dup_factor}"));
             group.throughput(Throughput::Elements(size as u64));
             group.bench_with_input(id, &(size, dup_factor), |bencher, &(size, dup_factor)| {
-                // Setup: create stream (not timed)
                 let setup = || make_stream_with_duplicates(size, dup_factor);
 
                 bencher.iter_with_setup(setup, |stream| {
-                    // Only measure execution time
                     let rt = Runtime::new().unwrap();
                     rt.block_on(async move {
                         let distinct = stream.distinct_until_changed();
@@ -64,7 +59,6 @@ pub fn bench_distinct_until_changed(c: &mut Criterion) {
 
     group.finish();
 
-    // Benchmark worst case (alternating values - no filtering)
     let mut group = c.benchmark_group("distinct_until_changed_worst_case");
     let sizes = [100usize, 1000usize, 10000];
 
@@ -72,14 +66,12 @@ pub fn bench_distinct_until_changed(c: &mut Criterion) {
         let id = BenchmarkId::from_parameter(format!("m{size}_alternating"));
         group.throughput(Throughput::Elements(size as u64));
         group.bench_with_input(id, &size, |bencher, &size| {
-            // Setup: create stream (not timed)
             let setup = || {
                 let stream = make_stream_alternating(size);
                 stream.distinct_until_changed()
             };
 
             bencher.iter_with_setup(setup, |distinct| {
-                // Only measure execution time
                 let rt = Runtime::new().unwrap();
                 rt.block_on(async move {
                     let mut s = Box::pin(distinct);

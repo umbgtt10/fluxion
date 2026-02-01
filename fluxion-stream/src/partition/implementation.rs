@@ -4,10 +4,6 @@
 
 use fluxion_core::FluxionTask;
 
-/// Task guard that cancels the partition routing task when dropped.
-///
-/// This guard is shared between both partition streams via Arc.
-/// When the last stream is dropped, the task is automatically cancelled.
 #[derive(Debug)]
 pub struct TaskGuard {
     pub(crate) task: FluxionTask,
@@ -33,13 +29,6 @@ macro_rules! define_partition_impl {
 
         type InnerStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + $($bounds)* 'static>>;
 
-        /// A partitioned stream that keeps the routing task alive.
-        ///
-        /// This stream wraps an inner stream and holds an `Arc` reference to the
-        /// routing task guard. The task remains alive as long as either partitioned
-        /// stream exists. When both streams are dropped, the task is aborted.
-        ///
-        /// Implements `Stream` by delegating to the inner stream.
         pub struct PartitionedStream<T: Fluxion>
         where
             T::Inner: Clone + Debug + Ord + Unpin + $($bounds)* 'static,
@@ -73,19 +62,12 @@ macro_rules! define_partition_impl {
             }
         }
 
-        /// Extension trait providing the `partition` operator for streams.
-        ///
-        /// This trait allows any stream of `StreamItem<T>` to be partitioned into two
-        /// streams based on a predicate function.
         pub trait PartitionExt<T>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,
             T::Inner: Clone + Debug + Ord + Unpin + $($bounds)* 'static,
             T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
         {
-            /// Partitions the stream into two based on a predicate.
-            ///
-            /// See the [module-level documentation](crate::partition) for detailed examples and usage patterns.
             fn partition<F>(self, predicate: F) -> (PartitionedStream<T>, PartitionedStream<T>)
             where
                 Self: Unpin + $($bounds)* 'static,
@@ -107,7 +89,6 @@ macro_rules! define_partition_impl {
                 let true_subject = FluxionSubject::<T>::new();
                 let false_subject = FluxionSubject::<T>::new();
 
-                // Subscribe before spawning to ensure no items are missed
                 let true_stream = true_subject
                     .subscribe()
                     .unwrap_or_else(|_| unreachable!("fresh subject should allow subscription"));
@@ -125,25 +106,20 @@ macro_rules! define_partition_impl {
                                 let inner = value.clone().into_inner();
                                 if predicate(&inner) {
                                     if true_subject.next(value).is_err() {
-                                        // True subscriber dropped, but continue for false subscriber
                                     }
                                 } else if false_subject.next(value).is_err() {
-                                    // False subscriber dropped, but continue for true subscriber
                                 }
                             }
                             Some(StreamItem::Error(e)) => {
-                                // Propagate error to both streams
                                 let _ = true_subject.error(e.clone());
                                 let _ = false_subject.error(e);
                                 break;
                             }
                             None => {
-                                // Source completed
                                 break;
                             }
                         }
                     }
-                    // Close both subjects on exit
                     true_subject.close();
                     false_subject.close();
                 });

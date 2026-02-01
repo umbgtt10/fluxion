@@ -20,7 +20,6 @@ fn make_stream(
     stream::iter(items).map(StreamItem::Value)
 }
 
-/// Benchmarks tap with a minimal side effect (black_box to prevent optimization).
 pub fn bench_tap(c: &mut Criterion) {
     let mut group = c.benchmark_group("tap");
     let sizes = [100usize, 1000usize, 10000];
@@ -39,7 +38,6 @@ pub fn bench_tap(c: &mut Criterion) {
                     bencher.iter_with_setup(setup, |stream| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            // Tap with minimal side effect - just observe values
                             let tapped = stream.tap(|data: &Vec<u8>| {
                                 black_box(data.len());
                             });
@@ -57,7 +55,6 @@ pub fn bench_tap(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks tap with multiple chained taps (common debugging pattern).
 pub fn bench_tap_chained(c: &mut Criterion) {
     let mut group = c.benchmark_group("tap_chained");
     let sizes = [100usize, 1000usize, 10000];
@@ -76,7 +73,6 @@ pub fn bench_tap_chained(c: &mut Criterion) {
                     bencher.iter_with_setup(setup, |stream| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            // Multiple taps in sequence (common for debugging pipelines)
                             let tapped = stream
                                 .tap(|data: &Vec<u8>| {
                                     black_box(data.len());

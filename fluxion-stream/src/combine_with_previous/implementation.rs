@@ -10,19 +10,12 @@ macro_rules! define_combine_with_previous_impl {
         use fluxion_core::{Fluxion, StreamItem};
         use futures::{future::ready, Stream, StreamExt};
 
-        /// Extension trait providing the `combine_with_previous` operator for timestamped streams.
-        ///
-        /// This operator pairs each stream element with its predecessor, enabling
-        /// stateful processing and change detection.
         pub trait CombineWithPreviousExt<T>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,
             T::Inner: Debug + Ord + Unpin + $($bounds)* 'static,
             T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
         {
-            /// Pairs each stream element with its previous element.
-            ///
-            /// See the [module-level documentation](crate::combine_with_previous) for detailed examples and usage patterns.
             fn combine_with_previous(self) -> impl Stream<Item = StreamItem<WithPrevious<T>>> + $($bounds)*;
         }
 

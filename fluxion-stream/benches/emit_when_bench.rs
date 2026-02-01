@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -42,7 +42,6 @@ pub fn bench_emit_when(c: &mut Criterion) {
                     bencher.iter_with_setup(setup, |(source_stream, filter_stream)| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            // Complex predicate: emit when source first byte > filter first byte
                             let output = source_stream.emit_when(filter_stream, |state| {
                                 let values = state.values();
                                 let source_val = if values[0].is_empty() {

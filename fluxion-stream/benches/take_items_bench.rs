@@ -27,7 +27,7 @@ pub fn bench_take_items(c: &mut Criterion) {
     let mut group = c.benchmark_group("take_items");
     let sizes = [100usize, 1000usize, 10000];
     let payload_sizes = [16usize, 32usize, 64usize, 128usize];
-    let take_percentages = [10usize, 50usize, 90usize]; // Percentage of stream to take
+    let take_percentages = [10usize, 50usize, 90usize];
 
     for &size in &sizes {
         for &payload_size in &payload_sizes {
@@ -35,7 +35,6 @@ pub fn bench_take_items(c: &mut Criterion) {
                 let take_count = (size * take_pct) / 100;
                 let id =
                     BenchmarkId::from_parameter(format!("m{size}_p{payload_size}_t{take_pct}pct"));
-                // Throughput is items emitted, not total stream size
                 group.throughput(Throughput::Elements(take_count as u64));
                 group.bench_with_input(
                     id,

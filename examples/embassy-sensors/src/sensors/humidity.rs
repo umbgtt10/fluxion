@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Humidity sensor task implementation.
-
 use crate::info;
 use crate::types::Humidity;
 use embassy_time::Duration;
@@ -13,7 +11,6 @@ use fluxion_runtime::timer::Timer;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-/// Humidity sensor task with sample → delay → take pipeline
 #[embassy_executor::task]
 pub async fn humidity_sensor(tx: async_channel::Sender<Humidity>, cancel: CancellationToken) {
     info!("Humidity sensor task started");
@@ -21,7 +18,6 @@ pub async fn humidity_sensor(tx: async_channel::Sender<Humidity>, cancel: Cancel
     let timer = EmbassyTimer;
     let mut rng = ChaCha8Rng::seed_from_u64(11111);
 
-    // Simulate sensor readings every 20ms (fastest)
     loop {
         if cancel.is_cancelled() {
             break;

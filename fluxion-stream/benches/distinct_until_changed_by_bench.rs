@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -43,7 +43,6 @@ fn make_stream_with_duplicates(
     size: usize,
     duplicate_factor: usize,
 ) -> impl Stream<Item = StreamItem<Sequenced<Record>>> {
-    // Create stream with consecutive duplicates based on id
     let items: Vec<Sequenced<Record>> = (0..size)
         .map(|i| {
             Sequenced::new(Record {
@@ -56,7 +55,6 @@ fn make_stream_with_duplicates(
 }
 
 fn make_stream_case_insensitive(size: usize) -> impl Stream<Item = StreamItem<Sequenced<String>>> {
-    // Create stream with case variations
     let items: Vec<Sequenced<String>> = (0..size)
         .map(|i| {
             let base = format!("item_{}", i / 2);
@@ -71,11 +69,10 @@ fn make_stream_case_insensitive(size: usize) -> impl Stream<Item = StreamItem<Se
 }
 
 fn make_stream_threshold(size: usize) -> impl Stream<Item = StreamItem<Sequenced<OrderedF64>>> {
-    // Create stream with values that vary within/outside threshold
     let items: Vec<Sequenced<OrderedF64>> = (0..size)
         .map(|i| {
             let base = (i / 10) as f64;
-            let variation = (i % 10) as f64 * 0.01; // Small variations
+            let variation = (i % 10) as f64 * 0.01;
             Sequenced::new(OrderedF64(base + variation))
         })
         .collect();
@@ -83,7 +80,6 @@ fn make_stream_threshold(size: usize) -> impl Stream<Item = StreamItem<Sequenced
 }
 
 pub fn bench_distinct_until_changed_by(c: &mut Criterion) {
-    // Benchmark field comparison
     let mut group = c.benchmark_group("distinct_until_changed_by_field");
     let sizes = [100usize, 1000usize, 10000];
     let duplicate_factors = [1usize, 2usize, 5usize, 10usize];
@@ -113,7 +109,6 @@ pub fn bench_distinct_until_changed_by(c: &mut Criterion) {
 
     group.finish();
 
-    // Benchmark case-insensitive comparison
     let mut group = c.benchmark_group("distinct_until_changed_by_case_insensitive");
     let sizes = [100usize, 1000usize, 10000];
 
@@ -139,7 +134,6 @@ pub fn bench_distinct_until_changed_by(c: &mut Criterion) {
 
     group.finish();
 
-    // Benchmark threshold comparison (floating point)
     let mut group = c.benchmark_group("distinct_until_changed_by_threshold");
     let sizes = [100usize, 1000usize, 10000];
     let thresholds = [0.05f64, 0.1f64, 0.5f64];

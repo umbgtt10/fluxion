@@ -43,7 +43,7 @@ impl MetricsProducer {
         let mut ticker = interval(Duration::from_millis(400));
         let mut timestamp = 100u64;
 
-        println!("?? Metrics producer started");
+        println!("Metrics producer started");
 
         loop {
             select! {
@@ -68,6 +68,6 @@ impl MetricsProducer {
             }
         }
 
-        println!("?? Metrics producer stopped");
+        println!("Metrics producer stopped");
     }
 }

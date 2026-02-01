@@ -38,7 +38,6 @@ pub fn bench_map_ordered(c: &mut Criterion) {
                     bencher.iter_with_setup(setup, |stream| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            // Simple transformation: compute length of payload
                             let mapped = stream.map_ordered(|sequenced: Sequenced<Vec<u8>>| {
                                 Sequenced::new(sequenced.value.len())
                             });

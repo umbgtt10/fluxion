@@ -1,4 +1,4 @@
-// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
+﻿// Copyright 2025 Umberto Gotti <umberto.gotti@umbertogotti.dev>
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
@@ -28,7 +28,6 @@ pub fn bench_filter_ordered(c: &mut Criterion) {
     for &size in &sizes {
         for &payload_size in &payload_sizes {
             let id = BenchmarkId::from_parameter(format!("m{size}_p{payload_size}"));
-            // Throughput is input elements, not filtered output
             group.throughput(Throughput::Elements(size as u64));
             group.bench_with_input(
                 id,
@@ -37,7 +36,6 @@ pub fn bench_filter_ordered(c: &mut Criterion) {
                     let setup = || {
                         let stream = make_stream(size, payload_size);
 
-                        // Filter to keep only even-indexed items (roughly 50% pass through)
                         stream.filter_ordered(|data: &Vec<u8>| {
                             if data.is_empty() {
                                 true

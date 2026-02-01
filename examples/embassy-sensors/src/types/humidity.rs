@@ -5,7 +5,6 @@
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_runtime::impls::embassy::EmbassyInstant;
 
-/// Humidity reading as percentage (0-100%)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Humidity {
     pub value_percent: u32,

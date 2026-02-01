@@ -17,10 +17,6 @@ macro_rules! define_merge_with_impl {
         use futures::task::{Context, Poll};
         use pin_project::pin_project;
 
-        /// A stateful stream merger that combines multiple Timestamped streams while maintaining state.
-        ///
-        /// Internally uses [`fluxion_ordered_merge`] to merge streams in order
-        /// based on their timestamps, ensuring temporal consistency across merged streams.
         #[pin_project]
         pub struct MergedStream<S, State, Item> {
             #[pin]
@@ -33,16 +29,6 @@ macro_rules! define_merge_with_impl {
         where
             State: $($bounds)* 'static,
         {
-            /// Creates a new `MergedStream` with initial state and output wrapper type.
-            ///
-            /// Specify the output wrapper type once here to avoid turbofish on every `merge_with`.
-            ///
-            /// # Example
-            /// ```no_run
-            /// # use fluxion_stream::MergedStream;
-            /// # use fluxion_test_utils::sequenced::Sequenced;
-            /// let stream = MergedStream::seed::<Sequenced<i32>>(0);
-            /// ```
             pub fn seed<OutWrapper>(
                 initial_state: State,
             ) -> MergedStream<Empty<StreamItem<OutWrapper>>, State, OutWrapper>
@@ -66,17 +52,6 @@ macro_rules! define_merge_with_impl {
             <Item as Timestamped>::Inner: Clone + Debug + Ord + Unpin + $($bounds)* 'static,
             <Item as HasTimestamp>::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
         {
-            /// Merges a new Timestamped stream into the existing merged stream.
-            ///
-            /// Uses [`fluxion_ordered_merge`] to combine the streams while preserving
-            /// temporal order based on timestamps.
-            ///
-            /// The closure receives unwrapped values and returns unwrapped values - timestamp
-            /// propagation is handled automatically by the operator.
-            ///
-            /// # Parameters
-            /// - `new_stream`: The new Timestamped stream to merge
-            /// - `process_fn`: Function to process inner values with mutable access to shared state
             pub fn merge_with<NewStream, NewItem, F>(
                 self,
                 new_stream: NewStream,
@@ -111,7 +86,6 @@ macro_rules! define_merge_with_impl {
                     }
                 });
 
-                // self.inner already yields `StreamItem<Item>`; pass through values unchanged
                 let self_stream_mapped = self.inner;
 
                 let streams = vec![
@@ -121,8 +95,6 @@ macro_rules! define_merge_with_impl {
                         as Pin<Box<dyn Stream<Item = StreamItem<Item>> + $($bounds)*>>,
                 ];
 
-                // Use ordered_merge_with_index for immediate error emission (Rx semantics)
-                // Discard the index since we don't need to track which stream emitted
                 let merged_stream = ordered_merge_with_index(streams).map(|(item, _index)| item);
 
                 MergedStream {

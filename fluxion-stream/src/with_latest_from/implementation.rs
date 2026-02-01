@@ -54,14 +54,12 @@ macro_rules! define_with_latest_from_impl {
 
         type PinnedStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + $($bounds)* 'static>>;
 
-        /// Extension trait providing the `with_latest_from` operator for timestamped streams.
         pub trait WithLatestFromExt<T>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,
             T::Inner: Clone + Debug + Ord + Unpin + $($bounds)* 'static,
             T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
         {
-            /// Combines elements from the primary stream (self) with the latest element from the secondary stream (other).
             fn with_latest_from<IS, R>(
                 self,
                 other: IS,
@@ -112,17 +110,12 @@ macro_rules! define_with_latest_from_impl {
                             match item {
                                 StreamItem::Value(value) => {
                                     let timestamp = value.timestamp();
-                                    // Update state with new value
                                     let mut guard = state.lock();
                                     guard.insert(stream_index, value);
 
-                                    // Only emit if:
-                                    // 1. Both streams have emitted at least once (is_complete)
-                                    // 2. The PRIMARY stream (index 0) triggered this emission
                                     if guard.is_complete() && stream_index == 0 {
                                         let values = guard.get_values();
 
-                                        // values[0] = primary, values[1] = secondary
                                         let combined_state = CombinedState::new(
                                             vec![
                                                 (values[0].clone().into_inner(), values[0].timestamp()),
@@ -131,13 +124,10 @@ macro_rules! define_with_latest_from_impl {
                                             timestamp,
                                         );
 
-                                        // Apply the result selector to transform the combined state
                                         let result = selector(&combined_state);
 
-                                        // Return result directly (R implements Timestamped)
                                         Some(StreamItem::Value(result))
                                     } else {
-                                        // Secondary stream emitted, just update state but don't emit
                                         None
                                     }
                                 }

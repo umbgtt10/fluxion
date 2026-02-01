@@ -28,7 +28,6 @@ fn make_stream_with_payload(
     stream::iter(items).map(StreamItem::Value)
 }
 
-/// Benchmarks window_by_count with various window sizes.
 pub fn bench_window_by_count(c: &mut Criterion) {
     let mut group = c.benchmark_group("window_by_count");
     let sizes = [100usize, 1000usize, 10000];
@@ -58,7 +57,6 @@ pub fn bench_window_by_count(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks window_by_count with various payload sizes.
 pub fn bench_window_by_count_payload(c: &mut Criterion) {
     let mut group = c.benchmark_group("window_by_count_payload");
     let sizes = [100usize, 1000usize, 10000];
@@ -94,7 +92,6 @@ pub fn bench_window_by_count_payload(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks window_by_count with window size 1 (each item becomes its own window).
 pub fn bench_window_by_count_single(c: &mut Criterion) {
     let mut group = c.benchmark_group("window_by_count_single");
     let sizes = [100usize, 1000usize, 10000];
@@ -108,7 +105,6 @@ pub fn bench_window_by_count_single(c: &mut Criterion) {
             bencher.iter_with_setup(setup, |stream| {
                 let rt = Runtime::new().unwrap();
                 rt.block_on(async move {
-                    // Window size 1 = maximum number of windows
                     let windowed = stream.window_by_count::<Sequenced<Vec<i32>>>(1);
                     let mut s = Box::pin(windowed);
                     while let Some(v) = s.next().await {

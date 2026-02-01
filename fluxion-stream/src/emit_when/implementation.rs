@@ -20,39 +20,12 @@ macro_rules! define_emit_when_impl {
 
         type SharedState<V, TS> = Arc<Mutex<Option<(V, TS)>>>;
 
-        /// Extension trait providing the `emit_when` operator for timestamped streams.
-        ///
-        /// This operator gates a source stream based on conditions from a filter stream,
-        /// emitting source values only when the combined state passes a predicate.
         pub trait EmitWhenExt<T>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,
             T::Inner: Clone + Debug + Ord + Unpin + $($bounds)* 'static,
             T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
         {
-            /// Emits source stream values only when the filter condition is satisfied.
-            ///
-            /// This operator maintains the latest values from both the source and filter streams,
-            /// creating a combined state. Source values are emitted only when this combined state
-            /// passes the provided filter predicate.
-            ///
-            /// # Behavior
-            ///
-            /// - Maintains latest value from both source and filter streams
-            /// - Evaluates predicate on `CombinedState` containing both values
-            /// - Emits source value when predicate returns `true`
-            /// - Both streams must emit at least once before any emission occurs
-            /// - Preserves temporal ordering of source stream
-            ///
-            /// # Arguments
-            ///
-            /// * `filter_stream` - Stream providing filter values for the gate condition
-            /// * `filter` - Predicate function that receives `CombinedState<T::Inner>` containing
-            ///   `[source_value, filter_value]` and returns `true` to emit.
-            ///
-            /// # Returns
-            ///
-            /// A pinned stream of `T` containing source values that pass the filter condition.
             fn emit_when<IS>(
                 self,
                 filter_stream: IS,

@@ -2,10 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-/// Macro that generates the complete combine_latest implementation.
-///
-/// This macro eliminates duplication between multi-threaded and single-threaded
-/// implementations, which differ only in trait bounds (Send + Sync vs not).
 macro_rules! define_combine_latest_impl {
     ($($bounds:tt)*) => {
         use $crate::ordered_merge::ordered_merge_with_index;
@@ -94,7 +90,6 @@ macro_rules! define_combine_latest_impl {
                                         }
                                     }
                                     StreamItem::Error(e) => {
-                                        // Propagate upstream errors immediately without state update
                                         Some(StreamItem::Error(e))
                                     }
                                 }
@@ -103,7 +98,6 @@ macro_rules! define_combine_latest_impl {
                     })
                     .map(|item| {
                         item.map(|state| {
-                            // Extract the inner values with their timestamps to create CombinedState
                             let value_timestamp_pairs: Vec<(T::Inner, T::Timestamp)> = state
                                 .get_ordered_values()
                                 .iter()
@@ -118,7 +112,7 @@ macro_rules! define_combine_latest_impl {
                     .filter(move |item| {
                         match item {
                             StreamItem::Value(combined_state) => ready(filter(combined_state)),
-                            StreamItem::Error(_) => ready(true), // Always emit errors
+                            StreamItem::Error(_) => ready(true),
                         }
                     });
 
@@ -169,8 +163,6 @@ macro_rules! define_combine_latest_impl {
                 self.state[index] = Some(value.clone());
 
                 if !self.is_initialized && self.is_complete() {
-                    // First complete state: establish the ordering
-                    // Collect all values with their stream indices
                     let mut indexed_values: Vec<(usize, V)> = self
                         .state
                         .iter()
@@ -178,20 +170,16 @@ macro_rules! define_combine_latest_impl {
                         .filter_map(|(i, opt)| opt.as_ref().map(|v| (i, v.clone())))
                         .collect();
 
-                    // Sort by stream index to establish stable ordering
                     indexed_values.sort_by_key(|(stream_idx, _)| *stream_idx);
 
-                    // Build the ordered_values and the mapping
                     self.ordered_values = indexed_values.iter().map(|(_, v)| v.clone()).collect();
 
-                    // Build stream_index_to_position: for each stream index, record its position
                     for (position, (stream_idx, _)) in indexed_values.iter().enumerate() {
                         self.stream_index_to_position[*stream_idx] = position;
                     }
 
                     self.is_initialized = true;
                 } else if self.is_initialized {
-                    // After initialization: update the value at its established position
                     let position = self.stream_index_to_position[index];
                     if position < self.ordered_values.len() {
                         self.ordered_values[position] = value;

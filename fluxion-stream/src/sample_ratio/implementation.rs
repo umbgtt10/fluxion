@@ -8,37 +8,12 @@ macro_rules! define_sample_ratio_impl {
         use fluxion_core::{Fluxion, StreamItem};
         use futures::{Stream, StreamExt};
 
-        /// Extension trait providing the [`sample_ratio`](Self::sample_ratio) operator.
-        ///
-        /// This trait is implemented for all streams of [`StreamItem<T>`] where `T` implements [`Fluxion`].
         pub trait SampleRatioExt<T>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,
             T::Inner: Clone + Debug + Ord + Unpin + $($bounds)* 'static,
             T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
         {
-            /// Randomly samples items from the stream with the given probability ratio.
-            ///
-            /// Each item has a `ratio` probability of being emitted. The `seed` parameter
-            /// controls the random number generator for reproducibility.
-            ///
-            /// # Arguments
-            ///
-            /// * `ratio` - Probability of emitting each item (0.0 to 1.0 inclusive)
-            ///   - `0.0` - Never emit any items
-            ///   - `0.5` - Emit approximately half of items
-            ///   - `1.0` - Emit all items
-            /// * `seed` - Seed for the random number generator. Use a fixed value for
-            ///   deterministic tests, or `fastrand::u64(..)` for production randomness.
-            ///
-            /// # Panics
-            ///
-            /// Panics if `ratio` is not in the range `0.0..=1.0`.
-            ///
-            /// # Error Handling
-            ///
-            /// Errors always pass through—they are never filtered by sampling.
-            ///
             fn sample_ratio(self, ratio: f64, seed: u64) -> impl Stream<Item = StreamItem<T>> + $($bounds)*
             where
                 Self: Unpin + $($bounds)* 'static;
@@ -71,7 +46,6 @@ macro_rules! define_sample_ratio_impl {
                                 None
                             }
                         }
-                        // Errors always pass through
                         StreamItem::Error(e) => Some(StreamItem::Error(e)),
                     })
                 })

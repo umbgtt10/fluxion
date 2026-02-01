@@ -16,19 +16,12 @@ macro_rules! define_take_latest_when_impl {
         use fluxion_core::{Fluxion, StreamItem};
         use futures::{Stream, StreamExt};
 
-        /// Extension trait providing the `take_latest_when` operator for timestamped streams.
-        ///
-        /// This operator samples the latest value from a source stream whenever a filter
-        /// stream emits a value that passes a predicate.
         pub trait TakeLatestWhenExt<T>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,
             T::Inner: Clone + Debug + Ord + Unpin + $($bounds)* 'static,
             T::Timestamp: Debug + Ord + Copy + $($bounds)* 'static,
         {
-            /// Emits the latest value from the source stream when the filter stream emits a passing value.
-            ///
-            /// See the [module-level documentation](crate::take_latest_when) for detailed examples and usage patterns.
             fn take_latest_when<IS>(
                 self,
                 filter_stream: IS,
@@ -69,19 +62,15 @@ macro_rules! define_take_latest_when_impl {
                             StreamItem::Value(ordered_value) => {
                                 match index {
                                     0 => {
-                                        // Source stream update - just cache the value, don't emit
                                         let mut source = source_value.lock();
                                         *source = Some(ordered_value);
                                         None
                                     }
                                     1 => {
-                                        // Filter stream update - check if we should sample the source
                                         let source = source_value.lock();
 
-                                        // Update filter value
                                         let filter_inner = ordered_value.clone().into_inner();
 
-                                        // Now check the condition and potentially emit
                                         if filter(&filter_inner) {
                                             source.as_ref().map(|src| {
                                                 StreamItem::Value(T::with_timestamp(

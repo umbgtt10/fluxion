@@ -85,7 +85,6 @@ macro_rules! define_take_while_with_impl {
 
         type PinnedStream<T> = Pin<Box<dyn Stream<Item = StreamItem<T>> + $($stream_bounds)* 'static>>;
 
-        /// Extension trait providing the `take_while_with` operator for timestamped streams.
         pub trait TakeWhileExt<TItem, TFilter, S>: Stream<Item = StreamItem<TItem>> + Sized
         where
             TItem: Fluxion,
@@ -95,12 +94,6 @@ macro_rules! define_take_while_with_impl {
             TFilter::Inner: Clone + Debug + Ord + Unpin + $($stream_bounds)* 'static,
             S: Stream<Item = StreamItem<TFilter>> + $($stream_bounds)* 'static,
         {
-            /// Takes elements from the source stream while the filter predicate returns true.
-            ///
-            /// # Arguments
-            ///
-            /// * `filter_stream` - Stream providing filter values that control emission
-            /// * `filter` - Predicate function applied to filter values. Returns `true` to continue.
             fn take_while_with(
                 self,
                 filter_stream: S,
@@ -125,22 +118,17 @@ macro_rules! define_take_while_with_impl {
             ) -> impl Stream<Item = StreamItem<TItem>> {
                 let filter = Arc::new(filter);
 
-                // Wrap each stream's values in Item enum, keeping StreamItem wrapper for immediate error emission
-                // This allows ordered_merge_with_index to emit errors immediately (Rx semantics)
                 let source_stream =
                     self.map(|item| item.map(|value| Item::<TItem, TFilter>::Source(value)));
 
                 let filter_stream =
                     filter_stream.map(|item| item.map(|value| Item::<TItem, TFilter>::Filter(value)));
 
-                // Box the streams to make them the same type
                 let streams: Vec<PinnedStream<Item<TItem, TFilter>>> =
                     vec![Box::pin(source_stream), Box::pin(filter_stream)];
 
-                // State to track the latest filter value and termination
                 let state = Arc::new(Mutex::new((None::<TFilter::Inner>, false)));
 
-                // Use ordered_merge_with_index for temporal ordering with immediate error emission
                 let combined_stream = ordered_merge_with_index(streams).filter_map({
                     let state = Arc::clone(&state);
                     move |(stream_item, _index)| {
@@ -149,10 +137,8 @@ macro_rules! define_take_while_with_impl {
 
                         async move {
                             match stream_item {
-                                // Errors are emitted immediately by ordered_merge_with_index
                                 StreamItem::Error(e) => Some(StreamItem::Error(e)),
                                 StreamItem::Value(item) => {
-                                    // Restrict the mutex guard's lifetime to the smallest possible scope
                                     let mut guard = state.lock();
                                     let (filter_state, terminated) = &mut *guard;
 
@@ -187,7 +173,6 @@ macro_rules! define_take_while_with_impl {
             }
         }
 
-        // Implement Timestamped for Item to work with ordered_merge_with_index
         impl<TItem, TFilter> Timestamped for Item<TItem, TFilter>
         where
             TItem: HasTimestamp + Clone + Debug + Ord + Unpin + $($stream_bounds)* 'static,
@@ -201,7 +186,6 @@ macro_rules! define_take_while_with_impl {
             type Inner = Self;
 
             fn with_timestamp(value: Self::Inner, _timestamp: Self::Timestamp) -> Self {
-                // Items already have timestamps from their wrapped values, ignore the new timestamp
                 value
             }
 

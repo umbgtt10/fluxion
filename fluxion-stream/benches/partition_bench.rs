@@ -10,7 +10,6 @@ use futures::{future::join, StreamExt};
 use std::hint::black_box;
 use tokio::runtime::Runtime;
 
-/// Benchmarks partition with balanced split (50/50).
 pub fn bench_partition_balanced(c: &mut Criterion) {
     let mut group = c.benchmark_group("partition_balanced");
     let sizes = [100usize, 1000usize, 10000];
@@ -32,7 +31,6 @@ pub fn bench_partition_balanced(c: &mut Criterion) {
                     bencher.iter_with_setup(setup, |(tx, rx)| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            // Partition by even/odd index (50/50 split)
                             let (true_stream, false_stream) =
                                 rx.into_fluxion_stream().partition(|data: &Vec<u8>| {
                                     if data.is_empty() {
@@ -42,13 +40,11 @@ pub fn bench_partition_balanced(c: &mut Criterion) {
                                     }
                                 });
 
-                            // Send data
                             for i in 0..size {
                                 let _ = tx.try_send(Sequenced::new(vec![i as u8; payload_size]));
                             }
                             drop(tx);
 
-                            // Consume both streams concurrently
                             let consume_true = async {
                                 let mut s = Box::pin(true_stream);
                                 while let Some(v) = s.next().await {
@@ -73,7 +69,6 @@ pub fn bench_partition_balanced(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks partition with imbalanced split (90/10).
 pub fn bench_partition_imbalanced(c: &mut Criterion) {
     let mut group = c.benchmark_group("partition_imbalanced");
     let sizes = [100usize, 1000usize, 10000];
@@ -95,7 +90,6 @@ pub fn bench_partition_imbalanced(c: &mut Criterion) {
                     bencher.iter_with_setup(setup, |(tx, rx)| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            // Partition with 90% going to true stream (index < 90% of size)
                             let threshold = (size * 9 / 10) as u8;
                             let (true_stream, false_stream) =
                                 rx.into_fluxion_stream().partition(move |data: &Vec<u8>| {
@@ -106,13 +100,11 @@ pub fn bench_partition_imbalanced(c: &mut Criterion) {
                                     }
                                 });
 
-                            // Send data
                             for i in 0..size {
                                 let _ = tx.try_send(Sequenced::new(vec![i as u8; payload_size]));
                             }
                             drop(tx);
 
-                            // Consume both partitions
                             let consume_true = async {
                                 let mut s = Box::pin(true_stream);
                                 while let Some(v) = s.next().await {
@@ -137,7 +129,6 @@ pub fn bench_partition_imbalanced(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks partition when only consuming one stream.
 pub fn bench_partition_single_consumer(c: &mut Criterion) {
     let mut group = c.benchmark_group("partition_single_consumer");
     let sizes = [100usize, 1000usize, 10000];
@@ -159,7 +150,6 @@ pub fn bench_partition_single_consumer(c: &mut Criterion) {
                     bencher.iter_with_setup(setup, |(tx, rx)| {
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
-                            // Partition by even/odd (50/50 split)
                             let (true_stream, _false_stream) =
                                 rx.into_fluxion_stream().partition(|data: &Vec<u8>| {
                                     if data.is_empty() {
@@ -169,13 +159,11 @@ pub fn bench_partition_single_consumer(c: &mut Criterion) {
                                     }
                                 });
 
-                            // Send data
                             for i in 0..size {
                                 let _ = tx.try_send(Sequenced::new(vec![i as u8; payload_size]));
                             }
                             drop(tx);
 
-                            // Only consume the true stream, drop the false stream
                             let mut s = Box::pin(true_stream);
                             while let Some(v) = s.next().await {
                                 black_box(v);

@@ -8,21 +8,12 @@ macro_rules! define_tap_impl {
         use futures::{Stream, StreamExt};
         use core::fmt::Debug;
 
-        /// Extension trait providing the [`tap`](TapExt::tap) operator.
-        ///
-        /// This trait is implemented for all streams of [`StreamItem<T>`] where `T` implements [`Fluxion`].
         pub trait TapExt<T>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,
             T::Inner: Clone + Debug + Ord + Unpin + 'static + $($bounds)*,
             T::Timestamp: Debug + Ord + Copy + 'static + $($bounds)*,
         {
-            /// Invokes a side-effect function for each value without modifying the stream.
-            ///
-            /// # Arguments
-            ///
-            /// * `f` - A function that receives a reference to each value's inner type.
-            ///   Called for side effects only; return value is ignored.
             fn tap<F>(self, mut f: F) -> impl Stream<Item = StreamItem<T>> + $($bounds)*
             where
                 Self: Unpin + 'static + $($bounds)*,

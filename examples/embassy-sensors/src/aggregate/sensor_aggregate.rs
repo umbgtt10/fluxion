@@ -4,7 +4,6 @@
 
 use crate::types::{Humidity, Pressure, Temperature};
 
-/// Aggregated state of all sensor readings
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SensorAggregate {
     pub latest_temp: Option<Temperature>,

@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Sensor task implementations.
-
 pub mod humidity;
 pub mod pressure;
 pub mod temperature;

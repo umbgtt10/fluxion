@@ -13,28 +13,12 @@ macro_rules! define_window_by_count_impl {
         use fluxion_core::{Fluxion, StreamItem};
         use futures::{future::ready, Stream, StreamExt};
 
-        /// Extension trait providing the [`window_by_count`](WindowByCountExt::window_by_count) operator.
-        ///
-        /// This trait is implemented for all streams of [`StreamItem<T>`] where `T` implements [`Fluxion`].
         pub trait WindowByCountExt<T>: Stream<Item = StreamItem<T>> + Sized
         where
             T: Fluxion,
             T::Inner: Clone + Debug + Ord + Unpin + 'static + $($bounds)*,
             T::Timestamp: Debug + Ord + Copy + 'static + $($bounds)*,
         {
-            /// Groups consecutive items into fixed-size windows (batches).
-            ///
-            /// Collects items into vectors of size `n`. When `n` items have been collected,
-            /// emits a `Vec<T::Inner>` with the timestamp of the last item in the window.
-            /// On stream completion, any remaining items are emitted as a partial window.
-            ///
-            /// # Type Parameters
-            ///
-            /// - `Out`: The output wrapper type (must implement `Fluxion` with `Inner = Vec<T::Inner>`)
-            ///
-            /// # Arguments
-            ///
-            /// * `n` - The window size. Must be at least 1.
             fn window_by_count<Out>(self, n: usize) -> impl Stream<Item = StreamItem<Out>> + $($bounds)*
             where
                 Out: Fluxion<Inner = Vec<T::Inner>>,
@@ -57,11 +41,8 @@ macro_rules! define_window_by_count_impl {
             {
                 assert!(n >= 1, "window_by_count: window size must be at least 1");
 
-                // State: (buffer, last_timestamp)
                 let state = Arc::new(Mutex::new((Vec::with_capacity(n), None::<T::Timestamp>)));
 
-                // Use filter_map to accumulate and emit when window is full
-                // We need to handle the completion case separately using chain
                 let window_size = n;
                 let state_clone = Arc::clone(&state);
 
@@ -90,7 +71,6 @@ macro_rules! define_window_by_count_impl {
                             }
                         }
                         StreamItem::Error(e) => {
-                            // Clear buffer and propagate error
                             let mut guard = state.lock();
                             let (buffer, last_ts) = &mut *guard;
                             buffer.clear();
@@ -100,7 +80,6 @@ macro_rules! define_window_by_count_impl {
                     })
                 });
 
-                // Chain with a stream that emits partial window on completion
                 let final_state = state;
                 let flush_stream = futures::stream::once(async move {
                     let mut guard = final_state.lock();

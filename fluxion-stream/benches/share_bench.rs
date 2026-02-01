@@ -37,7 +37,6 @@ pub fn bench_share(c: &mut Criterion) {
                                 let stream = rx.into_fluxion_stream();
                                 let shared = stream.share();
 
-                                // Create subscriber futures BEFORE sending data
                                 let futures: Vec<_> = (0..subscribers)
                                     .map(|_| {
                                         let sub = shared.subscribe().unwrap();
@@ -50,13 +49,11 @@ pub fn bench_share(c: &mut Criterion) {
                                     })
                                     .collect();
 
-                                // Now send data through the channel
                                 for _ in 0..size {
                                     let _ = tx.try_send(Sequenced::new(vec![0u8; payload_size]));
                                 }
-                                drop(tx); // Close channel to signal completion
+                                drop(tx);
 
-                                // Drive all subscribers to completion without spawning tasks
                                 join_all(futures).await;
                             });
                         });

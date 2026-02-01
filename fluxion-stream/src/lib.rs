@@ -723,7 +723,6 @@ pub mod types;
 pub mod window_by_count;
 pub mod with_latest_from;
 
-// Re-export commonly used types
 pub use combine_latest::CombineLatestExt;
 pub use combine_with_previous::CombineWithPreviousExt;
 pub use distinct_until_changed::DistinctUntilChangedExt;

@@ -13,7 +13,6 @@ readme = "README.md"
 
 [dependencies]
 fluxion-core = { workspace = true, default-features = false, features = ["alloc"] }
-fluxion-ordered-merge = { workspace = true }
 futures = { workspace = true, default-features = false, features = ["alloc", "async-await"] }
 futures-util = { workspace = true, default-features = false, features = ["alloc"] }
 tokio = { workspace = true, optional = true, features = ["rt", "sync", "macros"] }

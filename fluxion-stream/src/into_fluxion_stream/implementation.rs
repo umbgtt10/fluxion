@@ -11,24 +11,7 @@ macro_rules! define_into_fluxion_stream_impl {
         use fluxion_core::{StreamItem, Timestamped};
         use futures::{Stream, StreamExt};
 
-        /// Extension trait to convert futures channels into fluxion streams.
-        ///
-        /// This trait provides a simple way to wrap a futures `UnboundedReceiver` into
-        /// a stream that emits `StreamItem::Value` for each received item.
         pub trait IntoFluxionStream<T> {
-            /// Converts this receiver into a fluxion stream.
-            ///
-            /// Each item received from the channel is wrapped in `StreamItem::Value`.
-            ///
-            /// # Example
-            ///
-            /// ```rust
-            /// use fluxion_stream::IntoFluxionStream;
-            /// use async_channel::unbounded;
-            ///
-            /// let (tx, rx) = unbounded::<i32>();
-            /// let stream = rx.into_fluxion_stream();
-            /// ```
             fn into_fluxion_stream(self) -> impl Stream<Item = StreamItem<T>> + $($bounds)*;
 
             fn into_fluxion_stream_map<U, F>(

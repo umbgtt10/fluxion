@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Temperature sensor task implementation.
-
 use crate::info;
 use crate::types::Temperature;
 use embassy_time::Duration;
@@ -13,7 +11,6 @@ use fluxion_runtime::timer::Timer;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-/// Temperature sensor task with debounce → map → filter pipeline
 #[embassy_executor::task]
 pub async fn temperature_sensor(tx: async_channel::Sender<Temperature>, cancel: CancellationToken) {
     info!("Temperature sensor task started");
@@ -21,7 +18,6 @@ pub async fn temperature_sensor(tx: async_channel::Sender<Temperature>, cancel: 
     let timer = EmbassyTimer;
     let mut rng = ChaCha8Rng::seed_from_u64(12345);
 
-    // Simulate sensor readings every 50ms
     loop {
         if cancel.is_cancelled() {
             break;

@@ -5,7 +5,6 @@
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_runtime::impls::embassy::EmbassyInstant;
 
-/// Pressure reading in hectopascals (hPa)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Pressure {
     pub value_hpa: u32,

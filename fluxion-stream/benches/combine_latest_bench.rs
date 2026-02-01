@@ -34,7 +34,6 @@ pub fn bench_combine_latest(c: &mut Criterion) {
                 id,
                 &(size, payload_size),
                 |bencher, &(size, payload_size)| {
-                    // Setup: create streams (not timed)
                     let setup = || {
                         let stream1 = make_stream(size, payload_size);
                         let stream2 = make_stream(size, payload_size);
@@ -43,7 +42,6 @@ pub fn bench_combine_latest(c: &mut Criterion) {
                     };
 
                     bencher.iter_with_setup(setup, |(stream1, stream2, stream3)| {
-                        // Only measure execution time
                         let rt = Runtime::new().unwrap();
                         rt.block_on(async move {
                             let combined =

@@ -20,7 +20,6 @@ fn make_stream(
     stream::iter(items).map(StreamItem::Value)
 }
 
-/// Benchmarks sample_ratio with 50% sampling.
 pub fn bench_sample_ratio_half(c: &mut Criterion) {
     let mut group = c.benchmark_group("sample_ratio_half");
     let sizes = [100usize, 1000usize, 10000];
@@ -36,8 +35,6 @@ pub fn bench_sample_ratio_half(c: &mut Criterion) {
                 |bencher, &(size, payload_size)| {
                     let setup = || {
                         let stream = make_stream(size, payload_size);
-
-                        // Sample 50% of items with fixed seed for reproducibility
                         stream.sample_ratio(0.5, 42)
                     };
 
@@ -58,7 +55,6 @@ pub fn bench_sample_ratio_half(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks sample_ratio with 100% pass-through.
 pub fn bench_sample_ratio_full(c: &mut Criterion) {
     let mut group = c.benchmark_group("sample_ratio_full");
     let sizes = [100usize, 1000usize, 10000];
@@ -74,8 +70,6 @@ pub fn bench_sample_ratio_full(c: &mut Criterion) {
                 |bencher, &(size, payload_size)| {
                     let setup = || {
                         let stream = make_stream(size, payload_size);
-
-                        // Sample 100% - all items pass through
                         stream.sample_ratio(1.0, 42)
                     };
 
@@ -96,7 +90,6 @@ pub fn bench_sample_ratio_full(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks sample_ratio with 10% sampling (aggressive downsampling).
 pub fn bench_sample_ratio_sparse(c: &mut Criterion) {
     let mut group = c.benchmark_group("sample_ratio_sparse");
     let sizes = [100usize, 1000usize, 10000];
@@ -112,8 +105,6 @@ pub fn bench_sample_ratio_sparse(c: &mut Criterion) {
                 |bencher, &(size, payload_size)| {
                     let setup = || {
                         let stream = make_stream(size, payload_size);
-
-                        // Sample 10% - aggressive downsampling
                         stream.sample_ratio(0.1, 42)
                     };
 

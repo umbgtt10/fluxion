@@ -35,7 +35,6 @@ pub fn bench_start_with(c: &mut Criterion) {
                 let id = BenchmarkId::from_parameter(format!(
                     "m{size}_p{payload_size}_i{initial_count}"
                 ));
-                // Throughput is total elements (initial + stream)
                 group.throughput(Throughput::Elements((size + initial_count) as u64));
                 group.bench_with_input(
                     id,
@@ -46,7 +45,6 @@ pub fn bench_start_with(c: &mut Criterion) {
                         bencher.iter_with_setup(setup, |stream| {
                             let rt = Runtime::new().unwrap();
                             rt.block_on(async move {
-                                // Create initial values
                                 let initial: Vec<StreamItem<Sequenced<Vec<u8>>>> = (0
                                     ..initial_count)
                                     .map(|i| {
