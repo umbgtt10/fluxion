@@ -21,20 +21,25 @@ async fn test_sample_ratio_one_emits_all() -> anyhow::Result<()> {
     let (tx, stream) = test_channel();
     let mut result = stream.sample_ratio(1.0, 42);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &animal_dog()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(plant_rose()))?;
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &plant_rose()

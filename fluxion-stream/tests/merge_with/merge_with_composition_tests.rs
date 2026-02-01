@@ -54,8 +54,10 @@ async fn test_merge_with_chaining_map_ordered() -> anyhow::Result<()> {
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     tx1.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(unwrap_stream(&mut result, 500).await.into_inner().age, 2);
 
     tx2.unbounded_send(Sequenced::new(person_bob()))?;
@@ -106,16 +108,22 @@ async fn test_merge_with_chaining_multiple_operators_map_ordered() -> anyhow::Re
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert_eq!(unwrap_stream(&mut result, 500).await.into_inner().age, 15);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    // Assert
     assert_eq!(unwrap_stream(&mut result, 500).await.into_inner().age, 32);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_dave()))?;
+    // Assert
     assert_eq!(unwrap_stream(&mut result, 500).await.into_inner().age, 46);
 
     Ok(())

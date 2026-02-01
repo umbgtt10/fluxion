@@ -40,8 +40,10 @@ async fn test_window_by_count_continues_after_error() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(2);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -135,9 +137,11 @@ async fn test_window_by_count_error_at_window_boundary() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(2);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_alice(), person_bob()]

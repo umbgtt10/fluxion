@@ -17,22 +17,23 @@ async fn test_start_with_prepends_initial_values() -> anyhow::Result<()> {
 
     let initial = vec![Sequenced::new(person_alice()), Sequenced::new(person_bob())];
 
+    // Act
     let mut result = stream.start_with(initial.into_iter().map(StreamItem::Value).collect());
 
-    // Act & Assert - Initial values emitted first
+    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
         person_alice()
     );
-
     assert_eq!(
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
         person_bob()
     );
 
-    // Now send from source stream
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
+    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
         person_charlie()
@@ -53,7 +54,7 @@ async fn test_start_with_empty_initial_values() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     drop(tx);
 
-    // Assert - Only source stream values emitted
+    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100).await.unwrap().into_inner(),
         person_alice()

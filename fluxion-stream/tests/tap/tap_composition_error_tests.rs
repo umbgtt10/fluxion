@@ -25,20 +25,28 @@ async fn test_tap_after_filter_ordered_with_errors() -> anyhow::Result<()> {
             counter_clone.fetch_add(1, Ordering::SeqCst);
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_bob()
@@ -62,20 +70,28 @@ async fn test_tap_before_filter_ordered_with_errors() -> anyhow::Result<()> {
         })
         .filter_ordered(|item| matches!(item, TestData::Person(_)));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_bob()
@@ -107,14 +123,19 @@ async fn test_tap_with_map_ordered_and_errors() -> anyhow::Result<()> {
             })
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     assert!(matches!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         TestData::Person(p) if p.name.starts_with("Mapped: ")
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("test error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(_)
@@ -186,26 +207,37 @@ async fn test_complex_pipeline_with_multiple_errors() -> anyhow::Result<()> {
             counter_after_map_clone.fetch_add(1, Ordering::SeqCst);
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 1")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     assert!(matches!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         TestData::Person(p) if p.name.starts_with("Pipeline: ")
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error 2")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 500).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     assert!(matches!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         TestData::Person(p) if p.name.starts_with("Pipeline: ")

@@ -31,10 +31,8 @@ use tokio::{select, signal};
 async fn main() -> Result<()> {
     println!("?? Legacy Integration Demo Starting...\n");
 
-    // Cancellation token for graceful shutdown
     let cancel_token = CancellationToken::new();
 
-    // Create and start adapters, getting streams directly
     println!("?? Starting legacy data source adapters...");
 
     let mut user_adapter = UserAdapter::new();
@@ -48,7 +46,6 @@ async fn main() -> Result<()> {
     let aggregated_stream =
         Repository::new(user_stream, order_stream, inventory_stream).create_stream();
 
-    // Process business logic
     println!("Demo will run for 20 seconds or press Ctrl+C to stop...\n");
 
     let mut event_processor = EventProcessor::start(aggregated_stream, cancel_token.clone());
@@ -57,7 +54,6 @@ async fn main() -> Result<()> {
         _ = signal::ctrl_c() => {
             println!("\n\n?? Ctrl+C received, shutting down gracefully...");
             cancel_token.cancel();
-            // Wait for processor to finish
             match event_processor.task_handle.await {
                 Ok(Ok(())) => {
                     println!("\n{}", "=".repeat(80));
@@ -76,7 +72,6 @@ async fn main() -> Result<()> {
         _ = sleep(Duration::from_secs(20)) => {
             println!("\n\n??  20 seconds elapsed, shutting down gracefully...");
             cancel_token.cancel();
-            // Wait for processor to finish
             match event_processor.task_handle.await {
                 Ok(Ok(())) => {
                     println!("\n{}", "=".repeat(80));
@@ -93,7 +88,6 @@ async fn main() -> Result<()> {
             }
         }
         result = &mut event_processor.task_handle => {
-            // Processor completed normally (all events processed)
             match result {
                 Ok(Ok(())) => {
                     println!("\n{}", "=".repeat(80));
@@ -111,7 +105,6 @@ async fn main() -> Result<()> {
         }
     }
 
-    // Shutdown adapters
     println!("?? Shutting down adapters...");
     user_adapter.shutdown().await;
     order_adapter.shutdown().await;

@@ -17,9 +17,7 @@ async fn test_map_ordered_then_combine_latest_propagates_error() -> anyhow::Resu
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<TestData>>();
 
     let mut result = stream1
-        .map_ordered(|x| {
-            x
-        })
+        .map_ordered(|x| x)
         .combine_latest(vec![stream2], |_| true);
 
     // Act

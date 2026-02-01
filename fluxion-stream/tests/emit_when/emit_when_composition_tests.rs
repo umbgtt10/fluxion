@@ -138,9 +138,11 @@ async fn test_combine_with_previous_emit_when_map_ordered() -> anyhow::Result<()
         .map_ordered(|wp| wp.current)
         .emit_when(threshold_stream, filter_fn);
 
-    // Act & Assert
+    // Act
     threshold_tx.unbounded_send(Sequenced::new(person_bob()))?; // Threshold 30
     source_tx.unbounded_send(Sequenced::new(person_alice()))?; // 25 - below threshold
+
+    // Assert
     assert_no_element_emitted(&mut stream, 100).await;
 
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - above threshold

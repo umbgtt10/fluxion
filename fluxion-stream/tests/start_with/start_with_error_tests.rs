@@ -22,14 +22,22 @@ async fn test_start_with_propagates_errors_from_initial_values() -> anyhow::Resu
 
     let mut result = stream.start_with(initial);
 
-    // Act & Assert
+    // Act
     let item1 = unwrap_stream(&mut result, 100).await;
+
+    // Assert
     assert!(matches!(item1, StreamItem::Value(_)));
 
+    // Act
     let item2 = unwrap_stream(&mut result, 100).await;
+
+    // Assert
     assert!(matches!(item2, StreamItem::Error(_)));
 
+    // Act
     let item3 = unwrap_stream(&mut result, 100).await;
+
+    // Assert
     assert!(matches!(item3, StreamItem::Value(_)));
 
     Ok(())

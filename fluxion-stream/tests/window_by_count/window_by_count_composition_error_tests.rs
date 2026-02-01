@@ -23,9 +23,11 @@ async fn test_map_ordered_then_window_by_count_propagates_error() -> anyhow::Res
         })
         .window_by_count::<Sequenced<Vec<TestData>>>(2);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("map error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -49,18 +51,23 @@ async fn test_filter_ordered_then_window_by_count_propagates_error() -> anyhow::
         .filter_ordered(|x: &TestData| matches!(x, TestData::Person(_)))
         .window_by_count::<Sequenced<Vec<TestData>>>(2);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "filter error",
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_bob(), person_charlie()]
@@ -80,24 +87,32 @@ async fn test_window_by_count_then_map_ordered_propagates_error() -> anyhow::Res
             Sequenced::with_timestamp(first, window.timestamp())
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         person_alice()
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "window error",
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_cat())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         animal_dog()
@@ -117,17 +132,22 @@ async fn test_window_by_count_then_filter_ordered_propagates_error() -> anyhow::
             window.iter().any(|d| matches!(d, TestData::Person(_)))
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_cat())))?; // window [dog, cat], filtered
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?; // window [alice, dog], passes
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_alice(), animal_dog()]
@@ -144,9 +164,11 @@ async fn test_window_by_count_with_combine_with_previous_propagates_error() -> a
         .window_by_count::<Sequenced<Vec<TestData>>>(2)
         .combine_with_previous();
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await))
             .current
@@ -154,14 +176,20 @@ async fn test_window_by_count_with_combine_with_previous_propagates_error() -> a
         vec![person_alice(), person_bob()]
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_cat())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await))
             .current
@@ -180,19 +208,24 @@ async fn test_chained_window_by_count_propagates_error() -> anyhow::Result<()> {
         .window_by_count::<Sequenced<Vec<TestData>>>(2)
         .window_by_count::<Sequenced<Vec<Vec<TestData>>>>(2);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?; // inner [alice, bob]
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("chain error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_cat())))?; // inner [dog, cat]
     tx.unbounded_send(StreamItem::Value(Sequenced::new(plant_rose())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?; // inner [rose, charlie] -> outer
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![
@@ -210,18 +243,23 @@ async fn test_window_by_count_with_test_data_propagates_error() -> anyhow::Resul
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(2);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "test data error",
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_bob(), person_charlie()]
@@ -238,16 +276,21 @@ async fn test_map_ordered_identity_then_window_by_count_propagates_error() -> an
         .map_ordered(|x: Sequenced<TestData>| x) // identity map
         .window_by_count::<Sequenced<Vec<TestData>>>(2);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("map error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_bob(), animal_dog()]

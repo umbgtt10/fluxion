@@ -23,15 +23,20 @@ async fn test_sample_ratio_after_filter_ordered() -> anyhow::Result<()> {
         .filter_ordered(|item| matches!(item, TestData::Person(_)))
         .sample_ratio(1.0, 42);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered out
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_bob()
@@ -48,15 +53,20 @@ async fn test_sample_ratio_before_filter_ordered() -> anyhow::Result<()> {
         .sample_ratio(1.0, 42)
         .filter_ordered(|item| matches!(item, TestData::Person(_)));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?; // Sampled but then filtered
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_bob()
@@ -127,14 +137,19 @@ async fn test_chained_sample_ratios() -> anyhow::Result<()> {
     let (tx, stream) = test_channel();
     let mut result = stream.sample_ratio(1.0, 42).sample_ratio(1.0, 99);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_alice()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         &person_bob()

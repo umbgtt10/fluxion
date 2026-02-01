@@ -4,7 +4,6 @@
 
 use super::models::{Inventory, Order, User};
 
-/// Unified event type that wraps all legacy data sources
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub enum UnifiedEvent {
     UserAdded(User),

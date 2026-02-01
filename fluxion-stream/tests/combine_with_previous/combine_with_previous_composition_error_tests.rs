@@ -25,26 +25,34 @@ async fn test_distinct_until_changed_error_propagation_in_composition() -> anyho
         })
         .combine_with_previous();
 
-    // Act & Assert
+    // Act
     // 1. Send Alice (Age 25) -> Should be emitted
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(val) if val.current.value == person_alice() && val.previous.is_none()
     ));
 
+    // Act
     // 2. Send Alice again -> Should be filtered by distinct_until_changed
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         2,
     )))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     // 3. Send Error -> Should be propagated
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

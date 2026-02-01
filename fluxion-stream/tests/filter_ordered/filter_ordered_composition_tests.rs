@@ -70,12 +70,14 @@ async fn test_combine_latest_filter_ordered() -> anyhow::Result<()> {
             }
         });
 
-    // Act & Assert
+    // Act
     p_tx.unbounded_send(Sequenced::new(person_alice()))?; // 25
     a_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     // Combined but filtered out (age <= 30)
 
     p_tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut stream, 500).await,
         StreamItem::Value(val) if {
@@ -151,8 +153,10 @@ async fn test_scan_ordered_composed_with_filter() -> anyhow::Result<()> {
         .scan_ordered(0, accumulator)
         .filter_ordered(|count| count % 2 == 0); // Only even counts
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?; // count=1, filtered out
+
+    // Assert
     assert_no_element_emitted(&mut result, 500).await;
 
     tx.unbounded_send(Sequenced::new(person_bob()))?; // count=2, emitted

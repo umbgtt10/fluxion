@@ -34,27 +34,32 @@ async fn test_take_latest_when_take_while_with() -> anyhow::Result<()> {
         .take_latest_when(latest_filter_stream, LATEST_FILTER)
         .take_while_with(while_filter_stream, |f| *f);
 
-    // Act & Assert
+    // Act
     while_filter_tx.unbounded_send(Sequenced::new(true))?;
     source_tx.unbounded_send(Sequenced::new(person_alice()))?;
     latest_filter_tx
         .unbounded_send(Sequenced::new(person_alice()))
         .unwrap();
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
         person_alice()
     );
 
+    // Act
     source_tx.unbounded_send(Sequenced::new(person_bob()))?;
     latest_filter_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
         person_bob()
     );
 
+    // Act
     while_filter_tx.unbounded_send(Sequenced::new(false))?;
     source_tx.unbounded_send(Sequenced::new(person_charlie()))?;
     latest_filter_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    // Assert
     assert_no_element_emitted(&mut composed, 100).await;
 
     Ok(())
@@ -77,11 +82,12 @@ async fn test_combine_latest_take_while_with() -> anyhow::Result<()> {
         .combine_latest(vec![animal_stream, plant_stream], COMBINE_FILTER)
         .take_while_with(filter_stream, |f| *f);
 
-    // Act & Assert
+    // Act
     filter_tx.unbounded_send(Sequenced::new(true))?;
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
     plant_tx.unbounded_send(Sequenced::new(plant_rose()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut composed, 500).await))
             .into_inner()
@@ -89,7 +95,9 @@ async fn test_combine_latest_take_while_with() -> anyhow::Result<()> {
         [person_alice(), animal_dog(), plant_rose()]
     );
 
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut composed, 500).await))
             .into_inner()
@@ -97,8 +105,10 @@ async fn test_combine_latest_take_while_with() -> anyhow::Result<()> {
         [person_bob(), animal_dog(), plant_rose()]
     );
 
+    // Act
     filter_tx.unbounded_send(Sequenced::new(false))?;
     person_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    // Assert
     assert_no_element_emitted(&mut composed, 100).await;
 
     Ok(())
@@ -120,16 +130,21 @@ async fn test_ordered_merge_filter_ordered_take_while_with() -> anyhow::Result<(
         .filter_ordered(|test_data| matches!(test_data, TestData::Person(_)))
         .take_while_with(predicate_stream, |_| true);
 
-    // Act & Assert
+    // Act
     predicate_tx.unbounded_send(Sequenced::new(person_alice()))?;
     source_tx.unbounded_send(Sequenced::new(animal_dog()))?; // Filtered by filter_ordered
     source_tx.unbounded_send(Sequenced::new(person_bob()))?; // Kept
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         person_bob()
     );
 
+    // Act
     other_tx.unbounded_send(Sequenced::new(person_charlie()))?; // Kept
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         person_charlie()
@@ -152,28 +167,39 @@ async fn test_ordered_merge_take_while_with() -> anyhow::Result<()> {
         .ordered_merge(vec![animal_stream])
         .take_while_with(filter_stream, |f| *f);
 
-    // Act & Assert
+    // Act
     filter_tx.unbounded_send(Sequenced::new(true))?;
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
         person_alice()
     );
 
+    // Act
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
         animal_dog()
     );
 
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut composed, 500).await)).value,
         person_bob()
     );
 
+    // Act
     filter_tx.unbounded_send(Sequenced::new(false))?;
     person_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_no_element_emitted(&mut composed, 100).await;
 
     Ok(())
@@ -206,18 +232,22 @@ async fn test_filter_ordered_map_ordered_combine_with_previous_take_while_with(
         })
         .take_while_with(predicate_rx, |p| *p);
 
-    // Act & Assert
+    // Act
     predicate_tx.unbounded_send(Sequenced::new(true))?;
 
     tx.unbounded_send(Sequenced::new(person_alice()))?; // 25 - filtered
     tx.unbounded_send(Sequenced::new(person_bob()))?; // 30 - kept
 
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Current: Bob, Previous: None"
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_charlie()))?; // 35 - kept
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Current: Charlie, Previous: Some(\"Bob\")"
@@ -268,29 +298,40 @@ async fn test_combine_with_previous_map_ordered_take_while_with_age_difference(
         })
         .take_while_with(predicate_rx, |p| *p);
 
-    // Act & Assert
+    // Act
     predicate_tx.unbounded_send(Sequenced::new(true))?;
 
     tx.unbounded_send(Sequenced::new(person_alice()))?; // Age 25
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         0
     ); // No previous
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?; // Age 30
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         5
     ); // 30 - 25 = 5
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_dave()))?; // Age 28
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         -2
     ); // 28 - 30 = -2
 
+    // Act
     predicate_tx.unbounded_send(Sequenced::new(false))?;
     tx.unbounded_send(Sequenced::new(person_charlie()))?; // Age 35
+
+    // Assert
     assert_no_element_emitted(&mut stream, 100).await;
 
     Ok(())

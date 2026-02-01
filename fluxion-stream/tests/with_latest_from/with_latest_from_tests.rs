@@ -257,9 +257,11 @@ async fn test_with_latest_from_secondary_updates_latest() -> anyhow::Result<()> 
 
     let mut result = animal_stream.with_latest_from(person_stream, result_selector);
 
-    // Act & Assert
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
     animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
+
+    // Assert
     let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(element.clone().into_inner().values()[0], animal_cat());
     assert_eq!(element.clone().into_inner().values()[1], person_alice());
@@ -270,6 +272,7 @@ async fn test_with_latest_from_secondary_updates_latest() -> anyhow::Result<()> 
 
     // Act - primary emits again
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
     // Assert - should emit with latest secondary (Bob)
     let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(element.clone().into_inner().values()[0], animal_dog());

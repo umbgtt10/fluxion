@@ -9,9 +9,6 @@ use std::sync::atomic::{AtomicU64, Ordering::SeqCst};
 
 static EVENT_COUNTER: AtomicU64 = AtomicU64::new(0);
 
-/// A wrapper that adds automatic timestamping to UnifiedEvent for temporal ordering.
-///
-/// Uses a monotonically increasing counter to establish event ordering.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TimestampedEvent {
     pub event: UnifiedEvent,
@@ -19,7 +16,6 @@ pub struct TimestampedEvent {
 }
 
 impl TimestampedEvent {
-    /// Creates a new timestamped event with an automatically assigned counter value.
     pub fn new(event: UnifiedEvent) -> Self {
         Self {
             event,

@@ -18,8 +18,10 @@ async fn test_window_emits_complete_windows() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(2);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     tx.unbounded_send(Sequenced::new(person_bob()))?;
@@ -46,8 +48,10 @@ async fn test_window_emits_partial_on_completion() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(3);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     tx.unbounded_send(Sequenced::new(person_bob()))?;
@@ -68,8 +72,10 @@ async fn test_window_size_one() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = Box::pin(stream.window_by_count::<Sequenced<Vec<TestData>>>(1));
 
-    // Act & Assert - each item becomes its own window
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert - each item becomes its own window
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 500).await)).value,
         vec![person_alice()]
@@ -96,8 +102,10 @@ async fn test_window_large_size() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(5);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     tx.unbounded_send(Sequenced::new(person_bob()))?;
@@ -130,8 +138,10 @@ async fn test_window_no_emission_until_complete() -> anyhow::Result<()> {
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(3);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     tx.unbounded_send(Sequenced::new(person_bob()))?;

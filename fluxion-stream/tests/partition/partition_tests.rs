@@ -20,20 +20,25 @@ async fn test_partition_basic_predicate() -> anyhow::Result<()> {
     let (mut persons, mut non_persons) =
         stream.partition(|data| matches!(data, TestData::Person(_)));
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut persons, 500).await)).value,
         &person_alice()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut non_persons, 500).await)).value,
         &animal_dog()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     assert_eq!(
         &unwrap_value(Some(unwrap_stream(&mut persons, 500).await)).value,
         &person_bob()

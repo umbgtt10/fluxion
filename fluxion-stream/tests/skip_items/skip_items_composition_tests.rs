@@ -51,7 +51,7 @@ async fn test_ordered_merge_then_skip_items() -> anyhow::Result<()> {
     // Merge streams then skip 3 items
     let mut stream = s1_rx.ordered_merge(vec![s2_rx]).skip_items(3);
 
-    // Act & Assert
+    // Act
     // 1. Stream 1 emits (Skipped #1)
     s1_tx.unbounded_send(Sequenced::new(person_alice()))?;
 
@@ -63,15 +63,16 @@ async fn test_ordered_merge_then_skip_items() -> anyhow::Result<()> {
 
     // 4. Stream 2 emits (Should be emitted)
     s2_tx.unbounded_send(Sequenced::new(person_dave()))?;
-
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         person_dave()
     );
 
+    // Act
     // 5. Stream 1 emits (Should be emitted)
     s1_tx.unbounded_send(Sequenced::new(person_diane()))?;
-
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         person_diane()

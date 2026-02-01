@@ -5,7 +5,6 @@
 use fluxion_core::{HasTimestamp, Timestamped};
 use fluxion_runtime::impls::wasm::WasmInstant;
 
-/// A sensor value with timestamp
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SensorValue {
     pub timestamp: WasmInstant,

@@ -143,9 +143,11 @@ async fn test_emit_when_both_streams_have_errors() -> anyhow::Result<()> {
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 
-    // Act & Assert: Send initial values
+    // Act
     filter_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(5, 1)))?;
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 2)))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
@@ -182,8 +184,10 @@ async fn test_emit_when_error_before_filter_ready() -> anyhow::Result<()> {
     let mut result =
         source_stream.emit_when(filter_stream, |state| state.values()[0] > state.values()[1]);
 
-    // Act & Assert: Error immediately before filter has value
+    // Act
     source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

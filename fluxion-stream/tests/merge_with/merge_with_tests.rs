@@ -67,14 +67,22 @@ async fn test_merge_with_mixed_empty_and_non_empty_streams() -> anyhow::Result<(
             *state
         });
 
-    // Act & Assert
+    // Act
     non_empty_tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(unwrap_stream(&mut result, 100).await.into_inner(), 1,);
 
+    // Act
     non_empty_tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(unwrap_stream(&mut result, 100).await.into_inner(), 2,);
 
+    // Act
     non_empty_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(unwrap_stream(&mut result, 100).await.into_inner(), 3,);
 
     Ok(())
@@ -94,8 +102,10 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
             state.from_testdata(item)
         });
 
-    // Act & Assert
+    // Act
     tx1.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100)
             .await
@@ -104,7 +114,10 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
         Some("Alice".to_string()),
     );
 
+    // Act
     tx2.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100)
             .await
@@ -115,6 +128,8 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
 
     // Act
     tx1.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100)
             .await
@@ -125,6 +140,8 @@ async fn test_merge_with_similar_streams_emits() -> anyhow::Result<()> {
 
     // Act
     tx2.unbounded_send(Sequenced::new(person_dave()))?;
+
+    // Assert
     assert_eq!(
         unwrap_stream(&mut result, 100)
             .await
@@ -269,8 +286,9 @@ async fn test_merge_with_into_fluxion_stream_standalone() -> anyhow::Result<()> 
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     let mut fluxion_stream = merged.into_stream();
+    // Assert
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     assert_eq!(
         unwrap_stream(&mut fluxion_stream, 100)
@@ -330,14 +348,19 @@ async fn test_merge_with_single_stream_interleaved_emissions() -> anyhow::Result
             state.clone()
         });
 
-    // Act & Assert: Send and verify one at a time
+    // Act
     tx.unbounded_send(Sequenced::new(person("A".to_string(), 5)))?;
+    // Assert
     assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 5);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person("B".to_string(), 10)))?;
+    // Assert
     assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 15);
 
+    // Act
     tx.unbounded_send(Sequenced::new(person("C".to_string(), 7)))?;
+    // Assert
     assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 22);
     drop(tx);
 
@@ -378,8 +401,9 @@ async fn test_merge_with_state_mutation_complex() -> anyhow::Result<()> {
         },
     );
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person("Alice".to_string(), 10)))?;
+    // Assert
     assert_eq!(
         unwrap_stream(&mut merged, 100).await.into_inner(),
         ComplexState {
@@ -389,7 +413,9 @@ async fn test_merge_with_state_mutation_complex() -> anyhow::Result<()> {
         }
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person("Bob".to_string(), 20)))?;
+    // Assert
     assert_eq!(
         unwrap_stream(&mut merged, 100).await.into_inner(),
         ComplexState {
@@ -399,7 +425,9 @@ async fn test_merge_with_state_mutation_complex() -> anyhow::Result<()> {
         }
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person("Charlie".to_string(), 5)))?;
+    // Assert
     assert_eq!(
         unwrap_stream(&mut merged, 100).await.into_inner(),
         ComplexState {
@@ -505,11 +533,14 @@ async fn test_merge_with_clone_closure() -> anyhow::Result<()> {
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     tx1.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 50); // 25 * 2
 
+    // Act
     tx2.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     assert_eq!(unwrap_stream(&mut merged, 100).await.into_inner().age, 110); // 50 + (30 * 2)
 
     drop(tx1);

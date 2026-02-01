@@ -80,8 +80,10 @@ async fn test_scan_ordered_error_propagation_with_filter() -> anyhow::Result<()>
         .scan_ordered(0, accumulator)
         .filter_ordered(|count| count % 2 == 0); // Only even counts
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(100, 1)))?; // count=1, filtered
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(200, 2)))?; // count=2, emitted

@@ -23,30 +23,38 @@ async fn test_take_while_with_propagates_source_error() -> anyhow::Result<()> {
     let mut result =
         source_stream.take_while_with(filter_stream, |f| matches!(f, TestData::Person(_)));
 
-    // Act & Assert
+    // Act
     filter_tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Source error",
     )))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Assert
     assert_no_element_emitted(&mut result, 500).await;
 
     Ok(())
@@ -61,32 +69,41 @@ async fn test_take_while_with_propagates_filter_error() -> anyhow::Result<()> {
     let mut result =
         source_stream.take_while_with(filter_stream, |f| matches!(f, TestData::Person(_)));
 
-    // Act & Assert
+    // Act
     filter_tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     filter_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Filter error",
     )))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     drop(source_tx);
     drop(filter_tx);
+    // Assert
     assert_stream_ended(&mut result, 500).await;
 
     Ok(())
@@ -101,31 +118,40 @@ async fn test_take_while_with_predicate_after_error() -> anyhow::Result<()> {
     let mut result =
         source_stream.take_while_with(filter_stream, |f| matches!(f, TestData::Person(_)));
 
-    // Act & Assert
+    // Act
     filter_tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     drop(source_tx);
     drop(filter_tx);
 
+    // Assert
     // Stream terminates when channels close
     assert_stream_ended(&mut result, 500).await;
 
@@ -141,33 +167,41 @@ async fn test_take_while_with_error_at_start() -> anyhow::Result<()> {
     let mut result =
         source_stream.take_while_with(filter_stream, |f| matches!(f, TestData::Person(_)));
 
-    // Act & Assert: Send filter value
+    // Act
+    // Send filter value
     filter_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
-    source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
 
+    // Act
+    source_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
+    // Assert
     // Error should be propagated
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     // Stream continues
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         2,
     )))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     drop(source_tx);
     drop(filter_tx);
 
+    // Assert
     // Stream terminates when channels close
     assert_stream_ended(&mut result, 500).await;
 
@@ -243,37 +277,47 @@ async fn test_take_while_with_filter_error_at_start() -> anyhow::Result<()> {
     let mut result =
         source_stream.take_while_with(filter_stream, |f| matches!(f, TestData::Person(_)));
 
-    // Act & Assert: Send filter error immediately
+    // Act
+    // Send filter error immediately
     filter_tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Early filter error",
     )))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     filter_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         2,
     )))?;
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         3,
     )))?;
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(_)
     ));
 
+    // Act
     drop(source_tx);
+    // Assert
     drop(filter_tx);
 
     assert_stream_ended(&mut result, 500).await;

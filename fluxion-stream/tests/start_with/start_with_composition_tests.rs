@@ -70,8 +70,10 @@ async fn test_ordered_merge_then_start_with() -> anyhow::Result<()> {
     // Merge streams then prepend values
     let mut stream = s1_rx.ordered_merge(vec![s2_rx]).start_with(initial_values);
 
-    // Act & Assert
+    // Act
     // 1. Should receive initial values immediately
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         person_alice()
@@ -81,15 +83,21 @@ async fn test_ordered_merge_then_start_with() -> anyhow::Result<()> {
         person_bob()
     );
 
+    // Act
     // 2. Send to stream 1
     s1_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         person_charlie()
     );
 
+    // Act
     // 3. Send to stream 2
     s2_tx.unbounded_send(Sequenced::new(person_dave()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         person_dave()

@@ -21,22 +21,30 @@ async fn test_map_ordered_then_start_with_propagates_error() -> anyhow::Result<(
         .map_ordered(|x| x)
         .start_with(vec![StreamItem::Value(Sequenced::new(person_bob()))]);
 
-    // Act & Assert
+    // Act
     // 1. Should emit Bob first (from start_with)
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(val) if val.clone().into_inner() == person_bob()
     ));
 
+    // Act
     // 2. Send Alice -> Should be emitted
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(val) if val.clone().into_inner() == person_alice()
     ));
 
+    // Act
     // 3. Send Error -> Should be propagated
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Map error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

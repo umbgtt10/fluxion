@@ -102,8 +102,10 @@ async fn test_filter_ordered_error_at_start() -> anyhow::Result<()> {
 
     let mut result = stream.filter_ordered(|x| *x > 1);
 
-    // Act & Assert: Error first
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -134,10 +136,10 @@ async fn test_filter_ordered_all_filtered_except_error() -> anyhow::Result<()> {
 
     let mut result = stream.filter_ordered(|x| x % 2 == 0);
 
-    // Act & Assert: Send odd number (filtered)
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
 
-    // Error
+    // Assert
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
@@ -167,10 +169,10 @@ async fn test_filter_ordered_chain_with_map_after_error() -> anyhow::Result<()> 
         .combine_with_previous()
         .map_ordered(|x| Sequenced::new(x.current.value / 10));
 
-    // Act & Assert: Send values
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 1)))?; // Filtered
 
-    // Error
+    // Assert
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,

@@ -14,16 +14,6 @@ use std::convert::Infallible;
 use std::rc::Rc;
 use web_sys::console;
 
-/// Pure orchestrator - Wires streams to UI updates
-///
-/// This component knows nothing about concrete implementations. It only
-/// knows how to:
-/// - Get streams from a StreamProvider
-/// - Update a DashboardSink
-/// - Spawn FluxionTasks to wire them together
-///
-/// Generic over both the stream source and the UI target, making it
-/// completely testable and reusable.
 pub struct DashboardOrchestrator<P: StreamProvider, S: DashboardSink + 'static> {
     provider: P,
     sink: Rc<RefCell<S>>,
@@ -32,13 +22,6 @@ pub struct DashboardOrchestrator<P: StreamProvider, S: DashboardSink + 'static> 
 }
 
 impl<P: StreamProvider, S: DashboardSink + 'static> DashboardOrchestrator<P, S> {
-    /// Creates a new orchestrator
-    ///
-    /// # Arguments
-    ///
-    /// * `provider` - Stream provider implementing StreamProvider trait
-    /// * `sink` - UI sink implementing DashboardSink trait
-    /// * `stop_token` - Token to stop all update tasks
     pub fn new(provider: P, sink: Rc<RefCell<S>>, stop_token: CancellationToken) -> Self {
         Self {
             provider,
@@ -48,13 +31,7 @@ impl<P: StreamProvider, S: DashboardSink + 'static> DashboardOrchestrator<P, S> 
         }
     }
 
-    /// Runs the dashboard updater, spawning tasks and blocking until cancellation
-    ///
-    /// This method gets streams from the provider, wires them to the sink,
-    /// and then blocks waiting for the cancellation token. When cancelled,
-    /// it returns and all tasks are dropped.
     pub async fn run(mut self) {
-        // Wire all 9 streams to their corresponding sink methods
         self.tasks.push(Self::wire_sensor1(
             self.provider.sensor1_stream(),
             self.sink.clone(),
@@ -101,12 +78,10 @@ impl<P: StreamProvider, S: DashboardSink + 'static> DashboardOrchestrator<P, S> 
             self.stop_token.clone(),
         ));
 
-        // Block until cancellation token is triggered
         self.stop_token.cancelled().await;
 
         console::log_1(&"🛑 Dashboard shutting down...".into());
 
-        // Tasks are automatically cancelled and dropped here
         drop(self.tasks);
     }
 

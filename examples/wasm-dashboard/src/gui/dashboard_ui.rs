@@ -10,52 +10,42 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{console, window, Document, HtmlButtonElement, HtmlElement};
 
-/// Shared dashboard UI with 12 hooking points (9 windows + 3 buttons)
 pub struct DashboardUI {
-    // 3 sensor windows (top section)
     sensor1_window: HtmlElement,
     sensor2_window: HtmlElement,
     sensor3_window: HtmlElement,
 
-    // 1 combined stream window (middle section)
     combined_window: HtmlElement,
 
-    // 5 time-bound operator windows (bottom section)
     debounce_window: HtmlElement,
     throttle_window: HtmlElement,
     delay_window: HtmlElement,
     sample_window: HtmlElement,
     timeout_window: HtmlElement,
 
-    // 3 control buttons
     start_button: HtmlButtonElement,
     stop_button: HtmlButtonElement,
     close_button: HtmlButtonElement,
 }
 
 impl DashboardUI {
-    /// Creates a new DashboardUI wrapped in Rc<RefCell<>> for sharing across subscribe closures
     pub fn new(
         document: &Document,
         close_token: CancellationToken,
     ) -> Result<Rc<RefCell<Self>>, JsValue> {
         let ui = Self {
-            // Get sensor windows
             sensor1_window: Self::get_element(document, "sensor1Window")?,
             sensor2_window: Self::get_element(document, "sensor2Window")?,
             sensor3_window: Self::get_element(document, "sensor3Window")?,
 
-            // Get combined window
             combined_window: Self::get_element(document, "combinedWindow")?,
 
-            // Get operator windows
             debounce_window: Self::get_element(document, "debounceWindow")?,
             delay_window: Self::get_element(document, "delayWindow")?,
             sample_window: Self::get_element(document, "sampleWindow")?,
             throttle_window: Self::get_element(document, "throttleWindow")?,
             timeout_window: Self::get_element(document, "timeoutWindow")?,
 
-            // Get buttons
             start_button: Self::get_button(document, "startBtn")?,
             stop_button: Self::get_button(document, "stopBtn")?,
             close_button: Self::get_button(document, "closeBtn")?,
@@ -68,8 +58,6 @@ impl DashboardUI {
 
         Ok(ui_rc)
     }
-
-    // ==================== Update methods for sensor windows (3) ====================
 
     pub fn wire_closure_to_start_button(&mut self, start_closure: Closure<dyn FnMut()>) {
         self.start_button
@@ -93,7 +81,6 @@ impl DashboardUI {
 
             close_token.cancel();
 
-            // Close the window
             if let Some(window) = window() {
                 let _ = window.close();
             }
@@ -120,14 +107,10 @@ impl DashboardUI {
             .set_inner_html(&format!("<div class='value'>{}</div>", value));
     }
 
-    // ==================== Update method for combined window (1) ====================
-
     pub fn update_combined(&mut self, value: u32) {
         self.combined_window
             .set_inner_html(&format!("<div class='value combined'>{}</div>", value));
     }
-
-    // ==================== Update methods for time-bound operator windows (5) ====================
 
     pub fn update_debounce(&mut self, value: u32) {
         self.debounce_window
@@ -159,8 +142,6 @@ impl DashboardUI {
             .set_inner_html(&format!("<div class='value'>{}</div>", error));
     }
 
-    // ==================== Button control methods ====================
-
     pub fn enable_start(&mut self) {
         self.start_button.set_disabled(false);
         self.stop_button.set_disabled(true);
@@ -186,7 +167,6 @@ impl DashboardUI {
     }
 }
 
-// Implement DashboardSink trait for DashboardUI
 impl DashboardSink for DashboardUI {
     fn update_sensor1(&mut self, value: u32) {
         self.update_sensor1(value);

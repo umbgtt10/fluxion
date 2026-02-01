@@ -186,25 +186,31 @@ async fn test_with_latest_from_then_take_items() -> anyhow::Result<()> {
         )
         .take_items(2);
 
-    // Act & Assert
+    // Act
     secondary_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
     // 1. First emission
+    // Act
     primary_tx.unbounded_send(Sequenced::new(person_alice()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Alice with Dog"
     );
 
     // 2. Second emission
+    // Act
     primary_tx.unbounded_send(Sequenced::new(person_bob()))?;
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).value,
         "Bob with Dog"
     );
 
     // 3. Third emission (Should be ignored/stream ended)
+    // Act
     primary_tx.unbounded_send(Sequenced::new(person_charlie()))?;
+    // Assert
     assert_stream_ended(&mut stream, 100).await;
 
     Ok(())

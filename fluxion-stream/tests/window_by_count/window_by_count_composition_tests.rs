@@ -26,9 +26,11 @@ async fn test_window_by_count_then_map_ordered() -> anyhow::Result<()> {
             Sequenced::with_timestamp(first, window.timestamp())
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(person_bob()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         person_alice()
@@ -86,9 +88,11 @@ async fn test_map_ordered_then_window_by_count() -> anyhow::Result<()> {
         })
         .window_by_count::<Sequenced<Vec<TestData>>>(2);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_alice(), person_alice()]
@@ -112,11 +116,13 @@ async fn test_filter_ordered_then_window_by_count() -> anyhow::Result<()> {
         .filter_ordered(|x: &TestData| matches!(x, TestData::Person(_))) // Only persons
         .window_by_count::<Sequenced<Vec<TestData>>>(2);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?; // filtered
     tx.unbounded_send(Sequenced::new(person_alice()))?; // kept
     tx.unbounded_send(Sequenced::new(plant_rose()))?; // filtered
     tx.unbounded_send(Sequenced::new(person_bob()))?; // kept -> window [alice, bob]
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_alice(), person_bob()]
@@ -198,9 +204,11 @@ async fn test_window_by_count_preserves_timestamp_ordering() -> anyhow::Result<(
     let (tx, stream) = test_channel::<Sequenced<TestData>>();
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(2);
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 100))?;
     tx.unbounded_send(Sequenced::with_timestamp(person_bob(), 200))?; // Window ts = 200
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).timestamp(),
         200

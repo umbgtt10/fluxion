@@ -135,7 +135,7 @@ async fn test_emit_when_propagates_error_from_mapped_trigger() -> anyhow::Result
             }
         });
 
-    // Act & Assert
+    // Act
     // 1. Setup trigger (Dog 4 legs -> Mapped to 8 legs)
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         animal_dog(),
@@ -148,6 +148,7 @@ async fn test_emit_when_propagates_error_from_mapped_trigger() -> anyhow::Result
         2,
     )))?;
 
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if matches!(&v.value, TestData::Person(p) if p.name == "Alice")

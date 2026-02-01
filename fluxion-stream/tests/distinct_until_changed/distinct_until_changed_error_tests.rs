@@ -18,11 +18,13 @@ async fn test_distinct_until_changed_propagates_errors() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.distinct_until_changed();
 
-    // Act & Assert: First value emitted
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value == person_alice()
@@ -63,10 +65,12 @@ async fn test_distinct_until_changed_error_at_start() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.distinct_until_changed();
 
-    // Act & Assert: Error before any values
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "Initial error",
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
@@ -110,11 +114,13 @@ async fn test_distinct_until_changed_multiple_errors() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.distinct_until_changed();
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value == person_alice()
@@ -169,11 +175,13 @@ async fn test_distinct_until_changed_error_between_duplicates() -> anyhow::Resul
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.distinct_until_changed();
 
-    // Act & Assert: First value
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value == person_alice()
@@ -226,11 +234,13 @@ async fn test_distinct_until_changed_preserves_state_after_error() -> anyhow::Re
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.distinct_until_changed();
 
-    // Act & Assert: Establish state with alice
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value == person_alice()
@@ -281,8 +291,10 @@ async fn test_distinct_until_changed_alternating_errors_and_values() -> anyhow::
     let (tx, stream) = test_channel_with_errors::<Sequenced<bool>>();
     let mut result = stream.distinct_until_changed();
 
-    // Act & Assert: Interleave errors and values
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(true, 1)))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Value(v) if v.value
@@ -332,8 +344,10 @@ async fn test_distinct_until_changed_error_only_stream() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream.distinct_until_changed();
 
-    // Act & Assert: Send only errors, no values
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)

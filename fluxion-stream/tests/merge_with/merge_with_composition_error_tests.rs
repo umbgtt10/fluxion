@@ -32,23 +32,30 @@ async fn test_merge_with_multiple_streams_error() -> anyhow::Result<()> {
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref v) if v.value.age == 25)
     );
 
+    // Act
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error2")))?;
+    // Assert
     assert!(
         matches!(result.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string() == "Stream processing error: Error2")
     );
 
+    // Act
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error1")))?;
+    // Assert
     assert!(
         matches!(result.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string() == "Stream processing error: Error1")
     );
 
+    // Act
     tx2.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    // Assert
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref v) if v.value.age == 55)
     );

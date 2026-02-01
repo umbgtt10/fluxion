@@ -40,16 +40,21 @@ async fn test_merge_with_propagates_errors_from_first_stream() -> anyhow::Result
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
+    // Act
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    // Assert
     assert!(
         matches!(merged.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string() == "Stream processing error: Error")
     );
 
+    // Act
     tx2.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 50);
 
     Ok(())
@@ -68,8 +73,9 @@ async fn test_merge_with_error_at_start_filtered() -> anyhow::Result<()> {
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
+    // Assert
     assert!(
         matches!(merged.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string() == "Stream processing error: Early error")
     );
@@ -101,10 +107,10 @@ async fn test_merge_with_multiple_streams_error_filtering() -> anyhow::Result<()
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
-
+    // Assert
     assert!(
         matches!(merged.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string().contains("Error"))
     );
@@ -112,7 +118,9 @@ async fn test_merge_with_multiple_streams_error_filtering() -> anyhow::Result<()
         matches!(merged.next().await.unwrap(), StreamItem::Error(ref e) if e.to_string().contains("Error"))
     );
 
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
     Ok(())
@@ -138,17 +146,24 @@ async fn test_merge_with_errors_interleaved_with_values() -> anyhow::Result<()> 
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
+    // Act
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
+    // Assert
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 55);
 
+    // Act
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
+    // Assert
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
     tx2.unbounded_send(StreamItem::Value(Sequenced::new(person_diane())))?;
@@ -172,17 +187,24 @@ async fn test_merge_with_state_preserved_despite_filtered_errors() -> anyhow::Re
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 55);
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    // Assert
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_diane())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 95);
 
     Ok(())
@@ -201,13 +223,17 @@ async fn test_merge_with_error_before_stream_ends() -> anyhow::Result<()> {
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    // Assert
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
+    // Assert
     assert_no_element_emitted(&mut merged, 100).await;
 
     Ok(())
@@ -226,14 +252,16 @@ async fn test_merge_with_empty_stream_with_only_errors() -> anyhow::Result<()> {
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
-
+    // Assert
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
+    // Act
     drop(tx);
+    // Assert
     assert_stream_ended(&mut merged, 100).await;
 
     Ok(())
@@ -266,17 +294,24 @@ async fn test_merge_with_three_streams_with_filtered_errors() -> anyhow::Result<
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
+    // Act
     tx2.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 85);
 
+    // Act
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
+    // Assert
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
+    // Act
     tx3.unbounded_send(StreamItem::Value(Sequenced::new(person_diane())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 205);
 
     Ok(())
@@ -296,16 +331,22 @@ async fn test_merge_with_into_fluxion_stream_error_handling() -> anyhow::Result<
         })
         .into_stream();
 
-    // Act & Assert
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 25);
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("Filtered")))?;
+    // Assert
     assert!(matches!(merged.next().await.unwrap(), StreamItem::Error(_)));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+    // Assert
     assert_eq!(unwrap_value(merged.next().await).into_inner().age, 55);
 
+    // Act
     drop(tx);
 
     Ok(())
@@ -324,7 +365,7 @@ async fn test_merge_with_poll_pending_simulation() -> anyhow::Result<()> {
             state.clone()
         });
 
-    // Act & Assert
+    // Act
     futures::select! {
         _ = tokio::time::sleep(tokio::time::Duration::from_millis(10)).fuse() => {
             tx.unbounded_send(StreamItem::Value(Sequenced::new(person("A".to_string(), 10))))?;
@@ -336,6 +377,7 @@ async fn test_merge_with_poll_pending_simulation() -> anyhow::Result<()> {
         }
     }
 
+    // Assert
     assert_eq!(
         unwrap_stream(&mut merged, 100)
             .await
