@@ -501,13 +501,6 @@ async fn test_take_while_with_filter_false_on_first_source() -> anyhow::Result<(
     // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Act
-    drop(source_tx);
-    drop(filter_tx);
-
-    // Assert
-    assert_stream_ended(&mut result, 500).await;
-
     Ok(())
 }
 

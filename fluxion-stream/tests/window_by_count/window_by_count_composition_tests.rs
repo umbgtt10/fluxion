@@ -35,10 +35,15 @@ async fn test_window_by_count_then_map_ordered() -> anyhow::Result<()> {
         person_alice()
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
     tx.unbounded_send(Sequenced::new(animal_cat()))?;
-    let first2 = unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value;
-    assert_eq!(first2, animal_dog());
+
+    // Assert
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
+        animal_dog()
+    );
 
     Ok(())
 }
@@ -56,17 +61,25 @@ async fn test_window_by_count_then_filter_ordered() -> anyhow::Result<()> {
     // Act
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
     tx.unbounded_send(Sequenced::new(animal_cat()))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_alice(), animal_dog()]
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_bob(), person_charlie()]
@@ -95,8 +108,11 @@ async fn test_map_ordered_then_window_by_count() -> anyhow::Result<()> {
         vec![person_alice(), person_alice()]
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(plant_rose()))?;
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_alice(), person_alice()]
@@ -125,9 +141,12 @@ async fn test_filter_ordered_then_window_by_count() -> anyhow::Result<()> {
         vec![person_alice(), person_bob()]
     );
 
+    // Act
     tx.unbounded_send(Sequenced::new(animal_cat()))?;
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
     tx.unbounded_send(Sequenced::new(person_alice()))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_charlie(), person_alice()]
@@ -146,9 +165,9 @@ async fn test_window_by_count_chain_different_sizes() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(Sequenced::new(person_alice()))?;
-    tx.unbounded_send(Sequenced::new(person_bob()))?; // first inner window
+    tx.unbounded_send(Sequenced::new(person_bob()))?;
     tx.unbounded_send(Sequenced::new(animal_dog()))?;
-    tx.unbounded_send(Sequenced::new(animal_cat()))?; // second inner window -> outer window
+    tx.unbounded_send(Sequenced::new(animal_cat()))?;
 
     // Assert
     assert_eq!(
@@ -203,7 +222,7 @@ async fn test_window_by_count_preserves_timestamp_ordering() -> anyhow::Result<(
 
     // Act
     tx.unbounded_send(Sequenced::with_timestamp(person_alice(), 100))?;
-    tx.unbounded_send(Sequenced::with_timestamp(person_bob(), 200))?; // Window ts = 200
+    tx.unbounded_send(Sequenced::with_timestamp(person_bob(), 200))?;
 
     // Assert
     assert_eq!(
@@ -211,8 +230,11 @@ async fn test_window_by_count_preserves_timestamp_ordering() -> anyhow::Result<(
         200
     );
 
+    // Act
     tx.unbounded_send(Sequenced::with_timestamp(animal_dog(), 300))?;
-    tx.unbounded_send(Sequenced::with_timestamp(animal_cat(), 400))?; // Window ts = 400
+    tx.unbounded_send(Sequenced::with_timestamp(animal_cat(), 400))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).timestamp(),
         400

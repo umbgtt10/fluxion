@@ -210,7 +210,7 @@ async fn test_chained_window_by_count_propagates_error() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?; // inner [alice, bob]
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("chain error")))?;
 
     // Assert
@@ -221,9 +221,9 @@ async fn test_chained_window_by_count_propagates_error() -> anyhow::Result<()> {
 
     // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_cat())))?; // inner [dog, cat]
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_cat())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(plant_rose())))?;
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?; // inner [rose, charlie] -> outer
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(person_charlie())))?;
 
     // Assert
     assert_eq!(

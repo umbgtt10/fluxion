@@ -42,7 +42,6 @@ async fn test_combine_with_previous_start_with() -> anyhow::Result<()> {
             && item2.current.into_inner() == person_bob()
     );
 
-    // Third from stream - charlie (first emission has previous = None since it''s first from actual stream)
     let item3 = unwrap_stream(&mut result, 100).await.unwrap();
     assert!(item3.previous.is_none() && item3.current.into_inner() == person_charlie());
 
@@ -57,7 +56,7 @@ async fn test_combine_with_previous_start_with() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ordered_merge_then_start_with() -> anyhow::Result<()> {
-    // Arrange
+    // Arrange & Act
     let (s1_tx, s1_rx) = test_channel::<Sequenced<TestData>>();
     let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
 
@@ -67,8 +66,6 @@ async fn test_ordered_merge_then_start_with() -> anyhow::Result<()> {
     ];
 
     let mut stream = s1_rx.ordered_merge(vec![s2_rx]).start_with(initial_values);
-
-    // Act
 
     // Assert
     assert_eq!(

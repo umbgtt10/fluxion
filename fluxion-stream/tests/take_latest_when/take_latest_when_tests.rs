@@ -17,9 +17,10 @@ async fn test_take_latest_when_empty_streams() -> anyhow::Result<()> {
     // Arrange
     let filter_fn = |_: &TestData| -> bool { true };
 
-    // Act
     let (source_tx, source_stream) = test_channel::<Sequenced<TestData>>();
     let (filter_tx, filter_stream) = test_channel::<Sequenced<TestData>>();
+
+    // Act
     drop(source_tx);
     drop(filter_tx);
 

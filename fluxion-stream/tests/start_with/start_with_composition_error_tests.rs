@@ -13,14 +13,12 @@ use fluxion_test_utils::{
 
 #[tokio::test]
 async fn test_map_ordered_then_start_with_propagates_error() -> anyhow::Result<()> {
-    // Arrange
+    // Arrange & Act
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
 
     let mut result = stream
         .map_ordered(|x| x)
         .start_with(vec![StreamItem::Value(Sequenced::new(person_bob()))]);
-
-    // Act
 
     // Assert
     assert!(matches!(

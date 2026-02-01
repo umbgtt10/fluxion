@@ -70,8 +70,5 @@ async fn test_with_latest_from_error_propagation_at_end_of_chain() -> anyhow::Re
         StreamItem::Value(ref v) if v.value.age == 22
     ));
 
-    drop(tx1);
-    drop(tx2);
-
     Ok(())
 }

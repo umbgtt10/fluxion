@@ -32,17 +32,23 @@ async fn test_with_latest_from_basic() -> anyhow::Result<()> {
     animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
 
     // Assert
-    let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(element.clone().into_inner().values()[0], animal_cat());
-    assert_eq!(element.clone().into_inner().values()[1], person_alice());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await))
+            .into_inner()
+            .values(),
+        &[animal_cat(), person_alice()]
+    );
 
     // Act
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
     // Assert
-    let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(element.clone().into_inner().values()[0], animal_dog());
-    assert_eq!(element.clone().into_inner().values()[1], person_alice());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await))
+            .into_inner()
+            .values(),
+        &[animal_dog(), person_alice()]
+    );
 
     // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
@@ -69,13 +75,19 @@ async fn test_with_latest_from_ordering_preserved() -> anyhow::Result<()> {
 
     // Assert
     let element1 = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(element1.clone().into_inner().values()[0], animal_cat());
-    assert_eq!(element1.clone().into_inner().values()[1], person_alice());
+    let ts1 = element1.timestamp();
+    assert_eq!(
+        element1.into_inner().values(),
+        &[animal_cat(), person_alice()]
+    );
 
     let element2 = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(element2.clone().into_inner().values()[0], animal_dog());
-    assert_eq!(element2.clone().into_inner().values()[1], person_alice());
-    assert!(element2.timestamp() > element1.timestamp());
+    let ts2 = element2.timestamp();
+    assert_eq!(
+        element2.into_inner().values(),
+        &[animal_dog(), person_alice()]
+    );
+    assert!(ts2 > ts1);
     assert_no_element_emitted(&mut result, 100).await;
 
     Ok(())
@@ -137,17 +149,23 @@ async fn test_with_latest_from_secondary_completes_early() -> anyhow::Result<()>
     animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
 
     // Assert
-    let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(element.clone().into_inner().values()[0], animal_cat());
-    assert_eq!(element.clone().into_inner().values()[1], person_alice());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await))
+            .into_inner()
+            .values(),
+        &[animal_cat(), person_alice()]
+    );
 
     // Act
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
     // Assert
-    let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(element.clone().into_inner().values()[0], animal_dog());
-    assert_eq!(element.clone().into_inner().values()[1], person_alice());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await))
+            .into_inner()
+            .values(),
+        &[animal_dog(), person_alice()]
+    );
 
     Ok(())
 }
@@ -165,14 +183,16 @@ async fn test_with_latest_from_primary_completes_early() -> anyhow::Result<()> {
     animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
 
     // Assert
-    let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(element.clone().into_inner().values()[0], animal_cat());
-    assert_eq!(element.clone().into_inner().values()[1], person_alice());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await))
+            .into_inner()
+            .values(),
+        &[animal_cat(), person_alice()]
+    );
 
     // Act
     drop(animal_tx);
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
-
     drop(person_tx);
 
     // Assert
@@ -240,20 +260,25 @@ async fn test_with_latest_from_secondary_updates_latest() -> anyhow::Result<()> 
     animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
 
     // Assert
-    let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(element.clone().into_inner().values()[0], animal_cat());
-    assert_eq!(element.clone().into_inner().values()[1], person_alice());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await))
+            .into_inner()
+            .values(),
+        &[animal_cat(), person_alice()]
+    );
 
     // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
     assert!(result.next().now_or_never().is_none());
-
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
 
     // Assert
-    let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert_eq!(element.clone().into_inner().values()[0], animal_dog());
-    assert_eq!(element.clone().into_inner().values()[1], person_bob());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut result, 500).await))
+            .into_inner()
+            .values(),
+        &[animal_dog(), person_bob()]
+    );
 
     Ok(())
 }
@@ -275,18 +300,23 @@ async fn test_with_latest_from_multiple_concurrent_streams() -> anyhow::Result<(
     // Act
     person_tx1.unbounded_send(Sequenced::new(person_alice()))?;
     animal_tx1.unbounded_send(Sequenced::new(animal_cat()))?;
-
     person_tx2.unbounded_send(Sequenced::new(person_bob()))?;
     animal_tx2.unbounded_send(Sequenced::new(animal_dog()))?;
 
     // Assert
-    let element1 = unwrap_value(Some(unwrap_stream(&mut stream1, 500).await));
-    assert_eq!(element1.clone().into_inner().values()[0], animal_cat());
-    assert_eq!(element1.clone().into_inner().values()[1], person_alice());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream1, 500).await))
+            .into_inner()
+            .values(),
+        &[animal_cat(), person_alice()]
+    );
 
-    let element2 = unwrap_value(Some(unwrap_stream(&mut stream2, 500).await));
-    assert_eq!(element2.clone().into_inner().values()[0], animal_dog());
-    assert_eq!(element2.clone().into_inner().values()[1], person_bob());
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream2, 500).await))
+            .into_inner()
+            .values(),
+        &[animal_dog(), person_bob()]
+    );
 
     Ok(())
 }

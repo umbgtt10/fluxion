@@ -60,17 +60,22 @@ async fn test_start_with_propagates_errors_from_source_stream() -> anyhow::Resul
     tx.unbounded_send(StreamItem::Value(Sequenced::new(3)))?;
 
     // Assert
-    let item1 = unwrap_stream(&mut result, 100).await;
-    assert!(matches!(item1, StreamItem::Value(_)));
-
-    let item2 = unwrap_stream(&mut result, 100).await;
-    assert!(matches!(item2, StreamItem::Value(_)));
-
-    let item3 = unwrap_stream(&mut result, 100).await;
-    assert!(matches!(item3, StreamItem::Error(_)));
-
-    let item4 = unwrap_stream(&mut result, 100).await;
-    assert!(matches!(item4, StreamItem::Value(_)));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
 
     Ok(())
 }

@@ -22,15 +22,18 @@ async fn test_take_propagates_errors() -> anyhow::Result<()> {
     tx.unbounded_send(StreamItem::Value(Sequenced::new(3)))?;
 
     // Assert
-    let item1 = unwrap_stream(&mut result, 100).await;
-    assert!(matches!(item1, StreamItem::Value(_)));
-
-    let item2 = unwrap_stream(&mut result, 100).await;
-    assert!(matches!(item2, StreamItem::Error(_)));
-
-    let item3 = unwrap_stream(&mut result, 100).await;
-    assert!(matches!(item3, StreamItem::Value(_)));
-
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Value(_)
+    ));
     assert_stream_ended(&mut result, 100).await;
 
     Ok(())
@@ -42,18 +45,20 @@ async fn test_take_counts_errors_as_items() -> anyhow::Result<()> {
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
     let mut result = stream.take_items(2);
 
-    // Act - Send 2 errors, no values
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error1")))?;
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error2")))?;
-    tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?; // Should not be emitted
+    tx.unbounded_send(StreamItem::Value(Sequenced::new(1)))?;
 
     // Assert
-    let item1 = unwrap_stream(&mut result, 100).await;
-    assert!(matches!(item1, StreamItem::Error(_)));
-
-    let item2 = unwrap_stream(&mut result, 100).await;
-    assert!(matches!(item2, StreamItem::Error(_)));
-
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
+    assert!(matches!(
+        unwrap_stream(&mut result, 100).await,
+        StreamItem::Error(_)
+    ));
     assert_stream_ended(&mut result, 100).await;
 
     Ok(())

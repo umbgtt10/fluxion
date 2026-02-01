@@ -56,8 +56,10 @@ async fn test_take_latest_when_with_latest_from_custom_selector() -> anyhow::Res
     trigger_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.clone().into_inner(), "Age difference: 10");
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).into_inner(),
+        "Age difference: 10"
+    );
 
     // Act
     secondary_tx.unbounded_send(Sequenced::new(person_diane()))?;
@@ -65,8 +67,10 @@ async fn test_take_latest_when_with_latest_from_custom_selector() -> anyhow::Res
     trigger_tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
     // Assert
-    let result = unwrap_value(Some(unwrap_stream(&mut stream, 500).await));
-    assert_eq!(result.clone().into_inner(), "Age difference: -12");
+    assert_eq!(
+        unwrap_value(Some(unwrap_stream(&mut stream, 500).await)).into_inner(),
+        "Age difference: -12"
+    );
 
     Ok(())
 }
@@ -223,7 +227,6 @@ async fn test_ordered_merge_into_with_latest_from() -> anyhow::Result<()> {
 
     // Act
     s3_tx.unbounded_send(Sequenced::new(person_charlie()))?;
-
     s1_tx.unbounded_send(Sequenced::new(person_dave()))?;
 
     // Assert

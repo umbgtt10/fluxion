@@ -159,6 +159,7 @@ async fn test_combine_latest_secondary_closes_after_initial_emission_continues(
 #[tokio::test]
 async fn test_combine_latest_all_streams_have_published_different_order_emits_updates(
 ) -> anyhow::Result<()> {
+    // Arrange
     let _ =
         combine_latest_template_test(DataVariant::Plant, DataVariant::Animal, DataVariant::Person)
             .await;
@@ -177,6 +178,8 @@ async fn test_combine_latest_all_streams_have_published_different_order_emits_up
     let _ =
         combine_latest_template_test(DataVariant::Person, DataVariant::Plant, DataVariant::Animal)
             .await;
+
+    // Act & Assert - covered by combine_latest_template_test calls above
 
     Ok(())
 }
@@ -264,6 +267,7 @@ async fn test_combine_latest_all_streams_have_published_emits_updates() -> anyho
 #[tokio::test]
 async fn test_combine_latest_different_stream_order_emits_consistent_results() -> anyhow::Result<()>
 {
+    // Arrange & Act & Assert - covered by combine_latest_stream_order_test calls below
     let _ = combine_latest_stream_order_test(
         DataVariant::Person,
         DataVariant::Animal,

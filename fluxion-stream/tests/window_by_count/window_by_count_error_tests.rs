@@ -49,10 +49,16 @@ async fn test_window_by_count_continues_after_error() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
+
+    // Assert
     assert_no_element_emitted(&mut result, 100).await;
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_alice(), person_bob()]
@@ -147,16 +153,22 @@ async fn test_window_by_count_error_at_window_boundary() -> anyhow::Result<()> {
         vec![person_alice(), person_bob()]
     );
 
+    // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
         "boundary error",
     )))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_dog())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(animal_cat())))?;
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![animal_dog(), animal_cat()]
@@ -172,12 +184,13 @@ async fn test_window_by_count_error_preserves_error_details() -> anyhow::Result<
     let mut result = stream.window_by_count::<Sequenced<Vec<TestData>>>(2);
 
     // Act
-    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(
-        "specific error message",
-    )))?;
+    let error_message = "specific error message";
+    tx.unbounded_send(StreamItem::Error(FluxionError::stream_error(error_message)))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
-        StreamItem::Error(e) if e.to_string().contains("specific error message")
+        StreamItem::Error(e) if e.to_string().contains(error_message)
     ));
 
     Ok(())
@@ -212,14 +225,19 @@ async fn test_window_by_count_partial_after_error_on_close() -> anyhow::Result<(
 
     // Act
     tx.unbounded_send(StreamItem::Error(FluxionError::stream_error("error")))?;
+
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut result, 100).await,
         StreamItem::Error(_)
     ));
 
+    // Act
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_alice())))?;
     tx.unbounded_send(StreamItem::Value(Sequenced::new(person_bob())))?;
     drop(tx);
+
+    // Assert
     assert_eq!(
         unwrap_value(Some(unwrap_stream(&mut result, 100).await)).value,
         vec![person_alice(), person_bob()]
