@@ -269,7 +269,6 @@ async fn subject_with_previous_computes_age_deltas() -> anyhow::Result<()> {
     subject.send(StreamItem::Value(Sequenced::new(person_bob())))?;
     subject.send(StreamItem::Value(Sequenced::new(person_diane())))?;
 
-    // First emission has no previous, delta is 0 - discard
     let _ = unwrap_stream(&mut deltas, 200).await;
     assert_eq!(
         unwrap_stream(&mut deltas, 200).await.unwrap().into_inner(),

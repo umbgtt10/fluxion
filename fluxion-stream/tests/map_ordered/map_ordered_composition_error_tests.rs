@@ -64,11 +64,10 @@ async fn test_error_propagation_through_multiple_operators() -> anyhow::Result<(
 
 #[tokio::test]
 async fn test_multiple_errors_through_composition() -> anyhow::Result<()> {
-    // ASrrange
+    // Arrange
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
-    // Combine then transform
     let mut result = stream1
         .combine_latest(vec![stream2], |_| true)
         .combine_with_previous()
@@ -89,7 +88,6 @@ async fn test_multiple_errors_through_composition() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
-    // Continue
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
     assert!(
         matches!(unwrap_stream(&mut result, 100).await, StreamItem::Value(ref s) if s.value.contains("Combined"))

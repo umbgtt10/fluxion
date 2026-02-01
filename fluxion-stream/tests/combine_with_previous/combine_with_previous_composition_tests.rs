@@ -159,7 +159,7 @@ async fn test_combine_latest_combine_with_previous() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_complex_composition_ordered_merge_and_combine_with_previous() -> anyhow::Result<()> {
-    // Arrang
+    // Arrange
     let (person1_tx, person1_rx) = test_channel::<Sequenced<TestData>>();
     let (person2_tx, person2_rx) = test_channel::<Sequenced<TestData>>();
 

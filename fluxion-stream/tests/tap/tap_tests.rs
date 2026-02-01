@@ -210,7 +210,6 @@ async fn test_tap_maintains_order() -> anyhow::Result<()> {
     tx.unbounded_send(Sequenced::new(person_bob()))?;
     tx.unbounded_send(Sequenced::new(person_charlie()))?;
 
-    // Consume all
     unwrap_stream(&mut result, 500).await;
     unwrap_stream(&mut result, 500).await;
     unwrap_stream(&mut result, 500).await;

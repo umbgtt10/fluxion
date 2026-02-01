@@ -22,7 +22,6 @@ async fn test_take_latest_when_propagates_source_error() -> anyhow::Result<()> {
     source_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
     trigger_tx.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(10, 4)))?;
 
-    //
     assert!(matches!(
         unwrap_stream(&mut triggered_stream, 500).await,
         StreamItem::Value(_)

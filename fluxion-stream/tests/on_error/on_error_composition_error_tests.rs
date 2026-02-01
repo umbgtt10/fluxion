@@ -60,7 +60,6 @@ async fn test_on_error_handles_errors_from_ordered_merge() -> anyhow::Result<()>
     )))?;
     assert_no_element_emitted(&mut result, 100).await;
 
-    // Verify both errors were handled
     {
         let errors = handled_errors.lock();
         assert_eq!(errors.len(), 2);

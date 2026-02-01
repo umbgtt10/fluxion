@@ -46,7 +46,6 @@ async fn test_combine_with_previous_start_with() -> anyhow::Result<()> {
     let item3 = unwrap_stream(&mut result, 100).await.unwrap();
     assert!(item3.previous.is_none() && item3.current.into_inner() == person_charlie());
 
-    // Fourth from stream - dave (has previous = charlie)
     let item4 = unwrap_stream(&mut result, 100).await.unwrap();
     assert!(
         item4.previous.clone().map(|p| p.into_inner()) == Some(person_charlie())

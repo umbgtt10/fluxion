@@ -17,7 +17,6 @@ async fn test_map_ordered_propagates_errors() -> anyhow::Result<()> {
     // Arrange
     let (tx, stream) = test_channel_with_errors::<Sequenced<i32>>();
 
-    // Use combine_with_previous then map to string
     let mut result = stream
         .combine_with_previous()
         .map_ordered(|x| Sequenced::new(format!("Current: {}", x.current.value)));

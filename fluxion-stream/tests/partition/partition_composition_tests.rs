@@ -506,15 +506,12 @@ async fn test_partition_share_then_combine_latest() -> anyhow::Result<()> {
     let (tx, rx) = test_channel();
     let shared = rx.share();
 
-    // Subscriber 1: partition into persons and non-persons
     let sub1 = shared.subscribe().unwrap();
     let (persons1, _non_persons1) = sub1.partition(|data| matches!(data, TestData::Person(_)));
 
-    // Subscriber 2: just filter for animals
     let sub2 = shared.subscribe().unwrap();
     let animals2 = sub2.filter_ordered(|data| matches!(data, TestData::Animal(_)));
 
-    // combine_latest between partitioned persons and filtered animals
     let mut combined = persons1.combine_latest(vec![animals2], |_| true);
 
     // Act
@@ -613,7 +610,6 @@ async fn test_partition_then_combine_with_previous() -> anyhow::Result<()> {
     let item2 = unwrap_value(Some(unwrap_stream(&mut animals_with_prev, 500).await));
     assert!(item2.current.value == animal_dog() && item2.previous.is_none());
 
-    // Second emissions have previous
     let item3 = unwrap_value(Some(unwrap_stream(&mut persons_with_prev, 500).await));
     assert!(item3.current.value == person_bob() && item3.previous.unwrap().value == person_alice());
 

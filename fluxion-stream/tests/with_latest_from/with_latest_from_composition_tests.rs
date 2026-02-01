@@ -185,7 +185,6 @@ async fn test_ordered_merge_into_with_latest_from() -> anyhow::Result<()> {
     let (s2_tx, s2_rx) = test_channel::<Sequenced<TestData>>();
     let (s3_tx, s3_rx) = test_channel::<Sequenced<TestData>>();
 
-    // Merge s1 and s2, then combine with s3
     let mut stream = s1_rx.ordered_merge(vec![s2_rx]).with_latest_from(
         s3_rx,
         |state: &CombinedState<TestData, u64>| -> Sequenced<String> {
@@ -205,7 +204,6 @@ async fn test_ordered_merge_into_with_latest_from() -> anyhow::Result<()> {
 
     // Act
     s3_tx.unbounded_send(Sequenced::new(person_alice()))?;
-
     s1_tx.unbounded_send(Sequenced::new(person_bob()))?;
 
     // Assert

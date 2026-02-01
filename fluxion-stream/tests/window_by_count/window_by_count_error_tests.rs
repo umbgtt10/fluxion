@@ -199,7 +199,6 @@ async fn test_window_by_count_stream_ends_after_error() -> anyhow::Result<()> {
         StreamItem::Error(_)
     ));
 
-    // Stream ends
     assert_stream_ended(&mut result, 100).await;
 
     Ok(())

@@ -18,7 +18,6 @@ async fn test_map_ordered_then_window_by_count_propagates_error() -> anyhow::Res
     let (tx, stream) = test_channel_with_errors::<Sequenced<TestData>>();
     let mut result = stream
         .map_ordered(|x: Sequenced<TestData>| {
-            // Map all to alice
             Sequenced::with_timestamp(person_alice(), x.timestamp())
         })
         .window_by_count::<Sequenced<Vec<TestData>>>(2);
@@ -128,7 +127,6 @@ async fn test_window_by_count_then_filter_ordered_propagates_error() -> anyhow::
     let mut result = stream
         .window_by_count::<Sequenced<Vec<TestData>>>(2)
         .filter_ordered(|window: &Vec<TestData>| {
-            // Keep windows with at least one person
             window.iter().any(|d| matches!(d, TestData::Person(_)))
         });
 

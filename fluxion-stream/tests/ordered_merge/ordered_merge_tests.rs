@@ -52,13 +52,11 @@ async fn test_ordered_merge_timestamp_ordering() -> anyhow::Result<()> {
         unwrap_stream(&mut merged, 200).await.into_inner(),
         person_bob()
     );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_charlie()
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_charlie())
     );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_dave()
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_dave())
     );
 
     Ok(())
@@ -81,10 +79,7 @@ async fn test_ordered_merge_multiple_streams() -> anyhow::Result<()> {
     plant_tx.unbounded_send(Sequenced::with_timestamp(plant_oak(), 4))?;
 
     // Assert
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        animal_dog()
-    );
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &animal_dog()));
     assert_eq!(
         unwrap_stream(&mut merged, 200).await.into_inner(),
         animal_spider()
@@ -93,10 +88,7 @@ async fn test_ordered_merge_multiple_streams() -> anyhow::Result<()> {
         unwrap_stream(&mut merged, 200).await.into_inner(),
         plant_rose()
     );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        plant_oak()
-    );
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &plant_oak()));
     assert_eq!(
         unwrap_stream(&mut merged, 200).await.into_inner(),
         person_alice()
@@ -146,21 +138,13 @@ async fn test_ordered_merge_one_stream_closes_early() -> anyhow::Result<()> {
     tx2.unbounded_send(Sequenced::with_timestamp(animal_spider(), 4))?;
 
     // Assert
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_alice()
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_alice())
     );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_bob()
-    );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        animal_dog()
-    );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        animal_spider()
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_bob()));
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &animal_dog()));
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &animal_spider())
     );
 
     drop(tx2);
@@ -246,7 +230,7 @@ async fn test_ordered_merge_parallel_sends() -> anyhow::Result<()> {
         }
     });
 
-    // Assert: All 200 items should be emitted in timestamp order
+    // Assert
     let mut last_ts = 0;
     for _ in 0..200 {
         let item = unwrap_stream(&mut merged, 500).await;
@@ -270,7 +254,7 @@ async fn test_ordered_merge_preserves_timestamp_metadata() -> anyhow::Result<()>
     tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 10))?;
     tx2.unbounded_send(Sequenced::with_timestamp(animal_dog(), 20))?;
 
-    // Assert: Timestamps should be preserved
+    // Assert
     let first = unwrap_stream(&mut merged, 200).await;
     assert_eq!(first.timestamp(), 10);
     assert_eq!(first.into_inner(), person_alice());
@@ -294,9 +278,8 @@ async fn test_ordered_merge_does_not_wait_for_all_streams() -> anyhow::Result<()
     tx1.unbounded_send(Sequenced::with_timestamp(person_alice(), 1))?;
 
     // Assert
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_alice()
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_alice())
     );
 
     Ok(())
@@ -320,29 +303,17 @@ async fn test_ordered_merge_mixed_types_in_enum() -> anyhow::Result<()> {
     plant_tx.unbounded_send(Sequenced::with_timestamp(plant_sunflower(), 6))?;
 
     // Assert
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_alice()
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_alice())
     );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        animal_dog()
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &animal_dog()));
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &plant_rose()));
+    assert!(matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &person_bob()));
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &animal_bird())
     );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        plant_rose()
-    );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        person_bob()
-    );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        animal_bird()
-    );
-    assert_eq!(
-        unwrap_stream(&mut merged, 200).await.into_inner(),
-        plant_sunflower()
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 200).await.into_inner(), v if v == &plant_sunflower())
     );
 
     Ok(())

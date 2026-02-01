@@ -15,7 +15,6 @@ use fluxion_test_utils::test_data::{
 use fluxion_test_utils::test_wrapper::TestWrapper;
 use futures::{FutureExt, StreamExt};
 
-// Identity selector for testing - returns the CombinedState as-is
 fn result_selector(state: &CombinedState<TestData, u64>) -> CombinedState<TestData, u64> {
     state.clone()
 }
@@ -39,16 +38,17 @@ async fn test_with_latest_from_basic() -> anyhow::Result<()> {
 
     // Act
     animal_tx.unbounded_send(Sequenced::new(animal_dog()))?;
+
+    // Assert
     let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(element.clone().into_inner().values()[0], animal_dog());
     assert_eq!(element.clone().into_inner().values()[1], person_alice());
 
     // Act
     person_tx.unbounded_send(Sequenced::new(person_bob()))?;
-    assert!(
-        result.next().now_or_never().is_none(),
-        "Should not emit when only secondary stream emits"
-    );
+
+    // Assert
+    assert!(result.next().now_or_never().is_none());
 
     Ok(())
 }
@@ -75,17 +75,7 @@ async fn test_with_latest_from_ordering_preserved() -> anyhow::Result<()> {
     let element2 = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
     assert_eq!(element2.clone().into_inner().values()[0], animal_dog());
     assert_eq!(element2.clone().into_inner().values()[1], person_alice());
-
-    println!(
-        "Element1 order: {}, Element2 order: {}",
-        element1.timestamp(),
-        element2.timestamp()
-    );
-    assert!(
-        element2.timestamp() > element1.timestamp(),
-        "Second emission should have higher order"
-    );
-
+    assert!(element2.timestamp() > element1.timestamp());
     assert_no_element_emitted(&mut result, 100).await;
 
     Ok(())
@@ -108,13 +98,10 @@ async fn test_with_latest_from_custom_selector() -> anyhow::Result<()> {
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
     animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
 
-    // Assert - should get a String result wrapped in TestWrapper
-    let element = unwrap_value(Some(unwrap_stream(&mut result, 500).await));
-    assert!(
-        element.value().contains("Cat"),
-        "Expected 'Cat' in result: {}",
-        element.value()
-    );
+    // Assert
+    assert!(unwrap_value(Some(unwrap_stream(&mut result, 500).await))
+        .value()
+        .contains("Cat"));
 
     Ok(())
 }
@@ -147,7 +134,6 @@ async fn test_with_latest_from_secondary_completes_early() -> anyhow::Result<()>
     // Act
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
     drop(person_tx);
-
     animal_tx.unbounded_send(Sequenced::new(animal_cat()))?;
 
     // Assert
@@ -203,9 +189,8 @@ async fn test_with_latest_from_large_number_of_emissions() -> anyhow::Result<()>
 
     let mut result = animal_stream.with_latest_from(person_stream, result_selector);
 
-    // Act - send secondary first
+    // Act
     person_tx.unbounded_send(Sequenced::new(person_alice()))?;
-
     for i in 0..100 {
         animal_tx.unbounded_send(Sequenced::new(animal(format!("Animal{}", i), 4)))?;
     }
@@ -275,6 +260,7 @@ async fn test_with_latest_from_secondary_updates_latest() -> anyhow::Result<()> 
 
 #[tokio::test]
 async fn test_with_latest_from_multiple_concurrent_streams() -> anyhow::Result<()> {
+    // Arrange
     let (animal_tx1, animal_stream1) = test_channel();
     let (person_tx1, person_stream1) = test_channel();
     let (animal_tx2, animal_stream2) = test_channel();

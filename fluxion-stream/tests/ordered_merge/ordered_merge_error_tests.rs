@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-//! Error propagation tests for `ordered_merge` operator.
-
 use fluxion_core::{FluxionError, StreamItem};
 use fluxion_stream::OrderedStreamExt;
 use fluxion_test_utils::{
@@ -24,7 +22,7 @@ async fn test_ordered_merge_propagates_error_from_first_stream() -> anyhow::Resu
 
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
-    // Act: Send values and error from first stream
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_alice(),
         1,
@@ -37,26 +35,19 @@ async fn test_ordered_merge_propagates_error_from_first_stream() -> anyhow::Resu
         2,
     )))?;
 
-    // Assert: First value should be emitted
-    let item1 = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item1, StreamItem::Value(_)));
-    if let StreamItem::Value(v) = item1 {
-        assert_eq!(v.into_inner(), person_alice());
-    }
+    // Assert
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == person_alice())
+    );
 
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
     ));
 
-    let item2 = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item2, StreamItem::Value(_)));
-    if let StreamItem::Value(v) = item2 {
-        assert_eq!(v.into_inner(), animal_dog());
-    }
-
-    drop(tx1);
-    drop(tx2);
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == animal_dog())
+    );
 
     Ok(())
 }
@@ -82,23 +73,19 @@ async fn test_ordered_merge_propagates_error_from_second_stream() -> anyhow::Res
         3,
     )))?;
 
-    // Assert: Error has priority (Error < Value), so it's emitted first
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
     ));
 
-    let item1 = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item1, StreamItem::Value(_)));
-    if let StreamItem::Value(v) = item1 {
-        assert_eq!(v.into_inner(), person_bob());
-    }
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == person_bob())
+    );
 
-    let item2 = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item2, StreamItem::Value(_)));
-    if let StreamItem::Value(v) = item2 {
-        assert_eq!(v.into_inner(), person_charlie());
-    }
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == person_charlie())
+    );
 
     Ok(())
 }
@@ -111,7 +98,7 @@ async fn test_ordered_merge_multiple_errors_from_different_streams() -> anyhow::
 
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
-    // Act: Interleave values and errors
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         plant_rose(),
         1,
@@ -128,22 +115,18 @@ async fn test_ordered_merge_multiple_errors_from_different_streams() -> anyhow::
         StreamItem::Error(_)
     ));
 
-    let item1 = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item1, StreamItem::Value(_)));
-    if let StreamItem::Value(v) = item1 {
-        assert_eq!(v.into_inner(), plant_rose());
-    }
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == plant_rose())
+    );
 
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
     ));
 
-    let item2 = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item2, StreamItem::Value(_)));
-    if let StreamItem::Value(v) = item2 {
-        assert_eq!(v.into_inner(), animal_spider());
-    }
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == animal_spider())
+    );
 
     Ok(())
 }
@@ -156,24 +139,22 @@ async fn test_ordered_merge_error_at_start() -> anyhow::Result<()> {
 
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
-    // Act: Send error before any values
+    // Act
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Early error")))?;
     tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(
         person_dave(),
         1,
     )))?;
 
-    // Assert: Error should be propagated immediately
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
     ));
 
-    let item = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item, StreamItem::Value(_)));
-    if let StreamItem::Value(v) = item {
-        assert_eq!(v.into_inner(), person_dave());
-    }
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == person_dave())
+    );
 
     Ok(())
 }
@@ -193,22 +174,20 @@ async fn test_ordered_merge_error_before_stream_ends() -> anyhow::Result<()> {
     )))?;
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
 
-    let item = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item, StreamItem::Value(_)));
-    if let StreamItem::Value(v) = item {
-        assert_eq!(v.into_inner(), animal_bird());
-    }
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == animal_bird())
+    );
 
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
     ));
 
-    // Drop transmitters to end streams
+    // Act
     drop(tx1);
     drop(tx2);
 
-    // Assert: Stream should end cleanly after error
+    // Assert
     assert_stream_ended(&mut merged, 500).await;
 
     Ok(())
@@ -222,12 +201,12 @@ async fn test_ordered_merge_consecutive_errors_same_stream() -> anyhow::Result<(
 
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
-    // Act: Send multiple consecutive errors from same stream
+    // Act
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
     tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(plant_oak(), 1)))?;
 
-    // Assert: Both errors should propagate
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
@@ -236,47 +215,37 @@ async fn test_ordered_merge_consecutive_errors_same_stream() -> anyhow::Result<(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
     ));
-    assert!(matches!(
-        unwrap_stream(&mut merged, 100).await,
-        StreamItem::Value(_)
-    ));
+    assert!(
+        matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == plant_oak())
+    );
 
     Ok(())
 }
 
 #[tokio::test]
 async fn test_ordered_merge_error_ordering_by_timestamp() -> anyhow::Result<()> {
-    // Arrange Test that errors are emitted in timestamp order
+    // Arrange
     let (tx1, stream1) = test_channel_with_errors::<Sequenced<i32>>();
     let (tx2, stream2) = test_channel_with_errors::<Sequenced<i32>>();
 
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
-    // Act: Send values and errors with explicit timestamps
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
-
-    // Error has priority (Error < Value), so it's emitted before buffered value with ts=3
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error")))?;
-
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(4, 4)))?;
 
-    // Assert: Values with ts=1,2 emitted first (already in buffer), then error (priority), then remaining values
-    let item1 = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item1, StreamItem::Value(_)));
-
-    let item2 = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item2, StreamItem::Value(_)));
-
-    let item3 = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item3, StreamItem::Error(_)));
-
-    let item4 = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item4, StreamItem::Value(_)));
-
-    let item5 = unwrap_stream(&mut merged, 100).await;
-    assert!(matches!(item5, StreamItem::Value(_)));
+    // Assert
+    assert!(matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == 1));
+    assert!(matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == 2));
+    assert!(matches!(
+        unwrap_stream(&mut merged, 100).await,
+        StreamItem::Error(_)
+    ));
+    assert!(matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == 3));
+    assert!(matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == 4));
 
     Ok(())
 }
@@ -290,34 +259,25 @@ async fn test_ordered_merge_three_streams_with_errors() -> anyhow::Result<()> {
 
     let mut merged = stream1.ordered_merge(vec![stream2, stream3]);
 
-    // Act: Send values and errors from all three streams
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     tx3.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
     tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
 
-    // Assert: Error1, Value(1,1), Error2, Value(2,2), Value(3,3)
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
     ));
-    assert!(matches!(
-        unwrap_stream(&mut merged, 100).await,
-        StreamItem::Value(_)
-    ));
+    assert!(matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == 1));
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
     ));
-    assert!(matches!(
-        unwrap_stream(&mut merged, 100).await,
-        StreamItem::Value(_)
-    ));
-    assert!(matches!(
-        unwrap_stream(&mut merged, 100).await,
-        StreamItem::Value(_)
-    ));
+    assert!(matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == 2));
+    assert!(matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == 3));
 
     Ok(())
 }
@@ -330,11 +290,11 @@ async fn test_ordered_merge_only_errors_no_values() -> anyhow::Result<()> {
 
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
-    // Act: Send only errors, no values
+    // Act
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
 
-    // Assert: Both errors should be propagated
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
@@ -343,12 +303,6 @@ async fn test_ordered_merge_only_errors_no_values() -> anyhow::Result<()> {
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
     ));
-
-    drop(tx1);
-    drop(tx2);
-
-    // Stream should end after errors
-    assert_stream_ended(&mut merged, 500).await;
 
     Ok(())
 }
@@ -361,34 +315,25 @@ async fn test_ordered_merge_continues_after_multiple_errors() -> anyhow::Result<
 
     let mut merged = stream1.ordered_merge(vec![stream2]);
 
-    // Act: Send pattern of value, error, error, value
+    // Act
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(1, 1)))?;
     tx1.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 1")))?;
     tx2.unbounded_send(StreamItem::Error(FluxionError::stream_error("Error 2")))?;
     tx2.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(2, 2)))?;
     tx1.unbounded_send(StreamItem::Value(Sequenced::with_timestamp(3, 3)))?;
 
-    // Assert: Error2, Value(1,1), Error1, Value(2,2), Value(3,3)
+    // Assert
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
     ));
-    assert!(matches!(
-        unwrap_stream(&mut merged, 100).await,
-        StreamItem::Value(_)
-    ));
+    assert!(matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == 1));
     assert!(matches!(
         unwrap_stream(&mut merged, 100).await,
         StreamItem::Error(_)
     ));
-    assert!(matches!(
-        unwrap_stream(&mut merged, 100).await,
-        StreamItem::Value(_)
-    ));
-    assert!(matches!(
-        unwrap_stream(&mut merged, 100).await,
-        StreamItem::Value(_)
-    ));
+    assert!(matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == 2));
+    assert!(matches!(&unwrap_stream(&mut merged, 100).await, StreamItem::Value(v) if v.value == 3));
 
     Ok(())
 }

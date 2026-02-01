@@ -33,7 +33,6 @@ async fn test_partition_propagates_error_to_both_streams() -> anyhow::Result<()>
         StreamItem::Error(_)
     ));
 
-    // Both streams should complete after error
     assert_stream_ended(&mut persons, 500).await;
     assert_stream_ended(&mut non_persons, 500).await;
 
